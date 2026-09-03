@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -405,26 +405,46 @@ class Game {
       const isPellet = this.maze.dotMap[r][c] === 3;
       this.maze.dotMap[r][c] = 0;
       this.maze.remainingDots--;
+      const px = c * T + HALF, py = r * T + HALF;
 
       if (isPellet) {
-        this.score += 50 * this.combo.m;
+        const pts = 50 * this.combo.m;
+        this.score += pts;
+        particles.addPop(px, py - 15, '+' + pts, '#ff5555', 18);
+        particles.emit(px, py, 20, C_PELLET, { speed: 100, size: 4, life: 0.6 });
         powerups.triggerPredator(this.enemyManager.enemies);
         particles.flash('#ff0055', 0.25);
-        particles.shake(3, 0.15);
+        particles.shake(4, 0.2);
+        sounds.play('pellet');
       } else {
-        this.score += 10 * this.combo.m;
-        sounds.play('dot');
         if (this.gameMode === 'madness') {
           this.madnessTimer = Math.min(45, this.madnessTimer + 0.04);
         }
+        this.combo.n++;
+        this.combo.t = COMBO_DECAY;
+        const oldM = this.combo.m;
+        const tier = getComboTier(this.combo.n);
+        this.combo.m = CM[tier];
+        const pts = 10 * this.combo.m;
+        this.score += pts;
+
+        // Floating +XXX score popup above eaten dot!
+        particles.addPop(px, py - 10, '+' + pts, CC[tier], 10 + tier * 2);
+        particles.emit(px, py, 2 + tier * 2, C_DOT, { speed: 40 + tier * 20, size: 2 + tier, life: 0.3 + tier * 0.1 });
+        sounds.play('dot');
+
+        if (this.combo.m > oldM && this.combo.m > 1) {
+          sounds.play('combo');
+          particles.addPop(px, py - 28, 'x' + this.combo.m + '!', CC[tier], 16 + tier * 3);
+          particles.emit(px, py, 8 + tier * 4, CC[tier], { speed: 60 + tier * 20, size: 3, life: 0.5 });
+          particles.shake(1 + tier, 0.15);
+          particles.flash(CC[tier], 0.15);
+          if (this.combo.m >= 8) badges.unlock('combo8');
+          if (this.combo.m >= 16) badges.unlock('combo16');
+        }
       }
 
-      this.combo.n++;
-      this.combo.t = 1.8;
-      const tier = this.combo.n >= 50 ? 4 : this.combo.n >= 25 ? 3 : this.combo.n >= 12 ? 2 : this.combo.n >= 5 ? 1 : 0;
-      this.combo.m = CM[tier];
-      if (this.combo.m >= 8) badges.unlock('combo8');
-      if (this.combo.m >= 16) badges.unlock('combo16');
+      if (this.combo.n > this.bestCombo) this.bestCombo = this.combo.n;
 
       if (this.maze.remainingDots <= 0 && this.gameMode === 'classic') {
         this.state = 'waveTrans';
@@ -440,6 +460,12 @@ class Game {
   private update(dt: number) {
     this.time += dt;
     input.pollGamepad();
+
+    // Smooth animated score
+    if (this.dScore < this.score) {
+      this.dScore += Math.max(1, (this.score - this.dScore) * dt * 8);
+      if (this.dScore > this.score) this.dScore = this.score;
+    }
 
     // Inputs
     if (input.isAudioToggleRequested) {
@@ -656,6 +682,9 @@ class Game {
           if (this.combo.t <= 0) {
             this.combo.n = 0;
             this.combo.m = 1;
+          } else {
+            const tier = getComboTier(this.combo.n);
+            this.combo.m = CM[tier];
           }
         }
 

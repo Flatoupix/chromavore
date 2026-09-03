@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN } from '../config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier } from '../config/constants';
 import { LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -224,10 +224,26 @@ export class Renderer {
       c.lineTo(CW - 20 - i * 24, 20); c.fill();
     }
 
-    // Multiplier
+    // Multiplier & Combo Gauge
     if (combo.m > 1) {
-      c.font = 'bold 18px monospace'; c.fillStyle = '#ff8833'; c.shadowColor = '#ff8833'; c.shadowBlur = 8;
-      c.textAlign = 'right'; c.fillText('x' + combo.m, CW - 15, 46); c.shadowBlur = 0;
+      const tier = getComboTier(combo.n);
+      const pulse = 1 + Math.sin(time * 8) * 0.1;
+      const sz = (16 + tier * 3) * pulse;
+      c.font = `bold ${sz}px monospace`;
+      c.fillStyle = CC[tier];
+      c.shadowColor = CC[tier];
+      c.shadowBlur = 10;
+      c.textAlign = 'right';
+      c.fillText('x' + combo.m, CW - 15, 46);
+      c.shadowBlur = 0;
+
+      // Decay Progress Bar
+      const bW = 60, bX = CW - 15 - bW, bY = 51;
+      c.fillStyle = '#222233';
+      c.fillRect(bX, bY, bW, 3);
+      c.fillStyle = CC[tier];
+      const prog = Math.max(0, Math.min(1, combo.t / COMBO_DECAY));
+      c.fillRect(bX, bY, bW * prog, 3);
     }
 
     // Audio status

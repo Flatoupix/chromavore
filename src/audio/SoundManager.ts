@@ -124,6 +124,20 @@ class SoundManager {
           osc.stop(t + 0.16);
           break;
         }
+        case 'combo': {
+          const osc = this.actx.createOscillator();
+          const g = this.actx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(660, t);
+          osc.frequency.exponentialRampToValueAtTime(1320, t + 0.14);
+          g.gain.setValueAtTime(0.12, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+          osc.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + 0.15);
+          break;
+        }
         case 'nova': {
           const osc = this.actx.createOscillator();
           const g = this.actx.createGain();

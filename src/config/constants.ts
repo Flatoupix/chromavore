@@ -69,6 +69,13 @@ export const CM = [1, 2, 4, 8, 16];
 export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff44ff'];
 export const COMBO_DECAY = 1.8;
 
+export function getComboTier(n: number): number {
+  for (let i = CT.length - 1; i >= 0; i--) {
+    if (n >= CT[i]) return i;
+  }
+  return 0;
+}
+
 // Game physics
 export const P_SPEED = 5.5;
 export const P_MADNESS_SPEED = 14.5;
