@@ -6,6 +6,7 @@ import { T, HALF, COLS, ROWS, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
+import { progression } from '../systems/ProgressionSystem';
 
 export function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
   const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
@@ -186,6 +187,14 @@ export class Player {
     isOverdrive: boolean = false
   ): boolean {
     if (this.dashCd > 0 && !isOverdrive) return false;
+
+    const dashLvl = progression.getSkillLevel('dash');
+    if (dashLvl === 0) {
+      const pp = this.getPos();
+      particles.addPop(pp.x, pp.y - 20, '🔒 DASH DÉBLOQUÉ À 5 👻', '#ffaa00', 12);
+      return false;
+    }
+
     let dx = this.dx, dy = this.dy;
     if (!dx && !dy) { dx = this.ndx; dy = this.ndy; }
     if (!dx && !dy) { dx = this.lastDx || 1; dy = this.lastDy || 0; }
@@ -199,7 +208,8 @@ export class Player {
       this.t = 1;
     }
 
-    for (let i = 0; i < DASH_DIST; i++) {
+    const maxDist = dashLvl >= 2 ? 4 : DASH_DIST;
+    for (let i = 0; i < maxDist; i++) {
       const nx = this.wrapX(this.x + dx);
       const ny = this.y + dy;
       if (!maze.isWalkable(nx, ny, false)) break;
@@ -235,7 +245,8 @@ export class Player {
     }
 
     const endPos = this.getPos();
-    this.dashCd = isOverdrive ? 0 : (isMadness ? DASH_MADNESS_CD : DASH_CD);
+    const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
+    this.dashCd = isOverdrive ? 0 : (isMadness ? DASH_MADNESS_CD * cdMult : DASH_CD * cdMult);
 
     if (dx !== 0) { this.st = 1.9; this.sq = 0.52; }
     else { this.st = 0.52; this.sq = 1.9; }
@@ -257,13 +268,29 @@ export class Player {
       }
     }
 
+    // Cyber Dash V2 arrival shockwave
+    if (dashLvl >= 2) {
+      particles.emit(endPos.x, endPos.y, 30, '#00ffff', { speed: 170, size: 5, life: 0.45 });
+      particles.shake(5, 0.2);
+      for (const e of enemies) {
+        if (e.st !== 'dead' && e.st !== 'return') {
+          const ep = { x: (e.fx + (e.x - e.fx) * e.t) * T + HALF, y: (e.fy + (e.y - e.fy) * e.t) * T + HALF };
+          if (Math.hypot(ep.x - endPos.x, ep.y - endPos.y) < T * 1.8) {
+            onKillGhost(e, ep.x, ep.y);
+          }
+        }
+      }
+      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? '⚡ CYBER OVERDRIVE !' : '⚡ CYBER DASH V2 !', '#00ffff', 16);
+    } else {
+      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? '⚡ HYPER DASH !' : '⚡ DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
+    }
+
     particles.emit(startPos.x, startPos.y, 16, isOverdrive ? '#00ffcc' : '#00e5ff', { speed: 130, size: 4, life: 0.45 });
     particles.emit(endPos.x, endPos.y, 20, isOverdrive ? '#00ffcc' : '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
     particles.shake(isOverdrive ? 3 : 4, 0.15);
     particles.flash(isOverdrive ? '#00ffcc' : '#00e5ff', 0.22);
     sounds.play('dash');
     this.invuln = Math.max(this.invuln, 0.35);
-    particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? '⚡ HYPER DASH !' : '⚡ DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
     return true;
   }
 

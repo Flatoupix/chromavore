@@ -12,6 +12,8 @@ import { ParticleSystem } from '../systems/ParticleSystem';
 import { BadgeManager } from '../systems/BadgeSystem';
 import { sounds } from '../audio/SoundManager';
 import { settingsManager, PAUSE_BUTTONS } from '../systems/SettingsManager';
+import { progression, SKILL_TREE } from '../systems/ProgressionSystem';
+import { profileManager } from '../systems/ProfileManager';
 
 export class Renderer {
   public ctx: CanvasRenderingContext2D;
@@ -461,17 +463,23 @@ export class Renderer {
     // Records
     c.font = 'bold 12px monospace'; c.fillStyle = '#ffd700';
     if (isMad) {
-      c.fillText('RECORD MADNESS : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, CH * 0.89);
+      c.fillText('RECORD MADNESS : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, CH * 0.88);
     } else {
-      c.fillText('RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, CH * 0.89);
+      c.fillText('RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, CH * 0.88);
     }
 
-    // Leaderboard button in Menu
+    // Player Profile & Sync ID Card
+    const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#ffffff';
+    c.fillText(`👤 ${profileManager.profile.pseudo}  •  CODE ID : ${profileManager.profile.syncCode}`, CW / 2, CH * 0.92);
+
+    // Navigation Links
     c.font = 'bold 11px monospace';
     c.fillStyle = '#00f0ff';
     c.shadowColor = '#00f0ff';
     c.shadowBlur = 8;
-    c.fillText('🏆 [L] CLASSEMENT & PSEUDOS', CW / 2, CH * 0.94);
+    c.fillText(`⚡ [S] ARSENAL (${unlockedCount}/18)  |  🏆 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, CH * 0.96);
     c.shadowBlur = 0;
   }
 
@@ -495,14 +503,44 @@ export class Renderer {
     }
 
     c.fillStyle = '#ffd700'; c.font = '12px monospace';
-    c.fillText('🏆 Badges: ' + badgesUnlocked + '/6 Débloqués', CW / 2, cy + 134);
-    c.font = '14px monospace'; c.fillStyle = '#aaa';
-    if (Math.sin(time * 3) > 0) c.fillText('PRESS SPACE TO REPLAY', CW / 2, cy + 174);
+    c.fillText('🏆 Badges: ' + badgesUnlocked + '/6 Débloqués', CW / 2, cy + 130);
+
+    // Career Progression Bar
+    const nxt = progression.getNextUnlock();
+    const barW = 320, barH = 10;
+    const barX = CW / 2 - barW / 2, barY = cy + 158;
+    c.fillStyle = 'rgba(15, 20, 35, 0.85)';
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.roundRect(barX, barY, barW, barH, 4);
+    c.fill();
+    c.stroke();
+
+    const fillW = Math.max(0, Math.min(barW, barW * nxt.progress));
+    c.fillStyle = '#00ffcc';
+    c.shadowColor = '#00ffcc';
+    c.shadowBlur = 8;
+    c.beginPath();
+    c.roundRect(barX, barY, fillW, barH, 4);
+    c.fill();
+    c.shadowBlur = 0;
+
+    c.font = 'bold 10px monospace';
+    c.fillStyle = '#ffffff';
+    if (nxt.skill) {
+      c.fillText(`👻 CARRIÈRE : ${progression.totalGhosts} ➔ PROCHAIN : ${nxt.skill.name} (${nxt.remaining} 👻)`, CW / 2, barY - 6);
+    } else {
+      c.fillText(`👑 CARRIÈRE MAXIMALE : ${progression.totalGhosts} 👻 (TOUT DÉBLOQUÉ)`, CW / 2, barY - 6);
+    }
+
+    c.font = '13px monospace'; c.fillStyle = '#aaa';
+    if (Math.sin(time * 3) > 0) c.fillText('PRESS SPACE TO REPLAY', CW / 2, cy + 195);
 
     // Leaderboard link
     c.font = 'bold 11px monospace'; c.fillStyle = '#ff007f';
     c.shadowColor = '#ff007f'; c.shadowBlur = 8;
-    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] VOIR LE LEADERBOARD', CW / 2, cy + 200);
+    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] CLASSEMENT  |  [ S ] ARSENAL & SKILLS', CW / 2, cy + 220);
     c.shadowBlur = 0;
   }
 
@@ -648,6 +686,139 @@ export class Renderer {
     c.fillText('[ ESPACE / ECHAP ] RETOUR  •  [ 1 ] CLASSIQUE  •  [ 2 ] MADNESS', CW / 2, CH - 14);
   }
 
+  public drawCodex(time: number) {
+    const c = this.ctx;
+    c.fillStyle = '#06010f';
+    c.fillRect(0, 0, CW, CH);
+
+    // Title
+    c.save();
+    c.textAlign = 'center';
+    c.font = 'bold 18px monospace';
+    const grad = c.createLinearGradient(0, 15, 0, 45);
+    grad.addColorStop(0, '#00ffff');
+    grad.addColorStop(0.5, '#ff00aa');
+    grad.addColorStop(1, '#ffd700');
+    c.fillStyle = grad;
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 10;
+    c.fillText('⚡ ARSENAL & ARBRE DES COMPÉTENCES ⚡', CW / 2, 28);
+    c.shadowBlur = 0;
+    c.restore();
+
+    // Career Progress Bar Header
+    const nxt = progression.getNextUnlock();
+    const barW = 460, barH = 10;
+    const barX = CW / 2 - barW / 2, barY = 54;
+    c.fillStyle = 'rgba(15, 20, 35, 0.9)';
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(barX, barY, barW, barH, 4);
+    c.fill();
+    c.stroke();
+
+    const fillW = Math.max(0, Math.min(barW, barW * nxt.progress));
+    c.fillStyle = '#00ffcc';
+    c.shadowColor = '#00ffcc';
+    c.shadowBlur = 8;
+    c.beginPath();
+    c.roundRect(barX, barY, fillW, barH, 4);
+    c.fill();
+    c.shadowBlur = 0;
+
+    c.font = 'bold 10px monospace';
+    c.fillStyle = '#ffffff';
+    c.textAlign = 'center';
+    if (nxt.skill) {
+      c.fillText(`👻 TOTAL CARRIÈRE : ${progression.totalGhosts} ➔ PROCHAIN : ${nxt.skill.name} (${nxt.remaining} 👻)`, CW / 2, 46);
+    } else {
+      c.fillText(`👑 TOTAL CARRIÈRE : ${progression.totalGhosts} 👻 (ARSENAL MAÎTRISÉ À 100% !)`, CW / 2, 46);
+    }
+
+    // 2 Columns of 9 skills each:
+    const v1Skills = SKILL_TREE.filter(s => s.version === 1);
+    const v2Skills = SKILL_TREE.filter(s => s.version === 2);
+
+    const colW = 265, cardH = 50;
+    const col1X = 24, col2X = 299;
+    const startY = 74, gapY = 56;
+
+    // Draw Column 1: V1
+    for (let i = 0; i < v1Skills.length; i++) {
+      const s = v1Skills[i];
+      const y = startY + i * gapY;
+      this.drawSkillCard(c, s, col1X, y, colW, cardH);
+    }
+
+    // Draw Column 2: V2
+    for (let i = 0; i < v2Skills.length; i++) {
+      const s = v2Skills[i];
+      const y = startY + i * gapY;
+      this.drawSkillCard(c, s, col2X, y, colW, cardH);
+    }
+
+    // Footer
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#00ffff';
+    c.textAlign = 'center';
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 6;
+    c.fillText('PRESS [ÉCHAP] OU [S] OU CLIQUEZ POUR RETOURNER AU MENU', CW / 2, CH - 14);
+    c.shadowBlur = 0;
+  }
+
+  private drawSkillCard(c: CanvasRenderingContext2D, s: import('../systems/ProgressionSystem').SkillDef, x: number, y: number, w: number, h: number) {
+    const unlocked = progression.isSkillUnlocked(s.id);
+    const isV2 = s.version === 2;
+
+    c.fillStyle = unlocked
+      ? (isV2 ? 'rgba(0, 255, 230, 0.08)' : 'rgba(255, 215, 0, 0.07)')
+      : 'rgba(12, 16, 26, 0.6)';
+    c.strokeStyle = unlocked
+      ? (isV2 ? '#00e5ff' : '#ffd700')
+      : '#253245';
+    c.lineWidth = unlocked ? 1.5 : 1;
+
+    if (unlocked) {
+      c.shadowColor = isV2 ? '#00e5ff' : '#ffd700';
+      c.shadowBlur = 6;
+    }
+    c.beginPath();
+    c.roundRect(x, y, w, h, 6);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Icon + Version Badge + Name
+    c.textAlign = 'left';
+    c.font = 'bold 11px monospace';
+    c.fillStyle = unlocked ? (isV2 ? '#00ffff' : '#ffd700') : '#667788';
+    c.fillText(`${s.icon} [V${s.version}] ${s.name}`, x + 8, y + 16);
+
+    // Status pill
+    c.textAlign = 'right';
+    c.font = 'bold 10px monospace';
+    if (unlocked) {
+      c.fillStyle = '#00ffaa';
+      c.fillText('ACTIF ✅', x + w - 8, y + 16);
+    } else {
+      c.fillStyle = '#ffaa00';
+      c.fillText(`🔒 ${s.threshold} 👻`, x + w - 8, y + 16);
+    }
+
+    // Command
+    c.textAlign = 'left';
+    c.font = '9px monospace';
+    c.fillStyle = unlocked ? '#ffffff' : '#445566';
+    c.fillText(s.command, x + 8, y + 30);
+
+    // Effect summary
+    c.font = '8.5px monospace';
+    c.fillStyle = unlocked ? (isV2 ? '#aaffff' : '#ddd') : '#334455';
+    c.fillText(s.desc.slice(0, 44), x + 8, y + 43);
+  }
+
   public drawPause(isMadness: boolean, kills: number, streak: number, time: number = 0) {
     const c = this.ctx;
     // Dark blur backdrop
@@ -748,8 +919,22 @@ export class Renderer {
       c.fillText(it.state, b.x + b.w - 14, b.y + 22);
     }
 
+    // Wipe Data button
+    const wipeBtn = PAUSE_BUTTONS[6];
+    c.fillStyle = 'rgba(255, 0, 85, 0.12)';
+    c.strokeStyle = '#ff0055';
+    c.lineWidth = 1.5;
+    c.beginPath();
+    c.roundRect(wipeBtn.x, wipeBtn.y, wipeBtn.w, wipeBtn.h, 6);
+    c.fill();
+    c.stroke();
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#ff0055';
+    c.textAlign = 'center';
+    c.fillText('🗑️ RÉINITIALISER MA PROGRESSION & PROFIL', wipeBtn.x + wipeBtn.w / 2, wipeBtn.y + 21);
+
     // Resume button
-    const resBtn = PAUSE_BUTTONS[6];
+    const resBtn = PAUSE_BUTTONS[7];
     const pulse = 1 + Math.sin(time * 6) * 0.03;
     c.fillStyle = '#0c243a';
     c.strokeStyle = '#00ffff';
@@ -764,10 +949,10 @@ export class Renderer {
     c.font = `bold ${12 * pulse}px monospace`;
     c.fillStyle = '#ffffff';
     c.textAlign = 'center';
-    c.fillText('▶ REPRENDRE [P]', resBtn.x + resBtn.w / 2, resBtn.y + 27);
+    c.fillText('▶ REPRENDRE [P]', resBtn.x + resBtn.w / 2, resBtn.y + 26);
 
     // Restart button
-    const rstBtn = PAUSE_BUTTONS[7];
+    const rstBtn = PAUSE_BUTTONS[8];
     c.fillStyle = '#20180a';
     c.strokeStyle = '#ffaa00';
     c.lineWidth = 2;
@@ -781,10 +966,10 @@ export class Renderer {
     c.font = 'bold 12px monospace';
     c.fillStyle = '#ffaa00';
     c.textAlign = 'center';
-    c.fillText('🔄 REJOUER [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 27);
+    c.fillText('🔄 REJOUER [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 26);
 
     // Home button
-    const homeBtn = PAUSE_BUTTONS[8];
+    const homeBtn = PAUSE_BUTTONS[9];
     c.fillStyle = '#1a0a20';
     c.strokeStyle = '#ff007f';
     c.lineWidth = 2;
@@ -798,7 +983,7 @@ export class Renderer {
     c.font = 'bold 12px monospace';
     c.fillStyle = '#ff007f';
     c.textAlign = 'center';
-    c.fillText('🏠 ACCUEIL', homeBtn.x + homeBtn.w / 2, homeBtn.y + 27);
+    c.fillText('🏠 ACCUEIL', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
 
     // Footer stats if in madness
     if (isMadness) {

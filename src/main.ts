@@ -16,6 +16,8 @@ import { TouchDeckManager } from './ui/TouchDeck';
 import { Renderer } from './graphics/Renderer';
 import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
 import { leaderboard } from './systems/Leaderboard';
+import { progression } from './systems/ProgressionSystem';
+import { profileManager } from './systems/ProfileManager';
 
 class Game {
   private canvas: HTMLCanvasElement;
@@ -26,7 +28,7 @@ class Game {
   private touchDeck: TouchDeckManager;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' = 'menu';
   public leaderboardMode: 'classic' | 'madness' = 'classic';
   public playerRank: number = 0;
   public playerDate: string = '';
@@ -65,6 +67,7 @@ class Game {
     this.touchDeck = new TouchDeckManager();
 
     this.setupNameModal();
+    this.setupProfileModals();
     this.bindInputs();
     this.startLoop();
   }
@@ -76,9 +79,9 @@ class Game {
     const skip = document.getElementById('pseudo-skip')!;
 
     const save = () => {
-      const savedLast = localStorage.getItem('chv_last_pseudo') || 'PLAYER1';
+      const savedLast = profileManager.profile.pseudo || 'PLAYER1';
       const pseudo = (input.value.trim().toUpperCase() || savedLast).slice(0, 12);
-      localStorage.setItem('chv_last_pseudo', pseudo);
+      profileManager.setPseudo(pseudo);
       const date = new Date().toISOString();
       this.playerDate = date;
       this.playerRank = leaderboard.addEntry({
@@ -106,6 +109,96 @@ class Game {
       modal.style.display = 'none';
       this.state = 'gameover';
     });
+  }
+
+  private setupProfileModals() {
+    // Restore Modal
+    const restoreModal = document.getElementById('restore-modal')!;
+    const restorePseudo = document.getElementById('restore-pseudo-input') as HTMLInputElement;
+    const restoreCode = document.getElementById('restore-code-input') as HTMLInputElement;
+    const restoreSubmit = document.getElementById('restore-submit')!;
+    const restoreCancel = document.getElementById('restore-cancel')!;
+    const restoreStatus = document.getElementById('restore-status')!;
+
+    const doRestore = async () => {
+      const p = restorePseudo.value.trim().toUpperCase();
+      const c = restoreCode.value.trim().toUpperCase();
+      if (!p || !c) {
+        restoreStatus.style.display = 'block';
+        restoreStatus.style.color = '#ff0055';
+        restoreStatus.textContent = 'Veuillez remplir le pseudo et le code.';
+        return;
+      }
+      restoreStatus.style.display = 'block';
+      restoreStatus.style.color = '#ffd700';
+      restoreStatus.textContent = 'Connexion à Firebase...';
+
+      const ok = await profileManager.restoreProfile(p, c);
+      if (ok) {
+        restoreStatus.style.color = '#00ffaa';
+        restoreStatus.textContent = `Succès ! Profil ${p} chargé (${profileManager.profile.careerGhosts} 👻)`;
+        badges.hiScore = profileManager.profile.hiScore;
+        badges.bestMadnessKills = profileManager.profile.bestMadnessKills;
+        badges.unlocked = profileManager.profile.badges || {};
+        setTimeout(() => {
+          restoreModal.style.display = 'none';
+          this.state = 'menu';
+          sounds.play('badge');
+        }, 1200);
+      } else {
+        restoreStatus.style.color = '#ff0055';
+        restoreStatus.textContent = 'Pseudo ou Code ID introuvable sur le cloud.';
+      }
+    };
+
+    restoreSubmit.addEventListener('click', doRestore);
+    restoreCancel.addEventListener('click', () => {
+      restoreModal.style.display = 'none';
+    });
+    restorePseudo.addEventListener('keydown', (e) => e.stopPropagation());
+    restoreCode.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') doRestore();
+    });
+
+    // Wipe Modal
+    const wipeModal = document.getElementById('wipe-modal')!;
+    const wipeConfirm = document.getElementById('wipe-confirm')!;
+    const wipeCancel = document.getElementById('wipe-cancel')!;
+
+    wipeConfirm.addEventListener('click', () => {
+      profileManager.wipeAllData();
+      badges.hiScore = 0;
+      badges.bestMadnessKills = 0;
+      badges.unlocked = {};
+      wipeModal.style.display = 'none';
+      this.state = 'menu';
+      particles.shake(6, 0.25);
+      particles.flash('#ff0055', 0.3);
+      particles.addPop(CW / 2, (ROWS * T) / 2, '⚠️ PROGRESSION RÉINITIALISÉE !', '#ff0055', 20);
+      sounds.play('powerup');
+    });
+
+    wipeCancel.addEventListener('click', () => {
+      wipeModal.style.display = 'none';
+    });
+  }
+
+  public showRestoreModal() {
+    const restoreModal = document.getElementById('restore-modal');
+    const restorePseudo = document.getElementById('restore-pseudo-input') as HTMLInputElement;
+    const restoreCode = document.getElementById('restore-code-input') as HTMLInputElement;
+    const restoreStatus = document.getElementById('restore-status');
+    if (!restoreModal) return;
+    if (restorePseudo) restorePseudo.value = profileManager.profile.pseudo || '';
+    if (restoreCode) restoreCode.value = '';
+    if (restoreStatus) restoreStatus.style.display = 'none';
+    restoreModal.style.display = 'flex';
+  }
+
+  public showWipeModal() {
+    const wipeModal = document.getElementById('wipe-modal');
+    if (wipeModal) wipeModal.style.display = 'flex';
   }
 
   private showNameModal(val: number, mode: string) {
@@ -174,10 +267,26 @@ class Game {
 
       if (this.state === 'menu') {
         // Leaderboard click at bottom
-        if (cy >= CH * 0.91 && cy <= CH * 0.97) {
-          this.state = 'leaderboard';
-          this.leaderboardMode = this.gameMode;
-          leaderboard.syncRemote();
+        if (cy >= CH * 0.93) {
+          if (cx < CW * 0.38) {
+            this.state = 'codex';
+            sounds.play('dot');
+            return;
+          } else if (cx < CW * 0.68) {
+            this.state = 'leaderboard';
+            this.leaderboardMode = this.gameMode;
+            leaderboard.syncRemote();
+            sounds.play('dot');
+            return;
+          } else {
+            this.showRestoreModal();
+            return;
+          }
+        }
+        // Copy sync code if tapping player line
+        if (cy >= CH * 0.90 && cy < CH * 0.93) {
+          navigator.clipboard?.writeText(profileManager.profile.syncCode);
+          particles.addPop(CW / 2, CH * 0.91, '📋 CODE ID COPIÉ !', '#00ffff', 14);
           sounds.play('dot');
           return;
         }
@@ -199,12 +308,22 @@ class Game {
         return;
       }
 
+      if (this.state === 'codex') {
+        this.state = 'menu';
+        sounds.play('dot');
+        return;
+      }
+
       if (this.state === 'gameover') {
         const cyOver = CH * 0.30;
-        if (cy >= cyOver + 185 && cy <= cyOver + 215) {
-          this.state = 'leaderboard';
-          this.leaderboardMode = this.gameMode;
-          leaderboard.syncRemote();
+        if (cy >= cyOver + 205 && cy <= cyOver + 235) {
+          if (cx < CW / 2) {
+            this.state = 'leaderboard';
+            this.leaderboardMode = this.gameMode;
+            leaderboard.syncRemote();
+          } else {
+            this.state = 'codex';
+          }
           sounds.play('dot');
           return;
         }
@@ -249,6 +368,9 @@ class Game {
                 return;
               case 'audio':
                 sounds.toggleMute();
+                return;
+              case 'wipeData':
+                this.showWipeModal();
                 return;
               case 'resume':
                 this.state = 'playing';
@@ -440,6 +562,9 @@ class Game {
     badges.unlock('firstBlood');
     if (powerups.pred.k >= 4) badges.unlock('ghostHunter');
 
+    // Progression system: count lifetime ghost kill & check unlocks
+    progression.addGhostKills(1);
+
     if (this.gameMode === 'madness') {
       this.madnessKills++;
       this.madnessStreak++;
@@ -454,19 +579,26 @@ class Game {
       badges.saveMadnessKills(this.madnessKills);
       this.madnessTimer = Math.min(45, this.madnessTimer + 0.35);
 
-      // Streak milestones: Unlock Super-items
-      if (this.madnessStreak === 15) superItems.unlock('nova', 'MEGA NOVA', '💣');
-      else if (this.madnessStreak === 30) superItems.unlock('overdrive', 'DASH INFINI', '⚡');
-      else if (this.madnessStreak === 50) superItems.unlock('vortex', 'BLACK HOLE', '🕳️');
-      else if (this.madnessStreak === 75) superItems.unlock('laser', 'HYPER BEAMS', '⚡');
-      else if (this.madnessStreak === 110) superItems.unlock('cryo', 'CRYO SHATTER', '❄️');
-      else if (this.madnessStreak === 150) superItems.unlock('tsunami', 'LIGHT TSUNAMI', '👑');
-      else if (this.madnessStreak > 150 && this.madnessStreak % 40 === 0) {
-        const pool = ['nova', 'overdrive', 'vortex', 'laser', 'cryo', 'tsunami'];
-        const it = pool[(Math.random() * pool.length) | 0];
-        const names: Record<string, string> = { nova: 'MEGA NOVA', overdrive: 'DASH INFINI', vortex: 'BLACK HOLE', laser: 'HYPER BEAMS', cryo: 'CRYO SHATTER', tsunami: 'LIGHT TSUNAMI' };
-        const icons: Record<string, string> = { nova: '💣', overdrive: '⚡', vortex: '🕳️', laser: '⚡', cryo: '❄️', tsunami: '👑' };
-        superItems.unlock(it, names[it], icons[it]);
+      // Streak milestones: Unlock Super-items (only if unlocked in progression!)
+      const unlockedPool = progression.getUnlockedSuperItems();
+      const meta: Record<string, { name: string; icon: string }> = {
+        nova: { name: 'MEGA NOVA', icon: '💣' },
+        overdrive: { name: 'DASH INFINI', icon: '⚡' },
+        vortex: { name: 'BLACK HOLE', icon: '🕳️' },
+        laser: { name: 'HYPER BEAMS', icon: '⚡' },
+        cryo: { name: 'CRYO SHATTER', icon: '❄️' },
+        tsunami: { name: 'LIGHT TSUNAMI', icon: '👑' }
+      };
+
+      if (this.madnessStreak === 15 && unlockedPool.includes('nova')) superItems.unlock('nova', 'MEGA NOVA', '💣');
+      else if (this.madnessStreak === 30 && unlockedPool.includes('overdrive')) superItems.unlock('overdrive', 'DASH INFINI', '⚡');
+      else if (this.madnessStreak === 50 && unlockedPool.includes('vortex')) superItems.unlock('vortex', 'BLACK HOLE', '🕳️');
+      else if (this.madnessStreak === 75 && unlockedPool.includes('laser')) superItems.unlock('laser', 'HYPER BEAMS', '⚡');
+      else if (this.madnessStreak === 110 && unlockedPool.includes('cryo')) superItems.unlock('cryo', 'CRYO SHATTER', '❄️');
+      else if (this.madnessStreak === 150 && unlockedPool.includes('tsunami')) superItems.unlock('tsunami', 'LIGHT TSUNAMI', '👑');
+      else if (this.madnessStreak > 15 && this.madnessStreak % 25 === 0 && unlockedPool.length > 0) {
+        const it = unlockedPool[(Math.random() * unlockedPool.length) | 0];
+        superItems.unlock(it, meta[it].name, meta[it].icon);
       }
 
       // 14% chance to drop powerup on tile (with guaranteed walkable safety)
@@ -699,6 +831,34 @@ class Game {
       return;
     }
 
+    if (input.isCodexRequested) {
+      if (this.state === 'menu' || this.state === 'gameover') {
+        this.state = 'codex';
+        sounds.play('dot');
+      } else if (this.state === 'codex') {
+        this.state = 'menu';
+        sounds.play('dot');
+      }
+      input.isCodexRequested = false;
+    }
+
+    if (input.isRestoreRequested) {
+      if (this.state === 'menu') {
+        this.showRestoreModal();
+      }
+      input.isRestoreRequested = false;
+    }
+
+    if (this.state === 'codex') {
+      if (input.isPauseRequested || input.isStartRequested) {
+        this.state = 'menu';
+        sounds.play('dot');
+        input.isPauseRequested = false;
+        input.isStartRequested = false;
+      }
+      return;
+    }
+
     if (input.isRestartRequested) {
       if (this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'ready') {
         this.startGame(this.gameMode);
@@ -769,8 +929,8 @@ class Game {
         if (input.isItemRequested) {
           superItems.trigger(
             this.player.getPos(),
-            (e, x, y) => this.onKillGhost(e, x, y),
             this.enemyManager.enemies,
+            (e, x, y) => this.onKillGhost(e, x, y),
             (s) => { this.madnessTimer = Math.min(45, this.madnessTimer + s); },
             () => { powerups.fx.overdrive = 8.0; }
           );
@@ -780,18 +940,21 @@ class Game {
         // Motion Kombos
         if (isMadness) {
           input.checkKombos(
-            () => {
+            (lvl: number) => {
               // Wiggle EMP blast
               const pp = this.player.getPos();
+              const isV2 = lvl >= 2;
               sounds.play('nova');
-              particles.shake(7, 0.22);
-              particles.flash('#00ffff', 0.3);
-              particles.addPop(pp.x, pp.y - 26, '⚡ WIGGLE EMP BLAST !', '#00ffff', 20);
-              particles.emit(pp.x, pp.y, 16, '#00ffff', { speed: 180, size: 4.5, life: 0.55 });
+              particles.shake(isV2 ? 10 : 7, 0.25);
+              particles.flash(isV2 ? '#00e5ff' : '#00ffff', 0.35);
+              particles.addPop(pp.x, pp.y - 26, isV2 ? '⚡ GIGA EMP V2 !' : '⚡ WIGGLE EMP BLAST !', '#00ffff', 20);
+              particles.emit(pp.x, pp.y, isV2 ? 35 : 16, isV2 ? '#00e5ff' : '#00ffff', { speed: isV2 ? 240 : 180, size: 5, life: 0.6 });
+              const blastRad = isV2 ? T * 8.5 : T * 4.8;
               for (const e of this.enemyManager.enemies) {
                 if (e.st !== 'dead' && e.st !== 'return') {
                   const ep = this.enemyManager.getPos(e);
-                  if (Math.hypot(ep.x - pp.x, ep.y - pp.y) < T * 4.8) {
+                  if (Math.hypot(ep.x - pp.x, ep.y - pp.y) < blastRad) {
+                    if (isV2) e.st = 'flee';
                     this.onKillGhost(e, ep.x, ep.y);
                   }
                 }
@@ -800,18 +963,19 @@ class Game {
                 for (let c = 0; c < COLS; c++) {
                   if (this.maze.dotMap[r][c]) {
                     const dx = c * T + HALF - pp.x, dy = r * T + HALF - pp.y;
-                    if (Math.hypot(dx, dy) < T * 5.5) this.onCollectDot(c, r);
+                    if (Math.hypot(dx, dy) < blastRad * 1.1) this.onCollectDot(c, r);
                   }
                 }
               }
             },
-            () => {
+            (lvl: number) => {
               // Nitro Flame Jet
+              const isV2 = lvl >= 2;
               sounds.play('dash');
-              particles.shake(6, 0.2);
-              particles.flash('#ff7700', 0.28);
+              particles.shake(isV2 ? 8 : 6, 0.22);
+              particles.flash(isV2 ? '#00ffff' : '#ff7700', 0.28);
               const pp = this.player.getPos();
-              particles.addPop(pp.x, pp.y - 26, '🔥 NITRO FLAME JET !', '#ff7700', 20);
+              particles.addPop(pp.x, pp.y - 26, isV2 ? '🔥 PLASMA BURNER V2 !' : '🔥 NITRO FLAME JET !', isV2 ? '#00ffff' : '#ff7700', 20);
             }
           );
         }
@@ -993,6 +1157,11 @@ class Game {
     if (this.state === 'leaderboard') {
       const entries = leaderboard.getEntries(this.leaderboardMode);
       this.renderer.drawLeaderboard(entries, this.leaderboardMode, this.time, this.playerRank, this.playerDate);
+      return;
+    }
+
+    if (this.state === 'codex') {
+      this.renderer.drawCodex(this.time);
       return;
     }
 

@@ -5,24 +5,18 @@
 import { CW, ROWS, T, PI2 } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
+import { progression } from './ProgressionSystem';
 
-export interface ActiveItemSlot {
-  type: string;
+export interface SuperItem {
+  type: 'nova' | 'vortex' | 'laser' | 'cryo' | 'tsunami' | 'overdrive';
   name: string;
   icon: string;
   ready: boolean;
 }
 
-export interface VortexEffect {
-  x: number;
-  y: number;
-  life: number;
-  maxLife: number;
-}
-
 export class SuperItemManager {
-  public activeSlot: ActiveItemSlot | null = null;
-  public vortex: VortexEffect | null = null;
+  public activeSlot: SuperItem | null = null;
+  public vortex: { x: number; y: number; life: number; maxLife: number } | null = null;
   public laserTimer: number = 0;
   public cryoTimer: number = 0;
   public tsunamiX: number = -1;
@@ -32,88 +26,79 @@ export class SuperItemManager {
   }
 
   public unlock(type: string, name: string, icon: string) {
-    // Only store 1 item at a time in reserve
-    if (this.activeSlot && this.activeSlot.ready) return;
-    this.activeSlot = { type, name, icon, ready: true };
-    sounds.play('powerup');
-    particles.addPop(CW / 2, 85, `✨ ${icon} ${name} PRÊT ! [E]`, '#ffd700', 16);
+    if (this.activeSlot) return;
+    this.activeSlot = { type: type as any, name, icon, ready: true };
+    sounds.play('badge');
+    particles.flash('#00ffff', 0.25);
     particles.shake(4, 0.15);
+    particles.addPop(CW / 2, 80, `⚡ SUPER-ITEM : ${name} ! [E]`, '#00ffff', 20);
 
     const itmBtn = document.getElementById('item-btn');
-    const itmLbl = document.getElementById('item-label');
-    const itmTxt = document.getElementById('item-txt');
     if (itmBtn) {
       itmBtn.classList.add('ready');
-      if (itmLbl) itmLbl.textContent = name;
-      if (itmTxt) itmTxt.textContent = icon;
+      itmBtn.innerText = icon;
     }
   }
 
   public trigger(
     plPos: { x: number; y: number },
-    onKillGhost: (e: any, x: number, y: number) => void,
     enemies: any[],
-    addMadnessTime: (s: number) => void,
+    onKillGhost: (e: any, x: number, y: number) => void,
+    addMadnessTime: (sec: number) => void,
     activateOverdrive?: () => void
   ): boolean {
-    if (!this.activeSlot || !this.activeSlot.ready) return false;
-
-    // Strict Anti-stacking: Cannot trigger while an effect is already running!
-    if (this.isRunning()) {
-      particles.addPop(CW / 2, 90, '⚠️ ITEM DÉJÀ ACTIF !', '#ff9900', 16);
-      particles.shake(2, 0.1);
-      return false;
-    }
+    if (!this.activeSlot) return false;
 
     const type = this.activeSlot.type;
+    const lvl = progression.getSkillLevel(type);
     this.resetEffects();
 
     switch (type) {
       case 'nova': {
         sounds.play('nova');
-        particles.shake(12, 0.4);
-        particles.flash('#ffd700', 0.4);
-        particles.emit(plPos.x, plPos.y, 60, '#ffd700', { speed: 250, size: 5, life: 0.8 });
+        particles.shake(lvl >= 2 ? 16 : 12, 0.45);
+        particles.flash('#ffd700', 0.45);
+        particles.emit(plPos.x, plPos.y, lvl >= 2 ? 100 : 60, '#ffd700', { speed: 280, size: 6, life: 0.9 });
         for (const e of enemies) {
           if (e.st !== 'dead' && e.st !== 'return') {
             onKillGhost(e, e.x * T + T / 2, e.y * T + T / 2);
           }
         }
-        particles.addPop(CW / 2, (ROWS * T) / 2, '💥 MEGA NOVA !', '#ffd700', 22);
+        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '💣 SUPERNOVA V2 !' : '💥 MEGA NOVA !', '#ffd700', lvl >= 2 ? 26 : 22);
         break;
       }
       case 'vortex': {
         sounds.play('powerup');
-        this.vortex = { x: plPos.x, y: plPos.y, life: 3.5, maxLife: 3.5 };
-        particles.shake(6, 0.25);
+        this.vortex = { x: plPos.x, y: plPos.y, life: lvl >= 2 ? 5.0 : 3.5, maxLife: lvl >= 2 ? 5.0 : 3.5 };
+        particles.shake(7, 0.25);
         particles.flash('#bb44ff', 0.25);
-        particles.addPop(plPos.x, plPos.y - 20, '🕳️ BLACK HOLE !', '#bb44ff', 22);
+        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? '🕳️ DARK MATTER V2 !' : '🕳️ BLACK HOLE !', '#bb44ff', 22);
         break;
       }
       case 'laser': {
         sounds.play('dash');
-        this.laserTimer = 3.2;
-        particles.shake(5, 0.2);
+        this.laserTimer = lvl >= 2 ? 4.5 : 3.2;
+        particles.shake(6, 0.25);
         particles.flash('#00ffff', 0.25);
-        particles.addPop(CW / 2, (ROWS * T) / 2, '⚡ HYPER BEAMS !', '#00ffff', 22);
+        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '⚡ OCTO BEAMS V2 !' : '⚡ HYPER BEAMS !', '#00ffff', 22);
         break;
       }
       case 'cryo': {
         sounds.play('powerup');
-        this.cryoTimer = 4.0;
+        this.cryoTimer = lvl >= 2 ? 5.5 : 4.0;
         for (const e of enemies) e.frozen = true;
-        particles.shake(5, 0.2);
+        particles.shake(6, 0.25);
         particles.flash('#aaffff', 0.25);
-        particles.addPop(CW / 2, (ROWS * T) / 2, '❄️ GHOSTS FROZEN !', '#aaffff', 22);
+        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '❄️ ABSOLUTE ZERO V2 !' : '❄️ GHOSTS FROZEN !', '#aaffff', 22);
         break;
       }
       case 'tsunami': {
         sounds.play('wave');
         this.tsunamiX = 0;
-        addMadnessTime(8.0);
-        particles.shake(8, 0.3);
+        addMadnessTime(lvl >= 2 ? 14.0 : 8.0);
+        particles.shake(9, 0.35);
         particles.flash('#ffffff', 0.35);
-        particles.addPop(CW / 2, (ROWS * T) / 2, '👑 LIGHT TSUNAMI !', '#ffffff', 22);
+        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '👑 SOLAR ECLIPSE V2 !' : '👑 LIGHT TSUNAMI !', '#ffffff', 22);
         break;
       }
       case 'overdrive': {
@@ -121,7 +106,7 @@ export class SuperItemManager {
         if (activateOverdrive) activateOverdrive();
         particles.shake(6, 0.2);
         particles.flash('#00ffcc', 0.35);
-        particles.addPop(plPos.x, plPos.y - 20, '⚡ DASH INFINI (8s) !', '#00ffcc', 22);
+        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? '⚡ CHRONO OVERDRIVE V2 !' : '⚡ DASH INFINI (8s) !', '#00ffcc', 22);
         break;
       }
     }
@@ -135,11 +120,14 @@ export class SuperItemManager {
   public update(dt: number, plPos: { x: number; y: number }, enemies: any[], onKillGhost: (e: any, x: number, y: number) => void) {
     if (this.laserTimer > 0) {
       this.laserTimer -= dt;
-      particles.emit(plPos.x, plPos.y, 4, '#00ffff', { speed: 120, size: 3, life: 0.2 });
+      const isOcto = progression.getSkillLevel('laser') >= 2;
+      particles.emit(plPos.x, plPos.y, isOcto ? 6 : 4, '#00ffff', { speed: 120, size: 3, life: 0.2 });
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
           const ex = e.x * T + T / 2, ey = e.y * T + T / 2;
-          if (Math.abs(ex - plPos.x) < T || Math.abs(ey - plPos.y) < T) {
+          const hitAxis = Math.abs(ex - plPos.x) < T || Math.abs(ey - plPos.y) < T;
+          const hitDiag = isOcto && Math.abs(Math.abs(ex - plPos.x) - Math.abs(ey - plPos.y)) < T * 1.2;
+          if (hitAxis || hitDiag) {
             onKillGhost(e, ex, ey);
           }
         }

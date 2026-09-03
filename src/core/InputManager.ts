@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { particles } from '../systems/ParticleSystem';
+import { progression } from '../systems/ProgressionSystem';
 
 export interface MotionRecord {
   dir: string;
@@ -19,6 +20,8 @@ export class InputManager {
   public isAudioToggleRequested: boolean = false;
   public isStartRequested: boolean = false;
   public isRestartRequested: boolean = false;
+  public isCodexRequested: boolean = false;
+  public isRestoreRequested: boolean = false;
   public isSelectMode1Requested: boolean = false;
   public isSelectMode2Requested: boolean = false;
   public isLeaderboardRequested: boolean = false;
@@ -82,6 +85,12 @@ export class InputManager {
       if (e.code === 'KeyR') {
         this.isRestartRequested = true;
       }
+      if (e.code === 'KeyS') {
+        this.isCodexRequested = true;
+      }
+      if (e.code === 'KeyK') {
+        this.isRestoreRequested = true;
+      }
     });
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
@@ -116,7 +125,7 @@ export class InputManager {
     if (this.motionHistory.length > 8) this.motionHistory.shift();
   }
 
-  public checkKombos(onWiggle: () => void, onNitro: () => void) {
+  public checkKombos(onWiggle: (lvl: number) => void, onNitro: (lvl: number) => void) {
     const now = performance.now();
     const recent = this.motionHistory.filter(h => now - h.time < 750);
     if (recent.length < 4) return;
@@ -124,19 +133,25 @@ export class InputManager {
 
     // Wiggle Kombo: Left-Right-Left-Right
     if ((last4 === 'left-right-left-right' || last4 === 'right-left-right-left') && this.wiggleCd <= 0) {
-      this.wiggleCd = 3.5;
-      this.motionHistory = [];
-      onWiggle();
-      return;
+      const lvl = progression.getSkillLevel('wiggle');
+      if (lvl >= 1) {
+        this.wiggleCd = lvl >= 2 ? 3.0 : 3.5;
+        this.motionHistory = [];
+        onWiggle(lvl);
+        return;
+      }
     }
 
     // Nitro Kombo: Up-Down-Up-Down
     if ((last4 === 'up-down-up-down' || last4 === 'down-up-down-up') && this.nitroCd <= 0) {
-      this.nitroCd = 4.0;
-      this.nitroActive = 3.2;
-      this.motionHistory = [];
-      onNitro();
-      return;
+      const lvl = progression.getSkillLevel('nitro');
+      if (lvl >= 1) {
+        this.nitroCd = lvl >= 2 ? 3.5 : 4.0;
+        this.nitroActive = lvl >= 2 ? 4.5 : 3.2;
+        this.motionHistory = [];
+        onNitro(lvl);
+        return;
+      }
     }
   }
 
@@ -145,8 +160,10 @@ export class InputManager {
     if (this.nitroCd > 0) this.nitroCd -= dt;
     if (this.nitroActive > 0) {
       this.nitroActive -= dt;
-      this.nitroTrail.push({ x: plPos.x, y: plPos.y, life: 1.6, maxLife: 1.6 });
-      particles.emit(plPos.x, plPos.y, 2, '#ff7700', { speed: 60, size: 3, life: 0.25 });
+      const isV2 = progression.getSkillLevel('nitro') >= 2;
+      const tLife = isV2 ? 2.5 : 1.6;
+      this.nitroTrail.push({ x: plPos.x, y: plPos.y, life: tLife, maxLife: tLife });
+      particles.emit(plPos.x, plPos.y, isV2 ? 4 : 2, isV2 ? '#00ffff' : '#ff7700', { speed: 60, size: isV2 ? 4 : 3, life: 0.3 });
     }
     for (let i = this.nitroTrail.length - 1; i >= 0; i--) {
       const tp = this.nitroTrail[i];

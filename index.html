@@ -194,6 +194,97 @@ canvas{
       ">PASSER SANS ENREGISTRER</button>
     </div>
   </div>
+
+  <!-- Restore Profile Modal (Option A) -->
+  <div id="restore-modal" style="
+    display:none;position:fixed;inset:0;z-index:100;
+    background:rgba(5,1,20,0.92);
+    justify-content:center;align-items:center;
+    font-family:monospace;
+  ">
+    <div style="
+      background:#0a0d1e;border:2px solid #00f0ff;border-radius:12px;
+      padding:32px 36px;max-width:380px;width:90%;text-align:center;
+      box-shadow:0 0 40px rgba(0,240,255,0.4);
+    ">
+      <div style="font-size:28px;margin-bottom:8px;">📲</div>
+      <div style="color:#00f0ff;font-size:15px;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">
+        REPRENDRE UNE PARTIE
+      </div>
+      <div style="color:#8899bb;font-size:10px;margin-bottom:14px;line-height:1.4;">
+        Entrez votre Pseudo et votre Code ID de sauvegarde pour restaurer votre progression.
+      </div>
+      <div style="text-align:left;color:#00ffff;font-size:10px;font-weight:bold;margin-bottom:4px;">PSEUDO</div>
+      <input id="restore-pseudo-input" type="text" maxlength="12" autocomplete="off" placeholder="FLATOUPIX"
+        style="
+          background:#0c1830;border:1.5px solid #00f0ff;border-radius:6px;
+          color:#fff;font-family:monospace;font-size:14px;font-weight:bold;
+          padding:8px 12px;width:100%;text-align:center;
+          outline:none;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;
+        "
+      />
+      <div style="text-align:left;color:#ffd700;font-size:10px;font-weight:bold;margin-bottom:4px;">CODE ID (Ex: CHV-8429)</div>
+      <input id="restore-code-input" type="text" maxlength="8" autocomplete="off" placeholder="CHV-XXXX"
+        style="
+          background:#0c1830;border:1.5px solid #ffd700;border-radius:6px;
+          color:#ffd700;font-family:monospace;font-size:15px;font-weight:bold;
+          padding:8px 12px;width:100%;text-align:center;
+          outline:none;letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;
+        "
+      />
+      <div id="restore-status" style="display:none;font-size:11px;font-weight:bold;margin-bottom:10px;"></div>
+      <button id="restore-submit" style="
+        width:100%;padding:11px;
+        background:linear-gradient(135deg,#00f0ff,#0077cc);
+        border:none;border-radius:8px;color:#000;
+        font-family:monospace;font-size:12px;font-weight:bold;
+        letter-spacing:2px;cursor:pointer;
+        box-shadow:0 0 16px rgba(0,240,255,0.4);
+      ">✓ RESTAURER MON PROFIL</button>
+      <button id="restore-cancel" style="
+        margin-top:8px;width:100%;padding:8px;
+        background:transparent;border:1px solid #334466;
+        border-radius:8px;color:#667799;
+        font-family:monospace;font-size:11px;cursor:pointer;
+      ">ANNULER</button>
+    </div>
+  </div>
+
+  <!-- Wipe Data Confirmation Modal -->
+  <div id="wipe-modal" style="
+    display:none;position:fixed;inset:0;z-index:100;
+    background:rgba(5,1,20,0.92);
+    justify-content:center;align-items:center;
+    font-family:monospace;
+  ">
+    <div style="
+      background:#0a0d1e;border:2px solid #ff0055;border-radius:12px;
+      padding:32px 36px;max-width:380px;width:90%;text-align:center;
+      box-shadow:0 0 40px rgba(255,0,85,0.4);
+    ">
+      <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+      <div style="color:#ff0055;font-size:15px;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">
+        RÉINITIALISER LA PROGRESSION ?
+      </div>
+      <div style="color:#aabbcc;font-size:11px;line-height:1.5;margin-bottom:20px;">
+        Voulez-vous vraiment effacer votre progression (fantômes dévorés, compétences débloquées et records) pour repartir de zéro ?
+      </div>
+      <button id="wipe-confirm" style="
+        width:100%;padding:11px;
+        background:linear-gradient(135deg,#ff0055,#aa0033);
+        border:none;border-radius:8px;color:#fff;
+        font-family:monospace;font-size:12px;font-weight:bold;
+        letter-spacing:2px;cursor:pointer;
+        box-shadow:0 0 16px rgba(255,0,85,0.4);
+      ">⚠️ OUI, TOUT EFFACER</button>
+      <button id="wipe-cancel" style="
+        margin-top:8px;width:100%;padding:8px;
+        background:transparent;border:1px solid #334466;
+        border-radius:8px;color:#8899bb;
+        font-family:monospace;font-size:11px;cursor:pointer;
+      ">ANNULER</button>
+    </div>
+  </div>
   <div id="touch-deck">
     <div class="dpad">
       <button class="dbtn d-up" id="btn-up" aria-label="Up">▲</button>
