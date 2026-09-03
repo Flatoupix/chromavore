@@ -152,9 +152,11 @@ export class PowerupManager {
     } else {
       this.voidRelic.timer -= dt;
       const rx = this.voidRelic.x * T + HALF, ry = this.voidRelic.y * T + HALF;
+      particles.emit(rx, ry, 2, '#ff0055', { speed: 40, size: 3, life: 0.3 });
 
       // Pac-Man intercepts
       if (Math.hypot(plPos.x - rx, plPos.y - ry) < T * 0.95) {
+        particles.emit(rx, ry, 50, '#00ffaa', { speed: 220, size: 5, life: 0.75 });
         this.voidRelic = null;
         this.fx.magnet = 8.0;
         onVoidIntercepted();
@@ -166,6 +168,7 @@ export class PowerupManager {
         if (e.st !== 'dead' && e.st !== 'return') {
           const ex = e.x * T + HALF, ey = e.y * T + HALF;
           if (Math.hypot(ex - rx, ey - ry) < T * 0.9) {
+            particles.emit(rx, ry, 50, '#ff0033', { speed: 180, size: 6, life: 0.8 });
             e.isTitan = true;
             e.speed = (e.speed || 4.5) * 1.35;
             this.voidRelic = null;

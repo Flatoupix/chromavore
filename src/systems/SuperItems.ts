@@ -65,9 +65,9 @@ export class SuperItemManager {
     switch (type) {
       case 'nova': {
         sounds.play('nova');
-        particles.shake(8, 0.3);
-        particles.flash('#ffd700', 0.35);
-        particles.emit(plPos.x, plPos.y, 22, '#ffd700', { speed: 200, size: 4.5, life: 0.55 });
+        particles.shake(12, 0.4);
+        particles.flash('#ffd700', 0.4);
+        particles.emit(plPos.x, plPos.y, 60, '#ffd700', { speed: 250, size: 5, life: 0.8 });
         for (const e of enemies) {
           if (e.st !== 'dead' && e.st !== 'return') {
             onKillGhost(e, e.x * T + T / 2, e.y * T + T / 2);
@@ -121,6 +121,7 @@ export class SuperItemManager {
   public update(dt: number, plPos: { x: number; y: number }, enemies: any[], onKillGhost: (e: any, x: number, y: number) => void) {
     if (this.laserTimer > 0) {
       this.laserTimer -= dt;
+      particles.emit(plPos.x, plPos.y, 4, '#00ffff', { speed: 120, size: 3, life: 0.2 });
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
           const ex = e.x * T + T / 2, ey = e.y * T + T / 2;
@@ -133,6 +134,7 @@ export class SuperItemManager {
 
     if (this.vortex) {
       this.vortex.life -= dt;
+      particles.emit(this.vortex.x, this.vortex.y, 3, '#bb44ff', { speed: -80, size: 3, life: 0.4 });
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
           const ex = e.x * T + T / 2, ey = e.y * T + T / 2;
@@ -147,7 +149,7 @@ export class SuperItemManager {
         }
       }
       if (this.vortex.life <= 0) {
-        particles.emit(this.vortex.x, this.vortex.y, 18, '#bb44ff', { speed: 160, size: 4, life: 0.5 });
+        particles.emit(this.vortex.x, this.vortex.y, 40, '#bb44ff', { speed: 180, size: 5, life: 0.6 });
         this.vortex = null;
       }
     }
@@ -161,6 +163,7 @@ export class SuperItemManager {
 
     if (this.tsunamiX >= 0) {
       this.tsunamiX += CW * dt * 1.6;
+      particles.emit(this.tsunamiX, Math.random() * ROWS * T, 5, '#ffffff', { speed: 100, size: 4, life: 0.3 });
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
           const ex = e.x * T + T / 2, ey = e.y * T + T / 2;

@@ -197,6 +197,7 @@ class Game {
     this.madnessTimer = Math.min(45, this.madnessTimer + 8.0);
     sounds.play('wave');
     particles.flash('#00ffff', 0.4);
+    particles.emit(CW / 2, (ROWS * T) / 2, 60, LEVELS[lvlIndex].glowColor, { speed: 240, size: 6, life: 0.9 });
     particles.shake(10, 0.35);
     particles.addPop(CW / 2, (ROWS * T) / 2, `🌀 WARP TO ${LEVELS[lvlIndex].name} ! (+8s)`, '#00ffff', 22);
   }
@@ -254,7 +255,7 @@ class Game {
       particles.addPop(ex, ey - 15, '+' + pts, '#00ffff', 18);
     }
 
-    particles.emit(ex, ey, 8, '#00ffff', { speed: 100, size: 3.5, life: 0.35 });
+    particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
     particles.shake(3, 0.12);
     particles.flash('#00ffff', 0.12);
     sounds.play('kill');
@@ -286,8 +287,8 @@ class Game {
       this.madnessStreak = 0;
     }
     const pp = this.player.getPos();
-    particles.emit(pp.x, pp.y, 18, '#ffffff', { speed: 140, size: 4, life: 0.8, gravity: 80 });
-    particles.emit(pp.x, pp.y, 12, '#00b4ff', { speed: 100, size: 3, life: 0.6 });
+    particles.emit(pp.x, pp.y, 40, '#ffffff', { speed: 160, size: 5, life: 0.85, gravity: 80 });
+    particles.emit(pp.x, pp.y, 30, '#00b4ff', { speed: 130, size: 4, life: 0.65 });
     particles.shake(10, 0.4);
     particles.flash('#ff0000', 0.5);
     sounds.play('death');

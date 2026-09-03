@@ -2,6 +2,8 @@
 //  CHROMAVORE — INPUT & MOTION KOMBOS MANAGER
 // ═══════════════════════════════════════════════════════════════
 
+import { particles } from '../systems/ParticleSystem';
+
 export interface MotionRecord {
   dir: string;
   time: number;
@@ -121,6 +123,7 @@ export class InputManager {
     if (this.nitroActive > 0) {
       this.nitroActive -= dt;
       this.nitroTrail.push({ x: plPos.x, y: plPos.y, life: 1.6, maxLife: 1.6 });
+      particles.emit(plPos.x, plPos.y, 2, '#ff7700', { speed: 60, size: 3, life: 0.25 });
     }
     for (let i = this.nitroTrail.length - 1; i >= 0; i--) {
       const tp = this.nitroTrail[i];

@@ -42,16 +42,16 @@ export class ParticleSystem {
   public shk = { x: 0, y: 0, i: 0, t: 0 };
   public flsh = { a: 0, c: '#fff' };
 
-  public readonly MAX_PARTS = 75;
-  public readonly MAX_POPS = 12;
-  public readonly MAX_SPLATS = 20;
+  public readonly MAX_PARTS = 1000;
+  public readonly MAX_POPS = 40;
+  public readonly MAX_SPLATS = 60;
 
   public emit(x: number, y: number, n: number, col: string, o: any = {}) {
     if (this.parts.length >= this.MAX_PARTS) return;
     const count = Math.min(n, this.MAX_PARTS - this.parts.length);
     const sp = o.speed || 80;
     const sz = o.size || 3;
-    const lf = o.life || 0.5;
+    const lf = o.life || 0.6;
     const gr = o.gravity || 0;
 
     for (let i = 0; i < count; i++) {

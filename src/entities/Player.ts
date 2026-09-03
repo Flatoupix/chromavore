@@ -190,7 +190,7 @@ export class Player {
 
       onCollectDot(nx, ny);
       const px = nx * T + HALF, py = ny * T + HALF;
-      particles.emit(px, py, 4, '#00ffff', { speed: 80, size: 3, life: 0.35 });
+      particles.emit(px, py, 6, '#00ffff', { speed: 80, size: 3, life: 0.35 });
     }
 
     if (dashed === 0) {
@@ -220,8 +220,8 @@ export class Player {
       }
     }
 
-    particles.emit(startPos.x, startPos.y, 12, '#00e5ff', { speed: 120, size: 4, life: 0.4 });
-    particles.emit(endPos.x, endPos.y, 16, '#ffffff', { speed: 140, size: 4.5, life: 0.45 });
+    particles.emit(startPos.x, startPos.y, 16, '#00e5ff', { speed: 130, size: 4, life: 0.45 });
+    particles.emit(endPos.x, endPos.y, 20, '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
     particles.shake(4, 0.15);
     particles.flash('#00e5ff', 0.22);
     sounds.play('dash');
