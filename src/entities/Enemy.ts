@@ -4,6 +4,8 @@
 
 import { T, HALF, COLS, ROWS, CW, EC, PI, PI2, E_SPEED } from '../config/constants';
 import { MazeManager } from '../levels/levels';
+import { superItems } from '../systems/SuperItems';
+import { progression } from '../systems/ProgressionSystem';
 
 export interface Ghost {
   type: string;
@@ -184,7 +186,17 @@ export class EnemyManager {
     }
 
     let target = { x: Math.floor(plPos.x / T), y: Math.floor(plPos.y / T) };
-    if (e.st === 'flee') {
+    if (superItems.vortex && e.st !== 'return' && e.st !== 'spawn') {
+      const vDist = Math.hypot(superItems.vortex.x - (e.x * T + T / 2), superItems.vortex.y - (e.y * T + T / 2));
+      const vRadius = progression.getSkillLevel('vortex') >= 2 ? 250 : 180;
+      if (vDist < vRadius) {
+        // Gravitational singularity overrides pathfinding: pulled toward black hole along corridors
+        target = {
+          x: Math.floor(superItems.vortex.x / T),
+          y: Math.floor(superItems.vortex.y / T)
+        };
+      }
+    } else if (e.st === 'flee') {
       target = { x: COLS - 1 - target.x, y: ROWS - 1 - target.y };
     } else if (e.st === 'return') {
       target = { x: 10, y: 9 };

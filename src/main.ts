@@ -1095,8 +1095,15 @@ class Game {
           }
         );
 
-        // Super-Items update
-        superItems.update(dt, this.player.getPos(), this.enemyManager.enemies, (e, x, y) => this.onKillGhost(e, x, y));
+        // Super-Items update (with wall-safe gravitational suction and dot suction)
+        superItems.update(
+          dt,
+          this.player.getPos(),
+          this.enemyManager.enemies,
+          (e, x, y) => this.onKillGhost(e, x, y),
+          this.maze,
+          (c, r) => this.onCollectDot(c, r)
+        );
 
         // Combo decay
         if (this.combo.n > 0) {
