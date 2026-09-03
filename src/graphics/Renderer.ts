@@ -288,6 +288,7 @@ export class Renderer {
     const c = this.ctx;
     c.fillStyle = '#080114';
     c.fillRect(0, 0, CW, CH);
+    c.textAlign = 'center';
 
     // Perspective Synthwave Grid on horizon
     const horizonY = CH * 0.44;
@@ -367,6 +368,8 @@ export class Renderer {
     c.fillText('⚡ RETRO SYNTHWAVE EDITION • OUTRUN THE SHADOWS ⚡', CW / 2, ty + 24);
     c.shadowBlur = 0;
     c.restore();
+    c.textAlign = 'center';
+    c.textBaseline = 'alphabetic';
 
     // Pac-Man & Dots Preview
     c.fillStyle = C_PLAYER;
