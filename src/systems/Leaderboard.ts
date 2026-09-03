@@ -61,7 +61,7 @@ class LeaderboardManager {
     this.save();
   }
 
-  private save() {
+  public save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.entries));
     } catch {}
@@ -79,6 +79,17 @@ class LeaderboardManager {
         return b.score - a.score;
       })
       .slice(0, MAX_ENTRIES);
+  }
+
+  public getTopScore(mode: 'classic' | 'madness'): number {
+    const list = this.getEntries(mode);
+    if (!list.length) return 0;
+    if (mode === 'madness') return list[0].kills ?? 0;
+    return list[0].score;
+  }
+
+  public getBestEntry(mode: 'classic' | 'madness', pseudo: string): LeaderboardEntry | undefined {
+    return this.entries.find(e => e.mode === mode && e.pseudo.toUpperCase() === pseudo.trim().toUpperCase());
   }
 
   public addEntry(entry: LeaderboardEntry): number {
@@ -108,6 +119,7 @@ class LeaderboardManager {
     }
 
     this.cleanupEntries();
+    this.save();
     this.pushRemote(recordedEntry);
 
     return this.getEntries(entry.mode).findIndex(
@@ -145,19 +157,35 @@ class LeaderboardManager {
             }
           }
 
+          // Merge remote with local
           for (const r of remoteList) {
             const idx = this.entries.findIndex(e => e.mode === r.mode && e.pseudo.toUpperCase() === r.pseudo.toUpperCase());
             if (idx >= 0) {
               const ex = this.entries[idx];
               const rBetter = r.mode === 'madness'
-                ? (r.kills ?? 0) > (ex.kills ?? 0)
+                ? (r.kills ?? 0) > (ex.kills ?? 0) || ((r.kills ?? 0) === (ex.kills ?? 0) && r.score > ex.score)
                 : r.score > ex.score;
-              if (rBetter) this.entries[idx] = r;
+              if (rBetter) {
+                this.entries[idx] = r;
+              } else {
+                // Local is higher than remote: update remote!
+                this.pushRemote(ex);
+              }
             } else {
               this.entries.push(r);
             }
           }
+
+          // Push any local entries not yet on remote
+          for (const e of this.entries) {
+            const onRemote = remoteList.some(r => r.mode === e.mode && r.pseudo.toUpperCase() === e.pseudo.toUpperCase());
+            if (!onRemote) {
+              this.pushRemote(e);
+            }
+          }
+
           this.cleanupEntries();
+          this.save();
         }
       }
     } catch (err) {

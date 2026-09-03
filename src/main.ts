@@ -50,6 +50,12 @@ class Game {
   public madnessStreak: number = 0;
   public madnessSpawnTimer: number = 0;
 
+  // Pending game over snapshot
+  public pendingScore: number = 0;
+  public pendingKills: number = 0;
+  public pendingStreak: number = 0;
+  public pendingMode: 'classic' | 'madness' = 'classic';
+
   constructor() {
     this.canvas = document.getElementById('c') as HTMLCanvasElement;
     this.renderer = new Renderer(this.canvas);
@@ -77,14 +83,14 @@ class Game {
       this.playerDate = date;
       this.playerRank = leaderboard.addEntry({
         pseudo,
-        score: this.score,
-        mode: this.gameMode,
-        kills: this.madnessKills,
-        streak: this.madnessStreak,
+        score: this.pendingScore,
+        mode: this.pendingMode,
+        kills: this.pendingKills,
+        streak: this.pendingStreak,
         date
       });
       modal.style.display = 'none';
-      this.leaderboardMode = this.gameMode;
+      this.leaderboardMode = this.pendingMode;
       this.state = 'leaderboard';
       sounds.play('dot');
     };
@@ -111,8 +117,8 @@ class Game {
 
     titleEl.textContent = '🏆 NOUVEAU RECORD !';
     scoreEl.textContent = mode === 'madness'
-      ? `${this.madnessKills} FANTÔMES PURGÉS (STREAK x${this.madnessStreak})`
-      : `SCORE : ${this.score.toLocaleString()} PTS`;
+      ? `${this.pendingKills} FANTÔMES PURGÉS (STREAK x${this.pendingStreak})`
+      : `SCORE : ${this.pendingScore.toLocaleString()} PTS`;
 
     const lastPseudo = localStorage.getItem('chv_last_pseudo') || '';
     inputEl.value = lastPseudo;
@@ -125,15 +131,35 @@ class Game {
 
   private triggerGameOver() {
     this.state = 'gameover';
+    this.pendingScore = this.score;
+    this.pendingKills = this.madnessKills;
+    this.pendingStreak = this.madnessStreak;
+    this.pendingMode = this.gameMode;
+
     badges.saveScore(this.score);
     badges.saveMadnessKills(this.madnessKills);
     sounds.play('death');
 
-    const qualifies = this.gameMode === 'madness' ? this.madnessKills > 0 : this.score > 0;
+    // Auto-save immediately if pseudo already known so record is NEVER lost
+    const savedPseudo = (localStorage.getItem('chv_last_pseudo') || '').trim();
+    const qualifies = this.pendingMode === 'madness' ? this.pendingKills > 0 : this.pendingScore > 0;
+
+    if (savedPseudo && qualifies) {
+      this.playerDate = new Date().toISOString();
+      this.playerRank = leaderboard.addEntry({
+        pseudo: savedPseudo,
+        score: this.pendingScore,
+        mode: this.pendingMode,
+        kills: this.pendingKills,
+        streak: this.pendingStreak,
+        date: this.playerDate
+      });
+    }
+
     if (qualifies) {
       setTimeout(() => {
-        this.showNameModal(this.gameMode === 'madness' ? this.madnessKills : this.score, this.gameMode);
-      }, 600);
+        this.showNameModal(this.pendingMode === 'madness' ? this.pendingKills : this.pendingScore, this.pendingMode);
+      }, 400);
     }
   }
 
@@ -913,7 +939,9 @@ class Game {
     this.renderer.clear(this.maze.currentLevel, this.time);
 
     if (this.state === 'menu') {
-      this.renderer.drawMenu(this.gameMode, this.time, badges.hiScore, badges.bestMadnessKills);
+      const topClassic = Math.max(badges.hiScore, leaderboard.getTopScore('classic'));
+      const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore('madness'));
+      this.renderer.drawMenu(this.gameMode, this.time, topClassic, topMadness);
       return;
     }
 
@@ -1009,11 +1037,12 @@ class Game {
     }
 
     if (this.state === 'gameover') {
-      const isNewHi = this.score >= badges.hiScore && this.score > 0;
+      const isNewHi = this.pendingScore >= badges.hiScore && this.pendingScore > 0;
       const bCount = Object.keys(badges.unlocked).length;
+      const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore('madness'));
       this.renderer.drawGameOver(
-        this.gameMode === 'madness',
-        this.score, isNewHi, this.madnessKills, this.madnessStreak, badges.bestMadnessKills, bCount, this.time
+        this.pendingMode === 'madness',
+        this.pendingScore, isNewHi, this.pendingKills, this.pendingStreak, topMadness, bCount, this.time
       );
     }
   }
