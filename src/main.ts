@@ -151,6 +151,7 @@ class Game {
         if (cy >= CH * 0.91 && cy <= CH * 0.97) {
           this.state = 'leaderboard';
           this.leaderboardMode = this.gameMode;
+          leaderboard.syncRemote();
           sounds.play('dot');
           return;
         }
@@ -177,6 +178,7 @@ class Game {
         if (cy >= cyOver + 185 && cy <= cyOver + 215) {
           this.state = 'leaderboard';
           this.leaderboardMode = this.gameMode;
+          leaderboard.syncRemote();
           sounds.play('dot');
           return;
         }
@@ -605,6 +607,7 @@ class Game {
       if (this.state === 'menu' || this.state === 'gameover') {
         this.state = 'leaderboard';
         this.leaderboardMode = this.gameMode;
+        leaderboard.syncRemote();
         sounds.play('dot');
       } else if (this.state === 'leaderboard') {
         this.state = 'menu';
