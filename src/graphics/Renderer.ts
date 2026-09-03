@@ -109,16 +109,29 @@ export class Renderer {
       c.globalAlpha = 1;
     }
     if (fx.magnet > 0) {
-      const r = T * 4.5;
-      c.globalAlpha = 0.1 + Math.sin(time * 5) * 0.05;
+      const r = T * 5.2;
+      c.save();
+      c.globalAlpha = 0.14 + Math.sin(time * 6) * 0.05;
       const gr = c.createRadialGradient(plPos.x, plPos.y, 0, plPos.x, plPos.y, r);
-      gr.addColorStop(0, PC.magnet);
+      gr.addColorStop(0, '#ff007f');
+      gr.addColorStop(0.6, '#00f0ff');
       gr.addColorStop(1, 'transparent');
       c.fillStyle = gr;
       c.beginPath();
       c.arc(plPos.x, plPos.y, r, 0, PI2);
       c.fill();
-      c.globalAlpha = 1;
+
+      // Rotating dashed Force Field perimeter
+      c.globalAlpha = 0.6 + Math.sin(time * 8) * 0.2;
+      c.strokeStyle = '#00f0ff';
+      c.lineWidth = 2;
+      c.shadowColor = '#ff007f';
+      c.shadowBlur = 12;
+      c.setLineDash([8, 6]);
+      c.beginPath();
+      c.arc(plPos.x, plPos.y, r * 0.95, time * 3, time * 3 + PI2);
+      c.stroke();
+      c.restore();
     }
     if (flsh.a > 0) {
       c.globalAlpha = flsh.a;

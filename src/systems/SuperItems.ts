@@ -78,10 +78,10 @@ export class SuperItemManager {
       }
       case 'vortex': {
         sounds.play('powerup');
-        this.vortex = { x: CW / 2, y: (ROWS * T) / 2, life: 3.5, maxLife: 3.5 };
+        this.vortex = { x: plPos.x, y: plPos.y, life: 3.5, maxLife: 3.5 };
         particles.shake(6, 0.25);
         particles.flash('#bb44ff', 0.25);
-        particles.addPop(CW / 2, (ROWS * T) / 2, '🕳️ BLACK HOLE !', '#bb44ff', 22);
+        particles.addPop(plPos.x, plPos.y - 20, '🕳️ BLACK HOLE !', '#bb44ff', 22);
         break;
       }
       case 'laser': {

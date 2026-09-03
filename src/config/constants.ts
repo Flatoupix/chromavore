@@ -53,14 +53,14 @@ export const PN: Record<string, string> = {
   phase: 'PHASE SHIFT',
   nova: 'NOVA BURST',
   timewarp: 'TIME WARP',
-  magnet: 'MAGNET'
+  magnet: 'FORCE FIELD'
 };
 
 export const PI_: Record<string, string> = {
   phase: '◇',
   nova: '✦',
   timewarp: '◎',
-  magnet: '⊛'
+  magnet: '🛡️'
 };
 
 // Combo settings

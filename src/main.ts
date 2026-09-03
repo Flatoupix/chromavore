@@ -136,7 +136,8 @@ class Game {
             this.gameMode === 'madness',
             this.enemyManager.enemies,
             (en, x, y) => this.onKillGhost(en, x, y),
-            (c, r) => this.onCollectDot(c, r)
+            (c, r) => this.onCollectDot(c, r),
+            powerups.fx.magnet > 0
           );
         }
       }
@@ -158,7 +159,8 @@ class Game {
             this.gameMode === 'madness',
             this.enemyManager.enemies,
             (en, x, y) => this.onKillGhost(en, x, y),
-            (c, r) => this.onCollectDot(c, r)
+            (c, r) => this.onCollectDot(c, r),
+            powerups.fx.magnet > 0
           );
         }
       }
@@ -535,7 +537,8 @@ class Game {
             isMadness,
             this.enemyManager.enemies,
             (e, x, y) => this.onKillGhost(e, x, y),
-            (c, r) => this.onCollectDot(c, r)
+            (c, r) => this.onCollectDot(c, r),
+            powerups.fx.magnet > 0
           );
           input.isDashRequested = false;
         }
@@ -609,15 +612,41 @@ class Game {
         this.player.update(dt, this.maze, isMadness, input.nitroActive > 0, input.nextDir, (c, r) => this.onCollectDot(c, r));
         this.enemyManager.update(dt, this.maze, this.player.getPos(), powerups.fx.timewarp);
 
-        // Magnet suction
+        // Force Field suction (Dots & Frightened Ghosts)
         if (powerups.fx.magnet > 0) {
-          const r = isMadness ? T * 5.8 : T * 3.5;
+          const r = isMadness ? T * 6.5 : T * 4.5;
           const pp = this.player.getPos();
+
+          // 1. Vacuum dots
           for (let row = 0; row < ROWS; row++) {
             for (let c = 0; c < COLS; c++) {
               if (this.maze.dotMap[row][c]) {
                 const dx = c * T + HALF - pp.x, dy = row * T + HALF - pp.y;
                 if (Math.hypot(dx, dy) < r) this.onCollectDot(c, row);
+              }
+            }
+          }
+
+          // 2. Gravitational pull on frightened & frozen ghosts!
+          for (const e of this.enemyManager.enemies) {
+            if (e.st === 'flee' || e.frozen) {
+              const ep = this.enemyManager.getPos(e);
+              const dx = pp.x - ep.x, dy = pp.y - ep.y;
+              const dist = Math.hypot(dx, dy);
+              if (dist < r && dist > 2) {
+                // Drag frightened ghost towards Pac-Man
+                const pull = (isMadness ? 220 : 160) * (1 - dist / r);
+                e.fx += (dx / dist) * pull * dt / T;
+                e.fy += (dy / dist) * pull * dt / T;
+
+                if (Math.random() < 0.25) {
+                  particles.emit(ep.x, ep.y, 2, '#ff007f', { speed: 60, size: 2.5, life: 0.25 });
+                }
+
+                // If pulled close enough, devour it!
+                if (dist < HIT_DIST + 8) {
+                  this.onKillGhost(e, ep.x, ep.y);
+                }
               }
             }
           }
@@ -660,7 +689,7 @@ class Game {
             sounds.play('powerup');
             particles.shake(8, 0.3);
             particles.flash('#00ffff', 0.4);
-            particles.addPop(CW / 2, 70, '✨ CŒUR DU VIDE ANÉANTI ! (+6s & SUPER-AIMANT)', '#00ffff', 20);
+            particles.addPop(CW / 2, 70, '✨ CŒUR DU VIDE ANÉANTI ! (+6s & FORCE FIELD)', '#00ffff', 20);
           },
           (px, py) => {
             // Nova collection

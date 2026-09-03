@@ -2,7 +2,7 @@
 //  CHROMAVORE — PLAYER ENTITY & OFFENSIVE DASH
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_SPEED } from '../config/constants';
+import { T, HALF, COLS, ROWS, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_SPEED } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
@@ -161,7 +161,14 @@ export class Player {
     if (this.trail.length > 8) this.trail.pop();
   }
 
-  public triggerDash(maze: MazeManager, isMadness: boolean, enemies: any[], onKillGhost: (e: any, x: number, y: number) => void, onCollectDot: (c: number, r: number) => void): boolean {
+  public triggerDash(
+    maze: MazeManager,
+    isMadness: boolean,
+    enemies: any[],
+    onKillGhost: (e: any, x: number, y: number) => void,
+    onCollectDot: (c: number, r: number) => void,
+    hasForceField: boolean = false
+  ): boolean {
     if (this.dashCd > 0) return false;
     let dx = this.dx, dy = this.dy;
     if (!dx && !dy) { dx = this.ndx; dy = this.ndy; }
@@ -189,8 +196,21 @@ export class Player {
       dashed++;
 
       onCollectDot(nx, ny);
+
+      // If Force Field active, vacuum dots in a wide corridor along dash!
+      if (hasForceField) {
+        for (let radY = -2; radY <= 2; radY++) {
+          for (let radX = -2; radX <= 2; radX++) {
+            const rx = this.wrapX(nx + radX), ry = ny + radY;
+            if (ry >= 0 && ry < ROWS && Math.hypot(radX, radY) <= 2.2) {
+              onCollectDot(rx, ry);
+            }
+          }
+        }
+      }
+
       const px = nx * T + HALF, py = ny * T + HALF;
-      particles.emit(px, py, 6, '#00ffff', { speed: 80, size: 3, life: 0.35 });
+      particles.emit(px, py, 6, hasForceField ? '#ff007f' : '#00ffff', { speed: 80, size: 3, life: 0.35 });
     }
 
     if (dashed === 0) {
@@ -214,14 +234,20 @@ export class Player {
     for (const e of enemies) {
       if (e.st !== 'dead' && e.st !== 'return') {
         const ep = { x: (e.fx + (e.x - e.fx) * e.t) * T + HALF, y: (e.fy + (e.y - e.fy) * e.t) * T + HALF };
-        if (distToSegment(ep.x, ep.y, startPos.x, startPos.y, endPos.x, endPos.y) < T * 1.2) {
+        const d = distToSegment(ep.x, ep.y, startPos.x, startPos.y, endPos.x, endPos.y);
+
+        if (d < T * 1.2) {
+          onKillGhost(e, ep.x, ep.y);
+        } else if (hasForceField && (e.st === 'flee' || e.frozen) && d < T * 3.8) {
+          // Force Field vacuums frightened ghosts towards Pac-Man's dash and slays them!
+          particles.emit(ep.x, ep.y, 16, '#ff007f', { speed: 120, size: 4, life: 0.4 });
           onKillGhost(e, ep.x, ep.y);
         }
       }
     }
 
     particles.emit(startPos.x, startPos.y, 16, '#00e5ff', { speed: 130, size: 4, life: 0.45 });
-    particles.emit(endPos.x, endPos.y, 20, '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
+    particles.emit(endPos.x, endPos.y, 20, hasForceField ? '#ff007f' : '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
     particles.shake(4, 0.15);
     particles.flash('#00e5ff', 0.22);
     sounds.play('dash');
