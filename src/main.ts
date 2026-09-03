@@ -67,14 +67,14 @@ class Game {
       const cy = (e.clientY - rect.top) * (CH / rect.height);
 
       if (this.state === 'menu') {
-        const my = CH * 0.48;
+        const my = CH * 0.44;
         if (cy >= my && cy <= my + 38) {
-          if (cx >= CW / 2 - 140 && cx <= CW / 2 - 10) {
+          if (cx >= CW / 2 - 145 && cx <= CW / 2 - 10) {
             this.gameMode = 'classic';
             sounds.play('dot');
             return;
           }
-          if (cx >= CW / 2 + 10 && cx <= CW / 2 + 140) {
+          if (cx >= CW / 2 + 10 && cx <= CW / 2 + 145) {
             this.gameMode = 'madness';
             sounds.play('nova');
             return;
