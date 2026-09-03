@@ -76,23 +76,12 @@ export const SKILL_TREE: SkillDef[] = [
     desc: 'Dash illimité sans aucun temps de recharge pendant 8 secondes'
   },
   {
-    id: 'dash_v2',
-    baseId: 'dash',
-    version: 2,
-    name: 'CYBER DASH V2',
-    icon: '⚡',
-    threshold: 300,
-    category: 'movement',
-    command: 'ESPACE ou DOUBLE-TAP',
-    desc: 'Portée augmentée à 4 cases, recharge -25% et onde de choc étourdissante à l\'arrivée'
-  },
-  {
     id: 'vortex_v1',
     baseId: 'vortex',
     version: 1,
     name: 'BLACK HOLE',
     icon: '🕳️',
-    threshold: 500,
+    threshold: 400,
     category: 'item',
     command: 'Touche [E] ou Bouton 💣',
     desc: 'Vortex gravitationnel qui attire et désintègre tous les spectres'
@@ -103,10 +92,21 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'GIGA EMP V2',
     icon: '⚡',
-    threshold: 800,
+    threshold: 700,
     category: 'kombo',
     command: '← → ← → (Wiggle)',
     desc: 'Rayon doublé (160px), étourdissement 4s et rend les fantômes vulnérables/mangeables'
+  },
+  {
+    id: 'dash_v2',
+    baseId: 'dash',
+    version: 2,
+    name: 'CYBER DASH V2',
+    icon: '⚡',
+    threshold: 1000,
+    category: 'movement',
+    command: 'ESPACE ou DOUBLE-TAP',
+    desc: 'Portée augmentée à 4 cases, recharge -25% et onde de choc étourdissante à l\'arrivée'
   },
   {
     id: 'laser_v1',
@@ -114,7 +114,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'HYPER BEAMS',
     icon: '⚡',
-    threshold: 1300,
+    threshold: 1500,
     category: 'item',
     command: 'Touche [E] ou Bouton 💣',
     desc: 'Canons lasers cruciformes découpant les couloirs horizontaux et verticaux'
