@@ -538,14 +538,14 @@ export class Renderer {
     c.textAlign = 'left';
     c.fillText('PSEUDO', 64, startY);
     c.textAlign = 'right';
-    c.fillText(mode === 'madness' ? 'KILLS PURGÉS' : 'SCORE', CW - 28, startY);
+    c.fillText(mode === 'madness' ? 'KILLS & SCORE' : 'SCORE', CW - 28, startY);
 
     // Separator
     c.strokeStyle = '#1a2840'; c.lineWidth = 1;
     c.beginPath(); c.moveTo(20, startY + 6); c.lineTo(CW - 20, startY + 6); c.stroke();
 
     // Entries
-    const rowH = 34;
+    const rowH = 36;
 
     for (let i = 0; i < Math.min(entries.length, 12); i++) {
       const e = entries[i];
@@ -599,20 +599,35 @@ export class Renderer {
       c.font = isPlayer ? 'bold 12px monospace' : '11px monospace';
       c.fillStyle = isPlayer ? '#ffd700' : (rank <= 3 ? '#ffffff' : '#aabbcc');
       if (isPlayer) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
-      c.fillText(e.pseudo.toUpperCase().slice(0, 12), 64, y);
+      c.fillText(e.pseudo.toUpperCase().slice(0, 12), 64, y - 2);
       c.shadowBlur = 0;
 
-      // Score / kills
-      c.textAlign = 'right'; c.font = 'bold 12px monospace';
-      const val = mode === 'madness' ? (e.kills ?? 0).toString() : e.score.toString().padStart(7, '0');
-      c.fillStyle = rank === 1 ? '#ffd700' : (isPlayer ? '#ff007f' : '#00f0ff');
-      if (rank === 1) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
-      c.fillText(val, CW - 28, y);
-      c.shadowBlur = 0;
+      // Date under pseudo
+      c.font = '8px monospace'; c.fillStyle = '#445566';
+      c.fillText(e.date ? e.date.slice(0, 10) : '', 64, y + 11);
 
-      // Date
-      c.font = '8px monospace'; c.fillStyle = '#445566'; c.textAlign = 'right';
-      c.fillText(e.date.slice(0, 10), CW - 28, y + 13);
+      // Score and Kills on right
+      c.textAlign = 'right';
+      if (mode === 'madness') {
+        // Line 1: Kills
+        c.font = 'bold 12px monospace';
+        c.fillStyle = rank === 1 ? '#ffd700' : (isPlayer ? '#ff007f' : '#00f0ff');
+        if (rank === 1) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
+        c.fillText(`${e.kills ?? 0} KILLS`, CW - 28, y - 2);
+        c.shadowBlur = 0;
+
+        // Line 2: Score underneath Kills
+        c.font = 'bold 9px monospace';
+        c.fillStyle = isPlayer ? '#ffd700' : '#ffaa00';
+        c.fillText(`${(e.score || 0).toLocaleString()} PTS`, CW - 28, y + 11);
+      } else {
+        // Classic: Score
+        c.font = 'bold 12px monospace';
+        c.fillStyle = rank === 1 ? '#ffd700' : (isPlayer ? '#ff007f' : '#00f0ff');
+        if (rank === 1) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
+        c.fillText(e.score.toString().padStart(7, '0'), CW - 28, y);
+        c.shadowBlur = 0;
+      }
     }
 
     if (entries.length === 0) {
