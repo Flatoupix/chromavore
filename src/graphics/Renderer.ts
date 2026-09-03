@@ -769,32 +769,52 @@ export class Renderer {
   }
 
   private drawSkillCard(c: CanvasRenderingContext2D, s: import('../systems/ProgressionSystem').SkillDef, x: number, y: number, w: number, h: number) {
-    const unlocked = progression.isSkillUnlocked(s.id);
+    const state = progression.getSkillState(s.id);
+    const unlocked = state.unlocked;
+    const isNext = state.isNext;
+    const hidden = state.hidden;
     const isV2 = s.version === 2;
 
-    c.fillStyle = unlocked
-      ? (isV2 ? 'rgba(0, 255, 230, 0.08)' : 'rgba(255, 215, 0, 0.07)')
-      : 'rgba(12, 16, 26, 0.6)';
-    c.strokeStyle = unlocked
-      ? (isV2 ? '#00e5ff' : '#ffd700')
-      : '#253245';
-    c.lineWidth = unlocked ? 1.5 : 1;
-
     if (unlocked) {
+      c.fillStyle = isV2 ? 'rgba(0, 255, 230, 0.08)' : 'rgba(255, 215, 0, 0.07)';
+      c.strokeStyle = isV2 ? '#00e5ff' : '#ffd700';
+      c.lineWidth = 1.5;
       c.shadowColor = isV2 ? '#00e5ff' : '#ffd700';
       c.shadowBlur = 6;
+    } else if (isNext) {
+      c.fillStyle = 'rgba(255, 170, 0, 0.08)';
+      c.strokeStyle = '#ffaa00';
+      c.lineWidth = 1.4;
+      c.shadowColor = '#ffaa00';
+      c.shadowBlur = 5;
+    } else {
+      c.fillStyle = 'rgba(10, 14, 24, 0.65)';
+      c.strokeStyle = '#1e2838';
+      c.lineWidth = 1;
+      c.shadowBlur = 0;
     }
+
     c.beginPath();
     c.roundRect(x, y, w, h, 6);
     c.fill();
     c.stroke();
     c.shadowBlur = 0;
 
-    // Icon + Version Badge + Name
+    // Header: Icon + Version + Name
     c.textAlign = 'left';
     c.font = 'bold 11px monospace';
-    c.fillStyle = unlocked ? (isV2 ? '#00ffff' : '#ffd700') : '#667788';
-    c.fillText(`${s.icon} [V${s.version}] ${s.name}`, x + 8, y + 16);
+
+    if (unlocked) {
+      c.fillStyle = isV2 ? '#00ffff' : '#ffd700';
+      c.fillText(`${s.icon} [V${s.version}] ${s.name}`, x + 8, y + 16);
+    } else if (isNext) {
+      c.fillStyle = '#ffcc00';
+      c.fillText(`${s.icon} [V${s.version}] ${s.name}`, x + 8, y + 16);
+    } else {
+      // Hidden / classified: name is hidden!
+      c.fillStyle = '#4a5a70';
+      c.fillText(`🔒 [V${s.version}] ??? [CLASSIFIÉ]`, x + 8, y + 16);
+    }
 
     // Status pill
     c.textAlign = 'right';
@@ -802,21 +822,40 @@ export class Renderer {
     if (unlocked) {
       c.fillStyle = '#00ffaa';
       c.fillText('ACTIF ✅', x + w - 8, y + 16);
+    } else if (isNext) {
+      c.fillStyle = '#ffd700';
+      c.fillText(`🎯 ${s.threshold.toLocaleString()} 👻`, x + w - 8, y + 16);
     } else {
-      c.fillStyle = '#ffaa00';
-      c.fillText(`🔒 ${s.threshold} 👻`, x + w - 8, y + 16);
+      c.fillStyle = '#6a7888';
+      c.fillText(`🔒 ${s.threshold.toLocaleString()} 👻`, x + w - 8, y + 16);
     }
 
     // Command
     c.textAlign = 'left';
     c.font = '9px monospace';
-    c.fillStyle = unlocked ? '#ffffff' : '#445566';
-    c.fillText(s.command, x + 8, y + 30);
+    if (unlocked) {
+      c.fillStyle = '#ffffff';
+      c.fillText(s.command, x + 8, y + 30);
+    } else if (isNext) {
+      c.fillStyle = '#ffdd88';
+      c.fillText(s.command, x + 8, y + 30);
+    } else {
+      c.fillStyle = '#334455';
+      c.fillText('🔒 COMMANDE CHIFFRÉE', x + 8, y + 30);
+    }
 
     // Effect summary
     c.font = '8.5px monospace';
-    c.fillStyle = unlocked ? (isV2 ? '#aaffff' : '#ddd') : '#334455';
-    c.fillText(s.desc.slice(0, 44), x + 8, y + 43);
+    if (unlocked) {
+      c.fillStyle = isV2 ? '#aaffff' : '#ddd';
+      c.fillText(s.desc.slice(0, 44), x + 8, y + 43);
+    } else if (isNext) {
+      c.fillStyle = '#eeddcc';
+      c.fillText(s.desc.slice(0, 44), x + 8, y + 43);
+    } else {
+      c.fillStyle = '#2a3848';
+      c.fillText('Atteignez le palier précédent pour décoder.', x + 8, y + 43);
+    }
   }
 
   public drawPause(isMadness: boolean, kills: number, streak: number, time: number = 0) {

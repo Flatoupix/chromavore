@@ -259,6 +259,33 @@ class ProgressionManager {
     return this.totalGhosts >= s.threshold;
   }
 
+  public getSkillState(skillId: string): { unlocked: boolean; isNext: boolean; hidden: boolean } {
+    const idx = SKILL_TREE.findIndex(s => s.id === skillId);
+    if (idx === -1) return { unlocked: false, isNext: false, hidden: false };
+
+    // Find index of highest unlocked skill
+    let lastUnlockedIdx = -1;
+    for (let i = SKILL_TREE.length - 1; i >= 0; i--) {
+      if (this.totalGhosts >= SKILL_TREE[i].threshold) {
+        lastUnlockedIdx = i;
+        break;
+      }
+    }
+
+    if (idx <= lastUnlockedIdx) {
+      return { unlocked: true, isNext: false, hidden: false };
+    }
+
+    const distance = idx - lastUnlockedIdx;
+    // distance === 1: 1 après ceux débloqués -> visible (prochain déblocage)
+    // distance >= 2: 2 après ceux débloqués -> caché (??? [CLASSIFIÉ])
+    return {
+      unlocked: false,
+      isNext: distance === 1,
+      hidden: distance >= 2
+    };
+  }
+
   public getNextUnlock(): { skill: SkillDef | null; remaining: number; progress: number; prevThreshold: number } {
     const g = this.totalGhosts;
     let prevThreshold = 0;
