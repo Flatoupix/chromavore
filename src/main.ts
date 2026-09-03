@@ -129,7 +129,8 @@ class Game {
     badges.saveMadnessKills(this.madnessKills);
     sounds.play('death');
 
-    if (this.score > 0 || this.madnessKills > 0) {
+    const qualifies = this.gameMode === 'madness' ? this.madnessKills > 0 : this.score > 0;
+    if (qualifies) {
       setTimeout(() => {
         this.showNameModal(this.gameMode === 'madness' ? this.madnessKills : this.score, this.gameMode);
       }, 600);

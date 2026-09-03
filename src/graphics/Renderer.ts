@@ -511,12 +511,13 @@ export class Renderer {
     c.fillText(modeLabel, CW / 2, 62);
 
     // Column headers
-    const startY = 82;
-    c.font = 'bold 9px monospace'; c.fillStyle = '#445566'; c.textAlign = 'left';
-    c.fillText('#', 28, startY);
-    c.fillText('PSEUDO', 56, startY);
+    const startY = 86;
+    c.font = 'bold 9px monospace'; c.fillStyle = '#445566'; c.textAlign = 'center';
+    c.fillText('#', 34, startY);
+    c.textAlign = 'left';
+    c.fillText('PSEUDO', 64, startY);
     c.textAlign = 'right';
-    c.fillText(mode === 'madness' ? 'KILLS' : 'SCORE', CW - 28, startY);
+    c.fillText(mode === 'madness' ? 'KILLS PURGÉS' : 'SCORE', CW - 28, startY);
 
     // Separator
     c.strokeStyle = '#1a2840'; c.lineWidth = 1;
@@ -524,41 +525,60 @@ export class Renderer {
 
     // Entries
     const rowH = 34;
-    const medals = ['🥇', '🥈', '🥉'];
 
     for (let i = 0; i < Math.min(entries.length, 12); i++) {
       const e = entries[i];
-      const y = startY + 14 + i * rowH;
+      const y = startY + 16 + i * rowH;
       const isPlayer = e.date === playerDate;
       const rank = i + 1;
 
       // Row highlight
       if (isPlayer) {
-        const pulse = 0.12 + Math.sin(time * 5) * 0.05;
+        const pulse = 0.14 + Math.sin(time * 5) * 0.06;
         c.fillStyle = `rgba(255, 0, 127, ${pulse})`;
         c.fillRect(18, y - 14, CW - 36, rowH - 2);
         c.strokeStyle = '#ff007f'; c.lineWidth = 1.5;
         c.strokeRect(18, y - 14, CW - 36, rowH - 2);
       } else if (i % 2 === 0) {
-        c.fillStyle = 'rgba(255,255,255,0.02)';
+        c.fillStyle = 'rgba(255,255,255,0.025)';
         c.fillRect(18, y - 14, CW - 36, rowH - 2);
       }
 
-      // Rank
-      c.textAlign = 'left'; c.font = 'bold 11px monospace';
-      if (rank <= 3) {
-        c.font = '14px monospace';
-        c.fillText(medals[rank - 1], 22, y + 1);
+      // Rank Badge
+      c.textAlign = 'center';
+      if (rank === 1) {
+        c.font = 'bold 12px monospace';
+        c.fillStyle = '#ffd700';
+        c.shadowColor = '#ffd700';
+        c.shadowBlur = 10;
+        c.fillText('🥇 1', 34, y);
+        c.shadowBlur = 0;
+      } else if (rank === 2) {
+        c.font = 'bold 12px monospace';
+        c.fillStyle = '#e2e8f0';
+        c.shadowColor = '#e2e8f0';
+        c.shadowBlur = 8;
+        c.fillText('🥈 2', 34, y);
+        c.shadowBlur = 0;
+      } else if (rank === 3) {
+        c.font = 'bold 12px monospace';
+        c.fillStyle = '#ff9944';
+        c.shadowColor = '#ff9944';
+        c.shadowBlur = 8;
+        c.fillText('🥉 3', 34, y);
+        c.shadowBlur = 0;
       } else {
+        c.font = 'bold 11px monospace';
         c.fillStyle = isPlayer ? '#ffd700' : '#556677';
-        c.fillText(rank + '.', 26, y);
+        c.fillText(rank + '.', 34, y);
       }
 
       // Pseudo
+      c.textAlign = 'left';
       c.font = isPlayer ? 'bold 12px monospace' : '11px monospace';
       c.fillStyle = isPlayer ? '#ffd700' : (rank <= 3 ? '#ffffff' : '#aabbcc');
       if (isPlayer) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
-      c.fillText(e.pseudo.toUpperCase().slice(0, 12), 56, y);
+      c.fillText(e.pseudo.toUpperCase().slice(0, 12), 64, y);
       c.shadowBlur = 0;
 
       // Score / kills
@@ -570,7 +590,7 @@ export class Renderer {
       c.shadowBlur = 0;
 
       // Date
-      c.font = '8px monospace'; c.fillStyle = '#334455'; c.textAlign = 'right';
+      c.font = '8px monospace'; c.fillStyle = '#445566'; c.textAlign = 'right';
       c.fillText(e.date.slice(0, 10), CW - 28, y + 13);
     }
 
