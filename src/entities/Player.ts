@@ -37,9 +37,24 @@ export class Player {
   public dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number }[] = [];
   public invuln: number = 2;
 
-  public reset(isMadness: boolean) {
-    this.x = this.fx = 10;
-    this.y = this.fy = 16;
+  public reset(isMadness: boolean, maze?: MazeManager) {
+    let sx = 10, sy = 16;
+    if (maze && !maze.isWalkable(sx, sy, false)) {
+      let found = false;
+      for (let dist = 1; dist <= 6 && !found; dist++) {
+        for (let dy = -dist; dy <= dist && !found; dy++) {
+          for (let dx = -dist; dx <= dist && !found; dx++) {
+            if (maze.isWalkable(10 + dx, 16 + dy, false)) {
+              sx = 10 + dx;
+              sy = 16 + dy;
+              found = true;
+            }
+          }
+        }
+      }
+    }
+    this.x = this.fx = sx;
+    this.y = this.fy = sy;
     this.t = 1;
     this.dx = this.dy = this.ndx = this.ndy = 0;
     this.lastDx = 1;

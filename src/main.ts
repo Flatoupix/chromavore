@@ -342,7 +342,7 @@ class Game {
 
     // Always start at Level 1 (The Circuit)
     this.maze.build(0);
-    this.player.reset(this.gameMode === 'madness');
+    this.player.reset(this.gameMode === 'madness', this.maze);
 
     if (this.gameMode === 'madness') {
       this.enemyManager.enemies = [];
@@ -361,6 +361,9 @@ class Game {
 
   private warpToLevel(lvlIndex: number) {
     this.maze.build(lvlIndex);
+    if (!this.maze.isWalkable(this.player.x, this.player.y, false)) {
+      this.player.reset(this.gameMode === 'madness', this.maze);
+    }
     this.madnessTimer = Math.min(45, this.madnessTimer + 8.0);
     sounds.play('wave');
     particles.flash('#00ffff', 0.4);
@@ -865,7 +868,7 @@ class Game {
         this.deathT -= dt;
         if (this.deathT <= 0) {
           if (this.lives > 0 && (this.gameMode !== 'madness' || this.madnessTimer > 0)) {
-            this.player.reset(this.gameMode === 'madness');
+            this.player.reset(this.gameMode === 'madness', this.maze);
             if (this.gameMode === 'madness') {
               this.state = 'playing';
               this.player.invuln = 2.0;
@@ -887,7 +890,7 @@ class Game {
           const nextLvl = (this.maze.currentLevel + 1) % LEVELS.length;
           this.maze.build(nextLvl);
           this.enemyManager.spawnClassic(4);
-          this.player.reset(false);
+          this.player.reset(false, this.maze);
           this.state = 'ready';
           this.readyT = 1.8;
         }

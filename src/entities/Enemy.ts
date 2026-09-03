@@ -103,8 +103,20 @@ export class EnemyManager {
         e.delay -= dt;
         if (e.delay <= 0) {
           e.st = 'active';
-          e.x = 10; e.y = 8;
-          e.fx = 10; e.fy = 8;
+          let ex = 10, ey = 8;
+          if (!maze.isWalkable(ex, ey, true)) {
+            for (let dy = -2; dy <= 2 && !maze.isWalkable(ex, ey, true); dy++) {
+              for (let dx = -3; dx <= 3; dx++) {
+                if (maze.isWalkable(10 + dx, 8 + dy, true)) {
+                  ex = 10 + dx;
+                  ey = 8 + dy;
+                  break;
+                }
+              }
+            }
+          }
+          e.x = ex; e.y = ey;
+          e.fx = ex; e.fy = ey;
           e.t = 1;
         }
         continue;
