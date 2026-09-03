@@ -18,6 +18,7 @@ export class InputManager {
   public isPauseRequested: boolean = false;
   public isAudioToggleRequested: boolean = false;
   public isStartRequested: boolean = false;
+  public isRestartRequested: boolean = false;
   public isSelectMode1Requested: boolean = false;
   public isSelectMode2Requested: boolean = false;
   public isLeaderboardRequested: boolean = false;
@@ -77,6 +78,9 @@ export class InputManager {
       }
       if (e.code === 'KeyL') {
         this.isLeaderboardRequested = true;
+      }
+      if (e.code === 'KeyR') {
+        this.isRestartRequested = true;
       }
     });
 

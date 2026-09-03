@@ -761,13 +761,30 @@ export class Renderer {
     c.fill();
     c.stroke();
     c.shadowBlur = 0;
-    c.font = `bold ${13 * pulse}px monospace`;
+    c.font = `bold ${12 * pulse}px monospace`;
     c.fillStyle = '#ffffff';
     c.textAlign = 'center';
     c.fillText('▶ REPRENDRE [P]', resBtn.x + resBtn.w / 2, resBtn.y + 27);
 
+    // Restart button
+    const rstBtn = PAUSE_BUTTONS[7];
+    c.fillStyle = '#20180a';
+    c.strokeStyle = '#ffaa00';
+    c.lineWidth = 2;
+    c.shadowColor = '#ffaa00';
+    c.shadowBlur = 10;
+    c.beginPath();
+    c.roundRect(rstBtn.x, rstBtn.y, rstBtn.w, rstBtn.h, 8);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+    c.font = 'bold 12px monospace';
+    c.fillStyle = '#ffaa00';
+    c.textAlign = 'center';
+    c.fillText('🔄 REJOUER [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 27);
+
     // Home button
-    const homeBtn = PAUSE_BUTTONS[7];
+    const homeBtn = PAUSE_BUTTONS[8];
     c.fillStyle = '#1a0a20';
     c.strokeStyle = '#ff007f';
     c.lineWidth = 2;

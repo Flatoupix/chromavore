@@ -254,6 +254,10 @@ class Game {
                 this.state = 'playing';
                 sounds.play('dot');
                 return;
+              case 'restart':
+                this.startGame(this.gameMode);
+                sounds.play('start');
+                return;
               case 'home':
                 this.state = 'menu';
                 sounds.play('dot');
@@ -693,6 +697,14 @@ class Game {
         input.isStartRequested = false;
       }
       return;
+    }
+
+    if (input.isRestartRequested) {
+      if (this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'ready') {
+        this.startGame(this.gameMode);
+        sounds.play('start');
+      }
+      input.isRestartRequested = false;
     }
 
     if (input.isPauseRequested) {
