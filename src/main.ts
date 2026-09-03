@@ -70,7 +70,9 @@ class Game {
     const skip = document.getElementById('pseudo-skip')!;
 
     const save = () => {
-      const pseudo = (input.value.trim().toUpperCase() || 'PLAYER1').slice(0, 12);
+      const savedLast = localStorage.getItem('chv_last_pseudo') || 'PLAYER1';
+      const pseudo = (input.value.trim().toUpperCase() || savedLast).slice(0, 12);
+      localStorage.setItem('chv_last_pseudo', pseudo);
       const date = new Date().toISOString();
       this.playerDate = date;
       this.playerRank = leaderboard.addEntry({
@@ -111,9 +113,14 @@ class Game {
     scoreEl.textContent = mode === 'madness'
       ? `${this.madnessKills} FANTÔMES PURGÉS (STREAK x${this.madnessStreak})`
       : `SCORE : ${this.score.toLocaleString()} PTS`;
-    inputEl.value = '';
+
+    const lastPseudo = localStorage.getItem('chv_last_pseudo') || '';
+    inputEl.value = lastPseudo;
     modal.style.display = 'flex';
-    setTimeout(() => inputEl.focus(), 60);
+    setTimeout(() => {
+      inputEl.focus();
+      if (lastPseudo) inputEl.select();
+    }, 60);
   }
 
   private triggerGameOver() {
