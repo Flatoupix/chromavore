@@ -11,6 +11,7 @@ import { SuperItemManager } from '../systems/SuperItems';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { BadgeManager } from '../systems/BadgeSystem';
 import { sounds } from '../audio/SoundManager';
+import { settingsManager, PAUSE_BUTTONS } from '../systems/SettingsManager';
 
 export class Renderer {
   public ctx: CanvasRenderingContext2D;
@@ -335,18 +336,133 @@ export class Renderer {
     if (Math.sin(time * 3) > 0) c.fillText('PRESS SPACE TO REPLAY', CW / 2, cy + 174);
   }
 
-  public drawPause(isMadness: boolean, kills: number, streak: number) {
+  public drawPause(isMadness: boolean, kills: number, streak: number, time: number = 0) {
     const c = this.ctx;
-    c.fillStyle = 'rgba(5,5,10,0.82)'; c.fillRect(0, 0, CW, CH);
-    c.font = 'bold 34px monospace'; c.fillStyle = C_GLOW; c.shadowColor = C_GLOW; c.shadowBlur = 22;
-    c.textAlign = 'center'; c.fillText('PAUSE', CW / 2, CH * 0.36); c.shadowBlur = 0;
-    c.font = '14px monospace'; c.fillStyle = '#ffffff';
-    c.fillText('PRESS P OU SPACE POUR REPRENDRE', CW / 2, CH * 0.46);
-    c.font = '12px monospace'; c.fillStyle = '#8899aa';
-    c.fillText('M : TOGGLE AUDIO (' + (sounds.isMuted() ? 'MUTED 🔇' : 'ON 🔊') + ')', CW / 2, CH * 0.54);
-    if (isMadness) {
-      c.fillText('MODE MADNESS • Kills : ' + kills + ' • Streak : x' + streak, CW / 2, CH * 0.62);
+    // Dark blur backdrop
+    c.fillStyle = 'rgba(5, 7, 14, 0.88)';
+    c.fillRect(0, 0, CW, CH);
+
+    // Modal Card
+    const cardX = 44, cardY = 90, cardW = 500, cardH = 435;
+    c.save();
+    c.fillStyle = 'rgba(10, 15, 28, 0.96)';
+    c.strokeStyle = '#00d4ff';
+    c.lineWidth = 2;
+    c.shadowColor = '#00d4ff';
+    c.shadowBlur = 18;
+    c.beginPath();
+    c.roundRect(cardX, cardY, cardW, cardH, 12);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Header Title
+    c.font = 'bold 22px monospace';
+    c.fillStyle = '#00ffff';
+    c.textAlign = 'center';
+    c.fillText('⏸ PAUSE — PARAMÈTRES VISUELS', CW / 2, cardY + 36);
+
+    c.font = '10px monospace';
+    c.fillStyle = '#667799';
+    c.fillText('CLIQUEZ SUR UNE OPTION OU UTILISEZ LES TOUCHES [1] À [5] / [M]', CW / 2, cardY + 58);
+
+    const s = settingsManager.settings;
+
+    const items = [
+      {
+        btn: PAUSE_BUTTONS[0],
+        key: '[1]',
+        label: 'FREEZE FRAME (HIT-STOP IMPACT)',
+        state: s.freezeFrame ? 'ACTIVÉ ⚡' : 'COUPÉ ❌',
+        active: s.freezeFrame
+      },
+      {
+        btn: PAUSE_BUTTONS[1],
+        key: '[2]',
+        label: 'SECOUSSES D\'ÉCRAN (SCREEN SHAKE)',
+        state: s.screenShake ? 'ACTIVÉ 📳' : 'COUPÉ ❌',
+        active: s.screenShake
+      },
+      {
+        btn: PAUSE_BUTTONS[2],
+        key: '[3]',
+        label: 'ÉCLAIRS PLEIN ÉCRAN (FLASHES)',
+        state: s.screenFlash ? 'ACTIVÉ ⚡' : 'COUPÉ ❌',
+        active: s.screenFlash
+      },
+      {
+        btn: PAUSE_BUTTONS[3],
+        key: '[4]',
+        label: 'FLAQUES DE PEINTURE NÉON',
+        state: s.paintSplats ? 'ACTIVÉ 🎨' : 'COUPÉ ❌',
+        active: s.paintSplats
+      },
+      {
+        btn: PAUSE_BUTTONS[4],
+        key: '[5]',
+        label: 'DENSITÉ DES PARTICULES',
+        state: s.particleDensity === 'max' ? 'MAX (1000) ✨' : 'ÉCO (350) 🍃',
+        active: s.particleDensity === 'max'
+      },
+      {
+        btn: PAUSE_BUTTONS[5],
+        key: '[M]',
+        label: 'AUDIO & MUSIQUE PROCÉDURALE',
+        state: sounds.isMuted() ? 'COUPÉ 🔇' : 'ACTIF 🔊',
+        active: !sounds.isMuted()
+      }
+    ];
+
+    for (const it of items) {
+      const b = it.btn;
+      c.fillStyle = it.active ? 'rgba(0, 212, 255, 0.12)' : 'rgba(20, 26, 40, 0.6)';
+      c.strokeStyle = it.active ? '#00d4ff' : '#334460';
+      c.lineWidth = it.active ? 1.5 : 1;
+      c.beginPath();
+      c.roundRect(b.x, b.y, b.w, b.h, 6);
+      c.fill();
+      c.stroke();
+
+      // Key & Label
+      c.textAlign = 'left';
+      c.font = 'bold 11px monospace';
+      c.fillStyle = it.active ? '#ffffff' : '#8899aa';
+      c.fillText(`${it.key} ${it.label}`, b.x + 14, b.y + 22);
+
+      // State pill
+      c.textAlign = 'right';
+      c.font = 'bold 11px monospace';
+      c.fillStyle = it.active ? '#00ffff' : '#ff4466';
+      c.fillText(it.state, b.x + b.w - 14, b.y + 22);
     }
+
+    // Resume button
+    const resBtn = PAUSE_BUTTONS[6];
+    const pulse = 1 + Math.sin(time * 6) * 0.03;
+    c.fillStyle = '#0c243a';
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 2;
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 12;
+    c.beginPath();
+    c.roundRect(resBtn.x, resBtn.y, resBtn.w, resBtn.h, 8);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    c.font = `bold ${13 * pulse}px monospace`;
+    c.fillStyle = '#ffffff';
+    c.textAlign = 'center';
+    c.fillText('▶ REPRENDRE LE JEU [ESPACE / P]', CW / 2, resBtn.y + 27);
+
+    // Footer stats if in madness
+    if (isMadness) {
+      c.font = '10px monospace';
+      c.fillStyle = '#ffd700';
+      c.fillText(`MODE MADNESS • Kills : ${kills} • Streak : x${streak}`, CW / 2, cardY + cardH - 12);
+    }
+
+    c.restore();
   }
 
   public drawWaveTrans(currentLevel: number, wave: number) {

@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { PI2, T, ROWS, COLS, CW } from '../config/constants';
+import { settingsManager } from './SettingsManager';
 
 export interface Particle {
   x: number;
@@ -48,6 +49,9 @@ export class ParticleSystem {
 
   public emit(x: number, y: number, n: number, col: string, o: any = {}) {
     if (this.parts.length >= this.MAX_PARTS) return;
+    if (settingsManager.settings.particleDensity === 'reduced') {
+      n = Math.max(1, Math.round(n * 0.35));
+    }
     const count = Math.min(n, this.MAX_PARTS - this.parts.length);
     const sp = o.speed || 80;
     const sz = o.size || 3;
@@ -77,6 +81,7 @@ export class ParticleSystem {
   }
 
   public addPaintSplat(x: number, y: number, col: string) {
+    if (!settingsManager.settings.paintSplats) return;
     if (this.paintSplats.length >= this.MAX_SPLATS) this.paintSplats.shift();
     this.paintSplats.push({
       x,
@@ -89,11 +94,13 @@ export class ParticleSystem {
   }
 
   public shake(intensity: number, duration: number) {
+    if (!settingsManager.settings.screenShake) return;
     this.shk.i = Math.max(this.shk.i, intensity);
     this.shk.t = Math.max(this.shk.t, duration);
   }
 
   public flash(color: string = '#fff', alpha: number = 0.3) {
+    if (!settingsManager.settings.screenFlash) return;
     this.flsh.c = color;
     this.flsh.a = Math.max(this.flsh.a, alpha);
   }

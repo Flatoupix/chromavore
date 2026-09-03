@@ -14,6 +14,7 @@ import { superItems } from './systems/SuperItems';
 import { badges } from './systems/BadgeSystem';
 import { TouchDeckManager } from './ui/TouchDeck';
 import { Renderer } from './graphics/Renderer';
+import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
 
 class Game {
   private canvas: HTMLCanvasElement;
@@ -89,6 +90,40 @@ class Game {
       }
 
       if (this.state === 'paused') {
+        for (const btn of PAUSE_BUTTONS) {
+          if (cx >= btn.x && cx <= btn.x + btn.w && cy >= btn.y && cy <= btn.y + btn.h) {
+            switch (btn.id) {
+              case 'freezeFrame':
+                settingsManager.toggleFreezeFrame();
+                sounds.play('dot');
+                return;
+              case 'screenShake':
+                settingsManager.toggleScreenShake();
+                sounds.play('dot');
+                return;
+              case 'screenFlash':
+                settingsManager.toggleScreenFlash();
+                sounds.play('dot');
+                return;
+              case 'paintSplats':
+                settingsManager.togglePaintSplats();
+                sounds.play('dot');
+                return;
+              case 'particleDensity':
+                settingsManager.toggleParticleDensity();
+                sounds.play('dot');
+                return;
+              case 'audio':
+                sounds.toggleMute();
+                return;
+              case 'resume':
+                this.state = 'playing';
+                sounds.play('dot');
+                return;
+            }
+          }
+        }
+        // If clicking outside the cards or on resume, resume playing
         this.state = 'playing';
         return;
       }
@@ -147,6 +182,32 @@ class Game {
 
     window.addEventListener('touchend', () => {
       touchStart = null;
+    });
+
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (this.state === 'paused') {
+        if (e.code === 'Digit1' || e.code === 'Numpad1') {
+          settingsManager.toggleFreezeFrame();
+          sounds.play('dot');
+          e.preventDefault();
+        } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
+          settingsManager.toggleScreenShake();
+          sounds.play('dot');
+          e.preventDefault();
+        } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
+          settingsManager.toggleScreenFlash();
+          sounds.play('dot');
+          e.preventDefault();
+        } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
+          settingsManager.togglePaintSplats();
+          sounds.play('dot');
+          e.preventDefault();
+        } else if (e.code === 'Digit5' || e.code === 'Numpad5') {
+          settingsManager.toggleParticleDensity();
+          sounds.play('dot');
+          e.preventDefault();
+        }
+      }
     });
   }
 
@@ -258,6 +319,9 @@ class Game {
     particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
     particles.shake(3, 0.12);
     particles.flash('#00ffff', 0.12);
+    if (settingsManager.settings.freezeFrame) {
+      this.hitlag = Math.max(this.hitlag, 0.035);
+    }
     sounds.play('kill');
   }
 
@@ -661,7 +725,7 @@ class Game {
         this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
         superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore
       );
-      this.renderer.drawPause(this.gameMode === 'madness', this.madnessKills, this.madnessStreak);
+      this.renderer.drawPause(this.gameMode === 'madness', this.madnessKills, this.madnessStreak, this.time);
       return;
     }
 
