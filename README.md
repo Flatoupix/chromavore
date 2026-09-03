@@ -1,12 +1,49 @@
 # ⚡ CHROMAVORE
 
 > **Devour the Light. Outrun the Shadows.**  
-> Un jeu d'arcade rétro-néon nerveux et moderne, inspiré de Pac-Man, jouable directement dans le navigateur sans aucune dépendance.
+> Jeu d'arcade rétro-néon ultra-nerveux, moderne et addictif inspiré de Pac-Man.
 
 [![Jouer en ligne](https://img.shields.io/badge/🎮%20JOUER%20EN%20LIGNE-GitHub%20Pages-00ffcc?style=for-the-badge)](https://flatoupix.github.io/chromavore/)
-[![Version](https://img.shields.io/badge/Release-2.2-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
+[![Architecture](https://img.shields.io/badge/Stack-Vite%20%2B%20TypeScript-646cff?style=for-the-badge&logo=vite)](https://vitejs.dev/)
+[![Version](https://img.shields.io/badge/Release-3.0%20(Modular)-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
 
 👉 **Accès direct au jeu :** **[https://flatoupix.github.io/chromavore/](https://flatoupix.github.io/chromavore/)**
+
+---
+
+## 🏗️ Architecture Moderne (Vite + TypeScript)
+
+Le projet a été entièrement modularisé et typé sous une architecture professionnelle découplée :
+
+```text
+chromavore/
+├── index.html                 # Point d'entrée HTML5 responsive
+├── package.json               # Scripts de build & dépendances
+├── tsconfig.json              # Typage strict TypeScript ESNext
+├── vite.config.ts             # Configuration du bundler pour GitHub Pages
+├── .github/workflows/         # Déploiement continu CI/CD automatique
+│   └── deploy.yml
+└── src/
+    ├── main.ts                # Orchestrateur du jeu & GameLoop
+    ├── config/
+    │   └── constants.ts       # Dimensions, couleurs néon, timings
+    ├── audio/
+    │   └── SoundManager.ts    # Synthétiseur procédural Web Audio
+    ├── levels/
+    │   └── levels.ts          # 4 Labyrinthes, BFS pathfinding & cache offscreen
+    ├── entities/
+    │   ├── Player.ts          # Pac-Man, dash offensif, interpolation
+    │   ├── Enemy.ts           # IA des fantômes (Stalker, Rusher, Orbiter, Phaser, Titan)
+    │   └── Powerups.ts        # Power-ups, chrono & Relique du Vide
+    ├── systems/
+    │   ├── SuperItems.ts      # 5 Super-items avec protection anti-cumul
+    │   ├── ParticleSystem.ts  # Système de particules bridé (anti-lag), popups & splats
+    │   └── BadgeSystem.ts     # Succès & records en localStorage
+    ├── graphics/
+    │   └── Renderer.ts        # Pipeline de rendu Canvas & HUD
+    └── ui/
+        └── TouchDeck.ts       # D-Pad arcade, boutons tactiles & overlay mobile paysage
+```
 
 ---
 
@@ -29,7 +66,7 @@
   - 🔥 **Nitro Jet (Haut-Bas-Haut-Bas / `↑ ↓ ↑ ↓` ou `W S W S`) :** Allume un propulseur de flammes derrière Pac-Man qui brûle toute ombre traversant son sillage.
 - **Enjeu Critique — La Relique du Vide (`☠️ VOID CORE`) :**
   - Des cœurs d'ombre apparaissent régulièrement sur la carte avec alerte radar.
-  - **Si un fantôme l'attrape :** Il mute en **Titan du Vide** et vous inflige **-5s de pénalité de temps** s'il vous percute !
+  - **Si un fantôme l'attrape :** Il mute en **Titan du Vide** et vous inflige **-6s de pénalité de temps** s'il vous percute !
   - **Si Pac-Man l'intercepte avant eux :** Vous pulvérisez la relique, gagnez **+5,000 pts**, **+6.0s de temps** et activez un **Super-Aimant** géant !
 - **Aimants Ultra-Jus & Pluie de Power-ups :** Les aimants apparaissent fréquemment et aspirent les orbes sur un rayon colossal (chaque orbe prolonge le chrono).
 - **Nuées Infinies & Progression de Monde Automatique :**
@@ -61,26 +98,25 @@
 
 ---
 
-## 🚀 Jouer en Local
+## 💻 Développement Local
 
-Aucune installation ni dépendance requise :
-1. Clonez le dépôt :
+1. Clonez le projet :
    ```bash
    git clone git@github.com:Flatoupix/chromavore.git
+   cd chromavore
    ```
-2. Ouvrez `index.html` dans votre navigateur :
+2. Installez les dépendances :
    ```bash
-   open index.html
+   npm install
    ```
-
----
-
-## 🛠️ Stack Technique
-
-- **Architecture :** Fichier unique autonome (`index.html`) contenant le HTML, CSS et JavaScript.
-- **Rendu :** HTML5 Canvas 2D avec pré-rendu offscreen dynamique selon les palettes de chaque niveau.
-- **Audio :** Synthèse procédurale complète Web Audio API (aucun asset externe).
-- **Entrées :** Clavier, Gamepad API, Pointer Events et Touch Events réactifs.
+3. Lancez le serveur de développement avec rechargement à chaud :
+   ```bash
+   npm run dev
+   ```
+4. Construisez la version de production optimisée :
+   ```bash
+   npm run build
+   ```
 
 ---
 
