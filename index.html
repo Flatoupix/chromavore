@@ -360,7 +360,12 @@ function upBGM(dt){
 let iDir={x:0,y:0}, iActive=false;
 const DASH_BTN = {x: CW - 38, y: CH - 38, r: 24};
 
-function setDir(dx,dy){iDir={x:dx,y:dy};iActive=true}
+function setDir(dx,dy){
+  let dName='';
+  if(dx===-1)dName='left';else if(dx===1)dName='right';else if(dy===-1)dName='up';else if(dy===1)dName='down';
+  if(dName)registerInputMotion(dName);
+  iDir={x:dx,y:dy};iActive=true;
+}
 
 addEventListener('keydown',e=>{
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','KeyP','KeyM','KeyE','KeyQ','KeyF','ShiftLeft','ShiftRight','Digit1','Digit2'].includes(e.code))e.preventDefault();
@@ -368,8 +373,6 @@ addEventListener('keydown',e=>{
   if(state==='menu'){
     if(e.code==='Digit1'||e.code==='Numpad1'){gameMode='classic';sfx('dot');return}
     if(e.code==='Digit2'||e.code==='Numpad2'){gameMode='madness';sfx('nova');return}
-    if(e.code==='ArrowLeft'){buildMaze((currentLevel-1+LEVELS.length)%LEVELS.length);renderMazeOff();sfx('dot');return}
-    if(e.code==='ArrowRight'){buildMaze((currentLevel+1)%LEVELS.length);renderMazeOff();sfx('dot');return}
   }
   if(e.code==='ArrowUp'||e.code==='KeyW')setDir(0,-1);
   if(e.code==='ArrowDown'||e.code==='KeyS')setDir(0,1);
@@ -435,32 +438,25 @@ bindTouchDeck();
 let touchS=null, lastTouchT=0;
 
 window.addEventListener('touchstart',e=>{
+  if(e.target.closest && e.target.closest('#touch-deck')) return;
   initAudio();
   touchActivated=true;
   updateDeckVisibility();
-  if(e.target.closest && e.target.closest('#touch-deck')) return;
+  if(e.touches.length>0)touchS={x:e.touches[0].clientX,y:e.touches[0].clientY};
   const t=e.touches[0];
-  touchS={x:t.clientX,y:t.clientY};
+  const rect=canvas.getBoundingClientRect();
+  const cx=(t.clientX-rect.left)*(CW/rect.width);
+  const cy=(t.clientY-rect.top)*(CH/rect.height);
   if(state==='menu'){
-    const rect=canvas.getBoundingClientRect();
-    const cx=(t.clientX-rect.left)*(CW/rect.width);
-    const cy=(t.clientY-rect.top)*(CH/rect.height);
-    if(cy>=CH*0.48&&cy<=CH*0.48+36){
+    if(cy>=CH*0.45&&cy<=CH*0.45+42){
       if(cx>=CW/2-140&&cx<=CW/2-10){gameMode='classic';sfx('dot');return}
       if(cx>=CW/2+10&&cx<=CW/2+140){gameMode='madness';sfx('nova');return}
-    }
-    if(cy>=CH*0.57&&cy<=CH*0.57+32){
-      if(cx<CW/2){buildMaze((currentLevel-1+LEVELS.length)%LEVELS.length);renderMazeOff();sfx('dot');return}
-      else{buildMaze((currentLevel+1)%LEVELS.length);renderMazeOff();sfx('dot');return}
     }
     startGame();return;
   }
   else if(state==='gameover'){startGame();return}
   else if(state==='paused'){state='playing';return}
   
-  const rect=canvas.getBoundingClientRect();
-  const cx=(t.clientX-rect.left)*(CW/rect.width);
-  const cy=(t.clientY-rect.top)*(CH/rect.height);
   if(Math.hypot(cx-DASH_BTN.x, cy-DASH_BTN.y) < DASH_BTN.r+14){
     if(state==='playing')triggerDash();
     return;
@@ -491,13 +487,9 @@ window.addEventListener('click',e=>{
   const cx=(e.clientX-rect.left)*(CW/rect.width);
   const cy=(e.clientY-rect.top)*(CH/rect.height);
   if(state==='menu'){
-    if(cy>=CH*0.48&&cy<=CH*0.48+36){
+    if(cy>=CH*0.45&&cy<=CH*0.45+42){
       if(cx>=CW/2-140&&cx<=CW/2-10){gameMode='classic';sfx('dot');return}
       if(cx>=CW/2+10&&cx<=CW/2+140){gameMode='madness';sfx('nova');return}
-    }
-    if(cy>=CH*0.57&&cy<=CH*0.57+32){
-      if(cx<CW/2){buildMaze((currentLevel-1+LEVELS.length)%LEVELS.length);renderMazeOff();sfx('dot');return}
-      else{buildMaze((currentLevel+1)%LEVELS.length);renderMazeOff();sfx('dot');return}
     }
     startGame();return;
   }
@@ -638,6 +630,235 @@ function triggerItem(){
   if(itmBtn)itmBtn.classList.remove('ready');
 }
 
+// ── MOTION KOMBOS (STREET FIGHTER / WIGGLE MANEUVERS) ──────
+let inputMotionHistory = [];
+let wiggleCd = 0, nitroCd = 0, nitroActive = 0, nitroTrail = [];
+
+function registerInputMotion(dirKey){
+  if(gameMode!=='madness'||state!=='playing')return;
+  const now=performance.now();
+  inputMotionHistory.push({dir:dirKey,time:now});
+  if(inputMotionHistory.length>8)inputMotionHistory.shift();
+  checkKombos(now);
+}
+
+function checkKombos(now){
+  const recent=inputMotionHistory.filter(h=>now-h.time<750);
+  if(recent.length<4)return;
+  const dirs=recent.map(r=>r.dir);
+  const last4=dirs.slice(-4).join('-');
+  
+  // Kombo 1: Wiggle (Left-Right-Left-Right or Right-Left-Right-Left)
+  if((last4==='left-right-left-right'||last4==='right-left-right-left')&&wiggleCd<=0){
+    triggerWiggleBlast();
+    inputMotionHistory=[];
+    return;
+  }
+  // Kombo 2: Nitro (Up-Down-Up-Down or Down-Up-Down-Up)
+  if((last4==='up-down-up-down'||last4==='down-up-down-up')&&nitroCd<=0){
+    triggerNitroBurst();
+    inputMotionHistory=[];
+    return;
+  }
+}
+
+function triggerWiggleBlast(){
+  wiggleCd=3.5;
+  const pp=plPos();
+  sfx('nova');shake(7,0.22);flash('#00ffff',0.3);haptic(35);
+  addPop(pp.x,pp.y-26,'⚡ WIGGLE EMP BLAST!','#00ffff',20);
+  emit(pp.x,pp.y,45,'#00ffff',{speed:180,size:4.5,life:0.55});
+  // Kill nearby ghosts
+  for(const e of enemies){
+    if(e.st!=='dead'&&e.st!=='return'){
+      const ep=ePos(e);
+      if(Math.hypot(ep.x-pp.x,ep.y-pp.y)<T*4.8){
+        killE(e,ep.x,ep.y);
+      }
+    }
+  }
+  // Vacuum all dots within 5.5 tiles
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      if(dotMap[r][c]){
+        const dx=c*T+HALF-pp.x,dy=r*T+HALF-pp.y;
+        if(Math.hypot(dx,dy)<T*5.5)collectAt(c,r);
+      }
+    }
+  }
+}
+
+function triggerNitroBurst(){
+  nitroCd=4.0;
+  nitroActive=3.2;
+  sfx('dash');shake(6,0.2);flash('#ff7700',0.28);haptic(40);
+  const pp=plPos();
+  addPop(pp.x,pp.y-26,'🔥 NITRO FLAME JET!','#ff7700',20);
+}
+
+function upNitroTrail(dt){
+  if(wiggleCd>0)wiggleCd-=dt;
+  if(nitroCd>0)nitroCd-=dt;
+  if(nitroActive>0){
+    nitroActive-=dt;
+    const pp=plPos();
+    nitroTrail.push({x:pp.x,y:pp.y,life:1.6,maxLife:1.6});
+    emit(pp.x,pp.y,2,'#ff7700',{speed:60,size:3,life:0.25});
+  }
+  for(let i=nitroTrail.length-1;i>=0;i--){
+    const tp=nitroTrail[i];
+    tp.life-=dt;
+    if(tp.life<=0)nitroTrail.splice(i,1);
+    else{
+      // Incinerate ghosts touching trail
+      for(const e of enemies){
+        if(e.st!=='dead'&&e.st!=='return'){
+          const ep=ePos(e);
+          if(Math.hypot(ep.x-tp.x,ep.y-tp.y)<T*0.95){
+            killE(e,ep.x,ep.y);
+          }
+        }
+      }
+    }
+  }
+}
+
+function drNitroTrail(c){
+  for(const p of nitroTrail){
+    c.save();
+    const a=p.life/p.maxLife;
+    c.globalAlpha=a*0.75;
+    c.fillStyle='#ff5500';
+    c.shadowColor='#ff2200';c.shadowBlur=14;
+    c.beginPath();c.arc(p.x,p.y,9*a,0,PI2);c.fill();
+    c.restore();
+  }
+}
+
+// ── VOID RELIC (ANTI-GHOST INTERCEPT OBJECTIVE) ─────────────
+let voidRelic = null; // { x, y, timer, maxTimer }
+let voidRelicTimer = 14.0;
+
+function upVoidRelic(dt){
+  if(gameMode!=='madness'||state!=='playing')return;
+  if(!voidRelic){
+    voidRelicTimer-=dt;
+    if(voidRelicTimer<=0){
+      voidRelicTimer=16+Math.random()*8;
+      const pts=[];
+      for(let r=2;r<ROWS-2;r++){
+        for(let c=2;c<COLS-2;c++){
+          if(isWalkable(c,r,false)&&Math.hypot(c*T+HALF-plPos().x,r*T+HALF-plPos().y)>T*5){
+            pts.push({x:c,y:r});
+          }
+        }
+      }
+      if(pts.length){
+        const p=pts[(Math.random()*pts.length)|0];
+        voidRelic={x:p.x,y:p.y,timer:12.0,maxTimer:12.0};
+        sfx('near');shake(5,0.2);flash('#ff0055',0.25);haptic(30);
+        addPop(CW/2,HUD_H+45,'⚠️ VOID CORE DETECTED! INTERCEPT IT!','#ff0055',18);
+      }
+    }
+  } else {
+    voidRelic.timer-=dt;
+    const rx=voidRelic.x*T+HALF,ry=voidRelic.y*T+HALF;
+    emit(rx,ry,2,'#ff0055',{speed:40,size:3,life:0.3});
+    
+    // Check if Pac-Man intercepted it
+    const pp=plPos();
+    if(Math.hypot(pp.x-rx,pp.y-ry)<T*1.1){
+      sfx('nova');shake(9,0.3);flash('#00ffaa',0.4);haptic(50);
+      addPts(5000);
+      madnessTimer=Math.min(45,madnessTimer+6.0);
+      fx.magnet=8.0; // Auto Super-Magnet!
+      addPop(rx,ry-20,'💎 VOID CORE PURGED! +6s & MAGNET!','#00ffaa',20);
+      emit(rx,ry,50,'#00ffaa',{speed:220,size:5,life:0.75});
+      voidRelic=null;
+      return;
+    }
+    
+    // Check if a ghost intercepted it
+    for(const e of enemies){
+      if(e.st!=='dead'&&e.st!=='return'){
+        const ep=ePos(e);
+        if(Math.hypot(ep.x-rx,ep.y-ry)<T*0.9){
+          e.isTitan=true;
+          e.speed=(e.speed||4.5)*1.35;
+          sfx('death');shake(12,0.4);flash('#ff0033',0.5);haptic(60);
+          madnessTimer=Math.max(2,madnessTimer-6.0);
+          addPop(ep.x,ep.y-25,'☠️ GHOST OVERCHARGE! -6s PENALTY','#ff0033',20);
+          emit(rx,ry,50,'#ff0033',{speed:180,size:6,life:0.8});
+          voidRelic=null;
+          return;
+        }
+      }
+    }
+    if(voidRelic.timer<=0)voidRelic=null;
+  }
+}
+
+function drVoidRelic(c){
+  if(!voidRelic)return;
+  const rx=voidRelic.x*T+HALF,ry=voidRelic.y*T+HALF;
+  const pulse=1+Math.sin(time*10)*0.25;
+  c.save();
+  c.fillStyle='#ff0055';c.strokeStyle='#ffffff';c.lineWidth=2;
+  c.shadowColor='#ff0055';c.shadowBlur=22;
+  c.beginPath();c.arc(rx,ry,T*0.44*pulse,0,PI2);c.fill();c.stroke();
+  c.shadowBlur=0;
+  c.font='bold 16px monospace';c.fillStyle='#ffffff';
+  c.textAlign='center';c.textBaseline='middle';
+  c.fillText('☠️',rx,ry);
+  c.restore();
+}
+
+// ── NEON PAINT SPLATTERS & RAMPAGES ────────────────────────
+let paintSplats = [];
+function addPaintSplat(x,y,col){
+  paintSplats.push({x,y,col,r:10+Math.random()*12,life:7.0,maxLife:7.0});
+  if(paintSplats.length>60)paintSplats.shift();
+}
+function upPaintSplats(dt){
+  for(let i=paintSplats.length-1;i>=0;i--){
+    paintSplats[i].life-=dt;
+    if(paintSplats[i].life<=0)paintSplats.splice(i,1);
+  }
+}
+function drPaintSplats(c){
+  for(const p of paintSplats){
+    c.save();
+    c.globalAlpha=(p.life/p.maxLife)*0.32;
+    c.fillStyle=p.col;
+    c.beginPath();c.arc(p.x,p.y,p.r,0,PI2);c.fill();
+    c.restore();
+  }
+}
+
+function checkRampageMilestone(streak){
+  const titles={
+    10:{t:'⚡ KILLING SPREE!',c:'#00ffff'},
+    25:{t:'🔥 RAMPAGE!',c:'#ff7700'},
+    50:{t:'💥 UNSTOPPABLE!',c:'#ff0055'},
+    80:{t:'👑 GODLIKE!',c:'#ffd700'},
+    120:{t:'🌌 TRANSCENDENT!',c:'#ff00ff'},
+    160:{t:'⚡ CHROMA-DEITY!',c:'#ffffff'}
+  };
+  if(titles[streak]){
+    addPop(CW/2,CH*0.38,titles[streak].t,titles[streak].c,26);
+    shake(8,0.25);flash(titles[streak].c,0.3);sfx('hi');haptic(45);
+  }
+}
+
+function warpToLevel(lvlIdx){
+  currentLevel=lvlIdx%LEVELS.length;
+  buildMaze(currentLevel);renderMazeOff();
+  sfx('wave');shake(10,0.4);flash(LEVELS[currentLevel].glowColor,0.5);haptic(50);
+  madnessTimer=Math.min(45,madnessTimer+8.0);
+  addPop(CW/2,CH/2,`🚀 WARP: ${LEVELS[currentLevel].name}! +8s`,LEVELS[currentLevel].glowColor,24);
+  emit(CW/2,CH/2,60,LEVELS[currentLevel].glowColor,{speed:240,size:6,life:0.9});
+}
+
 function spawnMadnessEnemies(count=1){
   const types=['stalker','rusher','orbiter','phaser'];
   const pts=[
@@ -674,6 +895,10 @@ function upMadnessSwarm(dt){
 }
 
 function upActiveEffects(dt){
+  upNitroTrail(dt);
+  upVoidRelic(dt);
+  upPaintSplats(dt);
+  
   if(laserTimer>0){
     laserTimer-=dt;
     const pp=plPos();
@@ -764,6 +989,7 @@ function resetPl(){
   pl.x=SPAWN_CURRENT_X;pl.y=SPAWN_CURRENT_Y;pl.fx=SPAWN_CURRENT_X;pl.fy=SPAWN_CURRENT_Y;pl.t=1;
   pl.dx=0;pl.dy=0;pl.ndx=0;pl.ndy=0;pl.lastDx=1;pl.lastDy=0;
   pl.sq=1;pl.st=1;pl.trail=[];
+  pl.speed=gameMode==='madness'?14.5:P_SPEED;
   invuln=INVULN;iDir={x:0,y:0};iActive=false;
   dashCd=0;dashStreaks=[];
 }
@@ -871,6 +1097,10 @@ function upDash(dt){
 function upPlayer(dt){
   if(iActive){pl.ndx=iDir.x;pl.ndy=iDir.y}
   
+  // Speed boost: 2.6x to 3.5x faster in Madness mode!
+  const baseSpd = gameMode==='madness' ? 14.5 : P_SPEED;
+  pl.speed = nitroActive>0 ? baseSpd*1.35 : baseSpd;
+  
   if(pl.t>=1){
     // At tile center — decide next move
     if(pl.ndx||pl.ndy){
@@ -893,8 +1123,8 @@ function upPlayer(dt){
   
   // Squash & stretch
   const moving=pl.t<1&&(pl.dx||pl.dy);
-  if(moving){pl.ma+=dt*12;
-    pl.sq+=(0.82-pl.sq)*dt*12;pl.st+=(1.18-pl.st)*dt*12;
+  if(moving){pl.ma+=dt*16;
+    pl.sq+=(0.82-pl.sq)*dt*14;pl.st+=(1.18-pl.st)*dt*14;
   }else{pl.sq+=(1-pl.sq)*dt*8;pl.st+=(1-pl.st)*dt*8}
   
   // Trail
@@ -904,8 +1134,9 @@ function upPlayer(dt){
   
   if(invuln>0)invuln-=dt;
   
-  // Magnet
-  if(fx.magnet>0){const r=T*3.5;
+  // Magnet (Extra giant suction radius in Madness!)
+  if(fx.magnet>0){
+    const r=gameMode==='madness' ? T*5.8 : T*3.5;
     for(let row=0;row<ROWS;row++)for(let c=0;c<COLS;c++)
       if(dotMap[row][c]){const dx=c*T+HALF-pp.x,dy=row*T+HALF-pp.y;
         if(Math.sqrt(dx*dx+dy*dy)<r)collectAt(c,row)}
@@ -928,6 +1159,7 @@ function collectAt(x,y){
   
   if(tile===DOT){
     dotMap[y][x]=0;dotsLeft--;
+    if(gameMode==='madness') madnessTimer=Math.min(45,madnessTimer+0.04);
     combo.n++;combo.t=COMBO_DECAY;
     const oldM=combo.m,tier=comboTier();combo.m=CM[tier];
     const pts=10*combo.m;
@@ -1123,19 +1355,22 @@ const PU_PTS=[{x:10,y:8},{x:4,y:14},{x:16,y:14},{x:10,y:4}];
 const PU_TP=['phase','nova','timewarp','magnet'];
 
 function upPowerups(dt){
-  if(!pwup&&state==='playing'){pwupT-=dt;
-    if(pwupT<=0){spawnPU();pwupT=18+Math.random()*12}}
+  if(!pwup&&state==='playing'){
+    pwupT-=dt*(gameMode==='madness'?3.2:1.0);
+    if(pwupT<=0){spawnPU();pwupT=gameMode==='madness'?(5+Math.random()*4):(18+Math.random()*12)}
+  }
   if(pwup){pwup.timer-=dt;if(pwup.timer<=0){pwup=null}
     else{const pp=plPos(),px=pwup.x*T+HALF,py=pwup.y*T+HALF;
-      if(Math.sqrt((pp.x-px)**2+(pp.y-py)**2)<T*.7){collectPU(pwup);pwup=null}}}
+      if(Math.sqrt((pp.x-px)**2+(pp.y-py)**2)<T*.9){collectPU(pwup);pwup=null}}}
   if(fx.phase>0)fx.phase-=dt;if(fx.timewarp>0)fx.timewarp-=dt;if(fx.magnet>0)fx.magnet-=dt;
   upPred(dt);
 }
 
 function spawnPU(){
   const pts=PU_PTS.filter(p=>isWalkable(p.x,p.y,false));if(!pts.length)return;
-  const p=pts[(Math.random()*pts.length)|0],tp=PU_TP[(Math.random()*PU_TP.length)|0];
-  pwup={x:p.x,y:p.y,type:tp,timer:10};
+  const p=pts[(Math.random()*pts.length)|0];
+  const tp=(gameMode==='madness'&&Math.random()<0.65)?'magnet':PU_TP[(Math.random()*PU_TP.length)|0];
+  pwup={x:p.x,y:p.y,type:tp,timer:gameMode==='madness'?12:10};
 }
 
 function collectPU(pu){
@@ -1152,7 +1387,7 @@ function collectPU(pu){
         if(dotMap[ro][c]){const dx=c*T+HALF-px,dy=ro*T+HALF-py;if(Math.sqrt(dx*dx+dy*dy)<r)collectAt(c,ro)}
       emit(px,py,40,'#ffdd33',{speed:200,size:5,life:.8,gravity:100});break;}
     case'timewarp':fx.timewarp=5;break;
-    case'magnet':fx.magnet=6;break;
+    case'magnet':fx.magnet=gameMode==='madness'?8:6;break;
   }
 }
 
@@ -1165,7 +1400,15 @@ function checkCol(){
       if(e.st==='dead'||e.st==='return'||e.st==='spawn')continue;
       const ep=ePos(e),dx=pp.x-ep.x,dy=pp.y-ep.y,d=Math.sqrt(dx*dx+dy*dy);
       if(d<HIT_DIST*1.15){
-        killE(e,ep.x,ep.y);
+        if(e.isTitan){
+          madnessTimer=Math.max(2,madnessTimer-5.0);
+          shake(10,0.3);flash('#ff0033',0.4);sfx('death');haptic(60);
+          addPop(ep.x,ep.y-25,'⚠️ TITAN SMASH! -5s!','#ff0033',20);
+          e.isTitan=false;
+          killE(e,ep.x,ep.y);
+        } else {
+          killE(e,ep.x,ep.y);
+        }
       }
     }
     return;
@@ -1200,6 +1443,14 @@ function killE(e,ex,ey){
   if(gameMode==='madness'){
     madnessKills++;
     madnessStreak++;
+    addPaintSplat(ex,ey,EC[e.type]||'#00ffff');
+    checkRampageMilestone(madnessStreak);
+    
+    // Automatic level progression in Madness mode!
+    if(madnessKills===35&&currentLevel===0)warpToLevel(1);
+    else if(madnessKills===80&&currentLevel===1)warpToLevel(2);
+    else if(madnessKills===140&&currentLevel===2)warpToLevel(3);
+    
     if(madnessKills>bestMadnessKills){
       bestMadnessKills=madnessKills;
       try{localStorage.setItem('chv_madness_hi',bestMadnessKills)}catch(err){}
@@ -1218,6 +1469,15 @@ function killE(e,ex,ey){
       const names={nova:'MEGA NOVA',vortex:'BLACK HOLE',laser:'HYPER BEAMS',cryo:'CRYO SHATTER',tsunami:'LIGHT TSUNAMI'};
       const icons={nova:'💣',vortex:'🕳️',laser:'⚡',cryo:'❄️',tsunami:'👑'};
       unlockItem(it,names[it],icons[it]);
+    }
+    
+    // 14% chance to drop a powerup / magnet right on tile
+    if(Math.random()<0.14&&!pwup){
+      const mx=Math.max(1,Math.min(COLS-2,Math.round(ex/T))), my=Math.max(1,Math.min(ROWS-2,Math.round(ey/T)));
+      if(isWalkable(mx,my,false)){
+        pwup={x:mx,y:my,type:Math.random()<0.65?'magnet':'nova',timer:8};
+        sfx('dot');
+      }
     }
     
     const pts=250*Math.min(madnessStreak,32);
@@ -1259,10 +1519,16 @@ function startGame(mode){
   if(mode)gameMode=mode;
   score=0;dScore=0;lives=3;wave=1;time=0;bestCombo=0;nearMissCount=0;
   combo={n:0,t:0,m:1};pred={on:false,t:0,k:0,warn:false};fx={phase:0,timewarp:0,magnet:0};
-  parts=[];pops=[];pwup=null;pwupT=12+Math.random()*8;
+  parts=[];pops=[];pwup=null;pwupT=8+Math.random()*6;
+  
+  // Always start at Level 1
+  currentLevel=0;
   
   madnessTimer=30.0;madnessKills=0;madnessStreak=0;madnessSpawnTimer=0;
   activeItem=null;vortex=null;laserTimer=0;cryoTimer=0;tsunamiX=-1;
+  voidRelic=null;voidRelicTimer=14.0;
+  paintSplats=[];nitroTrail=[];inputMotionHistory=[];
+  
   const itmBtn=document.getElementById('item-btn');
   if(itmBtn)itmBtn.classList.remove('ready');
   
@@ -1586,20 +1852,19 @@ function drMenu(c){
   c.beginPath();c.roundRect(CW/2+10,my,130,34,6);c.fill();c.stroke();c.shadowBlur=0;
   c.font='bold 11px monospace';c.fillStyle=isMad?'#ff3377':'#8899aa';c.fillText('[2] MADNESS ⚡',CW/2+75,my+21);
   
-  // ── LEVEL SELECTOR ──
+  // ── PROGRESSION NOTICE (NO MANUAL SELECTION) ──
   const ly=CH*0.57;
-  const lvl=LEVELS[currentLevel];
-  c.fillStyle='#090e18';c.strokeStyle=lvl.glowColor;c.lineWidth=1.5;
-  c.beginPath();c.roundRect(CW/2-140,ly,280,32,6);c.fill();c.stroke();
-  c.font='bold 11px monospace';c.fillStyle=lvl.glowColor;
-  c.fillText(`◄  NIVEAU ${currentLevel+1}: ${lvl.name}  ►`,CW/2,ly+20);
+  c.font='bold 11px monospace';c.fillStyle='#00d4ff';c.textAlign='center';
+  c.fillText('4 MONDES NÉON : DÉPART NIVEAU 1 → PROGRESSION AUTOMATIQUE',CW/2,ly+12);
+  c.font='10px monospace';c.fillStyle='#667788';
+  c.fillText('1. The Circuit  ►  2. The Crucible  ►  3. The Matrix  ►  4. The Core',CW/2,ly+28);
   
   // Mode Description Subtitle
   c.font='11px monospace';c.fillStyle='#ffaa00';
   if(isMad){
-    c.fillText('SWARM NON-STOP • PAC-MAN INVINCIBLE • STREAK ITEMS [E]',CW/2,CH*0.66);
+    c.fillText('PAC-MAN 3X PLUS RAPIDE • GAUCHE-DROITE WIGGLE [EMP] • RELIQUES NOIRES',CW/2,CH*0.66);
   } else {
-    c.fillText('SURVIE TACTIQUE • 204 ORBES • MULTI-NIVEAUX NÉON',CW/2,CH*0.66);
+    c.fillText('SURVIE TACTIQUE • 204 ORBES • 4 LABYRINTHES NÉON • DASH & COMBOS',CW/2,CH*0.66);
   }
   
   // Start Prompt
@@ -1608,16 +1873,20 @@ function drMenu(c){
   
   // Controls Guide
   c.font='11px monospace';c.fillStyle='#667788';
-  c.fillText('Flèches / WASD : Move  |  SPACE : Dash Burst',CW/2,CH*0.78);
-  if(isMad) c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item',CW/2,CH*0.82);
-  else c.fillText('P : Pause  |  M : Toggle Audio',CW/2,CH*0.82);
+  c.fillText('Flèches / WASD : Move  |  SPACE : Dash Burst',CW/2,CH*0.77);
+  if(isMad){
+    c.fillText('Kombos : ← → ← → (Wiggle EMP)  |  ↑ ↓ ↑ ↓ (Nitro Jet)',CW/2,CH*0.81);
+    c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item',CW/2,CH*0.85);
+  } else {
+    c.fillText('P : Pause  |  M : Toggle Audio',CW/2,CH*0.81);
+  }
   
   // Records
   c.font='bold 12px monospace';c.fillStyle='#ffd700';
   if(isMad){
-    c.fillText('RECORD MADNESS: '+bestMadnessKills+' FANTÔMES PURGÉS',CW/2,CH*0.88);
+    c.fillText('RECORD MADNESS: '+bestMadnessKills+' FANTÔMES PURGÉS',CW/2,CH*0.90);
   } else {
-    c.fillText('RECORD CLASSIQUE: '+hi+' PTS',CW/2,CH*0.88);
+    c.fillText('RECORD CLASSIQUE: '+hi+' PTS',CW/2,CH*0.90);
   }
 }
 
@@ -1729,17 +1998,21 @@ function render(){
   if(state==='menu'){drMenu(ctx);return}
   if(state==='paused'){
     ctx.save();ctx.translate(shk.x,HUD_H+shk.y);ctx.drawImage(mOff,0,0);
-    drDots(ctx);drPowerup(ctx);drEnemies(ctx);drPlayer(ctx);ctx.restore();
+    drPaintSplats(ctx);drDots(ctx);drPowerup(ctx);drEnemies(ctx);drPlayer(ctx);ctx.restore();
     drHUD(ctx);drPause(ctx);return;
   }
   if(state==='waveTrans'){drHUD(ctx);drWaveTrans(ctx);drParts(ctx);drBadgeBanner(ctx);return}
   drHUD(ctx);
   if(state==='gameover'){ctx.save();ctx.translate(shk.x,HUD_H+shk.y);ctx.drawImage(mOff,0,0);
-    drDots(ctx);drEnemies(ctx);ctx.restore();drGameOver(ctx);drBadgeBanner(ctx);return}
+    drPaintSplats(ctx);drDots(ctx);drEnemies(ctx);ctx.restore();drGameOver(ctx);drBadgeBanner(ctx);return}
   
   ctx.save();ctx.translate(shk.x,HUD_H+shk.y);
-  ctx.drawImage(mOff,0,0);drDots(ctx);drPowerup(ctx);
+  ctx.drawImage(mOff,0,0);
+  drPaintSplats(ctx);
+  drDots(ctx);drPowerup(ctx);
   drDashStreaks(ctx);
+  drNitroTrail(ctx);
+  drVoidRelic(ctx);
   
   // ── ACTIVE MADNESS VISUAL EFFECTS ──
   // Laser beams
@@ -1791,6 +2064,16 @@ function render(){
     ctx.fillText(txt,CW/2,ROWS*T/2);ctx.shadowBlur=0;
   }
   ctx.restore();
+  
+  // Danger edge vignette in Madness when timer < 8s
+  if(gameMode==='madness'&&state==='playing'&&madnessTimer<8.0){
+    const vAlpha=(0.28+Math.sin(time*14)*0.22)*(1-madnessTimer/8.0);
+    ctx.save();
+    ctx.fillStyle=`rgba(255,0,50,${vAlpha})`;
+    ctx.fillRect(0,0,CW,8);ctx.fillRect(0,CH-8,CW,8);
+    ctx.fillRect(0,0,8,CH);ctx.fillRect(CW-8,0,8,CH);
+    ctx.restore();
+  }
   
   // On-screen Touch Dash Button
   if(state==='playing'){

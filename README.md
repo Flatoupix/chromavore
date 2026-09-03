@@ -4,7 +4,7 @@
 > Un jeu d'arcade rétro-néon nerveux et moderne, inspiré de Pac-Man, jouable directement dans le navigateur sans aucune dépendance.
 
 [![Jouer en ligne](https://img.shields.io/badge/🎮%20JOUER%20EN%20LIGNE-GitHub%20Pages-00ffcc?style=for-the-badge)](https://flatoupix.github.io/chromavore/)
-[![Version](https://img.shields.io/badge/Release-2.0-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
+[![Version](https://img.shields.io/badge/Release-2.1-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
 
 👉 **Accès direct au jeu :** **[https://flatoupix.github.io/chromavore/](https://flatoupix.github.io/chromavore/)**
 
@@ -18,15 +18,24 @@
   - **Niveau 2 — The Crucible (Synthwave Sunset) :** Arène centrale ouverte où convergent les fantômes et les power-ups.
   - **Niveau 3 — The Matrix (Toxic Matrix) :** Couloirs denses avec **4 tunnels de téléportation** (horizontaux + verticaux).
   - **Niveau 4 — The Core (Solar Flare) :** Architecture asymétrique pour les experts, vitesse accrue et ombres en meute.
-- **Progression cinématique :** Dissolution et reconstruction lumineuse des murs lors du passage au niveau suivant.
-- **Sélecteur de Niveau :** Choisissez votre monde de départ directement sur l'écran d'accueil (`◄ NIVEAU ►`).
+- **Progression linéaire :** Départ systématique au Niveau 1. Chaque vague terminée déclenche la dissolution et la reconstruction cinématique vers le niveau suivant.
 
 ### 2. ⚡ Mode MADNESS (Chroma-Frenzy Carnage)
-- **Pac-Man Divin Invincible :** Vous êtes invincible et auréolé d'une lumière arc-en-ciel.
-- **Super-Dash en Rafale :** Cooldown réduit à **0.6s** pour fendre les lignes de fantômes à vitesse supersonique.
-- **Nuées Infinies :** Les fantômes jaillissent sans discontinuer depuis le centre et les tunnels et se ruent droit sur vous.
-- **Chrono Overdrive :** Vous commencez avec 30 secondes. Chaque fantôme écrasé ajoute **+0.35s** au chronomètre.
-- **5 Super-Items Utilisables Débloqués par Streaks :**
+- **Pac-Man Hyper-Sonique :** Vitesse de base multipliée par près de **3x** (`14.5` vs `5.5`) !
+- **Kombos Gestuels (Mouvements de combat arcade) :**
+  - ⚡ **Wiggle (Gauche-Droite-Gauche-Droite / `← → ← →` ou `A D A D`) :** Déclenche un **EMP Shockwave** qui désintègre les fantômes environnants et aspire tous les orbes à 5.5 cases !
+  - 🔥 **Nitro Jet (Haut-Bas-Haut-Bas / `↑ ↓ ↑ ↓` ou `W S W S`) :** Allume un propulseur de flammes derrière Pac-Man qui brûle toute ombre traversant son sillage.
+- **Enjeu Critique — La Relique du Vide (`☠️ VOID CORE`) :**
+  - Des cœurs d'ombre apparaissent régulièrement sur la carte avec alerte radar.
+  - **Si un fantôme l'attrape :** Il mute en **Titan du Vide** et vous inflige **-6s de pénalité de temps** s'il vous percute !
+  - **Si Pac-Man l'intercepte avant eux :** Vous pulvérisez la relique, gagnez **+5,000 pts**, **+6.0s de temps** et activez un **Super-Aimant** géant !
+- **Aimants Ultra-Jus & Pluie de Power-ups :** Les aimants apparaissent fréquemment et aspirent les orbes sur un rayon colossal (chaque orbe prolonge le chrono).
+- **Nuées Infinies & Progression de Monde Automatique :**
+  - 35 Kills -> Téléportation vers **The Crucible** (+8s)
+  - 80 Kills -> Téléportation vers **The Matrix** (+8s)
+  - 140 Kills -> Téléportation vers **The Core** (+8s)
+- **Titres de Rampage & Traces Néon :** Les fantômes écrasés laissent des éclaboussures de peinture néon lumineuses sur le sol, accompagnées d'annonces de rampage (*Killing Spree*, *Rampage*, *Unstoppable*, *Godlike*, *Chroma-Deity*).
+- **5 Super-Items Utilisables Débloqués par Streaks (`E` / `Shift` / Bouton `💣`) :**
   - 💣 **15 Kills — MEGA NOVA :** Onde de choc 360° atomisant tous les fantômes de l'écran.
   - 🕳️ **35 Kills — BLACK HOLE (VORTEX) :** Singularité gravitationnelle aspirant tous les fantômes au centre.
   - ⚡ **60 Kills — HYPER BEAMS :** 4 faisceaux lasers continus en croix pulvérisant tout sur les 4 axes.
@@ -41,8 +50,10 @@
 | :--- | :--- | :--- | :--- |
 | **Déplacement** | Flèches ou `WASD` / `ZQSD` | Stick gauche ou D-Pad | D-Pad arcade tactile ou Swipe |
 | **Dash (Fonce en avant)** | **`Espace`** | Touche `A`, `X` ou Gâchettes | Bouton arcade `⚡DASH` ou Double-Tap |
+| **Kombo Wiggle (EMP Blast)** | `← → ← →` ou `A D A D` | D-Pad Gauche/Droite rapide | Wiggle rapide sur D-Pad |
+| **Kombo Nitro (Flammes)** | `↑ ↓ ↑ ↓` ou `W S W S` | D-Pad Haut/Bas rapide | Wiggle vertical sur D-Pad |
 | **Utiliser Super-Item (Madness)** | **`E`**, `Shift`, `Q`, `F` | Touche `B`, `Y` | Bouton arcade tactile `💣 ITEM` |
-| **Changer de Mode / Niveau** | Touches `1`, `2` / Flèches sur Menu | D-Pad sur Menu | Boutons interactifs sur l'écran d'accueil |
+| **Changer de Mode (Menu)** | Touches `1`, `2` | D-Pad sur Menu | Boutons interactifs sur l'écran d'accueil |
 | **Pause** | **`P`** ou **`Échap`** | Bouton Start / Menu | Bouton `⏸ PAUSE` |
 | **Couper / Activer Son** | **`M`** | — | Bouton `🔊 AUDIO` |
 | **Démarrer / Rejouer** | `Espace` ou `Entrée` | Touche `A` | Tape sur l'écran ou bouton Dash |
@@ -56,7 +67,7 @@ Aucune installation ni dépendance requise :
    ```bash
    git clone git@github.com:Flatoupix/chromavore.git
    ```
-2. Ouvrez `index.html` dans n'importe quel navigateur moderne :
+2. Ouvrez `index.html` dans votre navigateur :
    ```bash
    open index.html
    ```
