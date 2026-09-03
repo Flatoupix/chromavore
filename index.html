@@ -50,20 +50,62 @@ canvas{
   display:flex;
 }
 
-.dpad{position:relative;width:120px;height:120px}
-.dbtn{
-  position:absolute;width:38px;height:38px;background:#18052e;border:2px solid #ff007f;
-  border-radius:10px;color:#00f0ff;font-size:15px;font-weight:bold;
-  display:flex;justify-content:center;align-items:center;touch-action:none;
-  box-shadow:0 0 10px rgba(255, 0, 127, 0.35);outline:none;-webkit-tap-highlight-color:transparent;
-  transition:background 0.08s, transform 0.08s, box-shadow 0.08s;
+#joystick-zone {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
-.dbtn:active,.dbtn.pressed{background:#ff007f;color:#ffffff;transform:scale(0.92);box-shadow:0 0 20px #ff007f}
-.d-up{top:0;left:41px}
-.d-down{bottom:0;left:41px}
-.d-left{top:41px;left:0}
-.d-right{top:41px;right:0}
-.d-center{top:41px;left:41px;background:#120324;border:1px solid #3d0a48;border-radius:6px;pointer-events:none}
+#joystick-base {
+  position: relative;
+  width: 106px;
+  height: 106px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(26, 6, 46, 0.88) 0%, rgba(10, 2, 22, 0.96) 100%);
+  border: 2px solid #00f0ff;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4), inset 0 0 14px rgba(0, 240, 255, 0.18);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  touch-action: none;
+}
+.j-guide {
+  position: absolute;
+  font-size: 10px;
+  color: rgba(0, 240, 255, 0.45);
+  font-family: monospace;
+  font-weight: bold;
+  pointer-events: none;
+}
+.j-up { top: 5px; left: 50%; transform: translateX(-50%); }
+.j-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.j-left { left: 6px; top: 50%; transform: translateY(-50%); }
+.j-right { right: 6px; top: 50%; transform: translateY(-50%); }
+
+#joystick-knob {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ff007f 0%, #880044 100%);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 16px #ff007f, 0 0 6px #00f0ff;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.08s ease-out;
+}
+#joystick-zone.active #joystick-knob {
+  transition: none;
+  background: radial-gradient(circle, #00f0ff 0%, #ff007f 100%);
+  box-shadow: 0 0 22px #00f0ff, 0 0 12px #ff007f;
+}
 
 .util-btns{display:flex;flex-direction:column;gap:8px;align-items:center}
 .ubtn{
@@ -114,18 +156,14 @@ canvas{
     pointer-events:none;padding:10px 24px env(safe-area-inset-bottom, 10px);
     justify-content:space-between;align-items:flex-end;
   }
-  #touch-deck .dpad,#touch-deck .action-btns,#touch-deck .util-btns{pointer-events:auto}
+  #touch-deck #joystick-zone,#touch-deck .action-btns,#touch-deck .util-btns{pointer-events:auto}
   .util-btns{
     position:absolute;top:10px;right:18px;flex-direction:row;gap:8px;
   }
   .ubtn{font-size:9px;padding:4px 8px;background:rgba(17,22,36,0.85);backdrop-filter:blur(4px)}
-  .dpad{width:105px;height:105px;margin-bottom:6px}
-  .dbtn{width:34px;height:34px;font-size:13px;background:rgba(13,21,39,0.85);backdrop-filter:blur(4px)}
-  .d-up{top:0;left:35px}
-  .d-down{bottom:0;left:35px}
-  .d-left{top:35px;left:0}
-  .d-right{top:35px;right:0}
-  .d-center{top:35px;left:35px}
+  #joystick-zone{width:98px;height:98px;margin-bottom:6px}
+  #joystick-base{width:88px;height:88px}
+  #joystick-knob{width:36px;height:36px}
   .action-btns{margin-bottom:6px}
   #dash-btn{width:56px;height:56px;background:radial-gradient(circle,rgba(0,77,102,0.9) 0%,rgba(12,22,38,0.9) 100%)}
   #item-btn{width:48px;height:48px}
@@ -286,12 +324,14 @@ canvas{
     </div>
   </div>
   <div id="touch-deck">
-    <div class="dpad">
-      <button class="dbtn d-up" id="btn-up" aria-label="Up">▲</button>
-      <button class="dbtn d-left" id="btn-left" aria-label="Left">◄</button>
-      <div class="dbtn d-center"></div>
-      <button class="dbtn d-right" id="btn-right" aria-label="Right">►</button>
-      <button class="dbtn d-down" id="btn-down" aria-label="Down">▼</button>
+    <div id="joystick-zone">
+      <div id="joystick-base">
+        <span class="j-guide j-up">▲</span>
+        <span class="j-guide j-down">▼</span>
+        <span class="j-guide j-left">◄</span>
+        <span class="j-guide j-right">►</span>
+        <div id="joystick-knob"></div>
+      </div>
     </div>
     <div class="util-btns">
       <button class="ubtn" id="btn-pause">⏸ PAUSE</button>
