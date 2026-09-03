@@ -45,6 +45,10 @@ class Game {
   public deathT: number = 0;
   public waveT: number = 0;
   public hitlag: number = 0;
+  public loopCount: number = 0;
+  public get loopSpeedMultiplier(): number {
+    return 1 + this.loopCount * 0.10;
+  }
 
   // Madness mode specific
   public madnessTimer: number = 30.0;
@@ -495,6 +499,8 @@ class Game {
     this.madnessStreak = 0;
     this.madnessSpawnTimer = 0;
 
+    this.loopCount = 0;
+
     superItems.resetAll();
     input.resetKombos();
     input.nextDir = { x: 0, y: 0 };
@@ -504,7 +510,7 @@ class Game {
 
     // Always start at Level 1 (The Circuit)
     this.maze.build(0);
-    this.player.reset(this.gameMode === 'madness', this.maze);
+    this.player.reset(this.gameMode === 'madness', this.maze, this.loopSpeedMultiplier);
 
     if (this.gameMode === 'madness') {
       this.enemyManager.enemies = [];
@@ -514,7 +520,7 @@ class Game {
       sounds.play('powerup');
       particles.addPop(CW / 2, HUD_H + 50, '⚡ MADNESS SWARM ⚡', '#ffd700', 22);
     } else {
-      this.enemyManager.spawnClassic(4);
+      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier);
       this.state = 'ready';
       this.readyT = 2.0;
       sounds.play('start');
@@ -1125,13 +1131,14 @@ class Game {
         this.deathT -= dt;
         if (this.deathT <= 0) {
           if (this.lives > 0 && (this.gameMode !== 'madness' || this.madnessTimer > 0)) {
-            this.player.reset(this.gameMode === 'madness', this.maze);
+            const spdMult = this.loopSpeedMultiplier;
+            this.player.reset(this.gameMode === 'madness', this.maze, spdMult);
             if (this.gameMode === 'madness') {
               this.state = 'playing';
               this.player.invuln = 2.0;
               particles.addPop(CW / 2, HUD_H + 32, '⚡ BOUCLIER ACTIF (2s)', '#00ffff', 14);
             } else {
-              this.enemyManager.spawnClassic(4);
+              this.enemyManager.spawnClassic(4, spdMult);
               this.state = 'ready';
               this.readyT = 1.5;
             }
@@ -1144,10 +1151,20 @@ class Game {
       case 'waveTrans':
         this.waveT -= dt;
         if (this.waveT <= 0) {
-          const nextLvl = (this.maze.currentLevel + 1) % LEVELS.length;
+          const completedLvl = this.maze.currentLevel;
+          // When completing Level 5 (index 4), loop back to Level 1 and increase speed by +10%!
+          if (completedLvl === LEVELS.length - 1) {
+            this.loopCount++;
+            particles.addPop(CW / 2, (ROWS * T) / 2, `👑 BOUCLE ${this.loopCount + 1} ! (+${this.loopCount * 10}% VITESSE)`, '#ffd700', 24);
+            particles.flash('#ffd700', 0.45);
+            particles.shake(12, 0.4);
+            sounds.play('powerup');
+          }
+          const nextLvl = (completedLvl + 1) % LEVELS.length;
+          const speedMult = this.loopSpeedMultiplier;
           this.maze.build(nextLvl);
-          this.enemyManager.spawnClassic(4);
-          this.player.reset(false, this.maze);
+          this.enemyManager.spawnClassic(4, speedMult);
+          this.player.reset(false, this.maze, speedMult);
           this.state = 'ready';
           this.readyT = 1.8;
         }
@@ -1192,7 +1209,8 @@ class Game {
         this.score, this.dScore, this.lives,
         this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
         superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
-        powerups.fx.overdrive
+        powerups.fx.overdrive,
+        this.loopCount
       );
       this.renderer.drawPause(this.gameMode === 'madness', this.madnessKills, this.madnessStreak, this.time);
       return;
@@ -1253,12 +1271,13 @@ class Game {
       this.score, this.dScore, this.lives,
       this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
       superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
-      powerups.fx.overdrive
+      powerups.fx.overdrive,
+      this.loopCount
     );
     badges.drawBanner(this.renderer.ctx);
 
     if (this.state === 'waveTrans') {
-      this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave);
+      this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount);
     }
 
     if (this.state === 'gameover') {
@@ -1267,7 +1286,8 @@ class Game {
       const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore('madness'));
       this.renderer.drawGameOver(
         this.pendingMode === 'madness',
-        this.pendingScore, isNewHi, this.pendingKills, this.pendingStreak, topMadness, bCount, this.time
+        this.pendingScore, isNewHi, this.pendingKills, this.pendingStreak, topMadness, bCount, this.time,
+        this.loopCount
       );
     }
   }

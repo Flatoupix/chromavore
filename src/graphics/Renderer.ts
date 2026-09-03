@@ -149,7 +149,8 @@ export class Renderer {
     wave: number,
     combo: { n: number; t: number; m: number },
     hi: number,
-    overdriveTimer: number = 0
+    overdriveTimer: number = 0,
+    loopCount: number = 0
   ) {
     const c = this.ctx;
     c.fillStyle = '#0a0a12';
@@ -271,8 +272,8 @@ export class Renderer {
     const lvl = LEVELS[currentLevel];
     c.font = 'bold 12px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 8;
     c.fillText('LVL ' + (currentLevel + 1) + ': ' + lvl.name, CW / 2, 30); c.shadowBlur = 0;
-    c.font = 'bold 11px monospace'; c.fillStyle = '#aaa';
-    c.fillText('WAVE ' + wave, CW / 2, 46);
+    c.font = 'bold 11px monospace'; c.fillStyle = loopCount > 0 ? '#ffd700' : '#aaa';
+    c.fillText(loopCount > 0 ? `WAVE ${wave} • BOUCLE ${loopCount + 1} (+${loopCount * 10}%)` : 'WAVE ' + wave, CW / 2, 46);
 
     // Lives
     c.textAlign = 'right';
@@ -483,7 +484,7 @@ export class Renderer {
     c.shadowBlur = 0;
   }
 
-  public drawGameOver(isMadness: boolean, score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number) {
+  public drawGameOver(isMadness: boolean, score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number, loopCount: number = 0) {
     const c = this.ctx;
     c.fillStyle = 'rgba(5,5,10,0.85)'; c.fillRect(0, 0, CW, CH);
     const cy = CH * 0.30;
@@ -496,9 +497,12 @@ export class Renderer {
       c.font = '14px monospace'; c.fillStyle = '#888'; c.fillText('RECORD KILLS : ' + bestMadnessKills, CW / 2, cy + 106);
     } else {
       c.font = 'bold 20px monospace'; c.fillStyle = '#ffd700'; c.fillText('SCORE : ' + score, CW / 2, cy + 48);
+      if (loopCount > 0) {
+        c.font = 'bold 13px monospace'; c.fillStyle = '#00ffcc'; c.fillText(`BOUCLE ATTEINTE : ${loopCount + 1} (+${loopCount * 10}% VIT)`, CW / 2, cy + 74);
+      }
       if (hi) {
         c.font = 'bold 16px monospace'; c.fillStyle = '#ff44ff'; c.shadowColor = '#ff44ff'; c.shadowBlur = 10;
-        if (Math.sin(time * 6) > 0) c.fillText('★ NOUVEAU RECORD ! ★', CW / 2, cy + 76); c.shadowBlur = 0;
+        if (Math.sin(time * 6) > 0) c.fillText('★ NOUVEAU RECORD ! ★', CW / 2, cy + (loopCount > 0 ? 98 : 76)); c.shadowBlur = 0;
       }
     }
 
@@ -1034,13 +1038,18 @@ export class Renderer {
     c.restore();
   }
 
-  public drawWaveTrans(currentLevel: number, wave: number) {
+  public drawWaveTrans(currentLevel: number, wave: number, loopCount: number = 0) {
     const c = this.ctx;
     const lvl = LEVELS[currentLevel % LEVELS.length];
     c.font = 'bold 36px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 25;
-    c.textAlign = 'center'; c.fillText('NIVEAU ' + (currentLevel + 1), CW / 2, CH / 2 - 10); c.shadowBlur = 0;
-    c.font = 'bold 18px monospace'; c.fillStyle = '#ffffff'; c.fillText(lvl.name, CW / 2, CH / 2 + 24);
-    c.font = '13px monospace'; c.fillStyle = '#888'; c.fillText('+' + (1000 * (wave - 1)) + ' WAVE BONUS', CW / 2, CH / 2 + 50);
+    c.textAlign = 'center'; c.fillText('NIVEAU ' + (currentLevel + 1), CW / 2, CH / 2 - 12); c.shadowBlur = 0;
+    c.font = 'bold 18px monospace'; c.fillStyle = '#ffffff'; c.fillText(lvl.name, CW / 2, CH / 2 + 20);
+    c.font = '13px monospace'; c.fillStyle = '#888'; c.fillText('+' + (1000 * (wave - 1)) + ' WAVE BONUS', CW / 2, CH / 2 + 46);
+    if (loopCount > 0) {
+      c.font = 'bold 15px monospace'; c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 10;
+      c.fillText(`🌀 BOUCLE ${loopCount + 1} : VITESSE +${loopCount * 10}% !`, CW / 2, CH / 2 + 72);
+      c.shadowBlur = 0;
+    }
   }
 
   public drawDangerVignette(madnessTimer: number, time: number) {

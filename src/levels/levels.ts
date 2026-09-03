@@ -183,13 +183,17 @@ export class MazeManager {
   }
 
   public isWalkable(c: number, r: number, isEnemy: boolean = false): boolean {
-    if (r < 0 || r >= ROWS) return false;
-    if (c < 0 || c >= COLS) {
-      const wrappedC = ((c % COLS) + COLS) % COLS;
-      const row = this.map[r];
+    const ir = Math.floor(r);
+    const ic = Math.floor(c);
+    if (ir < 0 || ir >= ROWS) return false;
+    if (ic < 0 || ic >= COLS) {
+      const wrappedC = ((ic % COLS) + COLS) % COLS;
+      const row = this.map[ir];
       return !!row && (row[wrappedC] === TUNNEL || row[wrappedC] === EMPTY || row[wrappedC] === DOT);
     }
-    const v = this.map[r][c];
+    const row = this.map[ir];
+    if (!row) return false;
+    const v = row[ic];
     if (v === WALL) return false;
     if (v === DOOR) return isEnemy;
     if (v === VOID) return false;
@@ -197,13 +201,15 @@ export class MazeManager {
   }
 
   public findNearestWalkable(c: number, r: number, isEnemy: boolean = false): { x: number; y: number } {
-    if (this.isWalkable(c, r, isEnemy)) return { x: c, y: r };
+    const ic = Math.floor(c);
+    const ir = Math.floor(r);
+    if (this.isWalkable(ic, ir, isEnemy)) return { x: ic, y: ir };
     for (let dist = 1; dist <= 8; dist++) {
       for (let dy = -dist; dy <= dist; dy++) {
         for (let dx = -dist; dx <= dist; dx++) {
           if (Math.abs(dx) === dist || Math.abs(dy) === dist) {
-            const tx = (c + dx + COLS) % COLS;
-            const ty = r + dy;
+            const tx = ((ic + dx) % COLS + COLS) % COLS;
+            const ty = ir + dy;
             if (this.isWalkable(tx, ty, isEnemy)) {
               return { x: tx, y: ty };
             }

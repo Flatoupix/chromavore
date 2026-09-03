@@ -27,8 +27,10 @@ export interface Ghost {
 
 export class EnemyManager {
   public enemies: Ghost[] = [];
+  public speedMultiplier: number = 1.0;
 
-  public spawnClassic(count: number = 4) {
+  public spawnClassic(count: number = 4, speedMult: number = 1.0) {
+    this.speedMultiplier = speedMult;
     this.enemies = [];
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
     for (let i = 0; i < count; i++) {
@@ -43,7 +45,7 @@ export class EnemyManager {
         dx: 0,
         dy: -1,
         st: 'spawn',
-        speed: E_SPEED * (tp === 'rusher' ? 1.25 : tp === 'orbiter' ? 1.08 : 1.0),
+        speed: E_SPEED * (tp === 'rusher' ? 1.25 : tp === 'orbiter' ? 1.08 : 1.0) * this.speedMultiplier,
         delay: i * 1.5,
         fl: 0,
         nm: false,
@@ -151,7 +153,7 @@ export class EnemyManager {
         // Returned to ghost house
         if (e.st === 'return' && e.x >= 9 && e.x <= 11 && e.y >= 9 && e.y <= 11) {
           e.st = 'active';
-          e.speed = E_SPEED;
+          e.speed = E_SPEED * (e.type === 'rusher' ? 1.25 : e.type === 'orbiter' ? 1.08 : 1.0) * this.speedMultiplier;
           e.isTitan = false;
         }
         this.decideNextStep(e, maze, plPos);

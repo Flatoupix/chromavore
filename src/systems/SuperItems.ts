@@ -2,7 +2,7 @@
 //  CHROMAVORE — SUPER-ITEMS SYSTEM (ANTI-STACKING & BALANCED)
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, ROWS, COLS, T, PI2, EC } from '../config/constants';
+import { CW, ROWS, COLS, T, HALF, PI2, EC } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { progression } from './ProgressionSystem';
@@ -194,13 +194,22 @@ export class SuperItemManager {
         }
       }
 
-      // Physical suction of ghosts with STRICT WALL COLLISION
+      // Physical suction of ghosts with STRICT WALL COLLISION & GRID INTEGRITY
       for (const e of enemies) {
         if (e.st === 'dead' || e.st === 'return' || e.st === 'spawn') continue;
 
         // Current real position of ghost in pixels
-        const curX = (e.fx + (e.x - e.fx) * e.t) * T + T / 2;
-        const curY = (e.fy + (e.y - e.fy) * e.t) * T + T / 2;
+        let fx_ = e.fx, fy_ = e.fy, tx = e.x, ty = e.y;
+        if (Math.abs(tx - fx_) > COLS / 2) {
+          if (tx > fx_) fx_ += COLS;
+          else tx += COLS;
+        }
+        const t = Math.min(e.t, 1);
+        let curX = (fx_ + (tx - fx_) * t) * T + HALF;
+        let curY = (fy_ + (ty - fy_) * t) * T + HALF;
+        if (curX < 0) curX += COLS * T;
+        if (curX >= COLS * T) curX -= COLS * T;
+
         const dx = vX - curX;
         const dy = vY - curY;
         const dist = Math.hypot(dx, dy);
@@ -217,7 +226,10 @@ export class SuperItemManager {
             life: 0.55
           });
 
-          // Kill ghost (triggers points, sound, streak, and ghost return)
+          // Clean integer reset of ghost coordinates and kill
+          e.x = e.fx = 10;
+          e.y = e.fy = 10;
+          e.t = 1;
           onKillGhost(e, curX, curY);
           particles.emit(curX, curY, 25, '#ff00ff', { speed: 120, size: 4, life: 0.5 });
           particles.shake(5, 0.2);
@@ -225,46 +237,30 @@ export class SuperItemManager {
         } else if (dist < vRadius) {
           // Gravitational pull magnitude (stronger closer to singularity)
           const normDist = dist / vRadius;
-          const pullSpeed = (1 - normDist) * (vLvl >= 2 ? 150 : 105) * dt;
-          const pullDirX = (dx / dist) * pullSpeed;
-          const pullDirY = (dy / dist) * pullSpeed;
+          const pullSpeed = (1 - normDist) * (vLvl >= 2 ? 4.5 : 3.0);
 
-          // Check walls before moving: walls remain 100% solid obstacles!
-          let canMoveX = true;
-          let canMoveY = true;
+          // Dot product between ghost heading and vector toward vortex
+          const headingX = e.dx;
+          const headingY = e.dy;
+          const toVortexX = dx / dist;
+          const toVortexY = dy / dist;
+          const dot = headingX * toVortexX + headingY * toVortexY;
 
-          if (maze) {
-            // Predict next tile in X
-            const checkX = curX + pullDirX + Math.sign(pullDirX) * (T * 0.38);
-            const tileX = Math.floor(checkX / T);
-            const currentTileY = Math.floor(curY / T);
-            if (!maze.isWalkable(tileX, currentTileY, true)) {
-              canMoveX = false; // Solid wall in X!
-            }
-
-            // Predict next tile in Y
-            const checkY = curY + pullDirY + Math.sign(pullDirY) * (T * 0.38);
-            const tileY = Math.floor(checkY / T);
-            const currentTileX = Math.floor(curX / T);
-            if (!maze.isWalkable(currentTileX, tileY, true)) {
-              canMoveY = false; // Solid wall in Y!
-            }
+          if (dot > 0.05) {
+            // Ghost is heading towards the vortex: accelerate progress along corridor!
+            e.t += dt * pullSpeed;
+            if (e.t > 1) e.t = 1;
+          } else if (dot < -0.35 && normDist < 0.65) {
+            // Gravity overcomes ghost: reverse it towards the singularity inside the corridor!
+            const tmpX = e.x; e.x = e.fx; e.fx = tmpX;
+            const tmpY = e.y; e.y = e.fy; e.fy = tmpY;
+            e.dx = -e.dx; e.dy = -e.dy;
+            e.t = Math.max(0, 1 - e.t);
           }
 
-          // Apply displacement only where there is no solid wall
-          const moveX = canMoveX ? pullDirX : 0;
-          const moveY = canMoveY ? pullDirY : 0;
-
-          if (moveX !== 0 || moveY !== 0) {
-            e.fx += moveX / T;
-            e.x += moveX / T;
-            e.fy += moveY / T;
-            e.y += moveY / T;
-
-            // Spiral particle trail on ghost as it gets pulled
-            if (Math.random() < 0.25) {
-              particles.emit(curX, curY, 1, '#bb44ff', { speed: 40, size: 2, life: 0.2 });
-            }
+          // Spiral particle trail on ghost as it gets pulled
+          if (Math.random() < 0.25) {
+            particles.emit(curX, curY, 1, '#bb44ff', { speed: 40, size: 2, life: 0.2 });
           }
         }
       }

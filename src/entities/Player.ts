@@ -38,7 +38,7 @@ export class Player {
   public dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number }[] = [];
   public invuln: number = 2;
 
-  public reset(isMadness: boolean, maze?: MazeManager) {
+  public reset(isMadness: boolean, maze?: MazeManager, speedMult: number = 1.0) {
     let sx = 10, sy = 16;
     if (maze && !maze.isWalkable(sx, sy, false)) {
       let found = false;
@@ -63,7 +63,7 @@ export class Player {
     this.sq = 1;
     this.st = 1;
     this.trail = [];
-    this.speed = isMadness ? P_MADNESS_SPEED : P_SPEED;
+    this.speed = (isMadness ? P_MADNESS_SPEED : P_SPEED) * speedMult;
     this.invuln = 2.0;
     this.dashCd = 0;
     this.dashStreaks = [];
