@@ -62,7 +62,7 @@ export const PI_: Record<string, string> = {
   phase: '◇',
   nova: '✦',
   timewarp: '◎',
-  magnet: '🛡️',
+  magnet: '◈',
   overdrive: '⚡'
 };
 

@@ -636,6 +636,18 @@ class Game {
               }
             }
           }
+
+          // Kill frightened & frozen ghosts in Force Field radius
+          for (const e of this.enemyManager.enemies) {
+            if ((e.st === 'flee' || e.frozen) && e.st !== 'dead' && e.st !== 'return') {
+              const ep = this.enemyManager.getPos(e);
+              const dist = Math.hypot(pp.x - ep.x, pp.y - ep.y);
+              if (dist < r) {
+                particles.emit(ep.x, ep.y, 18, '#ff007f', { speed: 140, size: 4, life: 0.45 });
+                this.onKillGhost(e, ep.x, ep.y);
+              }
+            }
+          }
         }
 
         // Overdrive: Zero cooldown & electric sparks
