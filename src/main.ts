@@ -571,10 +571,14 @@ class Game {
       particles.addPaintSplat(ex, ey, e.isTitan ? '#ff0055' : '#00ffff');
       this.checkRampageMilestone(this.madnessStreak);
 
-      // Automatic level progression in Madness mode!
+      // Automatic level progression in Madness mode across all 5 levels!
       if (this.madnessKills === 35 && this.maze.currentLevel === 0) this.warpToLevel(1);
       else if (this.madnessKills === 80 && this.maze.currentLevel === 1) this.warpToLevel(2);
       else if (this.madnessKills === 140 && this.maze.currentLevel === 2) this.warpToLevel(3);
+      else if (this.madnessKills === 210 && this.maze.currentLevel === 3) this.warpToLevel(4);
+      else if (this.madnessKills > 300 && (this.madnessKills - 300) % 100 === 0) {
+        this.warpToLevel((this.maze.currentLevel + 1) % LEVELS.length);
+      }
 
       badges.saveMadnessKills(this.madnessKills);
       this.madnessTimer = Math.min(45, this.madnessTimer + 0.35);

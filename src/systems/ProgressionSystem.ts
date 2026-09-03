@@ -28,7 +28,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: '⚡',
     threshold: 5,
     category: 'movement',
-    command: 'ESPACE ou DOUBLE-TAP',
+    command: 'ESPACE ou BOUTON ⚡',
     desc: 'Téléportation offensive de 3 cases à travers les fantômes avec taillade'
   },
   {
@@ -105,7 +105,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: '⚡',
     threshold: 1000,
     category: 'movement',
-    command: 'ESPACE ou DOUBLE-TAP',
+    command: 'ESPACE ou BOUTON ⚡',
     desc: 'Portée augmentée à 4 cases, recharge -25% et onde de choc étourdissante à l\'arrivée'
   },
   {

@@ -2,7 +2,7 @@
 //  CHROMAVORE — PLAYER ENTITY & OFFENSIVE DASH
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, ROWS, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_SPEED } from '../config/constants';
+import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_SPEED } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
@@ -336,90 +336,97 @@ export class Player {
     }
     c.globalAlpha = 1;
 
-    // Body
-    c.save();
-    c.translate(pp.x, pp.y);
-    const faceAngle = (this.dx || this.dy) ? Math.atan2(this.dy, this.dx) : Math.atan2(this.lastDy, this.lastDx);
-    c.rotate(faceAngle);
-    if (this.dx || this.dy) c.scale(this.st, this.sq);
-    if (this.invuln > 0 && Math.sin(time * 16) > 0) c.globalAlpha = 0.4;
-    c.shadowColor = isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff');
-    c.shadowBlur = isGodMode ? 22 : 12;
-    const mouth = Math.abs(Math.sin(this.ma)) * 0.7;
-    c.fillStyle = isGodMode ? '#ffffff' : C_PLAYER;
-    c.beginPath();
-    c.arc(0, 0, P_RAD, mouth, PI2 - mouth);
-    c.lineTo(0, 0);
-    c.fill();
-    c.shadowBlur = 0;
-
-    // God Mode x32 Radiant Aura & Star Crown
-    if (isGodMode) {
+    // Body & Aura rendering (with seamless dual-edge wrap for tunnels)
+    const renderPlayer = (ox: number = 0) => {
       c.save();
-      const auraPulse = 1 + Math.sin(time * 12) * 0.15;
-      c.strokeStyle = '#00ffff';
-      c.shadowColor = '#00ffff';
-      c.shadowBlur = 24;
-      c.lineWidth = 3;
+      c.translate(pp.x + ox, pp.y);
+      const faceAngle = (this.dx || this.dy) ? Math.atan2(this.dy, this.dx) : Math.atan2(this.lastDy, this.lastDx);
+      c.rotate(faceAngle);
+      if (this.dx || this.dy) c.scale(this.st, this.sq);
+      if (this.invuln > 0 && Math.sin(time * 16) > 0) c.globalAlpha = 0.4;
+      c.shadowColor = isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff');
+      c.shadowBlur = isGodMode ? 22 : 12;
+      const mouth = Math.abs(Math.sin(this.ma)) * 0.7;
+      c.fillStyle = isGodMode ? '#ffffff' : C_PLAYER;
       c.beginPath();
-      c.arc(0, 0, (P_RAD + 7) * auraPulse, 0, PI2);
-      c.stroke();
+      c.arc(0, 0, P_RAD, mouth, PI2 - mouth);
+      c.lineTo(0, 0);
+      c.fill();
+      c.shadowBlur = 0;
 
-      c.strokeStyle = '#ffd700';
-      c.shadowColor = '#ffd700';
-      c.shadowBlur = 16;
-      c.lineWidth = 2;
-      for (let i = 0; i < 6; i++) {
-        const a = time * 4 + (i * PI2) / 6;
-        const r1 = P_RAD + 7;
-        const r2 = P_RAD + 13 + Math.sin(time * 10 + i) * 3;
+      // God Mode x32 Radiant Aura & Star Crown
+      if (isGodMode) {
+        c.save();
+        const auraPulse = 1 + Math.sin(time * 12) * 0.15;
+        c.strokeStyle = '#00ffff';
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 24;
+        c.lineWidth = 3;
         c.beginPath();
-        c.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
-        c.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+        c.arc(0, 0, (P_RAD + 7) * auraPulse, 0, PI2);
         c.stroke();
+
+        c.strokeStyle = '#ffd700';
+        c.shadowColor = '#ffd700';
+        c.shadowBlur = 16;
+        c.lineWidth = 2;
+        for (let i = 0; i < 6; i++) {
+          const a = time * 4 + (i * PI2) / 6;
+          const r1 = P_RAD + 7;
+          const r2 = P_RAD + 13 + Math.sin(time * 10 + i) * 3;
+          c.beginPath();
+          c.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+          c.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+          c.stroke();
+        }
+        c.restore();
       }
-      c.restore();
-    }
 
-    // Dash Ring
-    const maxCd = isMadness ? DASH_MADNESS_CD : DASH_CD;
-    if (this.dashCd > 0) {
-      const ringAngle = (1 - this.dashCd / maxCd) * PI2;
-      c.save();
-      c.strokeStyle = isMadness ? 'rgba(255,180,0,0.75)' : 'rgba(0,255,255,0.45)';
-      c.lineWidth = 2.5;
-      c.beginPath();
-      c.arc(0, 0, P_RAD + 4, -Math.PI / 2, -Math.PI / 2 + ringAngle);
-      c.stroke();
-      c.restore();
-    } else {
-      const pulse = 0.3 + Math.sin(time * 8) * 0.2;
-      c.save();
-      c.strokeStyle = isMadness ? '#ffd700' : `rgba(0,255,255,${pulse})`;
-      c.shadowColor = isMadness ? '#ffd700' : '#00ffff';
-      c.shadowBlur = 8;
-      c.lineWidth = 1.8;
-      c.beginPath();
-      c.arc(0, 0, P_RAD + 4, 0, PI2);
-      c.stroke();
-      c.restore();
-    }
+      // Dash Ring
+      const maxCd = isMadness ? DASH_MADNESS_CD : DASH_CD;
+      if (this.dashCd > 0) {
+        const ringAngle = (1 - this.dashCd / maxCd) * PI2;
+        c.save();
+        c.strokeStyle = isMadness ? 'rgba(255,180,0,0.75)' : 'rgba(0,255,255,0.45)';
+        c.lineWidth = 2.5;
+        c.beginPath();
+        c.arc(0, 0, P_RAD + 4, -Math.PI / 2, -Math.PI / 2 + ringAngle);
+        c.stroke();
+        c.restore();
+      } else {
+        const pulse = 0.3 + Math.sin(time * 8) * 0.2;
+        c.save();
+        c.strokeStyle = isMadness ? '#ffd700' : `rgba(0,255,255,${pulse})`;
+        c.shadowColor = isMadness ? '#ffd700' : '#00ffff';
+        c.shadowBlur = 8;
+        c.lineWidth = 1.8;
+        c.beginPath();
+        c.arc(0, 0, P_RAD + 4, 0, PI2);
+        c.stroke();
+        c.restore();
+      }
 
-    // Invulnerability shield
-    if (this.invuln > 0) {
-      c.save();
-      c.strokeStyle = 'rgba(0,255,255,0.85)';
-      c.shadowColor = '#00ffff';
-      c.shadowBlur = 16;
-      c.lineWidth = 2;
-      c.setLineDash([4, 3]);
-      c.beginPath();
-      c.arc(0, 0, P_RAD + 6, time * 12, time * 12 + PI2);
-      c.stroke();
-      c.restore();
-    }
+      // Invulnerability shield
+      if (this.invuln > 0) {
+        c.save();
+        c.strokeStyle = 'rgba(0,255,255,0.85)';
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 16;
+        c.lineWidth = 2;
+        c.setLineDash([4, 3]);
+        c.beginPath();
+        c.arc(0, 0, P_RAD + 6, time * 12, time * 12 + PI2);
+        c.stroke();
+        c.restore();
+      }
 
-    c.restore();
+      c.restore();
+    };
+
+    renderPlayer(0);
+    if (pp.x < P_RAD * 2) renderPlayer(CW);
+    else if (pp.x > CW - P_RAD * 2) renderPlayer(-CW);
+
     c.globalAlpha = 1;
   }
 }

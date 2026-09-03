@@ -2,7 +2,7 @@
 //  CHROMAVORE — ENEMY GHOSTS & AI LOGIC
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, ROWS, EC, PI, PI2, E_SPEED } from '../config/constants';
+import { T, HALF, COLS, ROWS, CW, EC, PI, PI2, E_SPEED } from '../config/constants';
 import { MazeManager } from '../levels/levels';
 
 export interface Ghost {
@@ -158,20 +158,19 @@ export class EnemyManager {
   }
 
   private decideNextStep(e: Ghost, maze: MazeManager, plPos: { x: number; y: number }) {
-    const isPhaser = e.type === 'phaser' && e.st !== 'return';
     const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
     const valid = dirs.filter(d => {
       // Prevent immediate 180 reverse unless trapped
-      if (d.x === -e.dx && d.y === -e.dy && dirs.some(o => (o.x !== d.x || o.y !== d.y) && maze.isWalkable(this.wrapX(e.x + o.x), e.y + o.y, true, isPhaser))) {
+      if (d.x === -e.dx && d.y === -e.dy && dirs.some(o => (o.x !== d.x || o.y !== d.y) && maze.isWalkable(this.wrapX(e.x + o.x), e.y + o.y, true))) {
         return false;
       }
-      return maze.isWalkable(this.wrapX(e.x + d.x), e.y + d.y, true, isPhaser);
+      return maze.isWalkable(this.wrapX(e.x + d.x), e.y + d.y, true);
     });
 
     if (valid.length === 0) {
       // Reverse
       const rev = { x: -e.dx, y: -e.dy };
-      if (maze.isWalkable(this.wrapX(e.x + rev.x), e.y + rev.y, true, isPhaser)) {
+      if (maze.isWalkable(this.wrapX(e.x + rev.x), e.y + rev.y, true)) {
         valid.push(rev);
       }
     }
@@ -193,6 +192,9 @@ export class EnemyManager {
       target = { x: target.x + e.dx * 3, y: target.y + e.dy * 3 };
     } else if (e.type === 'orbiter') {
       target = { x: (target.x + 5) % COLS, y: (target.y + 4) % ROWS };
+    } else if (e.type === 'phaser') {
+      // Phantom Stalker: smart ambush flanking AI, strictly respecting maze corridors
+      target = { x: (target.x - e.dx * 2 + COLS) % COLS, y: Math.max(1, Math.min(ROWS - 2, target.y - e.dy * 2)) };
     }
 
     let bestDir = valid[0];
@@ -244,49 +246,59 @@ export class EnemyManager {
 
       c.globalAlpha = alpha;
       const r = T * (e.isTitan ? 0.48 : 0.38);
-      c.fillStyle = col;
-      c.shadowColor = col;
-      c.shadowBlur = ret ? 4 : e.isTitan ? 20 : 10;
 
-      if (!ret) {
-        c.beginPath();
-        c.arc(ep.x, ep.y - 2, r, PI, 0);
-        const segW = (r * 2) / 4, wa = 3;
-        for (let i = 0; i < 4; i++) {
-          const sx = ep.x - r + i * segW, ex = sx + segW, my = ep.y + r - 2;
-          c.quadraticCurveTo(sx + segW / 2, my + wa * Math.sin(time * 8 + i * 2), ex, my - wa * 0.3);
+      const renderGhost = (ox: number = 0) => {
+        const gx = ep.x + ox;
+        const gy = ep.y;
+        c.globalAlpha = alpha;
+        c.fillStyle = col;
+        c.shadowColor = col;
+        c.shadowBlur = ret ? 4 : e.isTitan ? 20 : 10;
+
+        if (!ret) {
+          c.beginPath();
+          c.arc(gx, gy - 2, r, PI, 0);
+          const segW = (r * 2) / 4, wa = 3;
+          for (let i = 0; i < 4; i++) {
+            const sx = gx - r + i * segW, ex = sx + segW, my = gy + r - 2;
+            c.quadraticCurveTo(sx + segW / 2, my + wa * Math.sin(time * 8 + i * 2), ex, my - wa * 0.3);
+          }
+          c.fill();
         }
+        c.shadowBlur = 0;
+
+        // Eyes
+        const eo = r * 0.28, er = r * 0.28, pr = er * 0.55;
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.arc(gx - eo, gy - 3, er, 0, PI2);
+        c.arc(gx + eo, gy - 3, er, 0, PI2);
         c.fill();
-      }
-      c.shadowBlur = 0;
 
-      // Eyes
-      const eo = r * 0.28, er = r * 0.28, pr = er * 0.55;
-      c.fillStyle = '#fff';
-      c.beginPath();
-      c.arc(ep.x - eo, ep.y - 3, er, 0, PI2);
-      c.arc(ep.x + eo, ep.y - 3, er, 0, PI2);
-      c.fill();
+        const pd = pr * 0.5;
+        c.fillStyle = e.st === 'flee' ? '#ff0000' : '#111';
+        c.beginPath();
+        c.arc(gx - eo + e.dx * pd, gy - 3 + e.dy * pd, pr, 0, PI2);
+        c.arc(gx + eo + e.dx * pd, gy - 3 + e.dy * pd, pr, 0, PI2);
+        c.fill();
 
-      const pd = pr * 0.5;
-      c.fillStyle = e.st === 'flee' ? '#ff0000' : '#111';
-      c.beginPath();
-      c.arc(ep.x - eo + e.dx * pd, ep.y - 3 + e.dy * pd, pr, 0, PI2);
-      c.arc(ep.x + eo + e.dx * pd, ep.y - 3 + e.dy * pd, pr, 0, PI2);
-      c.fill();
+        // Frozen crystal overlay
+        if (e.frozen) {
+          c.save();
+          c.fillStyle = 'rgba(160,240,255,0.7)';
+          c.strokeStyle = '#ffffff';
+          c.lineWidth = 1.5;
+          c.shadowColor = '#aaffff';
+          c.shadowBlur = 12;
+          c.fillRect(gx - r - 1, gy - r - 2, r * 2 + 2, r * 2 + 4);
+          c.strokeRect(gx - r - 1, gy - r - 2, r * 2 + 2, r * 2 + 4);
+          c.restore();
+        }
+      };
 
-      // Frozen crystal overlay
-      if (e.frozen) {
-        c.save();
-        c.fillStyle = 'rgba(160,240,255,0.7)';
-        c.strokeStyle = '#ffffff';
-        c.lineWidth = 1.5;
-        c.shadowColor = '#aaffff';
-        c.shadowBlur = 12;
-        c.fillRect(ep.x - r - 1, ep.y - r - 2, r * 2 + 2, r * 2 + 4);
-        c.strokeRect(ep.x - r - 1, ep.y - r - 2, r * 2 + 2, r * 2 + 4);
-        c.restore();
-      }
+      renderGhost(0);
+      if (ep.x < r * 2) renderGhost(CW);
+      else if (ep.x > CW - r * 2) renderGhost(-CW);
 
       c.globalAlpha = 1;
     }
