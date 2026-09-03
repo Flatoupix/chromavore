@@ -120,6 +120,10 @@ class Game {
                 this.state = 'playing';
                 sounds.play('dot');
                 return;
+              case 'home':
+                this.state = 'menu';
+                sounds.play('dot');
+                return;
             }
           }
         }
@@ -623,25 +627,12 @@ class Game {
           const r = isMadness ? T * 6.5 : T * 4.5;
           const pp = this.player.getPos();
 
-          // 1. Vacuum dots
+          // Vacuum dots in radius
           for (let row = 0; row < ROWS; row++) {
             for (let c = 0; c < COLS; c++) {
               if (this.maze.dotMap[row][c]) {
                 const dx = c * T + HALF - pp.x, dy = row * T + HALF - pp.y;
                 if (Math.hypot(dx, dy) < r) this.onCollectDot(c, row);
-              }
-            }
-          }
-
-          // 2. Kill frightened & frozen ghosts in Force Field radius!
-          for (const e of this.enemyManager.enemies) {
-            if ((e.st === 'flee' || e.frozen) && e.st !== 'dead' && e.st !== 'return') {
-              const ep = this.enemyManager.getPos(e);
-              const dist = Math.hypot(pp.x - ep.x, pp.y - ep.y);
-              if (dist < r) {
-                // Force Field devours frightened ghosts!
-                particles.emit(ep.x, ep.y, 18, '#ff007f', { speed: 140, size: 4, life: 0.45 });
-                this.onKillGhost(e, ep.x, ep.y);
               }
             }
           }

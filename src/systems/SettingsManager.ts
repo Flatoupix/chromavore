@@ -13,7 +13,7 @@ export interface GameSettings {
 }
 
 export interface PauseButtonRect {
-  id: 'freezeFrame' | 'screenShake' | 'screenFlash' | 'crtScanlines' | 'particleDensity' | 'audio' | 'resume';
+  id: 'freezeFrame' | 'screenShake' | 'screenFlash' | 'crtScanlines' | 'particleDensity' | 'audio' | 'resume' | 'home';
   x: number;
   y: number;
   w: number;
@@ -21,13 +21,14 @@ export interface PauseButtonRect {
 }
 
 export const PAUSE_BUTTONS: PauseButtonRect[] = [
-  { id: 'freezeFrame', x: 74, y: 175, w: 440, h: 36 },
-  { id: 'screenShake', x: 74, y: 220, w: 440, h: 36 },
-  { id: 'screenFlash', x: 74, y: 265, w: 440, h: 36 },
-  { id: 'crtScanlines', x: 74, y: 310, w: 440, h: 36 },
+  { id: 'freezeFrame',     x: 74, y: 175, w: 440, h: 36 },
+  { id: 'screenShake',     x: 74, y: 220, w: 440, h: 36 },
+  { id: 'screenFlash',     x: 74, y: 265, w: 440, h: 36 },
+  { id: 'crtScanlines',    x: 74, y: 310, w: 440, h: 36 },
   { id: 'particleDensity', x: 74, y: 355, w: 440, h: 36 },
-  { id: 'audio', x: 74, y: 400, w: 440, h: 36 },
-  { id: 'resume', x: 154, y: 460, w: 280, h: 44 }
+  { id: 'audio',           x: 74, y: 400, w: 440, h: 36 },
+  { id: 'resume',          x: 154, y: 460, w: 195, h: 44 },
+  { id: 'home',            x: 359, y: 460, w: 135, h: 44 },
 ];
 
 const STORAGE_KEY = 'chv_visual_settings';

@@ -211,7 +211,7 @@ export class Player {
       }
 
       const px = nx * T + HALF, py = ny * T + HALF;
-      particles.emit(px, py, 6, isOverdrive ? '#00ffcc' : (hasForceField ? '#ff007f' : '#00ffff'), { speed: 80, size: 3, life: 0.35 });
+      particles.emit(px, py, 6, isOverdrive ? '#00ffcc' : '#00ffff', { speed: 80, size: 3, life: 0.35 });
     }
 
     if (dashed === 0) {
@@ -236,19 +236,14 @@ export class Player {
       if (e.st !== 'dead' && e.st !== 'return') {
         const ep = { x: (e.fx + (e.x - e.fx) * e.t) * T + HALF, y: (e.fy + (e.y - e.fy) * e.t) * T + HALF };
         const d = distToSegment(ep.x, ep.y, startPos.x, startPos.y, endPos.x, endPos.y);
-
         if (d < T * 1.2) {
-          onKillGhost(e, ep.x, ep.y);
-        } else if (hasForceField && (e.st === 'flee' || e.frozen) && d < T * 3.8) {
-          // Force Field vacuums frightened ghosts towards Pac-Man's dash and slays them!
-          particles.emit(ep.x, ep.y, 16, '#ff007f', { speed: 120, size: 4, life: 0.4 });
           onKillGhost(e, ep.x, ep.y);
         }
       }
     }
 
     particles.emit(startPos.x, startPos.y, 16, isOverdrive ? '#00ffcc' : '#00e5ff', { speed: 130, size: 4, life: 0.45 });
-    particles.emit(endPos.x, endPos.y, 20, isOverdrive ? '#00ffcc' : (hasForceField ? '#ff007f' : '#ffffff'), { speed: 150, size: 4.5, life: 0.45 });
+    particles.emit(endPos.x, endPos.y, 20, isOverdrive ? '#00ffcc' : '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
     particles.shake(isOverdrive ? 3 : 4, 0.15);
     particles.flash(isOverdrive ? '#00ffcc' : '#00e5ff', 0.22);
     sounds.play('dash');

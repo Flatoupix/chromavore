@@ -608,11 +608,27 @@ export class Renderer {
     c.fill();
     c.stroke();
     c.shadowBlur = 0;
-
     c.font = `bold ${13 * pulse}px monospace`;
     c.fillStyle = '#ffffff';
     c.textAlign = 'center';
-    c.fillText('▶ REPRENDRE LE JEU [ESPACE / P]', CW / 2, resBtn.y + 27);
+    c.fillText('▶ REPRENDRE [P]', resBtn.x + resBtn.w / 2, resBtn.y + 27);
+
+    // Home button
+    const homeBtn = PAUSE_BUTTONS[7];
+    c.fillStyle = '#1a0a20';
+    c.strokeStyle = '#ff007f';
+    c.lineWidth = 2;
+    c.shadowColor = '#ff007f';
+    c.shadowBlur = 10;
+    c.beginPath();
+    c.roundRect(homeBtn.x, homeBtn.y, homeBtn.w, homeBtn.h, 8);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+    c.font = 'bold 12px monospace';
+    c.fillStyle = '#ff007f';
+    c.textAlign = 'center';
+    c.fillText('🏠 ACCUEIL', homeBtn.x + homeBtn.w / 2, homeBtn.y + 27);
 
     // Footer stats if in madness
     if (isMadness) {
