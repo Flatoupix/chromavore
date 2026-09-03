@@ -3,6 +3,11 @@
 > **Devour the Light. Outrun the Shadows.**  
 > Un jeu d'arcade rétro-néon nerveux et moderne, inspiré de Pac-Man, jouable directement dans le navigateur sans aucune dépendance.
 
+[![Jouer en ligne](https://img.shields.io/badge/🎮%20JOUER%20EN%20LIGNE-GitHub%20Pages-00ffcc?style=for-the-badge)](https://flatoupix.github.io/chromavore/)
+[![Version](https://img.shields.io/badge/Release-2.0-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
+
+👉 **Accès direct au jeu :** **[https://flatoupix.github.io/chromavore/](https://flatoupix.github.io/chromavore/)**
+
 ---
 
 ## 🌟 Modes de Jeu
@@ -44,7 +49,7 @@
 
 ---
 
-## 🚀 Lancer le jeu
+## 🚀 Jouer en Local
 
 Aucune installation ni dépendance requise :
 1. Clonez le dépôt :
