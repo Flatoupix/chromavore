@@ -176,6 +176,11 @@ export class Renderer {
         c.shadowColor = '#00ffcc'; c.shadowBlur = 8;
         c.fillText(`⚡ NO-CD (${overdriveTimer.toFixed(1)}s)`, 12, 50);
         c.shadowBlur = 0;
+      } else if (combo.m >= 32) {
+        c.font = 'bold 10px monospace'; c.fillStyle = '#00ffff';
+        c.shadowColor = '#00ffff'; c.shadowBlur = 10;
+        c.fillText('⚡ x32 INVINCIBLE ⚡', 12, 50);
+        c.shadowBlur = 0;
       } else if (combo.m > 1) {
         c.font = 'bold 10px monospace'; c.fillStyle = '#ff00ff';
         c.fillText('COMBO x' + combo.m, 12, 50);
@@ -278,14 +283,15 @@ export class Renderer {
     // Multiplier & Combo Gauge
     if (combo.m > 1) {
       const tier = getComboTier(combo.n);
-      const pulse = 1 + Math.sin(time * 8) * 0.1;
-      const sz = (16 + tier * 3) * pulse;
+      const isGod = combo.m >= 32;
+      const pulse = 1 + Math.sin(time * (isGod ? 14 : 8)) * (isGod ? 0.18 : 0.1);
+      const sz = (16 + tier * 2.5) * pulse;
       c.font = `bold ${sz}px monospace`;
-      c.fillStyle = CC[tier];
-      c.shadowColor = CC[tier];
-      c.shadowBlur = 10;
+      c.fillStyle = isGod ? (Math.sin(time * 16) > 0 ? '#00ffff' : '#ffd700') : CC[tier];
+      c.shadowColor = isGod ? '#00ffff' : CC[tier];
+      c.shadowBlur = isGod ? 18 : 10;
       c.textAlign = 'right';
-      c.fillText('x' + combo.m, CW - 15, 46);
+      c.fillText(isGod ? '⚡ x32 INVINCIBLE ⚡' : 'x' + combo.m, CW - 15, 46);
       c.shadowBlur = 0;
 
       // Decay Progress Bar

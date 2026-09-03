@@ -526,6 +526,13 @@ class Game {
           this.onKillGhost(e, ep.x, ep.y);
         } else if (powerups.fx.phase > 0) {
           continue;
+        } else if (this.combo.m >= 32) {
+          // x32 GOD MODE INVINCIBLE: Devour ghost on contact!
+          this.onKillGhost(e, ep.x, ep.y);
+          particles.flash('#00ffff', 0.25);
+          particles.shake(6, 0.2);
+          particles.addPop(ep.x, ep.y - 15, '💥 x32 ANNIHILATION !', '#00ffff', 18);
+          sounds.play('pellet');
         } else {
           // Pac-Man is MORTAL in Madness mode!
           this.playerDie();
@@ -588,6 +595,12 @@ class Game {
           particles.flash(CC[tier], 0.15);
           if (this.combo.m >= 8) badges.unlock('combo8');
           if (this.combo.m >= 16) badges.unlock('combo16');
+          if (this.combo.m >= 32) {
+            sounds.play('powerup');
+            particles.flash('#00ffff', 0.35);
+            particles.shake(8, 0.25);
+            particles.addPop(px, py - 36, '👑 x32 GOD MODE (INVINCIBLE) ! 👑', '#00ffff', 20);
+          }
         }
       }
 
@@ -959,7 +972,7 @@ class Game {
       this.renderer.drawDots(this.maze, this.time);
       powerups.draw(this.renderer.ctx, this.time);
       this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn);
-      this.player.draw(this.renderer.ctx, this.time, this.gameMode === 'madness');
+      this.player.draw(this.renderer.ctx, this.time, this.gameMode === 'madness', this.combo.m >= 32);
       this.renderer.ctx.restore();
 
       this.renderer.drawHUD(
@@ -987,7 +1000,7 @@ class Game {
     superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
 
     this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn);
-    this.player.draw(this.renderer.ctx, this.time, this.gameMode === 'madness');
+    this.player.draw(this.renderer.ctx, this.time, this.gameMode === 'madness', this.combo.m >= 32);
 
     // Overlays
     this.renderer.drawOverlays(powerups.fx, particles.flsh, this.player.getPos(), this.time);

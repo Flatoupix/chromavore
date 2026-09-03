@@ -67,9 +67,9 @@ export const PI_: Record<string, string> = {
 };
 
 // Combo settings
-export const CT = [0, 5, 12, 25, 50];
-export const CM = [1, 2, 4, 8, 16];
-export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff44ff'];
+export const CT = [0, 5, 12, 25, 50, 90];
+export const CM = [1, 2, 4, 8, 16, 32];
+export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff00aa', '#00ffff'];
 export const COMBO_DECAY = 1.8;
 
 export function getComboTier(n: number): number {
