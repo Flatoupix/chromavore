@@ -9,55 +9,72 @@
 <title>CHROMAVORE</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;background:#05050a;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
-body{display:flex;justify-content:center;align-items:center;font-family:monospace}
-#game-wrap{display:flex;flex-direction:column;justify-content:center;align-items:center;width:100%;height:100%;position:relative}
-canvas{display:block;border-radius:4px;box-shadow:0 0 20px rgba(0,0,0,0.8)}
+html,body{
+  width:100%;height:100%;height:100dvh;overflow:hidden;
+  background:#05050a;touch-action:none;user-select:none;
+  -webkit-user-select:none;overscroll-behavior:none;
+}
+body{
+  display:flex;justify-content:center;align-items:center;
+  font-family:monospace;background:#05050a;
+}
+#game-wrap{
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  width:100vw;height:100vh;height:100dvh;position:fixed;inset:0;
+  overflow:hidden;background:radial-gradient(circle at center,#090e1c 0%,#05050a 100%);
+  padding:env(safe-area-inset-top, 4px) env(safe-area-inset-right, 4px) env(safe-area-inset-bottom, 4px) env(safe-area-inset-left, 4px);
+}
+canvas{
+  display:block;border-radius:6px;
+  box-shadow:0 0 25px rgba(0,0,0,0.9), 0 0 10px rgba(0,180,255,0.15);
+  max-width:100vw;object-fit:contain;flex-shrink:0;
+}
 
 /* Mobile Touch Deck */
 #touch-deck{
   display:none;
   width:100%;
-  max-width:480px;
-  height:160px;
+  max-width:520px;
+  height:135px;
   justify-content:space-between;
   align-items:center;
-  padding:8px 16px;
+  padding:4px 14px env(safe-area-inset-bottom, 6px);
   box-sizing:border-box;
   z-index:20;
+  flex-shrink:0;
 }
 #touch-deck.active{
   display:flex;
 }
 
-.dpad{position:relative;width:130px;height:130px}
+.dpad{position:relative;width:120px;height:120px}
 .dbtn{
-  position:absolute;width:42px;height:42px;background:#0d1527;border:2px solid #00b4ff;
-  border-radius:10px;color:#00ffff;font-size:16px;font-weight:bold;
+  position:absolute;width:38px;height:38px;background:#0d1527;border:2px solid #00b4ff;
+  border-radius:10px;color:#00ffff;font-size:15px;font-weight:bold;
   display:flex;justify-content:center;align-items:center;touch-action:none;
   box-shadow:0 0 8px rgba(0,180,255,0.25);outline:none;-webkit-tap-highlight-color:transparent;
   transition:background 0.08s, transform 0.08s, box-shadow 0.08s;
 }
 .dbtn:active,.dbtn.pressed{background:#00e5ff;color:#050a14;transform:scale(0.92);box-shadow:0 0 16px #00ffff}
-.d-up{top:0;left:44px}
-.d-down{bottom:0;left:44px}
-.d-left{top:44px;left:0}
-.d-right{top:44px;right:0}
-.d-center{top:44px;left:44px;background:#090d16;border:1px solid #16243e;border-radius:6px;pointer-events:none}
+.d-up{top:0;left:41px}
+.d-down{bottom:0;left:41px}
+.d-left{top:41px;left:0}
+.d-right{top:41px;right:0}
+.d-center{top:41px;left:41px;background:#090d16;border:1px solid #16243e;border-radius:6px;pointer-events:none}
 
-.util-btns{display:flex;flex-direction:column;gap:10px;align-items:center}
+.util-btns{display:flex;flex-direction:column;gap:8px;align-items:center}
 .ubtn{
   background:#111624;border:1px solid #334466;border-radius:8px;color:#8899bb;
-  font-size:10px;padding:6px 10px;font-weight:bold;touch-action:none;font-family:monospace;
+  font-size:9px;padding:6px 10px;font-weight:bold;touch-action:none;font-family:monospace;
   outline:none;-webkit-tap-highlight-color:transparent;
 }
 .ubtn:active{background:#223355;color:#fff;border-color:#00b4ff}
 
-.action-btns{display:flex;align-items:center;gap:12px}
-.dash-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.action-btns{display:flex;align-items:center;gap:10px}
+.dash-wrap{display:flex;flex-direction:column;align-items:center;gap:3px}
 #item-btn{
-  width:58px;height:58px;border-radius:50%;background:radial-gradient(circle,#441166 0%,#1a0628 100%);
-  border:2px solid #bb44ff;color:#fff;font-size:11px;font-weight:bold;
+  width:52px;height:52px;border-radius:50%;background:radial-gradient(circle,#441166 0%,#1a0628 100%);
+  border:2px solid #bb44ff;color:#fff;font-size:10px;font-weight:bold;
   display:none;flex-direction:column;justify-content:center;align-items:center;
   box-shadow:0 0 14px rgba(187,68,255,0.4);touch-action:none;outline:none;
   -webkit-tap-highlight-color:transparent;font-family:monospace;
@@ -75,8 +92,8 @@ canvas{display:block;border-radius:4px;box-shadow:0 0 20px rgba(0,0,0,0.8)}
 #item-label{font-size:8px;color:#ffaa00;letter-spacing:1px;font-weight:bold}
 
 #dash-btn{
-  width:68px;height:68px;border-radius:50%;background:radial-gradient(circle,#004d66 0%,#0c1626 100%);
-  border:3px solid #00ffff;color:#fff;font-size:12px;font-weight:bold;
+  width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#004d66 0%,#0c1626 100%);
+  border:3px solid #00ffff;color:#fff;font-size:11px;font-weight:bold;
   display:flex;flex-direction:column;justify-content:center;align-items:center;
   box-shadow:0 0 14px rgba(0,255,255,0.4);touch-action:none;outline:none;
   -webkit-tap-highlight-color:transparent;font-family:monospace;
@@ -84,7 +101,31 @@ canvas{display:block;border-radius:4px;box-shadow:0 0 20px rgba(0,0,0,0.8)}
 }
 #dash-btn:active,#dash-btn.active-press{transform:scale(0.92);background:#00ffff;color:#050a14;box-shadow:0 0 22px #00ffff}
 #dash-btn.cooling{border-color:#334455;box-shadow:none;opacity:0.6}
-#dash-label{font-size:9px;color:#00ffff;letter-spacing:1px;font-weight:bold}
+#dash-label{font-size:8px;color:#00ffff;letter-spacing:1px;font-weight:bold}
+
+/* Mobile Landscape Overlay: Controls hug corners without squishing the canvas! */
+@media (orientation: landscape) and (max-height: 520px) {
+  #touch-deck.active{
+    position:absolute;inset:0;width:100%;max-width:100%;height:100%;
+    pointer-events:none;padding:10px 24px env(safe-area-inset-bottom, 10px);
+    justify-content:space-between;align-items:flex-end;
+  }
+  #touch-deck .dpad,#touch-deck .action-btns,#touch-deck .util-btns{pointer-events:auto}
+  .util-btns{
+    position:absolute;top:10px;right:18px;flex-direction:row;gap:8px;
+  }
+  .ubtn{font-size:9px;padding:4px 8px;background:rgba(17,22,36,0.85);backdrop-filter:blur(4px)}
+  .dpad{width:105px;height:105px;margin-bottom:6px}
+  .dbtn{width:34px;height:34px;font-size:13px;background:rgba(13,21,39,0.85);backdrop-filter:blur(4px)}
+  .d-up{top:0;left:35px}
+  .d-down{bottom:0;left:35px}
+  .d-left{top:35px;left:0}
+  .d-right{top:35px;right:0}
+  .d-center{top:35px;left:35px}
+  .action-btns{margin-bottom:6px}
+  #dash-btn{width:56px;height:56px;background:radial-gradient(circle,rgba(0,77,102,0.9) 0%,rgba(12,22,38,0.9) 100%)}
+  #item-btn{width:48px;height:48px}
+}
 </style>
 </head>
 <body>
@@ -151,27 +192,44 @@ const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
 canvas.width=CW; canvas.height=CH;
 
 const touchDeck = document.getElementById('touch-deck');
-const isTouchDev = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+const isTouchDev = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0 && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
 let touchActivated = isTouchDev;
 
-function updateDeckVisibility(){
-  const isPortrait = innerHeight > innerWidth;
-  if(touchDeck) {
-    if(touchActivated && (isPortrait || innerWidth < 800)) touchDeck.classList.add('active');
-    else touchDeck.classList.remove('active');
+window.addEventListener('touchstart', ()=>{
+  if(!touchActivated){
+    touchActivated = true;
+    resize();
   }
+}, {passive: true, once: true});
+
+function isMobileLandscape(){
+  return innerWidth > innerHeight && innerHeight <= 520;
+}
+
+function updateDeckVisibility(){
+  if(!touchDeck) return;
+  const shouldShow = touchActivated;
+  if(shouldShow) touchDeck.classList.add('active');
+  else touchDeck.classList.remove('active');
 }
 
 function resize(){
   updateDeckVisibility();
   const isDeckOn = touchDeck && touchDeck.classList.contains('active');
-  const deckH = isDeckOn ? 160 : 0;
-  const availH = Math.max(180, innerHeight - deckH);
-  const s = Math.min(innerWidth / CW, availH / CH, 2.5);
-  canvas.style.width = (CW * s) + 'px';
-  canvas.style.height = (CH * s) + 'px';
+  const isOverlay = isMobileLandscape();
+  const deckH = (isDeckOn && !isOverlay) ? (touchDeck.offsetHeight || 135) : 0;
+  const padW = isOverlay ? 130 : 16;
+  const padH = isOverlay ? 8 : 12;
+  
+  const availW = Math.max(200, innerWidth - padW);
+  const availH = Math.max(160, innerHeight - deckH - padH);
+  const s = Math.min(availW / CW, availH / CH, 2.5);
+  canvas.style.width = Math.round(CW * s) + 'px';
+  canvas.style.height = Math.round(CH * s) + 'px';
 }
-addEventListener('resize', resize); resize();
+addEventListener('resize', resize);
+addEventListener('orientationchange', ()=>setTimeout(resize, 100));
+resize();
 
 const mOff=document.createElement('canvas');
 mOff.width=CW; mOff.height=ROWS*T;
@@ -526,24 +584,34 @@ function pollGP(){
 
 // ── PARTICLES ───────────────────────────────────────────────
 let parts=[];
+const MAX_PARTS = 75;
 function emit(x,y,n,col,o={}){
-  const sp=o.speed||80,sz=o.size||3,lf=o.life||.6,gr=o.gravity||0;
-  for(let i=0;i<n;i++){
+  if(parts.length>=MAX_PARTS)return;
+  const count=Math.min(n,MAX_PARTS-parts.length);
+  const sp=o.speed||80,sz=o.size||3,lf=o.life||.5,gr=o.gravity||0;
+  for(let i=0;i<count;i++){
     const a=o.angle!=null?o.angle+(Math.random()-.5)*(o.spread||PI2):Math.random()*PI2;
     const s=sp*(.3+Math.random()*.7);
     parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,
       life:lf*(.5+Math.random()*.5),ml:lf,size:sz*(.5+Math.random()*.5),col,gr});
   }
 }
-function upParts(dt){for(let i=parts.length-1;i>=0;i--){
-  const p=parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.gr*dt;p.vx*=.97;p.vy*=.97;p.life-=dt;if(p.life<=0)parts.splice(i,1);
-}}
+function upParts(dt){
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.gr*dt;p.vx*=.97;p.vy*=.97;p.life-=dt;
+    if(p.life<=0)parts.splice(i,1);
+  }
+  if(parts.length>MAX_PARTS)parts.length=MAX_PARTS;
+}
 function drParts(c){for(const p of parts){const a=p.life/p.ml;c.globalAlpha=a;c.fillStyle=p.col;
   c.beginPath();c.arc(p.x,p.y,p.size*a,0,PI2);c.fill()}c.globalAlpha=1}
 
 // ── POPUPS ──────────────────────────────────────────────────
 let pops=[];
-function addPop(x,y,t,col,sz){pops.push({x,y,t,col,sz:sz||14,life:1,vy:-55})}
+function addPop(x,y,t,col,sz){
+  if(pops.length>12)pops.shift();
+  pops.push({x,y,t,col,sz:sz||14,life:1,vy:-55});
+}
 function upPops(dt){for(let i=pops.length-1;i>=0;i--){const p=pops[i];p.y+=p.vy*dt;p.vy*=.95;p.life-=dt;if(p.life<=0)pops.splice(i,1)}}
 function drPops(c){for(const p of pops){c.globalAlpha=Math.min(p.life/.3,1);
   c.font=`bold ${p.sz}px monospace`;c.fillStyle=p.col;c.textAlign='center';c.fillText(p.t,p.x,p.y)}c.globalAlpha=1}
@@ -574,12 +642,18 @@ let bestMadnessKills=parseInt(localStorage.getItem('chv_madness_hi')||'0');
 let activeItem=null; // { type, name, icon, ready }
 let vortex=null, laserTimer=0, cryoTimer=0, tsunamiX=-1;
 
+function isAnySuperItemActive(){
+  return (laserTimer>0)||(vortex!==null)||(tsunamiX>=0)||(cryoTimer>0);
+}
+
 function unlockItem(type,name,icon){
+  // Prevent stacking multiple ready items: keep current until consumed!
+  if(activeItem&&activeItem.ready)return;
   activeItem={type,name,icon,ready:true};
   sfx('powerup');
-  addPop(CW/2,HUD_H+38,`✨ UNLOCKED: ${icon} ${name}! [E]`,'#ffd700',18);
-  shake(6,0.2);
-  haptic(40);
+  addPop(CW/2,HUD_H+38,`✨ ${icon} ${name} PRÊT ! [E]`,'#ffd700',16);
+  shake(4,0.15);
+  haptic(30);
   const itmBtn=document.getElementById('item-btn');
   const itmLbl=document.getElementById('item-label');
   const itmTxt=document.getElementById('item-txt');
@@ -592,37 +666,49 @@ function unlockItem(type,name,icon){
 
 function triggerItem(){
   if(!activeItem||!activeItem.ready)return;
+  if(state!=='playing')return;
+  
+  // STRICT LIMIT: Cannot stack items while one is already running!
+  if(isAnySuperItemActive()){
+    addPop(CW/2,HUD_H+40,'⚠️ ITEM DÉJÀ ACTIF !','#ff9900',16);
+    shake(2,0.1);
+    return;
+  }
+  
   const pp=plPos();
   const type=activeItem.type;
   
+  // Clean up any residual effects
+  vortex=null;laserTimer=0;cryoTimer=0;tsunamiX=-1;
+  
   if(type==='nova'){
-    sfx('nova');shake(12,0.4);flash('#ffd700',0.4);
-    emit(pp.x,pp.y,60,'#ffd700',{speed:250,size:5,life:0.8});
+    sfx('nova');shake(8,0.3);flash('#ffd700',0.35);
+    emit(pp.x,pp.y,22,'#ffd700',{speed:200,size:4.5,life:0.55});
     for(const e of enemies){
       if(e.st!=='dead'&&e.st!=='return'){
         const ep=ePos(e);killE(e,ep.x,ep.y);
       }
     }
-    addPop(CW/2,CH/2,'💥 MEGA NOVA OBLITERATION!','#ffd700',22);
+    addPop(CW/2,CH/2,'💥 MEGA NOVA !','#ffd700',22);
   } else if(type==='vortex'){
     sfx('powerup');
     vortex={x:CW/2,y:(ROWS*T)/2,life:3.5,maxLife:3.5};
-    shake(8,0.3);flash('#bb44ff',0.3);
-    addPop(CW/2,CH/2,'🕳️ BLACK HOLE ACTIVATED!','#bb44ff',22);
+    shake(6,0.25);flash('#bb44ff',0.25);
+    addPop(CW/2,CH/2,'🕳️ BLACK HOLE !','#bb44ff',22);
   } else if(type==='laser'){
-    sfx('dash');laserTimer=3.5;
-    shake(7,0.25);flash('#00ffff',0.3);
-    addPop(CW/2,CH/2,'⚡ HYPER BEAMS ENGAGED!','#00ffff',22);
+    sfx('dash');laserTimer=3.2;
+    shake(5,0.2);flash('#00ffff',0.25);
+    addPop(CW/2,CH/2,'⚡ HYPER BEAMS !','#00ffff',22);
   } else if(type==='cryo'){
-    sfx('powerup');cryoTimer=4.5;
+    sfx('powerup');cryoTimer=4.0;
     for(const e of enemies)e.frozen=true;
-    shake(6,0.2);flash('#aaffff',0.3);
-    addPop(CW/2,CH/2,'❄️ ALL PHANTOMS FROZEN!','#aaffff',22);
+    shake(5,0.2);flash('#aaffff',0.25);
+    addPop(CW/2,CH/2,'❄️ GHOSTS FROZEN !','#aaffff',22);
   } else if(type==='tsunami'){
     sfx('hi');tsunamiX=0;
-    madnessTimer=Math.min(45,madnessTimer+10);
-    shake(10,0.4);flash('#ffffff',0.5);
-    addPop(CW/2,CH/2,'👑 LIGHT TSUNAMI DEPLOYED!','#ffffff',24);
+    madnessTimer=Math.min(45,madnessTimer+8);
+    shake(8,0.3);flash('#ffffff',0.35);
+    addPop(CW/2,CH/2,'👑 LIGHT TSUNAMI !','#ffffff',22);
   }
   
   activeItem=null;
@@ -816,8 +902,8 @@ function drVoidRelic(c){
 // ── NEON PAINT SPLATTERS & RAMPAGES ────────────────────────
 let paintSplats = [];
 function addPaintSplat(x,y,col){
-  paintSplats.push({x,y,col,r:10+Math.random()*12,life:7.0,maxLife:7.0});
-  if(paintSplats.length>60)paintSplats.shift();
+  if(paintSplats.length>=20)paintSplats.shift();
+  paintSplats.push({x,y,col,r:10+Math.random()*12,life:5.0,maxLife:5.0});
 }
 function upPaintSplats(dt){
   for(let i=paintSplats.length-1;i>=0;i--){
@@ -902,7 +988,6 @@ function upActiveEffects(dt){
   if(laserTimer>0){
     laserTimer-=dt;
     const pp=plPos();
-    emit(pp.x,pp.y,4,'#00ffff',{speed:120,size:3,life:0.2});
     for(const e of enemies){
       if(e.st!=='dead'&&e.st!=='return'){
         const ep=ePos(e);
@@ -914,13 +999,12 @@ function upActiveEffects(dt){
   }
   if(vortex){
     vortex.life-=dt;
-    emit(vortex.x,vortex.y,3,'#bb44ff',{speed:-80,size:3,life:0.4});
     for(const e of enemies){
       if(e.st!=='dead'&&e.st!=='return'){
         const ep=ePos(e);
         const dx=vortex.x-ep.x, dy=vortex.y-ep.y;
         const dist=Math.sqrt(dx*dx+dy*dy);
-        if(dist<26){
+        if(dist<28){
           killE(e,ep.x,ep.y);
         } else {
           e.fx+=(dx/dist)*140*dt/T;
@@ -929,7 +1013,7 @@ function upActiveEffects(dt){
       }
     }
     if(vortex.life<=0){
-      emit(vortex.x,vortex.y,40,'#bb44ff',{speed:180,size:5,life:0.6});
+      emit(vortex.x,vortex.y,18,'#bb44ff',{speed:160,size:4,life:0.5});
       vortex=null;
     }
   }
@@ -941,7 +1025,6 @@ function upActiveEffects(dt){
   }
   if(tsunamiX>=0){
     tsunamiX+=CW*dt*1.6;
-    emit(tsunamiX,Math.random()*ROWS*T,5,'#ffffff',{speed:100,size:4,life:0.3});
     for(const e of enemies){
       if(e.st!=='dead'&&e.st!=='return'){
         const ep=ePos(e);
@@ -1439,12 +1522,13 @@ function checkCol(){
   }
 }
 
+let lastKillSfx = 0;
 function killE(e,ex,ey){
   e.st='return';e.fl=.15;pred.k++;
-  hitlag=0.06; // 60ms crunchy hitlag
+  if(gameMode!=='madness') hitlag=0.035; // Keep Madness silky smooth 60fps with zero hitlag freezes
   unlockBadge('firstBlood');
   if(pred.k>=4)unlockBadge('ghostHunter');
-  haptic(35);
+  haptic(25);
   
   if(gameMode==='madness'){
     madnessKills++;
@@ -1493,7 +1577,10 @@ function killE(e,ex,ey){
     addPts(pts);addPop(ex,ey-15,'+'+pts,EC[e.type],18);
   }
   
-  emit(ex,ey,25,EC[e.type]||'#00ffff',{speed:120,size:4,life:.5});shake(5,.2);flash(EC[e.type]||'#00ffff',.2);sfx('kill');
+  emit(ex,ey,8,EC[e.type]||'#00ffff',{speed:100,size:3.5,life:.35});
+  shake(3,.12);flash(EC[e.type]||'#00ffff',.12);
+  const now=performance.now();
+  if(now-lastKillSfx>45){sfx('kill');lastKillSfx=now;}
 }
 
 function playerDie(){
@@ -1748,7 +1835,12 @@ function drHUD(c){
     
     // Right: Active item slot or progress
     c.textAlign='right';
-    if(activeItem&&activeItem.ready){
+    if(isAnySuperItemActive()){
+      c.font='bold 11px monospace';c.fillStyle='#00ffff';c.shadowColor='#00ffff';c.shadowBlur=10;
+      c.fillText('⚡ ITEM EN ACTION !',CW-14,20);c.shadowBlur=0;
+      c.font='9px monospace';c.fillStyle='#ffbb00';
+      c.fillText('UN SEUL ITEM À LA FOIS',CW-14,36);
+    } else if(activeItem&&activeItem.ready){
       const itmPulse=1+Math.sin(time*8)*0.08;
       c.font=`bold ${13*itmPulse}px monospace`;c.fillStyle='#ffd700';c.shadowColor='#ffd700';c.shadowBlur=12;
       c.fillText(activeItem.icon+' '+activeItem.name+' [E]',CW-14,20);c.shadowBlur=0;
