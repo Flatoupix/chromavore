@@ -15,6 +15,7 @@ import { badges } from './systems/BadgeSystem';
 import { TouchDeckManager } from './ui/TouchDeck';
 import { Renderer } from './graphics/Renderer';
 import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
+import { leaderboard } from './systems/Leaderboard';
 
 class Game {
   private canvas: HTMLCanvasElement;
@@ -25,7 +26,10 @@ class Game {
   private touchDeck: TouchDeckManager;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' = 'menu';
+  public leaderboardMode: 'classic' | 'madness' = 'classic';
+  public playerRank: number = 0;
+  public playerDate: string = '';
   public gameMode: 'classic' | 'madness' = 'classic';
   public score: number = 0;
   public dScore: number = 0;
@@ -54,19 +58,95 @@ class Game {
     this.enemyManager = new EnemyManager();
     this.touchDeck = new TouchDeckManager();
 
+    this.setupNameModal();
     this.bindInputs();
     this.startLoop();
+  }
+
+  private setupNameModal() {
+    const modal = document.getElementById('name-modal')!;
+    const input = document.getElementById('pseudo-input') as HTMLInputElement;
+    const submit = document.getElementById('pseudo-submit')!;
+    const skip = document.getElementById('pseudo-skip')!;
+
+    const save = () => {
+      const pseudo = (input.value.trim().toUpperCase() || 'PLAYER1').slice(0, 12);
+      const date = new Date().toISOString();
+      this.playerDate = date;
+      this.playerRank = leaderboard.addEntry({
+        pseudo,
+        score: this.score,
+        mode: this.gameMode,
+        kills: this.madnessKills,
+        streak: this.madnessStreak,
+        date
+      });
+      modal.style.display = 'none';
+      this.leaderboardMode = this.gameMode;
+      this.state = 'leaderboard';
+      sounds.play('dot');
+    };
+
+    submit.addEventListener('click', save);
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') save();
+    });
+    input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
+
+    skip.addEventListener('click', () => {
+      modal.style.display = 'none';
+      this.state = 'gameover';
+    });
+  }
+
+  private showNameModal(val: number, mode: string) {
+    const modal = document.getElementById('name-modal');
+    const titleEl = document.getElementById('name-modal-title');
+    const scoreEl = document.getElementById('name-modal-score');
+    const inputEl = document.getElementById('pseudo-input') as HTMLInputElement;
+    if (!modal || !titleEl || !scoreEl || !inputEl) return;
+
+    titleEl.textContent = '🏆 NOUVEAU RECORD !';
+    scoreEl.textContent = mode === 'madness'
+      ? `${this.madnessKills} FANTÔMES PURGÉS (STREAK x${this.madnessStreak})`
+      : `SCORE : ${this.score.toLocaleString()} PTS`;
+    inputEl.value = '';
+    modal.style.display = 'flex';
+    setTimeout(() => inputEl.focus(), 60);
+  }
+
+  private triggerGameOver() {
+    this.state = 'gameover';
+    badges.saveScore(this.score);
+    badges.saveMadnessKills(this.madnessKills);
+    sounds.play('death');
+
+    if (this.score > 0 || this.madnessKills > 0) {
+      setTimeout(() => {
+        this.showNameModal(this.gameMode === 'madness' ? this.madnessKills : this.score, this.gameMode);
+      }, 600);
+    }
   }
 
   private bindInputs() {
     // Click on canvas / window
     window.addEventListener('click', (e: MouseEvent) => {
       if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#touch-deck')) return;
+      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#name-modal')) return;
       const rect = this.canvas.getBoundingClientRect();
       const cx = (e.clientX - rect.left) * (CW / rect.width);
       const cy = (e.clientY - rect.top) * (CH / rect.height);
 
       if (this.state === 'menu') {
+        // Leaderboard click at bottom
+        if (cy >= CH * 0.91 && cy <= CH * 0.97) {
+          this.state = 'leaderboard';
+          this.leaderboardMode = this.gameMode;
+          sounds.play('dot');
+          return;
+        }
+
         const my = CH * 0.44;
         if (cy >= my && cy <= my + 38) {
           if (cx >= CW / 2 - 145 && cx <= CW / 2 - 10) {
@@ -85,7 +165,25 @@ class Game {
       }
 
       if (this.state === 'gameover') {
+        const cyOver = CH * 0.30;
+        if (cy >= cyOver + 185 && cy <= cyOver + 215) {
+          this.state = 'leaderboard';
+          this.leaderboardMode = this.gameMode;
+          sounds.play('dot');
+          return;
+        }
         this.startGame(this.gameMode);
+        return;
+      }
+
+      if (this.state === 'leaderboard') {
+        if (cy <= 75) {
+          this.leaderboardMode = this.leaderboardMode === 'classic' ? 'madness' : 'classic';
+          sounds.play('dot');
+          return;
+        }
+        this.state = 'menu';
+        sounds.play('dot');
         return;
       }
 
@@ -492,6 +590,38 @@ class Game {
       sounds.play('dot');
       input.isSelectMode2Requested = false;
     }
+    if (input.isLeaderboardRequested) {
+      if (this.state === 'menu' || this.state === 'gameover') {
+        this.state = 'leaderboard';
+        this.leaderboardMode = this.gameMode;
+        sounds.play('dot');
+      } else if (this.state === 'leaderboard') {
+        this.state = 'menu';
+        sounds.play('dot');
+      }
+      input.isLeaderboardRequested = false;
+    }
+
+    if (this.state === 'leaderboard') {
+      if (input.isSelectMode1Requested) {
+        this.leaderboardMode = 'classic';
+        sounds.play('dot');
+        input.isSelectMode1Requested = false;
+      }
+      if (input.isSelectMode2Requested) {
+        this.leaderboardMode = 'madness';
+        sounds.play('dot');
+        input.isSelectMode2Requested = false;
+      }
+      if (input.isPauseRequested || input.isStartRequested) {
+        this.state = 'menu';
+        sounds.play('dot');
+        input.isPauseRequested = false;
+        input.isStartRequested = false;
+      }
+      return;
+    }
+
     if (input.isPauseRequested) {
       if (this.state === 'playing') this.state = 'paused';
       else if (this.state === 'paused') this.state = 'playing';
@@ -527,8 +657,7 @@ class Game {
           this.madnessTimer -= dt;
           if (this.madnessTimer <= 0) {
             this.madnessTimer = 0;
-            this.state = 'gameover';
-            sounds.play('death');
+            this.triggerGameOver();
             return;
           }
           this.madnessSpawnTimer -= dt;
@@ -747,10 +876,7 @@ class Game {
               this.readyT = 1.5;
             }
           } else {
-            this.state = 'gameover';
-            badges.saveScore(this.score);
-            badges.saveMadnessKills(this.madnessKills);
-            sounds.play('death');
+            this.triggerGameOver();
           }
         }
         break;
@@ -774,6 +900,12 @@ class Game {
 
     if (this.state === 'menu') {
       this.renderer.drawMenu(this.gameMode, this.time, badges.hiScore, badges.bestMadnessKills);
+      return;
+    }
+
+    if (this.state === 'leaderboard') {
+      const entries = leaderboard.getEntries(this.leaderboardMode);
+      this.renderer.drawLeaderboard(entries, this.leaderboardMode, this.time, this.playerRank, this.playerDate);
       return;
     }
 

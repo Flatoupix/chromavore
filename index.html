@@ -142,6 +142,58 @@ canvas{
 <body>
 <div id="game-wrap">
   <canvas id="c"></canvas>
+
+  <!-- Name input modal for leaderboard -->
+  <div id="name-modal" style="
+    display:none;position:fixed;inset:0;z-index:100;
+    background:rgba(5,1,20,0.92);
+    display:none;justify-content:center;align-items:center;
+    font-family:monospace;
+  ">
+    <div style="
+      background:#0a0d1e;border:2px solid #ff007f;border-radius:12px;
+      padding:36px 40px;max-width:360px;width:90%;text-align:center;
+      box-shadow:0 0 40px rgba(255,0,127,0.4),0 0 20px rgba(0,240,255,0.2);
+    ">
+      <div style="font-size:28px;margin-bottom:8px;">🏆</div>
+      <div id="name-modal-title" style="
+        color:#00f0ff;font-size:14px;font-weight:bold;
+        letter-spacing:2px;margin-bottom:6px;
+      ">SCORE ENREGISTRÉ !</div>
+      <div id="name-modal-score" style="
+        color:#ffd700;font-size:18px;font-weight:bold;margin-bottom:20px;
+      "></div>
+      <div style="color:#8899bb;font-size:11px;margin-bottom:10px;letter-spacing:1px;">
+        ENTREZ VOTRE PSEUDO
+      </div>
+      <input id="pseudo-input" type="text" maxlength="12" autocomplete="off"
+        placeholder="PLAYER1"
+        style="
+          background:#0c1830;border:2px solid #00f0ff;border-radius:6px;
+          color:#fff;font-family:monospace;font-size:16px;font-weight:bold;
+          padding:10px 14px;width:100%;text-align:center;
+          outline:none;letter-spacing:2px;text-transform:uppercase;
+          box-shadow:0 0 12px rgba(0,240,255,0.3);
+        "
+      />
+      <button id="pseudo-submit" style="
+        margin-top:16px;width:100%;padding:12px;
+        background:linear-gradient(135deg,#ff007f,#7700cc);
+        border:none;border-radius:8px;color:#fff;
+        font-family:monospace;font-size:13px;font-weight:bold;
+        letter-spacing:2px;cursor:pointer;
+        box-shadow:0 0 18px rgba(255,0,127,0.5);
+        transition:transform 0.1s,box-shadow 0.1s;
+      ">✓ VALIDER</button>
+      <button id="pseudo-skip" style="
+        margin-top:8px;width:100%;padding:8px;
+        background:transparent;border:1px solid #334466;
+        border-radius:8px;color:#667799;
+        font-family:monospace;font-size:11px;cursor:pointer;
+        letter-spacing:1px;
+      ">PASSER SANS ENREGISTRER</button>
+    </div>
+  </div>
   <div id="touch-deck">
     <div class="dpad">
       <button class="dbtn d-up" id="btn-up" aria-label="Up">▲</button>

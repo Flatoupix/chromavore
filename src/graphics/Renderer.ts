@@ -434,10 +434,18 @@ export class Renderer {
     // Records
     c.font = 'bold 12px monospace'; c.fillStyle = '#ffd700';
     if (isMad) {
-      c.fillText('RECORD MADNESS : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, CH * 0.90);
+      c.fillText('RECORD MADNESS : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, CH * 0.89);
     } else {
-      c.fillText('RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, CH * 0.90);
+      c.fillText('RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, CH * 0.89);
     }
+
+    // Leaderboard button in Menu
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#00f0ff';
+    c.shadowColor = '#00f0ff';
+    c.shadowBlur = 8;
+    c.fillText('🏆 [L] CLASSEMENT & PSEUDOS', CW / 2, CH * 0.94);
+    c.shadowBlur = 0;
   }
 
   public drawGameOver(isMadness: boolean, score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number) {
@@ -463,6 +471,119 @@ export class Renderer {
     c.fillText('🏆 Badges: ' + badgesUnlocked + '/6 Débloqués', CW / 2, cy + 134);
     c.font = '14px monospace'; c.fillStyle = '#aaa';
     if (Math.sin(time * 3) > 0) c.fillText('PRESS SPACE TO REPLAY', CW / 2, cy + 174);
+
+    // Leaderboard link
+    c.font = 'bold 11px monospace'; c.fillStyle = '#ff007f';
+    c.shadowColor = '#ff007f'; c.shadowBlur = 8;
+    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] VOIR LE LEADERBOARD', CW / 2, cy + 200);
+    c.shadowBlur = 0;
+  }
+
+  public drawLeaderboard(
+    entries: import('../systems/Leaderboard').LeaderboardEntry[],
+    mode: 'classic' | 'madness',
+    time: number,
+    playerRank: number = 0,
+    playerDate: string = ''
+  ) {
+    const c = this.ctx;
+    c.fillStyle = '#06010f';
+    c.fillRect(0, 0, CW, CH);
+
+    // Background grid
+    c.strokeStyle = 'rgba(255, 0, 127, 0.08)';
+    c.lineWidth = 1;
+    for (let x = 0; x < CW; x += 30) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke(); }
+    for (let y = 0; y < CH; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(CW, y); c.stroke(); }
+
+    // Title
+    const titleGrad = c.createLinearGradient(CW / 2, 20, CW / 2, 60);
+    titleGrad.addColorStop(0, '#ffffff');
+    titleGrad.addColorStop(0.5, '#00f0ff');
+    titleGrad.addColorStop(1, '#ff007f');
+    c.font = 'bold 22px monospace'; c.textAlign = 'center'; c.fillStyle = titleGrad;
+    c.shadowColor = '#00f0ff'; c.shadowBlur = 16;
+    c.fillText('🏆 LEADERBOARD', CW / 2, 42); c.shadowBlur = 0;
+
+    // Mode tab
+    const modeLabel = mode === 'madness' ? '⚡ MADNESS — KILLS' : '🎮 CLASSIQUE — SCORE';
+    c.font = 'bold 11px monospace'; c.fillStyle = mode === 'madness' ? '#ff007f' : '#00f0ff';
+    c.fillText(modeLabel, CW / 2, 62);
+
+    // Column headers
+    const startY = 82;
+    c.font = 'bold 9px monospace'; c.fillStyle = '#445566'; c.textAlign = 'left';
+    c.fillText('#', 28, startY);
+    c.fillText('PSEUDO', 56, startY);
+    c.textAlign = 'right';
+    c.fillText(mode === 'madness' ? 'KILLS' : 'SCORE', CW - 28, startY);
+
+    // Separator
+    c.strokeStyle = '#1a2840'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(20, startY + 6); c.lineTo(CW - 20, startY + 6); c.stroke();
+
+    // Entries
+    const rowH = 34;
+    const medals = ['🥇', '🥈', '🥉'];
+
+    for (let i = 0; i < Math.min(entries.length, 12); i++) {
+      const e = entries[i];
+      const y = startY + 14 + i * rowH;
+      const isPlayer = e.date === playerDate;
+      const rank = i + 1;
+
+      // Row highlight
+      if (isPlayer) {
+        const pulse = 0.12 + Math.sin(time * 5) * 0.05;
+        c.fillStyle = `rgba(255, 0, 127, ${pulse})`;
+        c.fillRect(18, y - 14, CW - 36, rowH - 2);
+        c.strokeStyle = '#ff007f'; c.lineWidth = 1.5;
+        c.strokeRect(18, y - 14, CW - 36, rowH - 2);
+      } else if (i % 2 === 0) {
+        c.fillStyle = 'rgba(255,255,255,0.02)';
+        c.fillRect(18, y - 14, CW - 36, rowH - 2);
+      }
+
+      // Rank
+      c.textAlign = 'left'; c.font = 'bold 11px monospace';
+      if (rank <= 3) {
+        c.font = '14px monospace';
+        c.fillText(medals[rank - 1], 22, y + 1);
+      } else {
+        c.fillStyle = isPlayer ? '#ffd700' : '#556677';
+        c.fillText(rank + '.', 26, y);
+      }
+
+      // Pseudo
+      c.font = isPlayer ? 'bold 12px monospace' : '11px monospace';
+      c.fillStyle = isPlayer ? '#ffd700' : (rank <= 3 ? '#ffffff' : '#aabbcc');
+      if (isPlayer) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
+      c.fillText(e.pseudo.toUpperCase().slice(0, 12), 56, y);
+      c.shadowBlur = 0;
+
+      // Score / kills
+      c.textAlign = 'right'; c.font = 'bold 12px monospace';
+      const val = mode === 'madness' ? (e.kills ?? 0).toString() : e.score.toString().padStart(7, '0');
+      c.fillStyle = rank === 1 ? '#ffd700' : (isPlayer ? '#ff007f' : '#00f0ff');
+      if (rank === 1) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
+      c.fillText(val, CW - 28, y);
+      c.shadowBlur = 0;
+
+      // Date
+      c.font = '8px monospace'; c.fillStyle = '#334455'; c.textAlign = 'right';
+      c.fillText(e.date.slice(0, 10), CW - 28, y + 13);
+    }
+
+    if (entries.length === 0) {
+      c.font = '13px monospace'; c.fillStyle = '#445566'; c.textAlign = 'center';
+      c.fillText('Aucun score enregistré...', CW / 2, CH * 0.5);
+      c.font = '11px monospace'; c.fillStyle = '#334455';
+      c.fillText('Jouez une partie et entrez votre pseudo !', CW / 2, CH * 0.5 + 24);
+    }
+
+    // Footer
+    c.font = 'bold 10px monospace'; c.fillStyle = '#334466'; c.textAlign = 'center';
+    c.fillText('[ ESPACE / ECHAP ] RETOUR  •  [ 1 ] CLASSIQUE  •  [ 2 ] MADNESS', CW / 2, CH - 14);
   }
 
   public drawPause(isMadness: boolean, kills: number, streak: number, time: number = 0) {

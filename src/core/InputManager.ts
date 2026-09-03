@@ -20,6 +20,7 @@ export class InputManager {
   public isStartRequested: boolean = false;
   public isSelectMode1Requested: boolean = false;
   public isSelectMode2Requested: boolean = false;
+  public isLeaderboardRequested: boolean = false;
 
   public motionHistory: MotionRecord[] = [];
   public wiggleCd: number = 0;
@@ -73,6 +74,9 @@ export class InputManager {
       }
       if (e.code === 'Digit2' || e.code === 'Numpad2') {
         this.isSelectMode2Requested = true;
+      }
+      if (e.code === 'KeyL') {
+        this.isLeaderboardRequested = true;
       }
     });
 
