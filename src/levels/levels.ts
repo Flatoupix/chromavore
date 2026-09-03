@@ -157,6 +157,37 @@ export class MazeManager {
     return true;
   }
 
+  public findNearestWalkable(c: number, r: number, isEnemy: boolean = false): { x: number; y: number } {
+    if (this.isWalkable(c, r, isEnemy)) return { x: c, y: r };
+    for (let dist = 1; dist <= 8; dist++) {
+      for (let dy = -dist; dy <= dist; dy++) {
+        for (let dx = -dist; dx <= dist; dx++) {
+          if (Math.abs(dx) === dist || Math.abs(dy) === dist) {
+            const tx = (c + dx + COLS) % COLS;
+            const ty = r + dy;
+            if (this.isWalkable(tx, ty, isEnemy)) {
+              return { x: tx, y: ty };
+            }
+          }
+        }
+      }
+    }
+    return { x: 10, y: 16 };
+  }
+
+  public getRandomWalkable(isEnemy: boolean = false): { x: number; y: number } {
+    const valid: { x: number; y: number }[] = [];
+    for (let r = 2; r < ROWS - 2; r++) {
+      for (let c = 1; c < COLS - 1; c++) {
+        if (this.isWalkable(c, r, isEnemy) && this.map[r][c] !== WALL && this.map[r][c] !== VOID) {
+          valid.push({ x: c, y: r });
+        }
+      }
+    }
+    if (valid.length) return valid[(Math.random() * valid.length) | 0];
+    return { x: 10, y: 16 };
+  }
+
   public renderOffscreen() {
     const lvl = LEVELS[this.currentLevel];
     const c = this.mc;

@@ -52,6 +52,13 @@ export class PowerupManager {
         this.spawnTimer = isMadness ? 5 + Math.random() * 4 : 18 + Math.random() * 12;
       }
     } else {
+      // Wall safety check for powerup: relocate if inside decor
+      if (!maze.isWalkable(this.current.x, this.current.y, false)) {
+        const safe = maze.findNearestWalkable(this.current.x, this.current.y, false);
+        this.current.x = safe.x;
+        this.current.y = safe.y;
+      }
+
       this.current.timer -= dt;
       if (this.current.timer <= 0) {
         this.current = null;
@@ -89,9 +96,7 @@ export class PowerupManager {
   }
 
   public spawn(isMadness: boolean, maze: MazeManager) {
-    const valid = this.spawnPoints.filter(p => maze.isWalkable(p.x, p.y, false));
-    if (!valid.length) return;
-    const pt = valid[(Math.random() * valid.length) | 0];
+    const pt = maze.getRandomWalkable(false);
     const types = ['phase', 'nova', 'timewarp', 'magnet', 'overdrive'];
     const tp = isMadness && Math.random() < 0.5 ? 'overdrive' : types[(Math.random() * types.length) | 0];
     this.current = { x: pt.x, y: pt.y, type: tp, timer: isMadness ? 12 : 10 };
@@ -137,21 +142,21 @@ export class PowerupManager {
       this.voidRelicTimer -= dt;
       if (this.voidRelicTimer <= 0) {
         this.voidRelicTimer = 16.0 + Math.random() * 8.0;
-        const pts = [
-          { x: 4, y: 4 }, { x: 16, y: 4 }, { x: 4, y: 16 }, { x: 16, y: 16 },
-          { x: 10, y: 6 }, { x: 10, y: 15 }
-        ];
-        const valid = pts.filter(p => maze.isWalkable(p.x, p.y, false));
-        if (valid.length) {
-          const pt = valid[(Math.random() * valid.length) | 0];
-          this.voidRelic = { x: pt.x, y: pt.y, timer: 9.0, maxTimer: 9.0 };
-          sounds.play('near');
-          particles.shake(5, 0.25);
-          particles.flash('#ff0055', 0.3);
-          particles.addPop(CW / 2, 70, '⚠️ RELIQUE DU VIDE APPARUE !', '#ff0055', 18);
-        }
+        const pt = maze.getRandomWalkable(false);
+        this.voidRelic = { x: pt.x, y: pt.y, timer: 9.0, maxTimer: 9.0 };
+        sounds.play('near');
+        particles.shake(5, 0.25);
+        particles.flash('#ff0055', 0.3);
+        particles.addPop(CW / 2, 70, '⚠️ RELIQUE DU VIDE APPARUE !', '#ff0055', 18);
       }
     } else {
+      // Wall safety check for Void Relic: relocate if inside decor
+      if (!maze.isWalkable(this.voidRelic.x, this.voidRelic.y, false)) {
+        const safe = maze.findNearestWalkable(this.voidRelic.x, this.voidRelic.y, false);
+        this.voidRelic.x = safe.x;
+        this.voidRelic.y = safe.y;
+      }
+
       this.voidRelic.timer -= dt;
       const rx = this.voidRelic.x * T + HALF, ry = this.voidRelic.y * T + HALF;
       particles.emit(rx, ry, 2, '#ff0055', { speed: 40, size: 3, life: 0.3 });

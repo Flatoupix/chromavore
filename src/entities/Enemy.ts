@@ -139,6 +139,13 @@ export class EnemyManager {
       }
 
       if (e.t >= 1) {
+        // Wall safety check for ghost: if inside decor / wall, relocate to nearest walkable corridor
+        if (e.st === 'active' && !maze.isWalkable(e.x, e.y, true)) {
+          const safe = maze.findNearestWalkable(e.x, e.y, true);
+          e.x = e.fx = safe.x;
+          e.y = e.fy = safe.y;
+        }
+
         // Returned to ghost house
         if (e.st === 'return' && e.x >= 9 && e.x <= 11 && e.y >= 9 && e.y <= 11) {
           e.st = 'active';
@@ -168,7 +175,14 @@ export class EnemyManager {
         valid.push(rev);
       }
     }
-    if (valid.length === 0) return;
+    if (valid.length === 0) {
+      // Ghost is trapped in decor / walls: emergency rescue to nearest walkable corridor!
+      const safe = maze.findNearestWalkable(e.x, e.y, true);
+      e.x = e.fx = safe.x;
+      e.y = e.fy = safe.y;
+      e.t = 1;
+      return;
+    }
 
     let target = { x: Math.floor(plPos.x / T), y: Math.floor(plPos.y / T) };
     if (e.st === 'flee') {

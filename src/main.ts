@@ -400,6 +400,27 @@ class Game {
     if (!this.maze.isWalkable(this.player.x, this.player.y, false)) {
       this.player.reset(this.gameMode === 'madness', this.maze);
     }
+    // Wall safety: relocate any ghosts trapped in new layout
+    for (const e of this.enemyManager.enemies) {
+      if (e.st !== 'dead' && !this.maze.isWalkable(e.x, e.y, true)) {
+        const safe = this.maze.findNearestWalkable(e.x, e.y, true);
+        e.x = e.fx = safe.x;
+        e.y = e.fy = safe.y;
+        e.t = 1;
+      }
+    }
+    // Wall safety: relocate any active powerup or relic trapped in new layout
+    if (powerups.current && !this.maze.isWalkable(powerups.current.x, powerups.current.y, false)) {
+      const safe = this.maze.findNearestWalkable(powerups.current.x, powerups.current.y, false);
+      powerups.current.x = safe.x;
+      powerups.current.y = safe.y;
+    }
+    if (powerups.voidRelic && !this.maze.isWalkable(powerups.voidRelic.x, powerups.voidRelic.y, false)) {
+      const safe = this.maze.findNearestWalkable(powerups.voidRelic.x, powerups.voidRelic.y, false);
+      powerups.voidRelic.x = safe.x;
+      powerups.voidRelic.y = safe.y;
+    }
+
     this.madnessTimer = Math.min(45, this.madnessTimer + 8.0);
     sounds.play('wave');
     particles.flash('#00ffff', 0.4);
@@ -444,13 +465,12 @@ class Game {
         superItems.unlock(it, names[it], icons[it]);
       }
 
-      // 14% chance to drop powerup on tile
+      // 14% chance to drop powerup on tile (with guaranteed walkable safety)
       if (Math.random() < 0.14 && !powerups.current) {
         const mx = Math.max(1, Math.min(COLS - 2, Math.round(ex / T)));
         const my = Math.max(1, Math.min(ROWS - 2, Math.round(ey / T)));
-        if (this.maze.isWalkable(mx, my, false)) {
-          powerups.current = { x: mx, y: my, type: Math.random() < 0.4 ? 'overdrive' : (Math.random() < 0.65 ? 'magnet' : 'nova'), timer: 8 };
-        }
+        const safe = this.maze.findNearestWalkable(mx, my, false);
+        powerups.current = { x: safe.x, y: safe.y, type: Math.random() < 0.4 ? 'overdrive' : (Math.random() < 0.65 ? 'magnet' : 'nova'), timer: 8 };
       }
 
       const pts = 250 * Math.min(this.madnessStreak, 32);
