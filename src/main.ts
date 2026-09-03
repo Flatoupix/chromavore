@@ -633,26 +633,15 @@ class Game {
             }
           }
 
-          // 2. Gravitational pull on frightened & frozen ghosts!
+          // 2. Kill frightened & frozen ghosts in Force Field radius!
           for (const e of this.enemyManager.enemies) {
-            if (e.st === 'flee' || e.frozen) {
+            if ((e.st === 'flee' || e.frozen) && e.st !== 'dead' && e.st !== 'return') {
               const ep = this.enemyManager.getPos(e);
-              const dx = pp.x - ep.x, dy = pp.y - ep.y;
-              const dist = Math.hypot(dx, dy);
-              if (dist < r && dist > 2) {
-                // Drag frightened ghost towards Pac-Man
-                const pull = (isMadness ? 220 : 160) * (1 - dist / r);
-                e.fx += (dx / dist) * pull * dt / T;
-                e.fy += (dy / dist) * pull * dt / T;
-
-                if (Math.random() < 0.25) {
-                  particles.emit(ep.x, ep.y, 2, '#ff007f', { speed: 60, size: 2.5, life: 0.25 });
-                }
-
-                // If pulled close enough, devour it!
-                if (dist < HIT_DIST + 8) {
-                  this.onKillGhost(e, ep.x, ep.y);
-                }
+              const dist = Math.hypot(pp.x - ep.x, pp.y - ep.y);
+              if (dist < r) {
+                // Force Field devours frightened ghosts!
+                particles.emit(ep.x, ep.y, 18, '#ff007f', { speed: 140, size: 4, life: 0.45 });
+                this.onKillGhost(e, ep.x, ep.y);
               }
             }
           }
