@@ -1003,6 +1003,14 @@ function plPos(){
   return{x:px,y:py};
 }
 
+function distToSegment(px,py,x1,y1,x2,y2){
+  const l2=(x2-x1)**2+(y2-y1)**2;
+  if(l2===0)return Math.hypot(px-x1,py-y1);
+  let t=((px-x1)*(x2-x1)+(py-y1)*(y2-y1))/l2;
+  t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(x1+t*(x2-x1)),py-(y1+t*(y2-y1)));
+}
+
 function triggerDash(){
   if(state!=='playing'||dashCd>0)return;
   let dx=pl.dx, dy=pl.dy;
@@ -1049,6 +1057,16 @@ function triggerDash(){
     x2:endPos.x,y2:endPos.y,
     life:0.24,maxLife:0.24
   });
+  
+  // Offensive Dash: Slay all ghosts in the trajectory!
+  for(const e of enemies){
+    if(e.st!=='dead'&&e.st!=='return'){
+      const ep=ePos(e);
+      if(distToSegment(ep.x,ep.y,startPos.x,startPos.y,endPos.x,endPos.y)<T*1.2){
+        killE(e,ep.x,ep.y);
+      }
+    }
+  }
   
   emit(startPos.x,startPos.y,16,'#00e5ff',{speed:130,size:4,life:.45});
   emit(endPos.x,endPos.y,22,'#ffffff',{speed:150,size:4.5,life:.5});
@@ -1395,32 +1413,20 @@ function collectPU(pu){
 function checkCol(){
   if(state!=='playing')return;
   const pp=plPos();
-  if(gameMode==='madness'){
-    for(const e of enemies){
-      if(e.st==='dead'||e.st==='return'||e.st==='spawn')continue;
-      const ep=ePos(e),dx=pp.x-ep.x,dy=pp.y-ep.y,d=Math.sqrt(dx*dx+dy*dy);
-      if(d<HIT_DIST*1.15){
-        if(e.isTitan){
-          madnessTimer=Math.max(2,madnessTimer-5.0);
-          shake(10,0.3);flash('#ff0033',0.4);sfx('death');haptic(60);
-          addPop(ep.x,ep.y-25,'⚠️ TITAN SMASH! -5s!','#ff0033',20);
-          e.isTitan=false;
-          killE(e,ep.x,ep.y);
-        } else {
-          killE(e,ep.x,ep.y);
-        }
-      }
-    }
-    return;
-  }
+  
   for(const e of enemies){
     if(e.st==='dead'||e.st==='return'||e.st==='spawn')continue;
     const ep=ePos(e),dx=pp.x-ep.x,dy=pp.y-ep.y,d=Math.sqrt(dx*dx+dy*dy);
     if(d<HIT_DIST){
       if(invuln>0)continue;
-      if(e.st==='flee'){killE(e,ep.x,ep.y)}
-      else if(fx.phase>0)continue;
-      else{playerDie();return}
+      if(e.st==='flee'||e.frozen){
+        killE(e,ep.x,ep.y);
+      } else if(fx.phase>0){
+        continue;
+      } else {
+        playerDie();
+        return;
+      }
     } else if(d<NM_DIST&&e.st==='active'){
       if(!e.nm){
         e.nm=true;
@@ -1492,6 +1498,10 @@ function killE(e,ex,ey){
 
 function playerDie(){
   state='dying';deathT=1.5;lives--;
+  if(gameMode==='madness'){
+    madnessTimer=Math.max(0,madnessTimer-4.0);
+    madnessStreak=0;
+  }
   const pp=plPos();deathP={x:pp.x,y:pp.y};
   haptic(70);
   emit(pp.x,pp.y,40,'#ffffff',{speed:150,size:4,life:.8,gravity:80});
@@ -1611,16 +1621,15 @@ function drPlayer(c){
     c.restore();
   }
   
-  // Divine aura in Madness mode
-  if(gameMode==='madness'){
-    const hue=(time*420)%360;
+  // Invulnerability shield aura
+  if(invuln>0){
     c.save();
-    c.strokeStyle=`hsl(${hue},100%,68%)`;
-    c.shadowColor=`hsl(${hue},100%,60%)`;
-    c.shadowBlur=24;
-    c.lineWidth=3;
+    c.strokeStyle='rgba(0,255,255,0.85)';
+    c.shadowColor='#00ffff';c.shadowBlur=16;
+    c.lineWidth=2;
+    c.setLineDash([4,3]);
     c.beginPath();
-    c.arc(0,0,P_RAD+6+Math.sin(time*10)*2.5,0,PI2);
+    c.arc(0,0,P_RAD+6,time*12,time*12+PI2);
     c.stroke();
     c.restore();
   }
@@ -1753,6 +1762,14 @@ function drHUD(c){
       c.fillText('BEST KILLS: '+bestMadnessKills,CW-14,40);
     }
     
+    // Lives display in Madness
+    c.textAlign='right';
+    for(let i=0;i<lives;i++){
+      c.fillStyle=C_PLAYER;c.beginPath();
+      c.arc(CW-16-i*18,52,5,.3,PI2-.3);
+      c.lineTo(CW-16-i*18,52);c.fill();
+    }
+    
     // Audio status
     c.font='9px monospace';c.fillStyle=isMuted?'#ff4444':'#44aa77';c.textAlign='left';
     c.fillText(isMuted?'🔇[M]':'🔊[M]',CW-35,HUD_H-6);
@@ -1862,7 +1879,7 @@ function drMenu(c){
   // Mode Description Subtitle
   c.font='11px monospace';c.fillStyle='#ffaa00';
   if(isMad){
-    c.fillText('PAC-MAN 3X PLUS RAPIDE • GAUCHE-DROITE WIGGLE [EMP] • RELIQUES NOIRES',CW/2,CH*0.66);
+    c.fillText('PAC-MAN VULNÉRABLE • DASH TRANCHANT • GAUCHE-DROITE [EMP] • 3X SPEED',CW/2,CH*0.66);
   } else {
     c.fillText('SURVIE TACTIQUE • 204 ORBES • 4 LABYRINTHES NÉON • DASH & COMBOS',CW/2,CH*0.66);
   }
@@ -1982,10 +1999,17 @@ function update(dt){
       }
       upPlayer(dt);upEnemies(dt);upPowerups(dt);upCombo(dt);checkCol();break;
     case'dying':deathT-=dt;if(deathT<=0){
-      if(lives>0){resetPl();
-        enemies.forEach((e,i)=>{if(e.st!=='return'){e.st='spawn';e.delay=i*1.5;
-          e.x=[9,10,11][i%3];e.y=10;e.fx=e.x;e.fy=e.y;e.t=1}});
-        state='ready';readyT=1.5;
+      if(lives>0&&(gameMode!=='madness'||madnessTimer>0)){
+        resetPl();
+        if(gameMode==='madness'){
+          state='playing';
+          invuln=2.0; // 2s shield protection after respawn
+          addPop(CW/2,HUD_H+32,'⚡ SHIELD ACTIVE (2s)','#00ffff',14);
+        } else {
+          enemies.forEach((e,i)=>{if(e.st!=='return'){e.st='spawn';e.delay=i*1.5;
+            e.x=[9,10,11][i%3];e.y=10;e.fx=e.x;e.fy=e.y;e.t=1}});
+          state='ready';readyT=1.5;
+        }
       }else{state='gameover';if(score>=hi)sfx('hi')}}break;
     case'waveTrans':waveT-=dt;if(waveT<=0)nextWave();break;
     case'gameover':break;
