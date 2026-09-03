@@ -66,10 +66,10 @@ export class InputManager {
       if (e.code === 'KeyM') {
         this.isAudioToggleRequested = true;
       }
-      if (e.code === 'Digit1') {
+      if (e.code === 'Digit1' || e.code === 'Numpad1') {
         this.isSelectMode1Requested = true;
       }
-      if (e.code === 'Digit2') {
+      if (e.code === 'Digit2' || e.code === 'Numpad2') {
         this.isSelectMode2Requested = true;
       }
     });

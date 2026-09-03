@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -58,25 +58,95 @@ class Game {
   }
 
   private bindInputs() {
-    // Mode toggle from menu
-    window.addEventListener('click', (e) => {
-      if (this.state !== 'menu') return;
+    // Click on canvas / window
+    window.addEventListener('click', (e: MouseEvent) => {
+      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#touch-deck')) return;
       const rect = this.canvas.getBoundingClientRect();
-      const scaleX = CW / rect.width;
-      const scaleY = CH / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top) * scaleY;
+      const cx = (e.clientX - rect.left) * (CW / rect.width);
+      const cy = (e.clientY - rect.top) * (CH / rect.height);
 
-      const my = CH * 0.48;
-      if (y >= my && y <= my + 34) {
-        if (x >= CW / 2 - 140 && x <= CW / 2 - 10) {
-          this.gameMode = 'classic';
-          sounds.play('dot');
-        } else if (x >= CW / 2 + 10 && x <= CW / 2 + 140) {
-          this.gameMode = 'madness';
-          sounds.play('dot');
+      if (this.state === 'menu') {
+        const my = CH * 0.48;
+        if (cy >= my && cy <= my + 38) {
+          if (cx >= CW / 2 - 140 && cx <= CW / 2 - 10) {
+            this.gameMode = 'classic';
+            sounds.play('dot');
+            return;
+          }
+          if (cx >= CW / 2 + 10 && cx <= CW / 2 + 140) {
+            this.gameMode = 'madness';
+            sounds.play('nova');
+            return;
+          }
+        }
+        this.startGame(this.gameMode);
+        return;
+      }
+
+      if (this.state === 'gameover') {
+        this.startGame(this.gameMode);
+        return;
+      }
+
+      if (this.state === 'paused') {
+        this.state = 'playing';
+        return;
+      }
+
+      // Tap on-screen dash button
+      if (Math.hypot(cx - DASH_BTN.x, cy - DASH_BTN.y) < DASH_BTN.r + 14) {
+        if (this.state === 'playing') {
+          this.player.triggerDash(
+            this.maze,
+            this.gameMode === 'madness',
+            this.enemyManager.enemies,
+            (en, x, y) => this.onKillGhost(en, x, y),
+            (c, r) => this.onCollectDot(c, r)
+          );
         }
       }
+    });
+
+    // Touch swipe steering & double tap dash
+    let touchStart: { x: number; y: number } | null = null;
+    let lastTouchTime = 0;
+
+    window.addEventListener('touchstart', (e: TouchEvent) => {
+      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#touch-deck')) return;
+      if (!e.touches[0]) return;
+      touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      const now = performance.now();
+      if (now - lastTouchTime < 280) {
+        if (this.state === 'playing') {
+          this.player.triggerDash(
+            this.maze,
+            this.gameMode === 'madness',
+            this.enemyManager.enemies,
+            (en, x, y) => this.onKillGhost(en, x, y),
+            (c, r) => this.onCollectDot(c, r)
+          );
+        }
+      }
+      lastTouchTime = now;
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e: TouchEvent) => {
+      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#touch-deck')) return;
+      if (!touchStart || !e.touches[0]) return;
+      const dx = e.touches[0].clientX - touchStart.x;
+      const dy = e.touches[0].clientY - touchStart.y;
+      if (Math.abs(dx) > 14 || Math.abs(dy) > 14) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+          input.setNextDir(dx > 0 ? 1 : -1, 0);
+        } else {
+          input.setNextDir(0, dy > 0 ? 1 : -1);
+        }
+        touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+      touchStart = null;
     });
   }
 
@@ -98,6 +168,7 @@ class Game {
 
     superItems.resetAll();
     input.resetKombos();
+    input.nextDir = { x: 0, y: 0 };
     powerups.voidRelic = null;
     powerups.voidRelicTimer = 14.0;
     particles.paintSplats = [];
@@ -444,8 +515,37 @@ class Game {
         }
 
         // Entities update
-        this.player.update(dt, this.maze, isMadness, input.nitroActive > 0, (c, r) => this.onCollectDot(c, r));
+        this.player.update(dt, this.maze, isMadness, input.nitroActive > 0, input.nextDir, (c, r) => this.onCollectDot(c, r));
         this.enemyManager.update(dt, this.maze, this.player.getPos(), powerups.fx.timewarp);
+
+        // Magnet suction
+        if (powerups.fx.magnet > 0) {
+          const r = isMadness ? T * 5.8 : T * 3.5;
+          const pp = this.player.getPos();
+          for (let row = 0; row < ROWS; row++) {
+            for (let c = 0; c < COLS; c++) {
+              if (this.maze.dotMap[row][c]) {
+                const dx = c * T + HALF - pp.x, dy = row * T + HALF - pp.y;
+                if (Math.hypot(dx, dy) < r) this.onCollectDot(c, row);
+              }
+            }
+          }
+        }
+
+        // Sync DOM dash button state
+        const dBtn = document.getElementById('dash-btn');
+        const dLbl = document.getElementById('dash-label');
+        if (dBtn && dLbl) {
+          if (this.player.dashCd > 0) {
+            dBtn.classList.add('cooling');
+            dLbl.textContent = this.player.dashCd.toFixed(1) + 's';
+            dLbl.style.color = '#8899aa';
+          } else {
+            dBtn.classList.remove('cooling');
+            dLbl.textContent = 'READY';
+            dLbl.style.color = '#00ffff';
+          }
+        }
 
         // Powerups & Void relic
         powerups.update(

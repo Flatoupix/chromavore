@@ -67,7 +67,29 @@ export class Player {
     return { x: px, y: py };
   }
 
-  public update(dt: number, maze: MazeManager, isMadness: boolean, isNitro: boolean, onCollectDot: (c: number, r: number) => void) {
+  public doMove(dx: number, dy: number, _maze: MazeManager) {
+    this.dx = dx;
+    this.dy = dy;
+    this.lastDx = dx;
+    this.lastDy = dy;
+    this.fx = this.x;
+    this.fy = this.y;
+    this.x = this.wrapX(this.x + dx);
+    this.y = this.y + dy;
+    const ov = this.t - 1;
+    this.t = Math.max(0, ov);
+    this.sq = 0.72;
+    this.st = 1.28;
+  }
+
+  public update(
+    dt: number,
+    maze: MazeManager,
+    isMadness: boolean,
+    isNitro: boolean,
+    inputDir: { x: number; y: number },
+    onCollectDot: (c: number, r: number) => void
+  ) {
     // Dash streaks
     for (let i = this.dashStreaks.length - 1; i >= 0; i--) {
       const s = this.dashStreaks[i];
@@ -84,46 +106,52 @@ export class Player {
     const curSpeed = isMadness ? (isNitro ? P_MADNESS_SPEED * 1.35 : P_MADNESS_SPEED) : P_SPEED;
     this.speed = curSpeed;
 
-    if (this.t < 1) {
-      this.t += dt * this.speed;
-      if (this.dx !== 0 || this.dy !== 0) this.ma += dt * 15;
-      if (this.t >= 1) {
-        this.t = 1;
-        this.fx = this.x;
-        this.fy = this.y;
-        onCollectDot(this.x, this.y);
-      }
+    // Accept input direction
+    if (inputDir.x !== 0 || inputDir.y !== 0) {
+      this.ndx = inputDir.x;
+      this.ndy = inputDir.y;
+    }
+
+    // Immediate 180° turn responsiveness
+    if (this.ndx === -this.dx && this.ndy === -this.dy && (this.ndx !== 0 || this.ndy !== 0)) {
+      const tempX = this.x, tempY = this.y;
+      this.x = this.fx; this.y = this.fy;
+      this.fx = tempX; this.fy = tempY;
+      this.dx = this.ndx; this.dy = this.ndy;
+      this.lastDx = this.dx; this.lastDy = this.dy;
+      this.t = Math.max(0, 1 - this.t);
     }
 
     if (this.t >= 1) {
-      // Try next desired direction
       if (this.ndx !== 0 || this.ndy !== 0) {
-        const nx = this.wrapX(this.x + this.ndx);
-        const ny = this.y + this.ndy;
+        const nx = this.wrapX(this.x + this.ndx), ny = this.y + this.ndy;
         if (maze.isWalkable(nx, ny, false)) {
-          this.dx = this.ndx;
-          this.dy = this.ndy;
-          this.lastDx = this.dx;
-          this.lastDy = this.dy;
+          this.doMove(this.ndx, this.ndy, maze);
+        } else if (this.dx !== 0 || this.dy !== 0) {
+          const mx = this.wrapX(this.x + this.dx), my = this.y + this.dy;
+          if (maze.isWalkable(mx, my, false)) {
+            this.doMove(this.dx, this.dy, maze);
+          } else {
+            this.dx = 0; this.dy = 0;
+          }
+        } else {
+          this.dx = 0; this.dy = 0;
+        }
+      } else if (this.dx !== 0 || this.dy !== 0) {
+        const mx = this.wrapX(this.x + this.dx), my = this.y + this.dy;
+        if (maze.isWalkable(mx, my, false)) {
+          this.doMove(this.dx, this.dy, maze);
+        } else {
+          this.dx = 0; this.dy = 0;
         }
       }
+    }
 
-      // Move along current direction
-      if (this.dx !== 0 || this.dy !== 0) {
-        const nx = this.wrapX(this.x + this.dx);
-        const ny = this.y + this.dy;
-        if (maze.isWalkable(nx, ny, false)) {
-          this.fx = this.x;
-          this.fy = this.y;
-          this.x = nx;
-          this.y = ny;
-          this.t = 0;
-          this.lastDx = this.dx;
-          this.lastDy = this.dy;
-        } else {
-          this.dx = 0;
-          this.dy = 0;
-        }
+    if (this.dx !== 0 || this.dy !== 0) {
+      this.t += dt * this.speed;
+      this.ma += dt * 15;
+      if (this.t >= 1) {
+        onCollectDot(this.x, this.y);
       }
     }
 

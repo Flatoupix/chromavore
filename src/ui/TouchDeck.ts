@@ -50,14 +50,6 @@ export class TouchDeckManager {
     bindBtn('item-btn', () => { input.isItemRequested = true; });
     bindBtn('btn-pause', () => { input.isPauseRequested = true; });
     bindBtn('btn-mute', () => { input.isAudioToggleRequested = true; });
-
-    // Tap canvas to start or dash
-    if (this.canvas) {
-      this.canvas.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        input.isStartRequested = true;
-      });
-    }
   }
 
   private bindResize() {
