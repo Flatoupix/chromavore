@@ -81,9 +81,24 @@ export class InputManager {
     });
   }
 
+  private lastDirKey: string = '';
+  private lastDirTime: number = 0;
+
   public setNextDir(dx: number, dy: number) {
     this.nextDir = { x: dx, y: dy };
     const dirKey = dx === 1 ? 'right' : dx === -1 ? 'left' : dy === 1 ? 'down' : 'up';
+
+    // Double-tap same direction → Dash
+    const now = performance.now();
+    if (dirKey === this.lastDirKey && now - this.lastDirTime < 280) {
+      this.isDashRequested = true;
+      this.lastDirKey = '';
+      this.lastDirTime = 0;
+    } else {
+      this.lastDirKey = dirKey;
+      this.lastDirTime = now;
+    }
+
     this.registerMotion(dirKey);
   }
 

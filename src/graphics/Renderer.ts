@@ -397,12 +397,7 @@ export class Renderer {
     c.beginPath(); c.roundRect(CW / 2 + 10, my, 135, 34, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
     c.font = 'bold 11px monospace'; c.fillStyle = isMad ? '#ff007f' : '#8899aa'; c.fillText('[2] MADNESS ⚡', CW / 2 + 78, my + 21);
 
-    // Progression banner
-    const ly = CH * 0.53;
-    c.font = 'bold 11px monospace'; c.fillStyle = '#ff00aa'; c.textAlign = 'center';
-    c.fillText('4 MONDES SYNTHWAVE : PROGRESSION AUTOMATIQUE', CW / 2, ly + 10);
-    c.font = '10px monospace'; c.fillStyle = '#00f0ff';
-    c.fillText('1. Neon Sunset  ►  2. Miami Nights  ►  3. Synth Highway  ►  4. Outrun 1984', CW / 2, ly + 26);
+
 
     // Subtitle description
     c.font = '11px monospace'; c.fillStyle = '#ffaa00';
