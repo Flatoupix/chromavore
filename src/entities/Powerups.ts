@@ -24,7 +24,7 @@ export interface VoidRelic {
 export class PowerupManager {
   public current: PowerupItem | null = null;
   public spawnTimer: number = 10;
-  public fx = { phase: 0, timewarp: 0, magnet: 0 };
+  public fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
   public pred = { on: false, t: 0, k: 0, warn: false };
 
   public voidRelic: VoidRelic | null = null;
@@ -68,6 +68,7 @@ export class PowerupManager {
     if (this.fx.phase > 0) this.fx.phase -= dt;
     if (this.fx.timewarp > 0) this.fx.timewarp -= dt;
     if (this.fx.magnet > 0) this.fx.magnet -= dt;
+    if (this.fx.overdrive > 0) this.fx.overdrive -= dt;
 
     // Predator timer
     if (this.pred.on) {
@@ -91,8 +92,8 @@ export class PowerupManager {
     const valid = this.spawnPoints.filter(p => maze.isWalkable(p.x, p.y, false));
     if (!valid.length) return;
     const pt = valid[(Math.random() * valid.length) | 0];
-    const types = ['phase', 'nova', 'timewarp', 'magnet'];
-    const tp = isMadness && Math.random() < 0.65 ? 'magnet' : types[(Math.random() * types.length) | 0];
+    const types = ['phase', 'nova', 'timewarp', 'magnet', 'overdrive'];
+    const tp = isMadness && Math.random() < 0.5 ? 'overdrive' : types[(Math.random() * types.length) | 0];
     this.current = { x: pt.x, y: pt.y, type: tp, timer: isMadness ? 12 : 10 };
   }
 
@@ -109,6 +110,7 @@ export class PowerupManager {
       case 'nova': onNovaCollect(px, py); break;
       case 'timewarp': this.fx.timewarp = 5; break;
       case 'magnet': this.fx.magnet = 8; break;
+      case 'overdrive': this.fx.overdrive = 7.0; break;
     }
   }
 

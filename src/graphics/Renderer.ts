@@ -171,7 +171,8 @@ export class Renderer {
     currentLevel: number,
     wave: number,
     combo: { n: number; t: number; m: number },
-    hi: number
+    hi: number,
+    overdriveTimer: number = 0
   ) {
     const c = this.ctx;
     c.fillStyle = '#0a0a12';
@@ -185,6 +186,12 @@ export class Renderer {
       c.fillText(madnessKills.toString(), 12, 36);
       c.font = 'bold 11px monospace'; c.fillStyle = '#ff5533';
       c.fillText('🔥 x' + madnessStreak, 68, 36);
+      if (overdriveTimer > 0) {
+        c.font = 'bold 10px monospace'; c.fillStyle = '#00ffcc';
+        c.shadowColor = '#00ffcc'; c.shadowBlur = 8;
+        c.fillText(`⚡ NO-CD (${overdriveTimer.toFixed(1)}s)`, 12, 54);
+        c.shadowBlur = 0;
+      }
 
       // Timer in Center
       const tRatio = Math.min(1, madnessTimer / 30);
@@ -239,23 +246,24 @@ export class Renderer {
 
     // Dash Gauge
     const dX = 134, dY = 14, dW = 90, dH = 18;
-    const isReady = dashCd <= 0;
+    const isOverdrive = overdriveTimer > 0;
+    const isReady = dashCd <= 0 || isOverdrive;
     const cdProg = isReady ? 1 : Math.max(0, 1 - dashCd / 2.8);
-    c.fillStyle = '#0c1322';
-    c.strokeStyle = isReady ? '#00ffff' : '#223350';
-    c.lineWidth = 1.5;
-    c.shadowColor = isReady ? '#00ffff' : 'transparent';
-    c.shadowBlur = isReady ? 8 : 0;
+    c.fillStyle = isOverdrive ? '#003828' : '#0c1322';
+    c.strokeStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : '#223350');
+    c.lineWidth = isOverdrive ? 2 : 1.5;
+    c.shadowColor = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : 'transparent');
+    c.shadowBlur = isOverdrive ? 14 : (isReady ? 8 : 0);
     c.strokeRect(dX, dY, dW, dH);
     c.fillRect(dX, dY, dW, dH);
     if (cdProg > 0) {
-      c.fillStyle = isReady ? '#00e5ff' : '#0077aa';
+      c.fillStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00e5ff' : '#0077aa');
       c.fillRect(dX + 2, dY + 2, (dW - 4) * cdProg, dH - 4);
     }
     c.shadowBlur = 0;
     c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillStyle = isReady ? '#050a14' : '#ffffff';
-    c.fillText(isReady ? '⚡ DASH [SPACE]' : 'DASH ' + dashCd.toFixed(1) + 's', dX + dW / 2, dY + dH / 2);
+    c.fillText(isOverdrive ? `⚡ NO-CD (${overdriveTimer.toFixed(1)}s)` : (isReady ? '⚡ DASH [SPACE]' : 'DASH ' + dashCd.toFixed(1) + 's'), dX + dW / 2, dY + dH / 2);
 
     // Hi-Score & Level
     c.font = '11px monospace'; c.fillStyle = '#666'; c.textAlign = 'center';

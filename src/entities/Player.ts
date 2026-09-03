@@ -167,9 +167,10 @@ export class Player {
     enemies: any[],
     onKillGhost: (e: any, x: number, y: number) => void,
     onCollectDot: (c: number, r: number) => void,
-    hasForceField: boolean = false
+    hasForceField: boolean = false,
+    isOverdrive: boolean = false
   ): boolean {
-    if (this.dashCd > 0) return false;
+    if (this.dashCd > 0 && !isOverdrive) return false;
     let dx = this.dx, dy = this.dy;
     if (!dx && !dy) { dx = this.ndx; dy = this.ndy; }
     if (!dx && !dy) { dx = this.lastDx || 1; dy = this.lastDy || 0; }
@@ -210,7 +211,7 @@ export class Player {
       }
 
       const px = nx * T + HALF, py = ny * T + HALF;
-      particles.emit(px, py, 6, hasForceField ? '#ff007f' : '#00ffff', { speed: 80, size: 3, life: 0.35 });
+      particles.emit(px, py, 6, isOverdrive ? '#00ffcc' : (hasForceField ? '#ff007f' : '#00ffff'), { speed: 80, size: 3, life: 0.35 });
     }
 
     if (dashed === 0) {
@@ -219,7 +220,7 @@ export class Player {
     }
 
     const endPos = this.getPos();
-    this.dashCd = isMadness ? DASH_MADNESS_CD : DASH_CD;
+    this.dashCd = isOverdrive ? 0 : (isMadness ? DASH_MADNESS_CD : DASH_CD);
 
     if (dx !== 0) { this.st = 1.9; this.sq = 0.52; }
     else { this.st = 0.52; this.sq = 1.9; }
@@ -246,13 +247,13 @@ export class Player {
       }
     }
 
-    particles.emit(startPos.x, startPos.y, 16, '#00e5ff', { speed: 130, size: 4, life: 0.45 });
-    particles.emit(endPos.x, endPos.y, 20, hasForceField ? '#ff007f' : '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
-    particles.shake(4, 0.15);
-    particles.flash('#00e5ff', 0.22);
+    particles.emit(startPos.x, startPos.y, 16, isOverdrive ? '#00ffcc' : '#00e5ff', { speed: 130, size: 4, life: 0.45 });
+    particles.emit(endPos.x, endPos.y, 20, isOverdrive ? '#00ffcc' : (hasForceField ? '#ff007f' : '#ffffff'), { speed: 150, size: 4.5, life: 0.45 });
+    particles.shake(isOverdrive ? 3 : 4, 0.15);
+    particles.flash(isOverdrive ? '#00ffcc' : '#00e5ff', 0.22);
     sounds.play('dash');
     this.invuln = Math.max(this.invuln, 0.35);
-    particles.addPop(endPos.x, endPos.y - 20, '⚡ DASH !', '#00ffff', 16);
+    particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? '⚡ HYPER DASH !' : '⚡ DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
     return true;
   }
 

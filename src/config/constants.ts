@@ -46,21 +46,24 @@ export const PC: Record<string, string> = {
   phase: '#00f0ff',
   nova: '#ffd700',
   timewarp: '#00ffaa',
-  magnet: '#ff007f'
+  magnet: '#ff007f',
+  overdrive: '#00ffcc'
 };
 
 export const PN: Record<string, string> = {
   phase: 'PHASE SHIFT',
   nova: 'NOVA BURST',
   timewarp: 'TIME WARP',
-  magnet: 'FORCE FIELD'
+  magnet: 'FORCE FIELD',
+  overdrive: 'DASH INFINI'
 };
 
 export const PI_: Record<string, string> = {
   phase: '◇',
   nova: '✦',
   timewarp: '◎',
-  magnet: '🛡️'
+  magnet: '🛡️',
+  overdrive: '⚡'
 };
 
 // Combo settings

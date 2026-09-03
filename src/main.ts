@@ -137,7 +137,8 @@ class Game {
             this.enemyManager.enemies,
             (en, x, y) => this.onKillGhost(en, x, y),
             (c, r) => this.onCollectDot(c, r),
-            powerups.fx.magnet > 0
+            powerups.fx.magnet > 0,
+            powerups.fx.overdrive > 0
           );
         }
       }
@@ -160,7 +161,8 @@ class Game {
             this.enemyManager.enemies,
             (en, x, y) => this.onKillGhost(en, x, y),
             (c, r) => this.onCollectDot(c, r),
-            powerups.fx.magnet > 0
+            powerups.fx.magnet > 0,
+            powerups.fx.overdrive > 0
           );
         }
       }
@@ -288,15 +290,16 @@ class Game {
 
       // Streak milestones: Unlock Super-items
       if (this.madnessStreak === 15) superItems.unlock('nova', 'MEGA NOVA', '💣');
-      else if (this.madnessStreak === 35) superItems.unlock('vortex', 'BLACK HOLE', '🕳️');
-      else if (this.madnessStreak === 60) superItems.unlock('laser', 'HYPER BEAMS', '⚡');
-      else if (this.madnessStreak === 100) superItems.unlock('cryo', 'CRYO SHATTER', '❄️');
+      else if (this.madnessStreak === 30) superItems.unlock('overdrive', 'DASH INFINI', '⚡');
+      else if (this.madnessStreak === 50) superItems.unlock('vortex', 'BLACK HOLE', '🕳️');
+      else if (this.madnessStreak === 75) superItems.unlock('laser', 'HYPER BEAMS', '⚡');
+      else if (this.madnessStreak === 110) superItems.unlock('cryo', 'CRYO SHATTER', '❄️');
       else if (this.madnessStreak === 150) superItems.unlock('tsunami', 'LIGHT TSUNAMI', '👑');
       else if (this.madnessStreak > 150 && this.madnessStreak % 40 === 0) {
-        const pool = ['nova', 'vortex', 'laser', 'cryo', 'tsunami'];
+        const pool = ['nova', 'overdrive', 'vortex', 'laser', 'cryo', 'tsunami'];
         const it = pool[(Math.random() * pool.length) | 0];
-        const names: Record<string, string> = { nova: 'MEGA NOVA', vortex: 'BLACK HOLE', laser: 'HYPER BEAMS', cryo: 'CRYO SHATTER', tsunami: 'LIGHT TSUNAMI' };
-        const icons: Record<string, string> = { nova: '💣', vortex: '🕳️', laser: '⚡', cryo: '❄️', tsunami: '👑' };
+        const names: Record<string, string> = { nova: 'MEGA NOVA', overdrive: 'DASH INFINI', vortex: 'BLACK HOLE', laser: 'HYPER BEAMS', cryo: 'CRYO SHATTER', tsunami: 'LIGHT TSUNAMI' };
+        const icons: Record<string, string> = { nova: '💣', overdrive: '⚡', vortex: '🕳️', laser: '⚡', cryo: '❄️', tsunami: '👑' };
         superItems.unlock(it, names[it], icons[it]);
       }
 
@@ -305,7 +308,7 @@ class Game {
         const mx = Math.max(1, Math.min(COLS - 2, Math.round(ex / T)));
         const my = Math.max(1, Math.min(ROWS - 2, Math.round(ey / T)));
         if (this.maze.isWalkable(mx, my, false)) {
-          powerups.current = { x: mx, y: my, type: Math.random() < 0.65 ? 'magnet' : 'nova', timer: 8 };
+          powerups.current = { x: mx, y: my, type: Math.random() < 0.4 ? 'overdrive' : (Math.random() < 0.65 ? 'magnet' : 'nova'), timer: 8 };
         }
       }
 
@@ -363,6 +366,7 @@ class Game {
     powerups.fx.phase = 0;
     powerups.fx.timewarp = 0;
     powerups.fx.magnet = 0;
+    powerups.fx.overdrive = 0;
     this.combo = { n: 0, t: 0, m: 1 };
   }
 
@@ -538,7 +542,8 @@ class Game {
             this.enemyManager.enemies,
             (e, x, y) => this.onKillGhost(e, x, y),
             (c, r) => this.onCollectDot(c, r),
-            powerups.fx.magnet > 0
+            powerups.fx.magnet > 0,
+            powerups.fx.overdrive > 0
           );
           input.isDashRequested = false;
         }
@@ -548,7 +553,8 @@ class Game {
             this.player.getPos(),
             (e, x, y) => this.onKillGhost(e, x, y),
             this.enemyManager.enemies,
-            (s) => { this.madnessTimer = Math.min(45, this.madnessTimer + s); }
+            (s) => { this.madnessTimer = Math.min(45, this.madnessTimer + s); },
+            () => { powerups.fx.overdrive = 8.0; }
           );
           input.isItemRequested = false;
         }
@@ -652,11 +658,24 @@ class Game {
           }
         }
 
+        // Overdrive: Zero cooldown & electric sparks
+        if (powerups.fx.overdrive > 0) {
+          this.player.dashCd = 0;
+          if (Math.random() < 0.35) {
+            const pp = this.player.getPos();
+            particles.emit(pp.x, pp.y, 2, '#00ffcc', { speed: 90, size: 3.5, life: 0.3 });
+          }
+        }
+
         // Sync DOM dash button state
         const dBtn = document.getElementById('dash-btn');
         const dLbl = document.getElementById('dash-label');
         if (dBtn && dLbl) {
-          if (this.player.dashCd > 0) {
+          if (powerups.fx.overdrive > 0) {
+            dBtn.classList.remove('cooling');
+            dLbl.textContent = 'NO-CD ' + powerups.fx.overdrive.toFixed(1) + 's';
+            dLbl.style.color = '#00ffcc';
+          } else if (this.player.dashCd > 0) {
             dBtn.classList.add('cooling');
             dLbl.textContent = this.player.dashCd.toFixed(1) + 's';
             dLbl.style.color = '#8899aa';
@@ -781,7 +800,8 @@ class Game {
         this.gameMode === 'madness',
         this.score, this.dScore, this.lives,
         this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
-        superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore
+        superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
+        powerups.fx.overdrive
       );
       this.renderer.drawPause(this.gameMode === 'madness', this.madnessKills, this.madnessStreak, this.time);
       return;
@@ -841,7 +861,8 @@ class Game {
       this.gameMode === 'madness',
       this.score, this.dScore, this.lives,
       this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
-      superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore
+      superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
+      powerups.fx.overdrive
     );
     badges.drawBanner(this.renderer.ctx);
 

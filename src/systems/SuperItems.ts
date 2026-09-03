@@ -49,7 +49,13 @@ export class SuperItemManager {
     }
   }
 
-  public trigger(plPos: { x: number; y: number }, onKillGhost: (e: any, x: number, y: number) => void, enemies: any[], addMadnessTime: (s: number) => void): boolean {
+  public trigger(
+    plPos: { x: number; y: number },
+    onKillGhost: (e: any, x: number, y: number) => void,
+    enemies: any[],
+    addMadnessTime: (s: number) => void,
+    activateOverdrive?: () => void
+  ): boolean {
     if (!this.activeSlot || !this.activeSlot.ready) return false;
 
     // Strict Anti-stacking: Cannot trigger while an effect is already running!
@@ -108,6 +114,14 @@ export class SuperItemManager {
         particles.shake(8, 0.3);
         particles.flash('#ffffff', 0.35);
         particles.addPop(CW / 2, (ROWS * T) / 2, '👑 LIGHT TSUNAMI !', '#ffffff', 22);
+        break;
+      }
+      case 'overdrive': {
+        sounds.play('powerup');
+        if (activateOverdrive) activateOverdrive();
+        particles.shake(6, 0.2);
+        particles.flash('#00ffcc', 0.35);
+        particles.addPop(plPos.x, plPos.y - 20, '⚡ DASH INFINI (8s) !', '#00ffcc', 22);
         break;
       }
     }
