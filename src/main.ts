@@ -128,8 +128,8 @@ class Game {
         return;
       }
 
-      // Tap on-screen dash button
-      if (Math.hypot(cx - DASH_BTN.x, cy - DASH_BTN.y) < DASH_BTN.r + 14) {
+      // Tap on-screen dash button (touch devices only)
+      if (this.touchDeck.isTouch() && Math.hypot(cx - DASH_BTN.x, cy - DASH_BTN.y) < DASH_BTN.r + 14) {
         if (this.state === 'playing') {
           this.player.triggerDash(
             this.maze,
@@ -831,8 +831,8 @@ class Game {
       this.renderer.drawDangerVignette(this.madnessTimer, this.time);
     }
 
-    // Touch button on-screen
-    if (this.state === 'playing') {
+    // Touch button on-screen (only on mobile/touch devices, never on desktop)
+    if (this.state === 'playing' && this.touchDeck.isTouch()) {
       this.renderer.drawTouchDashButton(this.player.dashCd, this.gameMode === 'madness' ? DASH_MADNESS_CD : DASH_CD);
     }
 

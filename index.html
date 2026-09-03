@@ -128,6 +128,13 @@ canvas{
   #dash-btn{width:56px;height:56px;background:radial-gradient(circle,rgba(0,77,102,0.9) 0%,rgba(12,22,38,0.9) 100%)}
   #item-btn{width:48px;height:48px}
 }
+
+/* Ensure touch deck is strictly hidden on desktop */
+@media (min-width: 1025px), (hover: hover) and (pointer: fine) and (min-width: 768px) {
+  #touch-deck {
+    display: none !important;
+  }
+}
 </style>
 </head>
 <body>

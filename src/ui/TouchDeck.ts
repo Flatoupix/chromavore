@@ -5,6 +5,11 @@
 import { CW, CH } from '../config/constants';
 import { input } from '../core/InputManager';
 
+export function isMobileOrTablet(): boolean {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+         (window.innerWidth <= 1024 && (('ontouchstart' in window) || navigator.maxTouchPoints > 0));
+}
+
 export class TouchDeckManager {
   private touchDeck: HTMLElement | null = null;
   private canvas: HTMLCanvasElement | null = null;
@@ -13,16 +18,20 @@ export class TouchDeckManager {
   constructor() {
     this.touchDeck = document.getElementById('touch-deck');
     this.canvas = document.getElementById('c') as HTMLCanvasElement;
-    this.touchActivated = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0 && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    this.touchActivated = isMobileOrTablet();
 
     this.bindButtons();
     this.bindTouchActivation();
     this.bindResize();
   }
 
+  public isTouch(): boolean {
+    return this.touchActivated;
+  }
+
   private bindTouchActivation() {
     window.addEventListener('touchstart', () => {
-      if (!this.touchActivated) {
+      if (!this.touchActivated && isMobileOrTablet()) {
         this.touchActivated = true;
         this.resize();
       }
