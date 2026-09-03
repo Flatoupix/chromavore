@@ -155,17 +155,33 @@ export class Renderer {
 
     if (isMadness) {
       // Madness HUD
-      c.font = 'bold 12px monospace'; c.fillStyle = '#8899aa'; c.textAlign = 'left'; c.textBaseline = 'middle';
-      c.fillText('PURGÉS', 12, 15);
-      c.font = 'bold 20px monospace'; c.fillStyle = '#ffd700';
-      c.fillText(madnessKills.toString(), 12, 36);
+      c.textAlign = 'left'; c.textBaseline = 'middle';
+
+      // Live Animated Score Line
+      c.font = 'bold 10px monospace'; c.fillStyle = '#8899bb';
+      c.fillText('SCORE', 12, 14);
+      c.font = 'bold 18px monospace'; c.fillStyle = '#ffd700';
+      c.shadowColor = '#ffd700'; c.shadowBlur = 8;
+      c.fillText(Math.round(dScore).toString().padStart(7, '0'), 54, 14);
+      c.shadowBlur = 0;
+
+      // Kills & Streak
+      c.font = 'bold 13px monospace'; c.fillStyle = '#00f0ff';
+      c.fillText('💀 ' + madnessKills + ' KILLS', 12, 34);
       c.font = 'bold 11px monospace'; c.fillStyle = '#ff5533';
-      c.fillText('🔥 x' + madnessStreak, 68, 36);
+      c.fillText('🔥 x' + madnessStreak, 115, 34);
+
       if (overdriveTimer > 0) {
         c.font = 'bold 10px monospace'; c.fillStyle = '#00ffcc';
         c.shadowColor = '#00ffcc'; c.shadowBlur = 8;
-        c.fillText(`⚡ NO-CD (${overdriveTimer.toFixed(1)}s)`, 12, 54);
+        c.fillText(`⚡ NO-CD (${overdriveTimer.toFixed(1)}s)`, 12, 50);
         c.shadowBlur = 0;
+      } else if (combo.m > 1) {
+        c.font = 'bold 10px monospace'; c.fillStyle = '#ff00ff';
+        c.fillText('COMBO x' + combo.m, 12, 50);
+      } else {
+        c.font = '9px monospace'; c.fillStyle = '#556677';
+        c.fillText('RECORD: ' + bestMadnessKills + ' KILLS', 12, 50);
       }
 
       // Timer in Center
@@ -214,10 +230,12 @@ export class Renderer {
     }
 
     // Classic HUD
-    c.font = 'bold 18px monospace'; c.fillStyle = '#fff'; c.textAlign = 'left'; c.textBaseline = 'middle';
+    c.font = 'bold 12px monospace'; c.fillStyle = '#8899bb'; c.textAlign = 'left'; c.textBaseline = 'middle';
     c.fillText('SCORE', 12, 16);
     c.font = 'bold 22px monospace'; c.fillStyle = '#ffd700';
+    c.shadowColor = '#ffd700'; c.shadowBlur = 10;
     c.fillText(Math.round(dScore).toString().padStart(7, '0'), 12, 38);
+    c.shadowBlur = 0;
 
     // Dash Gauge
     const dX = 134, dY = 14, dW = 90, dH = 18;
