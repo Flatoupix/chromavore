@@ -6,12 +6,14 @@ export interface GameSettings {
   freezeFrame: boolean;
   screenShake: boolean;
   screenFlash: boolean;
+  crtScanlines: boolean;
+  synthwaveGrid: boolean;
   paintSplats: boolean;
   particleDensity: 'max' | 'reduced';
 }
 
 export interface PauseButtonRect {
-  id: 'freezeFrame' | 'screenShake' | 'screenFlash' | 'paintSplats' | 'particleDensity' | 'audio' | 'resume';
+  id: 'freezeFrame' | 'screenShake' | 'screenFlash' | 'crtScanlines' | 'particleDensity' | 'audio' | 'resume';
   x: number;
   y: number;
   w: number;
@@ -22,7 +24,7 @@ export const PAUSE_BUTTONS: PauseButtonRect[] = [
   { id: 'freezeFrame', x: 74, y: 175, w: 440, h: 36 },
   { id: 'screenShake', x: 74, y: 220, w: 440, h: 36 },
   { id: 'screenFlash', x: 74, y: 265, w: 440, h: 36 },
-  { id: 'paintSplats', x: 74, y: 310, w: 440, h: 36 },
+  { id: 'crtScanlines', x: 74, y: 310, w: 440, h: 36 },
   { id: 'particleDensity', x: 74, y: 355, w: 440, h: 36 },
   { id: 'audio', x: 74, y: 400, w: 440, h: 36 },
   { id: 'resume', x: 154, y: 460, w: 280, h: 44 }
@@ -35,6 +37,8 @@ export class SettingsManager {
     freezeFrame: true,
     screenShake: true,
     screenFlash: true,
+    crtScanlines: true,
+    synthwaveGrid: true,
     paintSplats: true,
     particleDensity: 'max'
   };
@@ -76,10 +80,16 @@ export class SettingsManager {
     return this.settings.screenFlash;
   }
 
-  public togglePaintSplats(): boolean {
-    this.settings.paintSplats = !this.settings.paintSplats;
+  public toggleCrtScanlines(): boolean {
+    this.settings.crtScanlines = !this.settings.crtScanlines;
     this.save();
-    return this.settings.paintSplats;
+    return this.settings.crtScanlines;
+  }
+
+  public toggleSynthwaveGrid(): boolean {
+    this.settings.synthwaveGrid = !this.settings.synthwaveGrid;
+    this.save();
+    return this.settings.synthwaveGrid;
   }
 
   public toggleParticleDensity(): string {

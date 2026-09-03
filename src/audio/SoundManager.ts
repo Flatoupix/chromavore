@@ -246,29 +246,76 @@ class SoundManager {
     if (!this.actx) return;
 
     this.bgmTime += dt;
-    const tempo = isMadness ? 0.14 : isPredator ? 0.18 : 0.26;
-    if (this.bgmTime >= tempo) {
-      this.bgmTime -= tempo;
-      this.bgmStep = (this.bgmStep + 1) % 16;
-      const bassNotes = isMadness
-        ? [70, 75, 80, 85, 90, 80, 75, 70]
-        : isPredator
-        ? [110, 130, 150, 130]
-        : [55, 65, 55, 73, 55, 65, 82, 65];
-      const freq = bassNotes[this.bgmStep % bassNotes.length];
+    // 80s Synthwave tempo: 125 BPM (16th notes ~ 0.12s) in normal, 150 BPM in Madness (~0.10s)
+    const stepDuration = isMadness ? 0.10 : isPredator ? 0.12 : 0.125;
+
+    if (this.bgmTime >= stepDuration) {
+      this.bgmTime -= stepDuration;
+      this.bgmStep = (this.bgmStep + 1) % 32;
       const t = this.actx.currentTime;
 
+      // 80s Synthwave Bass Progression: Am -> F -> G -> Em
+      // Galloping 16th-note rhythm: Root, Root, Octave, Root
+      const roots = [
+        55, 55, 110, 55,  55, 55, 110, 55,  // Am
+        43.6, 43.6, 87.3, 43.6, 43.6, 43.6, 87.3, 43.6, // F
+        49, 49, 98, 49,   49, 49, 98, 49,   // G
+        41.2, 41.2, 82.4, 41.2, 41.2, 41.2, 82.4, 41.2  // Em
+      ];
+
+      const madnessRoots = [
+        65.4, 65.4, 130.8, 65.4, 73.4, 73.4, 146.8, 73.4,
+        82.4, 82.4, 164.8, 82.4, 65.4, 65.4, 130.8, 65.4
+      ];
+
+      const bassFreq = isMadness
+        ? madnessRoots[this.bgmStep % madnessRoots.length]
+        : roots[this.bgmStep % roots.length];
+
       try {
+        // Synthwave Bass with Resonant Lowpass Filter Envelope
         const osc = this.actx.createOscillator();
+        const filter = this.actx.createBiquadFilter();
         const g = this.actx.createGain();
-        osc.type = isMadness ? 'sawtooth' : 'triangle';
-        osc.frequency.setValueAtTime(freq, t);
-        g.gain.setValueAtTime(isMadness ? 0.04 : 0.05, t);
-        g.gain.exponentialRampToValueAtTime(0.001, t + tempo * 0.9);
-        osc.connect(g);
+
+        osc.type = isMadness ? 'sawtooth' : 'sawtooth';
+        osc.frequency.setValueAtTime(bassFreq, t);
+
+        filter.type = 'lowpass';
+        filter.Q.setValueAtTime(isMadness ? 6 : 4.5, t);
+        filter.frequency.setValueAtTime(isMadness ? 1200 : 850, t);
+        filter.frequency.exponentialRampToValueAtTime(140, t + stepDuration * 0.85);
+
+        const bassVol = isMadness ? 0.05 : 0.045;
+        g.gain.setValueAtTime(bassVol, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.9);
+
+        osc.connect(filter);
+        filter.connect(g);
         g.connect(this.actx.destination);
+
         osc.start(t);
-        osc.stop(t + tempo * 0.9);
+        osc.stop(t + stepDuration * 0.9);
+
+        // Synthwave Neon Arpeggio lead note on every 4th step or during Predator mode
+        if (this.bgmStep % 4 === 0 || isPredator) {
+          const arpScale = [440, 523.25, 659.25, 783.99, 880, 1046.5];
+          const arpFreq = arpScale[(this.bgmStep / 2) % arpScale.length];
+
+          const arpOsc = this.actx.createOscillator();
+          const arpG = this.actx.createGain();
+          arpOsc.type = 'sine';
+          arpOsc.frequency.setValueAtTime(arpFreq, t);
+
+          arpG.gain.setValueAtTime(0.02, t);
+          arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 1.5);
+
+          arpOsc.connect(arpG);
+          arpG.connect(this.actx.destination);
+
+          arpOsc.start(t);
+          arpOsc.stop(t + stepDuration * 1.5);
+        }
       } catch {}
     }
   }

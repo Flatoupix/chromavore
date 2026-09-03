@@ -5,29 +5,29 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#05050a">
-<title>CHROMAVORE</title>
+<meta name="theme-color" content="#090117">
+<title>CHROMAVORE // SYNTHWAVE 1984</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{
   width:100%;height:100%;height:100dvh;overflow:hidden;
-  background:#05050a;touch-action:none;user-select:none;
+  background:#080114;touch-action:none;user-select:none;
   -webkit-user-select:none;overscroll-behavior:none;
 }
 body{
   display:flex;justify-content:center;align-items:center;
-  font-family:monospace;background:#05050a;
+  font-family:monospace;background:#080114;
 }
 #game-wrap{
   display:flex;flex-direction:column;justify-content:center;align-items:center;
   width:100vw;height:100vh;height:100dvh;position:fixed;inset:0;
-  overflow:hidden;background:radial-gradient(circle at center,#090e1c 0%,#05050a 100%);
+  overflow:hidden;background:radial-gradient(circle at 50% 100%, #300045 0%, #150028 45%, #080114 100%);
   padding:env(safe-area-inset-top, 4px) env(safe-area-inset-right, 4px) env(safe-area-inset-bottom, 4px) env(safe-area-inset-left, 4px);
 }
 canvas{
   display:block;border-radius:6px;
-  box-shadow:0 0 25px rgba(0,0,0,0.9), 0 0 10px rgba(0,180,255,0.15);
+  box-shadow:0 0 35px rgba(255, 0, 127, 0.28), 0 0 15px rgba(0, 240, 255, 0.22);
   max-width:100vw;object-fit:contain;flex-shrink:0;
 }
 
@@ -50,34 +50,35 @@ canvas{
 
 .dpad{position:relative;width:120px;height:120px}
 .dbtn{
-  position:absolute;width:38px;height:38px;background:#0d1527;border:2px solid #00b4ff;
-  border-radius:10px;color:#00ffff;font-size:15px;font-weight:bold;
+  position:absolute;width:38px;height:38px;background:#18052e;border:2px solid #ff007f;
+  border-radius:10px;color:#00f0ff;font-size:15px;font-weight:bold;
   display:flex;justify-content:center;align-items:center;touch-action:none;
-  box-shadow:0 0 8px rgba(0,180,255,0.25);outline:none;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 0 10px rgba(255, 0, 127, 0.35);outline:none;-webkit-tap-highlight-color:transparent;
   transition:background 0.08s, transform 0.08s, box-shadow 0.08s;
 }
-.dbtn:active,.dbtn.pressed{background:#00e5ff;color:#050a14;transform:scale(0.92);box-shadow:0 0 16px #00ffff}
+.dbtn:active,.dbtn.pressed{background:#ff007f;color:#ffffff;transform:scale(0.92);box-shadow:0 0 20px #ff007f}
 .d-up{top:0;left:41px}
 .d-down{bottom:0;left:41px}
 .d-left{top:41px;left:0}
 .d-right{top:41px;right:0}
-.d-center{top:41px;left:41px;background:#090d16;border:1px solid #16243e;border-radius:6px;pointer-events:none}
+.d-center{top:41px;left:41px;background:#120324;border:1px solid #3d0a48;border-radius:6px;pointer-events:none}
 
 .util-btns{display:flex;flex-direction:column;gap:8px;align-items:center}
 .ubtn{
-  background:#111624;border:1px solid #334466;border-radius:8px;color:#8899bb;
+  background:#1a082e;border:1px solid #ff007f;border-radius:8px;color:#00f0ff;
   font-size:9px;padding:6px 10px;font-weight:bold;touch-action:none;font-family:monospace;
   outline:none;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 0 8px rgba(255, 0, 127, 0.25);
 }
-.ubtn:active{background:#223355;color:#fff;border-color:#00b4ff}
+.ubtn:active{background:#ff007f;color:#fff;border-color:#00f0ff}
 
 .action-btns{display:flex;align-items:center;gap:10px}
 .dash-wrap{display:flex;flex-direction:column;align-items:center;gap:3px}
 #item-btn{
-  width:52px;height:52px;border-radius:50%;background:radial-gradient(circle,#441166 0%,#1a0628 100%);
-  border:2px solid #bb44ff;color:#fff;font-size:10px;font-weight:bold;
+  width:52px;height:52px;border-radius:50%;background:radial-gradient(circle,#550066 0%,#150028 100%);
+  border:2px solid #ff007f;color:#fff;font-size:10px;font-weight:bold;
   display:none;flex-direction:column;justify-content:center;align-items:center;
-  box-shadow:0 0 14px rgba(187,68,255,0.4);touch-action:none;outline:none;
+  box-shadow:0 0 14px rgba(255, 0, 127, 0.4);touch-action:none;outline:none;
   -webkit-tap-highlight-color:transparent;font-family:monospace;
   transition:transform 0.08s, box-shadow 0.08s;
 }
@@ -86,23 +87,23 @@ canvas{
   animation:itemPulse 0.9s infinite alternate;
 }
 @keyframes itemPulse{
-  0%{box-shadow:0 0 10px #bb44ff;border-color:#bb44ff}
-  100%{box-shadow:0 0 25px #ff44ff,0 0 12px #ffff00;border-color:#ffffff}
+  0%{box-shadow:0 0 10px #ff007f;border-color:#ff007f}
+  100%{box-shadow:0 0 25px #00f0ff,0 0 12px #ffe600;border-color:#ffffff}
 }
-#item-btn:active{transform:scale(0.92);background:#ff44ff;color:#050a14}
-#item-label{font-size:8px;color:#ffaa00;letter-spacing:1px;font-weight:bold}
+#item-btn:active{transform:scale(0.92);background:#ff007f;color:#ffffff}
+#item-label{font-size:8px;color:#ffd700;letter-spacing:1px;font-weight:bold}
 
 #dash-btn{
-  width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#004d66 0%,#0c1626 100%);
-  border:3px solid #00ffff;color:#fff;font-size:11px;font-weight:bold;
+  width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#5a0044 0%,#1a0028 100%);
+  border:3px solid #00f0ff;color:#fff;font-size:11px;font-weight:bold;
   display:flex;flex-direction:column;justify-content:center;align-items:center;
-  box-shadow:0 0 14px rgba(0,255,255,0.4);touch-action:none;outline:none;
+  box-shadow:0 0 16px rgba(0, 240, 255, 0.45);touch-action:none;outline:none;
   -webkit-tap-highlight-color:transparent;font-family:monospace;
   transition:transform 0.08s, box-shadow 0.08s;
 }
-#dash-btn:active,#dash-btn.active-press{transform:scale(0.92);background:#00ffff;color:#050a14;box-shadow:0 0 22px #00ffff}
-#dash-btn.cooling{border-color:#334455;box-shadow:none;opacity:0.6}
-#dash-label{font-size:8px;color:#00ffff;letter-spacing:1px;font-weight:bold}
+#dash-btn:active,#dash-btn.active-press{transform:scale(0.92);background:#00f0ff;color:#080114;box-shadow:0 0 25px #00f0ff}
+#dash-btn.cooling{border-color:#3d1a3a;box-shadow:none;opacity:0.6}
+#dash-label{font-size:8px;color:#00f0ff;letter-spacing:1px;font-weight:bold}
 
 /* Mobile Landscape Overlay */
 @media (orientation: landscape) and (max-height: 520px) {

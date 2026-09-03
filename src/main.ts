@@ -105,8 +105,8 @@ class Game {
                 settingsManager.toggleScreenFlash();
                 sounds.play('dot');
                 return;
-              case 'paintSplats':
-                settingsManager.togglePaintSplats();
+              case 'crtScanlines':
+                settingsManager.toggleCrtScanlines();
                 sounds.play('dot');
                 return;
               case 'particleDensity':
@@ -199,7 +199,7 @@ class Game {
           sounds.play('dot');
           e.preventDefault();
         } else if (e.code === 'Digit4' || e.code === 'Numpad4') {
-          settingsManager.togglePaintSplats();
+          settingsManager.toggleCrtScanlines();
           sounds.play('dot');
           e.preventDefault();
         } else if (e.code === 'Digit5' || e.code === 'Numpad5') {
@@ -730,7 +730,7 @@ class Game {
   }
 
   private render() {
-    this.renderer.clear(this.maze.currentLevel);
+    this.renderer.clear(this.maze.currentLevel, this.time);
 
     if (this.state === 'menu') {
       this.renderer.drawMenu(this.gameMode, this.time, badges.hiScore, badges.bestMadnessKills);

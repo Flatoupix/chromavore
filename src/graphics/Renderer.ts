@@ -22,11 +22,33 @@ export class Renderer {
     this.ctx = canvas.getContext('2d')!;
   }
 
-  public clear(lvlIndex: number) {
+  public clear(lvlIndex: number, time: number = 0) {
     const lvl = LEVELS[lvlIndex % LEVELS.length];
-    this.ctx.clearRect(0, 0, CW, CH);
-    this.ctx.fillStyle = lvl.bg;
-    this.ctx.fillRect(0, 0, CW, CH);
+    const c = this.ctx;
+    c.clearRect(0, 0, CW, CH);
+
+    // Deep Outrun Dusk Gradient
+    const bgGrad = c.createLinearGradient(0, 0, 0, CH);
+    bgGrad.addColorStop(0, '#090117');
+    bgGrad.addColorStop(0.5, lvl.bg);
+    bgGrad.addColorStop(1, '#1d002e');
+    c.fillStyle = bgGrad;
+    c.fillRect(0, 0, CW, CH);
+
+    // Synthwave Wireframe Grid in background
+    if (settingsManager.settings.synthwaveGrid) {
+      c.save();
+      c.strokeStyle = 'rgba(255, 0, 128, 0.06)';
+      c.lineWidth = 1;
+      const scrollY = (time * 28) % T;
+      for (let y = scrollY; y < CH; y += T) {
+        c.beginPath(); c.moveTo(0, y); c.lineTo(CW, y); c.stroke();
+      }
+      for (let x = 0; x < CW; x += T) {
+        c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke();
+      }
+      c.restore();
+    }
   }
 
   public drawDots(maze: MazeManager, time: number) {
@@ -103,6 +125,21 @@ export class Renderer {
       c.fillStyle = flsh.c;
       c.fillRect(0, 0, CW, ROWS * T);
       c.globalAlpha = 1;
+    }
+
+    // 80s CRT Scanlines & Phosphor Bloom
+    if (settingsManager.settings.crtScanlines) {
+      c.save();
+      c.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      for (let y = 0; y < ROWS * T; y += 3) {
+        c.fillRect(0, y, CW, 1.2);
+      }
+      const vig = c.createRadialGradient(CW / 2, (ROWS * T) / 2, (ROWS * T) * 0.35, CW / 2, (ROWS * T) / 2, (ROWS * T) * 0.78);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(15, 2, 28, 0.42)');
+      c.fillStyle = vig;
+      c.fillRect(0, 0, CW, ROWS * T);
+      c.restore();
     }
   }
 
@@ -253,69 +290,154 @@ export class Renderer {
 
   public drawMenu(gameMode: string, time: number, hi: number, bestMadnessKills: number) {
     const c = this.ctx;
-    c.fillStyle = C_BG; c.fillRect(0, 0, CW, CH);
-    c.strokeStyle = '#111'; c.lineWidth = 0.5;
-    for (let x = 0; x < CW; x += T) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke(); }
-    for (let y = 0; y < CH; y += T) { c.beginPath(); c.moveTo(0, y); c.lineTo(CW, y); c.stroke(); }
+    c.fillStyle = '#080114';
+    c.fillRect(0, 0, CW, CH);
 
-    const ty = CH * 0.22, p = 1 + Math.sin(time * 2) * 0.05;
-    c.shadowColor = C_GLOW; c.shadowBlur = 30; c.font = `bold ${40 * p}px monospace`; c.fillStyle = C_GLOW;
-    c.textAlign = 'center'; c.fillText('CHROMAVORE', CW / 2, ty); c.shadowBlur = 0;
-    c.font = '12px monospace'; c.fillStyle = '#667799'; c.fillText('DEVOUR THE LIGHT • OUTRUN THE SHADOWS', CW / 2, ty + 26);
+    // Perspective Synthwave Grid on horizon
+    const horizonY = CH * 0.44;
+    c.save();
+    c.strokeStyle = 'rgba(255, 0, 128, 0.16)';
+    c.lineWidth = 1.2;
 
-    // Pac-Man Preview
-    c.fillStyle = C_PLAYER; c.shadowColor = C_PLAYER; c.shadowBlur = 15;
+    // Horizontal perspective lines
+    for (let i = 1; i <= 14; i++) {
+      const lineY = horizonY + Math.pow(i / 14, 2.2) * (CH - horizonY);
+      c.beginPath();
+      c.moveTo(0, lineY);
+      c.lineTo(CW, lineY);
+      c.stroke();
+    }
+
+    // Converging vertical perspective grid lines
+    const vpX = CW / 2;
+    for (let x = -CW * 0.5; x <= CW * 1.5; x += 40) {
+      c.beginPath();
+      c.moveTo(vpX, horizonY);
+      c.lineTo(x, CH);
+      c.stroke();
+    }
+
+    // 80s Outrun Striped Sunset Sun
+    const sunX = CW / 2, sunY = horizonY - 18, sunR = 56;
+    const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
+    sunGrad.addColorStop(0, '#ffee00');
+    sunGrad.addColorStop(0.45, '#ff4400');
+    sunGrad.addColorStop(1, '#ff007f');
+
+    c.save();
+    c.beginPath();
+    c.arc(sunX, sunY, sunR, 0, Math.PI, true);
+    c.closePath();
+    c.fillStyle = sunGrad;
+    c.shadowColor = '#ff007f';
+    c.shadowBlur = 24;
+    c.fill();
+    c.shadowBlur = 0;
+
+    // Horizontal slice gaps through the sun
+    c.fillStyle = '#080114';
+    for (let s = 1; s <= 6; s++) {
+      const sliceY = sunY - sunR * 0.75 + s * 10;
+      const sliceH = 1 + s * 0.8;
+      c.fillRect(sunX - sunR - 4, sliceY, (sunR + 4) * 2, sliceH);
+    }
+    c.restore();
+    c.restore();
+
+    // Title: 80s Chrome & Sunset Gradient
+    const ty = CH * 0.16, p = 1 + Math.sin(time * 2) * 0.04;
+    c.save();
+    c.font = `bold ${42 * p}px monospace`;
+    c.textAlign = 'center';
+
+    // Deep Magenta Neon Glow
+    c.shadowColor = '#ff007f';
+    c.shadowBlur = 28;
+
+    const titleGrad = c.createLinearGradient(CW / 2, ty - 26, CW / 2, ty + 12);
+    titleGrad.addColorStop(0, '#ffffff');
+    titleGrad.addColorStop(0.35, '#00f0ff');
+    titleGrad.addColorStop(0.65, '#ff00aa');
+    titleGrad.addColorStop(1, '#ffd700');
+    c.fillStyle = titleGrad;
+    c.fillText('CHROMAVORE', CW / 2, ty);
+    c.shadowBlur = 0;
+
+    // Subtitle
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#00f0ff';
+    c.shadowColor = '#00f0ff';
+    c.shadowBlur = 8;
+    c.fillText('⚡ RETRO SYNTHWAVE EDITION • OUTRUN THE SHADOWS ⚡', CW / 2, ty + 24);
+    c.shadowBlur = 0;
+    c.restore();
+
+    // Pac-Man & Dots Preview
+    c.fillStyle = C_PLAYER;
+    c.shadowColor = '#ff007f';
+    c.shadowBlur = 15;
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
-    c.beginPath(); c.arc(CW / 2, CH * 0.35, 18, ma, PI2 - ma); c.lineTo(CW / 2, CH * 0.35); c.fill(); c.shadowBlur = 0;
+    c.beginPath(); c.arc(CW / 2 - 36, CH * 0.32, 17, ma, PI2 - ma); c.lineTo(CW / 2 - 36, CH * 0.32); c.fill(); c.shadowBlur = 0;
     for (let i = 0; i < 4; i++) {
-      c.fillStyle = C_DOT; c.beginPath(); c.arc(CW / 2 + 32 + i * 16, CH * 0.35, 3, 0, PI2); c.fill();
+      c.fillStyle = C_DOT; c.shadowColor = C_DOT; c.shadowBlur = 8;
+      c.beginPath(); c.arc(CW / 2 - 4 + i * 18, CH * 0.32, 3.5, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
     // Tabs
-    const my = CH * 0.48;
+    const my = CH * 0.44;
     const isCl = gameMode === 'classic';
-    c.fillStyle = isCl ? '#0c1e34' : '#080d16';
-    c.strokeStyle = isCl ? '#00d4ff' : '#223348';
+    c.fillStyle = isCl ? 'rgba(0, 240, 255, 0.15)' : 'rgba(15, 20, 35, 0.7)';
+    c.strokeStyle = isCl ? '#00f0ff' : '#223348';
     c.lineWidth = isCl ? 2 : 1;
-    c.shadowColor = isCl ? '#00d4ff' : 'transparent'; c.shadowBlur = isCl ? 12 : 0;
-    c.beginPath(); c.roundRect(CW / 2 - 140, my, 130, 34, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
-    c.font = 'bold 11px monospace'; c.fillStyle = isCl ? '#00ffff' : '#8899aa'; c.fillText('[1] CLASSIQUE', CW / 2 - 75, my + 21);
+    c.shadowColor = isCl ? '#00f0ff' : 'transparent'; c.shadowBlur = isCl ? 14 : 0;
+    c.beginPath(); c.roundRect(CW / 2 - 145, my, 135, 34, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
+    c.font = 'bold 11px monospace'; c.fillStyle = isCl ? '#00f0ff' : '#8899aa'; c.fillText('[1] CLASSIQUE', CW / 2 - 78, my + 21);
 
     const isMad = gameMode === 'madness';
-    c.fillStyle = isMad ? '#34081c' : '#120810';
-    c.strokeStyle = isMad ? '#ff0055' : '#442030';
+    c.fillStyle = isMad ? 'rgba(255, 0, 127, 0.2)' : 'rgba(25, 10, 25, 0.7)';
+    c.strokeStyle = isMad ? '#ff007f' : '#442030';
     c.lineWidth = isMad ? 2 : 1;
-    c.shadowColor = isMad ? '#ff0055' : 'transparent'; c.shadowBlur = isMad ? 14 : 0;
-    c.beginPath(); c.roundRect(CW / 2 + 10, my, 130, 34, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
-    c.font = 'bold 11px monospace'; c.fillStyle = isMad ? '#ff3377' : '#8899aa'; c.fillText('[2] MADNESS ⚡', CW / 2 + 75, my + 21);
+    c.shadowColor = isMad ? '#ff007f' : 'transparent'; c.shadowBlur = isMad ? 16 : 0;
+    c.beginPath(); c.roundRect(CW / 2 + 10, my, 135, 34, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
+    c.font = 'bold 11px monospace'; c.fillStyle = isMad ? '#ff007f' : '#8899aa'; c.fillText('[2] MADNESS ⚡', CW / 2 + 78, my + 21);
 
     // Progression banner
-    const ly = CH * 0.57;
-    c.font = 'bold 11px monospace'; c.fillStyle = '#00d4ff'; c.textAlign = 'center';
-    c.fillText('4 MONDES NÉON : DÉPART NIVEAU 1 → PROGRESSION AUTOMATIQUE', CW / 2, ly + 12);
-    c.font = '10px monospace'; c.fillStyle = '#667788';
-    c.fillText('1. The Circuit  ►  2. The Crucible  ►  3. The Matrix  ►  4. The Core', CW / 2, ly + 28);
+    const ly = CH * 0.53;
+    c.font = 'bold 11px monospace'; c.fillStyle = '#ff00aa'; c.textAlign = 'center';
+    c.fillText('4 MONDES SYNTHWAVE : PROGRESSION AUTOMATIQUE', CW / 2, ly + 10);
+    c.font = '10px monospace'; c.fillStyle = '#00f0ff';
+    c.fillText('1. Neon Sunset  ►  2. Miami Nights  ►  3. Synth Highway  ►  4. Outrun 1984', CW / 2, ly + 26);
 
-    // Subtitle
+    // Subtitle description
     c.font = '11px monospace'; c.fillStyle = '#ffaa00';
     if (isMad) {
-      c.fillText('PAC-MAN VULNÉRABLE • DASH TRANCHANT • GAUCHE-DROITE [EMP] • 3X SPEED', CW / 2, CH * 0.66);
+      c.fillText('PAC-MAN VULNÉRABLE • DASH TRANCHANT • GAUCHE-DROITE [EMP] • 3X SPEED', CW / 2, CH * 0.63);
     } else {
-      c.fillText('SURVIE TACTIQUE • 204 ORBES • 4 LABYRINTHES NÉON • DASH & COMBOS', CW / 2, CH * 0.66);
+      c.fillText('SURVIE TACTIQUE • 204 ORBES • 4 LABYRINTHES NÉON • DASH & COMBOS', CW / 2, CH * 0.63);
     }
 
     // Start prompt
-    c.font = '14px monospace'; c.fillStyle = '#fff';
-    if (Math.sin(time * 4) > 0) c.fillText('PRESS SPACE OU TAP POUR COMMENCER', CW / 2, CH * 0.72);
+    c.font = 'bold 14px monospace'; c.fillStyle = '#fff';
+    c.shadowColor = '#00f0ff'; c.shadowBlur = 10;
+    if (Math.sin(time * 4) > 0) c.fillText('PRESS SPACE OU TAP POUR COMMENCER', CW / 2, CH * 0.70);
+    c.shadowBlur = 0;
 
     // Controls guide
-    c.font = '11px monospace'; c.fillStyle = '#667788';
-    c.fillText('Flèches / WASD : Déplacement  |  SPACE : Dash Offensif', CW / 2, CH * 0.77);
+    c.font = '11px monospace'; c.fillStyle = '#8899bb';
+    c.fillText('Flèches / WASD : Déplacement  |  SPACE : Dash Offensif', CW / 2, CH * 0.76);
     if (isMad) {
-      c.fillText('Kombos : ← → ← → (Wiggle EMP)  |  ↑ ↓ ↑ ↓ (Nitro Jet)', CW / 2, CH * 0.81);
-      c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item', CW / 2, CH * 0.85);
+      c.fillText('Kombos : ← → ← → (Wiggle EMP)  |  ↑ ↓ ↑ ↓ (Nitro Jet)', CW / 2, CH * 0.80);
+      c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item', CW / 2, CH * 0.84);
     } else {
-      c.fillText('P : Pause  |  M : Son On/Off', CW / 2, CH * 0.81);
+      c.fillText('P : Pause & Réglages FX  |  M : Audio Synthwave', CW / 2, CH * 0.80);
+    }
+
+    // CRT Scanlines on menu too
+    if (settingsManager.settings.crtScanlines) {
+      c.save();
+      c.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      for (let y = 0; y < CH; y += 3) c.fillRect(0, y, CW, 1);
+      c.restore();
     }
 
     // Records
@@ -409,9 +531,9 @@ export class Renderer {
       {
         btn: PAUSE_BUTTONS[3],
         key: '[4]',
-        label: 'FLAQUES DE PEINTURE NÉON',
-        state: s.paintSplats ? 'ACTIVÉ 🎨' : 'COUPÉ ❌',
-        active: s.paintSplats
+        label: 'LIGNES CRT SCANLINES (80s TV)',
+        state: s.crtScanlines ? 'ACTIVÉ 📺' : 'COUPÉ ❌',
+        active: s.crtScanlines
       },
       {
         btn: PAUSE_BUTTONS[4],
@@ -423,7 +545,7 @@ export class Renderer {
       {
         btn: PAUSE_BUTTONS[5],
         key: '[M]',
-        label: 'AUDIO & MUSIQUE PROCÉDURALE',
+        label: 'AUDIO & SYNTHWAVE BGM',
         state: sounds.isMuted() ? 'COUPÉ 🔇' : 'ACTIF 🔊',
         active: !sounds.isMuted()
       }

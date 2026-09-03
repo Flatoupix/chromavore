@@ -23,30 +23,30 @@ export const DOOR = 6;
 export const SPAWN = 7;
 export const TUNNEL = 8;
 
-// Neon Color Palette
-export const C_BG = '#07070f';
-export const C_WALL = '#0c1424';
-export const C_GLOW = '#00b4ff';
-export const C_DOT = '#ffd700';
-export const C_PELLET = '#ff5555';
-export const C_PLAYER = '#ffffff';
-export const C_DOOR = '#ff80ab';
+// Retro Synthwave 80s Color Palette
+export const C_BG = '#090117';
+export const C_WALL = '#240838';
+export const C_GLOW = '#ff007f';
+export const C_DOT = '#00f0ff';
+export const C_PELLET = '#ffd700';
+export const C_PLAYER = '#ffe600';
+export const C_DOOR = '#ff007f';
 
-// Enemy colors
+// Enemy colors (Synthwave Spectrum)
 export const EC: Record<string, string> = {
-  stalker: '#ff3344',
-  orbiter: '#22eeff',
-  rusher: '#ff8833',
-  phaser: '#bb44ff',
-  titan: '#ff0055'
+  stalker: '#ff0055',
+  orbiter: '#00f0ff',
+  rusher: '#ff8800',
+  phaser: '#b000ff',
+  titan: '#ff007f'
 };
 
 // Power-up definitions
 export const PC: Record<string, string> = {
-  phase: '#3399ff',
-  nova: '#ffdd33',
-  timewarp: '#33ff99',
-  magnet: '#ff44ff'
+  phase: '#00f0ff',
+  nova: '#ffd700',
+  timewarp: '#00ffaa',
+  magnet: '#ff007f'
 };
 
 export const PN: Record<string, string> = {

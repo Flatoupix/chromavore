@@ -60,39 +60,39 @@ export const ML4: number[][] = [
 
 export const LEVELS: LevelDef[] = [
   {
-    name: 'THE CIRCUIT',
-    glowColor: '#00d4ff',
-    dotColor: '#ffd700',
-    pelletColor: '#ff0055',
-    wallColor: '#0c1a2e',
-    bg: '#050811',
+    name: 'NEON SUNSET',
+    glowColor: '#ff007f',
+    dotColor: '#00f0ff',
+    pelletColor: '#ffd700',
+    wallColor: '#250838',
+    bg: '#0c0218',
     layout: ML1
   },
   {
-    name: 'THE CRUCIBLE',
-    glowColor: '#ff0077',
-    dotColor: '#00ffff',
-    pelletColor: '#ffd700',
-    wallColor: '#200b18',
-    bg: '#0c040a',
+    name: 'MIAMI NIGHTS',
+    glowColor: '#00f0ff',
+    dotColor: '#ff007f',
+    pelletColor: '#ffe600',
+    wallColor: '#081c32',
+    bg: '#040b17',
     layout: ML2
   },
   {
-    name: 'THE MATRIX',
-    glowColor: '#00ff88',
-    dotColor: '#ff44aa',
-    pelletColor: '#00ffff',
-    wallColor: '#091c12',
-    bg: '#040d08',
+    name: 'SYNTH HIGHWAY',
+    glowColor: '#b000ff',
+    dotColor: '#00ffff',
+    pelletColor: '#ff0055',
+    wallColor: '#20083a',
+    bg: '#090214',
     layout: ML3
   },
   {
-    name: 'THE CORE',
-    glowColor: '#ff8800',
-    dotColor: '#00e5ff',
-    pelletColor: '#ff0044',
-    wallColor: '#241208',
-    bg: '#0d0703',
+    name: 'OUTRUN 1984',
+    glowColor: '#ff6600',
+    dotColor: '#ff007f',
+    pelletColor: '#00ffff',
+    wallColor: '#361008',
+    bg: '#140402',
     layout: ML4
   }
 ];
@@ -164,8 +164,8 @@ export class MazeManager {
     c.fillStyle = lvl.bg;
     c.fillRect(0, 0, COLS * T, ROWS * T);
 
-    // Subtle grid
-    c.strokeStyle = 'rgba(255,255,255,0.025)';
+    // Retro wireframe grid
+    c.strokeStyle = 'rgba(255, 0, 128, 0.05)';
     c.lineWidth = 1;
     for (let x = 0; x < COLS * T; x += T) {
       c.beginPath(); c.moveTo(x, 0); c.lineTo(x, ROWS * T); c.stroke();
@@ -174,11 +174,11 @@ export class MazeManager {
       c.beginPath(); c.moveTo(0, y); c.lineTo(COLS * T, y); c.stroke();
     }
 
-    // Walls
+    // Walls with glowing dual contour
     c.save();
     c.shadowColor = lvl.glowColor;
-    c.shadowBlur = 10;
-    c.lineWidth = 2;
+    c.shadowBlur = 12;
+    c.lineWidth = 1.5;
     for (let r = 0; r < ROWS; r++) {
       for (let col = 0; col < COLS; col++) {
         if (this.map[r][col] === WALL) {
@@ -186,10 +186,10 @@ export class MazeManager {
           c.fillStyle = lvl.wallColor;
           c.fillRect(x + 1, y + 1, T - 2, T - 2);
           c.strokeStyle = lvl.glowColor;
-          c.strokeRect(x + 1, y + 1, T - 2, T - 2);
+          c.strokeRect(x + 1.5, y + 1.5, T - 3, T - 3);
         } else if (this.map[r][col] === DOOR) {
           const x = col * T, y = r * T;
-          c.fillStyle = 'rgba(255, 128, 171, 0.3)';
+          c.fillStyle = 'rgba(255, 0, 128, 0.5)';
           c.fillRect(x, y + T / 2 - 2, T, 4);
         }
       }
