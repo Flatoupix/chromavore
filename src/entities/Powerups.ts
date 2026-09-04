@@ -25,7 +25,7 @@ export class PowerupManager {
   public current: PowerupItem | null = null;
   public spawnTimer: number = 10;
   public fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
-  public pred = { on: false, t: 0, k: 0, warn: false };
+  public pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false };
 
   public voidRelic: VoidRelic | null = null;
   public voidRelicTimer: number = 14.0;
@@ -121,6 +121,7 @@ export class PowerupManager {
 
   public triggerPredator(enemies: any[]) {
     this.pred.on = true;
+    this.pred.maxT = 7.0;
     this.pred.t = 7.0;
     this.pred.k = 0;
     this.pred.warn = false;

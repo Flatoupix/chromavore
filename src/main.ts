@@ -1055,7 +1055,7 @@ class Game {
       }
     }
 
-    sounds.updateBGM(dt, this.state === 'playing', powerups.pred.on, this.gameMode === 'madness');
+    sounds.updateBGM(dt, this.state === 'playing', powerups.pred.on, this.gameMode === 'madness', powerups.pred.warn);
     badges.update(dt);
     particles.update(dt);
 
@@ -1350,11 +1350,26 @@ class Game {
       this.renderer.ctx.save();
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
+
+      // Glowing predator electric maze walls
+      if (powerups.pred.on) {
+        this.renderer.drawPredatorMazeGlow(this.maze.mOff, this.time, powerups.pred.warn);
+      }
+
       particles.drawPaintSplats(this.renderer.ctx);
       this.renderer.drawDots(this.maze, this.time);
       powerups.draw(this.renderer.ctx, this.time);
       this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn);
-      this.player.draw(this.renderer.ctx, this.time, this.gameMode === 'madness', this.combo.m >= 32);
+      this.player.draw(
+        this.renderer.ctx,
+        this.time,
+        this.gameMode === 'madness',
+        this.combo.m >= 32,
+        powerups.pred.on,
+        powerups.pred.t,
+        powerups.pred.maxT,
+        this.combo
+      );
       this.renderer.ctx.restore();
 
       this.renderer.drawHUD(
@@ -1363,7 +1378,11 @@ class Game {
         this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
         superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
         powerups.fx.overdrive,
-        this.loopCount
+        this.loopCount,
+        powerups.pred.on,
+        powerups.pred.t,
+        powerups.pred.maxT,
+        powerups.pred.warn
       );
       this.renderer.drawPause(this.gameMode === 'madness', this.madnessKills, this.madnessStreak, this.time);
       return;
@@ -1374,6 +1393,11 @@ class Game {
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
     this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
 
+    // Glowing predator electric maze walls
+    if (powerups.pred.on) {
+      this.renderer.drawPredatorMazeGlow(this.maze.mOff, this.time, powerups.pred.warn);
+    }
+
     particles.drawPaintSplats(this.renderer.ctx);
     this.renderer.drawDots(this.maze, this.time);
     powerups.draw(this.renderer.ctx, this.time);
@@ -1383,7 +1407,16 @@ class Game {
     superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
 
     this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn);
-    this.player.draw(this.renderer.ctx, this.time, this.gameMode === 'madness', this.combo.m >= 32);
+    this.player.draw(
+      this.renderer.ctx,
+      this.time,
+      this.gameMode === 'madness',
+      this.combo.m >= 32,
+      powerups.pred.on,
+      powerups.pred.t,
+      powerups.pred.maxT,
+      this.combo
+    );
 
     // Overlays
     this.renderer.drawOverlays(powerups.fx, particles.flsh, this.player.getPos(), this.time);
@@ -1408,9 +1441,14 @@ class Game {
 
     this.renderer.ctx.restore();
 
-    // Danger border vignette
+    // Danger border vignette (Madness mode low timer)
     if (this.gameMode === 'madness' && this.state === 'playing') {
       this.renderer.drawDangerVignette(this.madnessTimer, this.time);
+    }
+
+    // Predator / Invincible border vignette & targeting cyber-brackets
+    if (powerups.pred.on && this.state === 'playing') {
+      this.renderer.drawPredatorVignette(this.time, powerups.pred.t, powerups.pred.warn);
     }
 
     // Touch button on-screen (only on mobile/touch devices, never on desktop)
@@ -1425,7 +1463,11 @@ class Game {
       this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
       superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
       powerups.fx.overdrive,
-      this.loopCount
+      this.loopCount,
+      powerups.pred.on,
+      powerups.pred.t,
+      powerups.pred.maxT,
+      powerups.pred.warn
     );
     badges.drawBanner(this.renderer.ctx);
 

@@ -303,7 +303,9 @@ export class EnemyManager {
       let col = e.isTitan ? '#ff0055' : EC[e.type] || '#00ffff';
       let alpha = 1;
 
-      if (e.st === 'flee') col = predWarn && Math.sin(time * 12) > 0 ? EC[e.type] : '#2244ff';
+      if (e.st === 'flee') {
+        col = predWarn ? (Math.sin(time * 14) > 0 ? '#ffffff' : '#ff4400') : '#2563eb';
+      }
       if (ret) alpha = 0.5;
       if (e.type === 'phaser' && !ret) alpha = 0.7 + Math.sin(time * 6) * 0.15;
       if (e.st === 'spawn') alpha = 0.4;
@@ -313,12 +315,16 @@ export class EnemyManager {
       const r = T * (e.isTitan ? 0.48 : 0.38);
 
       const renderGhost = (ox: number = 0) => {
-        const gx = ep.x + ox;
-        const gy = ep.y;
+        // Panic shiver tremor when fleeing
+        const shiverX = e.st === 'flee' ? Math.sin(time * 36 + e.x * 5) * 1.5 : 0;
+        const shiverY = e.st === 'flee' ? Math.cos(time * 36 + e.y * 5) * 1.5 : 0;
+        const gx = ep.x + ox + shiverX;
+        const gy = ep.y + shiverY;
+
         c.globalAlpha = alpha;
         c.fillStyle = col;
         c.shadowColor = col;
-        c.shadowBlur = ret ? 4 : e.isTitan ? 20 : 10;
+        c.shadowBlur = ret ? 4 : (e.st === 'flee' ? 16 : (e.isTitan ? 20 : 10));
 
         if (!ret) {
           c.beginPath();
@@ -334,18 +340,34 @@ export class EnemyManager {
 
         // Eyes
         const eo = r * 0.28, er = r * 0.28, pr = er * 0.55;
-        c.fillStyle = '#fff';
+        c.fillStyle = e.st === 'flee' ? '#ffcc00' : '#ffffff';
         c.beginPath();
         c.arc(gx - eo, gy - 3, er, 0, PI2);
         c.arc(gx + eo, gy - 3, er, 0, PI2);
         c.fill();
 
         const pd = pr * 0.5;
-        c.fillStyle = e.st === 'flee' ? '#ff0000' : '#111';
+        c.fillStyle = e.st === 'flee' ? '#ff1122' : '#111';
         c.beginPath();
         c.arc(gx - eo + e.dx * pd, gy - 3 + e.dy * pd, pr, 0, PI2);
         c.arc(gx + eo + e.dx * pd, gy - 3 + e.dy * pd, pr, 0, PI2);
         c.fill();
+
+        // Retro Terrified Scalloped Zig-Zag Mouth
+        if (e.st === 'flee' && !ret) {
+          c.strokeStyle = '#ffffff';
+          c.lineWidth = 1.6;
+          c.beginPath();
+          const mw = r * 0.9;
+          const my = gy + r * 0.25;
+          c.moveTo(gx - mw / 2, my);
+          for (let s = 1; s <= 4; s++) {
+            const sx = gx - mw / 2 + (s * mw) / 4;
+            const sy = my + (s % 2 === 1 ? -2.5 : 2.5);
+            c.lineTo(sx, sy);
+          }
+          c.stroke();
+        }
 
         // Frozen crystal overlay
         if (e.frozen) {

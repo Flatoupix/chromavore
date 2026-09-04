@@ -2,7 +2,7 @@
 //  CHROMAVORE — PLAYER ENTITY & OFFENSIVE DASH
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_SPEED } from '../config/constants';
+import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_SPEED, CC, COMBO_DECAY, getComboTier } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
@@ -301,7 +301,16 @@ export class Player {
     return c;
   }
 
-  public draw(c: CanvasRenderingContext2D, time: number, isMadness: boolean, isGodMode: boolean = false) {
+  public draw(
+    c: CanvasRenderingContext2D,
+    time: number,
+    isMadness: boolean,
+    isGodMode: boolean = false,
+    isPredator: boolean = false,
+    predTimer: number = 0,
+    predMaxTimer: number = 7.0,
+    combo: { m: number; t: number; n: number } = { m: 1, t: 0, n: 0 }
+  ) {
     const pp = this.getPos();
 
     // Dash streaks
@@ -325,14 +334,16 @@ export class Player {
       c.restore();
     }
 
-    // Motion Trail
+    // Motion Trail & Predator Chromatic Ghost Afterimages
     const tl = this.trail.length;
     for (let i = 0; i < tl; i++) {
       const t = i / tl, tp = this.trail[i];
-      c.globalAlpha = t * 0.25;
-      c.fillStyle = isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff');
+      c.globalAlpha = t * (isPredator || isGodMode ? 0.45 : 0.25);
+      c.fillStyle = isPredator
+        ? (i % 2 === 0 ? '#00ffff' : '#ff007f')
+        : (isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff'));
       c.beginPath();
-      c.arc(tp.x, tp.y, P_RAD * t * 0.6, 0, PI2);
+      c.arc(tp.x, tp.y, P_RAD * t * (isPredator ? 0.85 : 0.6), 0, PI2);
       c.fill();
     }
     c.globalAlpha = 1;
@@ -345,18 +356,56 @@ export class Player {
       c.rotate(faceAngle);
       if (this.dx || this.dy) c.scale(this.st, this.sq);
       if (this.invuln > 0 && Math.sin(time * 16) > 0) c.globalAlpha = 0.4;
-      c.shadowColor = isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff');
-      c.shadowBlur = isGodMode ? 22 : 12;
+
+      const isWarn = isPredator && predTimer < 2.5;
+
+      // Dynamic Predator / God glow
+      if (isPredator) {
+        c.shadowColor = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
+        c.shadowBlur = 24;
+      } else {
+        c.shadowColor = isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff');
+        c.shadowBlur = isGodMode ? 22 : 12;
+      }
+
       const mouth = Math.abs(Math.sin(this.ma)) * 0.7;
-      c.fillStyle = isGodMode ? '#ffffff' : C_PLAYER;
+
+      if (isPredator) {
+        c.fillStyle = isWarn
+          ? (Math.sin(time * 16) > 0 ? '#ffffff' : '#ff3344')
+          : (Math.sin(time * 10) > 0 ? '#ffffff' : '#ffd700');
+      } else {
+        c.fillStyle = isGodMode ? '#ffffff' : C_PLAYER;
+      }
+
       c.beginPath();
       c.arc(0, 0, P_RAD, mouth, PI2 - mouth);
       c.lineTo(0, 0);
       c.fill();
       c.shadowBlur = 0;
 
+      // Predator electric sparks
+      if (isPredator) {
+        c.save();
+        c.strokeStyle = isWarn ? '#ff3344' : '#00ffff';
+        c.shadowColor = isWarn ? '#ff3344' : '#00ffff';
+        c.shadowBlur = 10;
+        c.lineWidth = 1.6;
+        for (let i = 0; i < 4; i++) {
+          const a = time * 8 + (i * Math.PI) / 2;
+          const r1 = P_RAD + 2;
+          const r2 = P_RAD + 7 + Math.sin(time * 20 + i * 3) * 3;
+          c.beginPath();
+          c.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+          c.lineTo(Math.cos(a + 0.15) * ((r1 + r2) / 2), Math.sin(a + 0.15) * ((r1 + r2) / 2));
+          c.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+          c.stroke();
+        }
+        c.restore();
+      }
+
       // God Mode x32 Radiant Aura & Star Crown
-      if (isGodMode) {
+      if (isGodMode && !isPredator) {
         c.save();
         const auraPulse = 1 + Math.sin(time * 12) * 0.15;
         c.strokeStyle = '#00ffff';
@@ -424,9 +473,110 @@ export class Player {
       c.restore();
     };
 
+    // Circular Countdown Ring around Pac-Man (World coordinates)
+    const renderCountdownRing = (ox: number = 0) => {
+      if (isPredator && predTimer > 0) {
+        const prog = Math.max(0, Math.min(1, predTimer / predMaxTimer));
+        const isWarn = predTimer < 2.5;
+        const arcCol = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
+        const r = P_RAD + 8;
+
+        c.save();
+        c.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        c.lineWidth = 2.5;
+        c.beginPath();
+        c.arc(pp.x + ox, pp.y, r, 0, PI2);
+        c.stroke();
+
+        c.strokeStyle = arcCol;
+        c.shadowColor = arcCol;
+        c.shadowBlur = isWarn ? 14 : 10;
+        c.lineWidth = 3.2;
+        c.lineCap = 'round';
+        c.beginPath();
+        c.arc(pp.x + ox, pp.y, r, -Math.PI / 2, -Math.PI / 2 + prog * PI2);
+        c.stroke();
+
+        const headAng = -Math.PI / 2 + prog * PI2;
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(pp.x + ox + Math.cos(headAng) * r, pp.y + Math.sin(headAng) * r, 2.5, 0, PI2);
+        c.fill();
+        c.restore();
+      }
+    };
+
+    // Upright Floating Overhead HUD Pill directly above Pac-Man (World coordinates)
+    const renderOverheadHUD = (ox: number = 0) => {
+      if (isPredator || combo.m > 1) {
+        c.save();
+        const badgeY = pp.y - P_RAD - 14;
+        const isWarn = isPredator && predTimer < 2.5;
+
+        let badgeText = '';
+        let badgeCol = '#00ffff';
+        let prog = 1;
+
+        if (isPredator) {
+          badgeCol = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
+          badgeText = combo.m > 1 ? `⚡ x${combo.m} • ${predTimer.toFixed(1)}s` : `⚡ ${predTimer.toFixed(1)}s`;
+          if (isWarn) badgeText = combo.m > 1 ? `⚠️ x${combo.m} • ${predTimer.toFixed(1)}s` : `⚠️ ${predTimer.toFixed(1)}s`;
+          prog = Math.max(0, Math.min(1, predTimer / predMaxTimer));
+        } else if (combo.m > 1) {
+          const tier = getComboTier(combo.n);
+          badgeCol = CC[tier] || '#00ffff';
+          badgeText = `🔥 x${combo.m}`;
+          prog = Math.max(0, Math.min(1, combo.t / COMBO_DECAY));
+        }
+
+        c.font = 'bold 9.5px monospace';
+        const tw = c.measureText(badgeText).width;
+        const bw = tw + 12;
+        const bh = 14;
+        const bx = pp.x + ox - bw / 2;
+        const by = badgeY - bh / 2;
+
+        // Container
+        c.fillStyle = 'rgba(8, 12, 24, 0.9)';
+        c.strokeStyle = badgeCol;
+        c.lineWidth = 1.2;
+        c.shadowColor = badgeCol;
+        c.shadowBlur = 8;
+        c.beginPath();
+        c.roundRect(bx, by, bw, bh, 3.5);
+        c.fill();
+        c.stroke();
+        c.shadowBlur = 0;
+
+        // Progress decay line
+        if (prog < 1) {
+          c.fillStyle = badgeCol;
+          c.fillRect(bx + 2, by + bh - 2, (bw - 4) * prog, 1.5);
+        }
+
+        // Text
+        c.fillStyle = '#ffffff';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(badgeText, pp.x + ox, badgeY);
+
+        c.restore();
+      }
+    };
+
     renderPlayer(0);
-    if (pp.x < P_RAD * 2) renderPlayer(CW);
-    else if (pp.x > CW - P_RAD * 2) renderPlayer(-CW);
+    renderCountdownRing(0);
+    renderOverheadHUD(0);
+
+    if (pp.x < P_RAD * 2) {
+      renderPlayer(CW);
+      renderCountdownRing(CW);
+      renderOverheadHUD(CW);
+    } else if (pp.x > CW - P_RAD * 2) {
+      renderPlayer(-CW);
+      renderCountdownRing(-CW);
+      renderOverheadHUD(-CW);
+    }
 
     c.globalAlpha = 1;
   }

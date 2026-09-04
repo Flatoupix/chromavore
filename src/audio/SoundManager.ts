@@ -240,14 +240,19 @@ class SoundManager {
     } catch {}
   }
 
-  public updateBGM(dt: number, isPlaying: boolean, isPredator: boolean, isMadness: boolean) {
+  public updateBGM(dt: number, isPlaying: boolean, isPredator: boolean, isMadness: boolean, isWarn: boolean = false) {
     if (this.muted || !isPlaying) return;
     this.initCtx();
     if (!this.actx) return;
 
     this.bgmTime += dt;
-    // 80s Synthwave tempo: 125 BPM (16th notes ~ 0.12s) in normal, 150 BPM in Madness (~0.10s)
-    const stepDuration = isMadness ? 0.10 : isPredator ? 0.12 : 0.125;
+    // Step duration:
+    // Normal: 0.125s (120 BPM)
+    // Madness: 0.10s (150 BPM)
+    // Predator: 0.09s (~166 BPM) or 0.08s when warning (< 2.5s)
+    const stepDuration = isPredator
+      ? (isWarn ? 0.08 : 0.09)
+      : (isMadness ? 0.10 : 0.125);
 
     if (this.bgmTime >= stepDuration) {
       this.bgmTime -= stepDuration;
@@ -255,7 +260,6 @@ class SoundManager {
       const t = this.actx.currentTime;
 
       // 80s Synthwave Bass Progression: Am -> F -> G -> Em
-      // Galloping 16th-note rhythm: Root, Root, Octave, Root
       const roots = [
         55, 55, 110, 55,  55, 55, 110, 55,  // Am
         43.6, 43.6, 87.3, 43.6, 43.6, 43.6, 87.3, 43.6, // F
@@ -268,9 +272,15 @@ class SoundManager {
         82.4, 82.4, 164.8, 82.4, 65.4, 65.4, 130.8, 65.4
       ];
 
-      const bassFreq = isMadness
-        ? madnessRoots[this.bgmStep % madnessRoots.length]
-        : roots[this.bgmStep % roots.length];
+      // Energetic Predator Cyber-Bass roots
+      const predatorRoots = [
+        110, 220, 110, 220, 130.8, 261.6, 130.8, 261.6,
+        146.8, 293.6, 146.8, 293.6, 164.8, 329.6, 164.8, 329.6
+      ];
+
+      const bassFreq = isPredator
+        ? predatorRoots[this.bgmStep % predatorRoots.length]
+        : (isMadness ? madnessRoots[this.bgmStep % madnessRoots.length] : roots[this.bgmStep % roots.length]);
 
       try {
         // Synthwave Bass with Resonant Lowpass Filter Envelope
@@ -278,15 +288,15 @@ class SoundManager {
         const filter = this.actx.createBiquadFilter();
         const g = this.actx.createGain();
 
-        osc.type = isMadness ? 'sawtooth' : 'sawtooth';
+        osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(bassFreq, t);
 
         filter.type = 'lowpass';
-        filter.Q.setValueAtTime(isMadness ? 6 : 4.5, t);
-        filter.frequency.setValueAtTime(isMadness ? 1200 : 850, t);
+        filter.Q.setValueAtTime(isPredator ? 7 : (isMadness ? 6 : 4.5), t);
+        filter.frequency.setValueAtTime(isPredator ? 1400 : (isMadness ? 1200 : 850), t);
         filter.frequency.exponentialRampToValueAtTime(140, t + stepDuration * 0.85);
 
-        const bassVol = isMadness ? 0.05 : 0.045;
+        const bassVol = isPredator ? 0.055 : (isMadness ? 0.05 : 0.045);
         g.gain.setValueAtTime(bassVol, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.9);
 
@@ -297,24 +307,67 @@ class SoundManager {
         osc.start(t);
         osc.stop(t + stepDuration * 0.9);
 
-        // Synthwave Neon Arpeggio lead note on every 4th step or during Predator mode
-        if (this.bgmStep % 4 === 0 || isPredator) {
-          const arpScale = [440, 523.25, 659.25, 783.99, 880, 1046.5];
-          const arpFreq = arpScale[(this.bgmStep / 2) % arpScale.length];
+        // Predator Siren Sweep & Warning Beeps
+        if (isPredator) {
+          const sirenOsc = this.actx.createOscillator();
+          const sirenFilter = this.actx.createBiquadFilter();
+          const sirenG = this.actx.createGain();
 
-          const arpOsc = this.actx.createOscillator();
-          const arpG = this.actx.createGain();
-          arpOsc.type = 'sine';
-          arpOsc.frequency.setValueAtTime(arpFreq, t);
+          sirenOsc.type = 'triangle';
+          const cycle = (this.bgmStep % 8) / 8;
+          const sirenBase = 440 + Math.sin(cycle * Math.PI * 2) * 220;
+          sirenOsc.frequency.setValueAtTime(sirenBase, t);
+          sirenOsc.frequency.linearRampToValueAtTime(sirenBase + 60, t + stepDuration);
 
-          arpG.gain.setValueAtTime(0.02, t);
-          arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 1.5);
+          sirenFilter.type = 'bandpass';
+          sirenFilter.frequency.setValueAtTime(isWarn ? 1200 : 750, t);
+          sirenFilter.Q.setValueAtTime(3.5, t);
 
-          arpOsc.connect(arpG);
-          arpG.connect(this.actx.destination);
+          const sirenVol = isWarn ? 0.045 : 0.038;
+          sirenG.gain.setValueAtTime(sirenVol, t);
+          sirenG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.95);
 
-          arpOsc.start(t);
-          arpOsc.stop(t + stepDuration * 1.5);
+          sirenOsc.connect(sirenFilter);
+          sirenFilter.connect(sirenG);
+          sirenG.connect(this.actx.destination);
+
+          sirenOsc.start(t);
+          sirenOsc.stop(t + stepDuration * 0.95);
+
+          // Emergency Staccato Warning Beep when < 2.5s!
+          if (isWarn && this.bgmStep % 2 === 0) {
+            const warnOsc = this.actx.createOscillator();
+            const warnG = this.actx.createGain();
+            warnOsc.type = 'square';
+            warnOsc.frequency.setValueAtTime(1480, t);
+            warnG.gain.setValueAtTime(0.035, t);
+            warnG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.45);
+
+            warnOsc.connect(warnG);
+            warnG.connect(this.actx.destination);
+            warnOsc.start(t);
+            warnOsc.stop(t + stepDuration * 0.45);
+          }
+        } else {
+          // Standard Synthwave Arpeggio lead note
+          if (this.bgmStep % 4 === 0) {
+            const arpScale = [440, 523.25, 659.25, 783.99, 880, 1046.5];
+            const arpFreq = arpScale[(this.bgmStep / 2) % arpScale.length];
+
+            const arpOsc = this.actx.createOscillator();
+            const arpG = this.actx.createGain();
+            arpOsc.type = 'sine';
+            arpOsc.frequency.setValueAtTime(arpFreq, t);
+
+            arpG.gain.setValueAtTime(0.02, t);
+            arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 1.5);
+
+            arpOsc.connect(arpG);
+            arpG.connect(this.actx.destination);
+
+            arpOsc.start(t);
+            arpOsc.stop(t + stepDuration * 1.5);
+          }
         }
       } catch {}
     }

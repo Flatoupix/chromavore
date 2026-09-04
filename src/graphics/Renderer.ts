@@ -151,7 +151,11 @@ export class Renderer {
     combo: { n: number; t: number; m: number },
     hi: number,
     overdriveTimer: number = 0,
-    loopCount: number = 0
+    loopCount: number = 0,
+    isPredator: boolean = false,
+    predTimer: number = 0,
+    predMaxTimer: number = 7.0,
+    isWarn: boolean = false
   ) {
     const c = this.ctx;
     c.fillStyle = '#0a0a12';
@@ -175,7 +179,16 @@ export class Renderer {
       c.font = 'bold 11px monospace'; c.fillStyle = '#ff5533';
       c.fillText('🔥 x' + madnessStreak, 115, 34);
 
-      if (overdriveTimer > 0) {
+      if (isPredator) {
+        const pProg = Math.max(0, Math.min(1, predTimer / predMaxTimer));
+        const pCol = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
+        c.font = 'bold 11px monospace'; c.fillStyle = pCol;
+        c.shadowColor = pCol; c.shadowBlur = 10;
+        c.fillText(`⚡ INVINCIBLE (${predTimer.toFixed(1)}s)`, 12, 50);
+        c.shadowBlur = 0;
+        c.fillStyle = '#222'; c.fillRect(12, 57, 100, 3);
+        c.fillStyle = pCol; c.fillRect(12, 57, 100 * pProg, 3);
+      } else if (overdriveTimer > 0) {
         c.font = 'bold 10px monospace'; c.fillStyle = '#00ffcc';
         c.shadowColor = '#00ffcc'; c.shadowBlur = 8;
         c.fillText(`⚡ NO-CD (${overdriveTimer.toFixed(1)}s)`, 12, 50);
@@ -247,26 +260,44 @@ export class Renderer {
     c.fillText(Math.round(dScore).toString().padStart(7, '0'), 12, 38);
     c.shadowBlur = 0;
 
-    // Dash Gauge
-    const dX = 134, dY = 14, dW = 90, dH = 18;
-    const isOverdrive = overdriveTimer > 0;
-    const isReady = dashCd <= 0 || isOverdrive;
-    const cdProg = isReady ? 1 : Math.max(0, 1 - dashCd / 2.8);
-    c.fillStyle = isOverdrive ? '#003828' : '#0c1322';
-    c.strokeStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : '#223350');
-    c.lineWidth = isOverdrive ? 2 : 1.5;
-    c.shadowColor = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : 'transparent');
-    c.shadowBlur = isOverdrive ? 14 : (isReady ? 8 : 0);
-    c.strokeRect(dX, dY, dW, dH);
-    c.fillRect(dX, dY, dW, dH);
-    if (cdProg > 0) {
-      c.fillStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00e5ff' : '#0077aa');
-      c.fillRect(dX + 2, dY + 2, (dW - 4) * cdProg, dH - 4);
+    // Dash / Predator Invincible Gauge
+    const dX = 134, dY = 14, dW = 100, dH = 18;
+    if (isPredator) {
+      const pProg = Math.max(0, Math.min(1, predTimer / predMaxTimer));
+      const pCol = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
+      c.fillStyle = '#0e1828';
+      c.strokeStyle = pCol;
+      c.lineWidth = 1.8;
+      c.shadowColor = pCol;
+      c.shadowBlur = 12;
+      c.strokeRect(dX, dY, dW, dH);
+      c.fillRect(dX, dY, dW, dH);
+      c.fillStyle = pCol;
+      c.fillRect(dX + 2, dY + 2, (dW - 4) * pProg, dH - 4);
+      c.shadowBlur = 0;
+      c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = '#050a14';
+      c.fillText(`⚡ INVINCIBLE ${predTimer.toFixed(1)}s`, dX + dW / 2, dY + dH / 2);
+    } else {
+      const isOverdrive = overdriveTimer > 0;
+      const isReady = dashCd <= 0 || isOverdrive;
+      const cdProg = isReady ? 1 : Math.max(0, 1 - dashCd / 2.8);
+      c.fillStyle = isOverdrive ? '#003828' : '#0c1322';
+      c.strokeStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : '#223350');
+      c.lineWidth = isOverdrive ? 2 : 1.5;
+      c.shadowColor = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : 'transparent');
+      c.shadowBlur = isOverdrive ? 14 : (isReady ? 8 : 0);
+      c.strokeRect(dX, dY, dW, dH);
+      c.fillRect(dX, dY, dW, dH);
+      if (cdProg > 0) {
+        c.fillStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00e5ff' : '#0077aa');
+        c.fillRect(dX + 2, dY + 2, (dW - 4) * cdProg, dH - 4);
+      }
+      c.shadowBlur = 0;
+      c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillStyle = isReady ? '#050a14' : '#ffffff';
+      c.fillText(isOverdrive ? `⚡ NO-CD (${overdriveTimer.toFixed(1)}s)` : (isReady ? '⚡ DASH [SPACE]' : 'DASH ' + dashCd.toFixed(1) + 's'), dX + dW / 2, dY + dH / 2);
     }
-    c.shadowBlur = 0;
-    c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillStyle = isReady ? '#050a14' : '#ffffff';
-    c.fillText(isOverdrive ? `⚡ NO-CD (${overdriveTimer.toFixed(1)}s)` : (isReady ? '⚡ DASH [SPACE]' : 'DASH ' + dashCd.toFixed(1) + 's'), dX + dW / 2, dY + dH / 2);
 
     // Hi-Score & Level
     c.font = '11px monospace'; c.fillStyle = '#666'; c.textAlign = 'center';
@@ -1492,6 +1523,59 @@ export class Renderer {
     c.fillStyle = `rgba(255,0,50,${vAlpha})`;
     c.fillRect(0, 0, CW, 8); c.fillRect(0, CH - 8, CW, 8);
     c.fillRect(0, 0, 8, CH); c.fillRect(CW - 8, 0, 8, CH);
+    c.restore();
+  }
+
+  public drawPredatorMazeGlow(mOff: HTMLCanvasElement, time: number, isWarn: boolean) {
+    const c = this.ctx;
+    c.save();
+    c.globalCompositeOperation = 'source-atop';
+    const pulse = 0.32 + 0.15 * Math.sin(time * 10);
+    c.fillStyle = isWarn
+      ? (Math.sin(time * 16) > 0 ? 'rgba(255, 68, 0, 0.65)' : 'rgba(0, 240, 255, 0.45)')
+      : `rgba(0, 240, 255, ${pulse})`;
+    c.fillRect(0, 0, CW, ROWS * T);
+    c.restore();
+  }
+
+  public drawPredatorVignette(time: number, predTimer: number, isWarn: boolean) {
+    const c = this.ctx;
+    c.save();
+
+    // Pulsing radial vignette around canvas edges
+    const pulse = 0.5 + 0.5 * Math.sin(time * 8);
+    const edgeCol = isWarn
+      ? (Math.sin(time * 14) > 0 ? `rgba(255, 34, 68, ${0.35 + 0.25 * pulse})` : `rgba(255, 120, 0, ${0.25 + 0.2 * pulse})`)
+      : `rgba(0, 240, 255, ${0.22 + 0.15 * pulse})`;
+
+    const grad = c.createRadialGradient(CW / 2, (ROWS * T) / 2 + HUD_H, (ROWS * T) * 0.35, CW / 2, (ROWS * T) / 2 + HUD_H, (ROWS * T) * 0.78);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    grad.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+    grad.addColorStop(1, edgeCol);
+
+    c.fillStyle = grad;
+    c.fillRect(0, HUD_H, CW, CH - HUD_H);
+
+    // Neon Corner Targeting Brackets
+    const brkCol = isWarn ? '#ff3344' : '#00ffff';
+    c.strokeStyle = brkCol;
+    c.shadowColor = brkCol;
+    c.shadowBlur = 12;
+    c.lineWidth = 2.5;
+
+    const bLen = 22;
+    const topY = HUD_H + 8, botY = CH - 8;
+    const leftX = 8, rightX = CW - 8;
+
+    // Top-Left
+    c.beginPath(); c.moveTo(leftX, topY + bLen); c.lineTo(leftX, topY); c.lineTo(leftX + bLen, topY); c.stroke();
+    // Top-Right
+    c.beginPath(); c.moveTo(rightX - bLen, topY); c.lineTo(rightX, topY); c.lineTo(rightX, topY + bLen); c.stroke();
+    // Bottom-Left
+    c.beginPath(); c.moveTo(leftX, botY - bLen); c.lineTo(leftX, botY); c.lineTo(leftX + bLen, botY); c.stroke();
+    // Bottom-Right
+    c.beginPath(); c.moveTo(rightX - bLen, botY); c.lineTo(rightX, botY); c.lineTo(rightX, botY - bLen); c.stroke();
+
     c.restore();
   }
 
