@@ -282,27 +282,27 @@ class Game {
 
       if (this.state === 'menu') {
         // Navigation links click at bottom:
-        // Line 1 (y: ~615): 📖 [I] COMMENT JOUER | ⚡ [C] ARSENAL | 🏆 [B] SUCCÈS
-        if (cy >= 600 && cy < 626) {
-          if (cx < CW * 0.35) {
+        // Row 1 (y: ~538): 📖 [I] COMMENT JOUER | ⚡ [C] ARSENAL
+        if (cy >= 522 && cy <= 552) {
+          if (cx < CW / 2) {
             this.state = 'instructions';
-            sounds.play('dot');
-            return;
-          } else if (cx < CW * 0.68) {
-            this.state = 'codex';
-            this.codexTab = 'skills';
             sounds.play('dot');
             return;
           } else {
             this.state = 'codex';
-            this.codexTab = 'badges';
+            this.codexTab = 'skills';
             sounds.play('dot');
             return;
           }
         }
-        // Line 2 (y: ~638): 📊 [L] SCORES | 📲 [K] REPRENDRE UNE PARTIE
-        if (cy >= 626 && cy <= 655) {
-          if (cx < CW * 0.5) {
+        // Row 2 (y: ~566): 🏆 [B] SUCCÈS | 📊 [L] SCORES | 📲 [K] SYNC
+        if (cy > 552 && cy <= 585) {
+          if (cx < CW * 0.38) {
+            this.state = 'codex';
+            this.codexTab = 'badges';
+            sounds.play('dot');
+            return;
+          } else if (cx < CW * 0.68) {
             this.state = 'leaderboard';
             this.leaderboardMode = this.gameMode;
             leaderboard.syncRemote();
@@ -313,21 +313,21 @@ class Game {
             return;
           }
         }
-        // Copy sync code if tapping player line (y: 528)
-        if (cy >= 515 && cy < 545) {
+        // Copy sync code if tapping player line (y: 470)
+        if (cy >= 455 && cy <= 485) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(CW / 2, 528, '📋 CODE ID COPIÉ !', '#00ffff', 14);
+          particles.addPop(CW / 2, 470, '📋 CODE ID COPIÉ !', '#00ffff', 14);
           sounds.play('dot');
           return;
         }
 
-        const madW = 350, madH = 62;
+        const madW = 380, madH = 58;
         const madX = CW / 2 - madW / 2;
-        const madY = 240;
+        const madY = 228;
 
-        const clW = 240, clH = 36;
+        const clW = 280, clH = 34;
         const clX = CW / 2 - clW / 2;
-        const clY = 318;
+        const clY = 298;
 
         // Click on Madness Card [1]
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
@@ -351,6 +351,7 @@ class Game {
           return;
         }
 
+        // Click on Play prompt area or anywhere else starts the game
         this.startGame(this.gameMode);
         return;
       }
