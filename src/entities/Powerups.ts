@@ -38,11 +38,22 @@ export class PowerupManager {
   public voidRelicTimer: number = 14.0;
 
   public vortexPortal: VortexPortal | null = null;
-  public vortexPortalTimer: number = 22.0;
+  public vortexPortalTimer: number = 85.0;
 
   private spawnPoints = [
     { x: 10, y: 8 }, { x: 4, y: 14 }, { x: 16, y: 14 }, { x: 10, y: 4 }
   ];
+
+  public reset() {
+    this.current = null;
+    this.spawnTimer = 10;
+    this.fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
+    this.pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false };
+    this.voidRelic = null;
+    this.voidRelicTimer = 14.0;
+    this.vortexPortal = null;
+    this.vortexPortalTimer = 85.0 + Math.random() * 35.0;
+  }
 
   public update(
     dt: number,
@@ -118,7 +129,7 @@ export class PowerupManager {
     if (!this.vortexPortal) {
       this.vortexPortalTimer -= dt;
       if (this.vortexPortalTimer <= 0) {
-        this.vortexPortalTimer = 35.0 + Math.random() * 20.0;
+        this.vortexPortalTimer = 110.0 + Math.random() * 50.0;
         const pt = maze.getRandomWalkable(false);
         this.vortexPortal = { x: pt.x, y: pt.y, timer: 14.0, maxTimer: 14.0 };
         sounds.play('portal');
@@ -138,10 +149,12 @@ export class PowerupManager {
       }
       if (this.vortexPortal.timer <= 0) {
         this.vortexPortal = null;
+        this.vortexPortalTimer = 90.0 + Math.random() * 40.0;
       } else if (Math.hypot(plPos.x - vx, plPos.y - vy) < T * 0.95) {
         particles.emit(vx, vy, 50, '#d946ef', { speed: 180, size: 5, life: 0.75 });
         sounds.play('portal');
         this.vortexPortal = null;
+        this.vortexPortalTimer = 120.0 + Math.random() * 60.0;
         if (onEnterBonusStage) onEnterBonusStage();
       }
     }

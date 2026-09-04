@@ -72,7 +72,8 @@ export const PI_: Record<string, string> = {
 // Bonus Stage Hyper-Swarm Settings
 export const BONUS_DURATION = 15.0;
 export const BONUS_SWARM_MAX = 85;
-export const BONUS_FORCE_FIELD_RAD = 54;
+export const BONUS_FORCE_FIELD_BASE_RAD = 26; // Starts small, grows with kills!
+export const BONUS_FORCE_FIELD_MAX_RAD = 80;
 export const BONUS_ARENA_W = 860;
 export const BONUS_ARENA_H = 920;
 
@@ -113,6 +114,6 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v2.9.0';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v2.9.1';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v2.9.0';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v2.9.1';

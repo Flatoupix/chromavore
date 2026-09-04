@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_RAD } from '../config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -1614,6 +1614,9 @@ export class Renderer {
     bonusTimer: number,
     bonusKills: number,
     bonusScore: number,
+    score: number,
+    dScore: number,
+    forceFieldRad: number,
     time: number,
     player: Player
   ) {
@@ -1727,11 +1730,11 @@ export class Renderer {
       c.restore();
     }
 
-    // Draw Particles in Arena space
+    // Draw Particles in Arena space (including floating +pts numbers!)
     particles.draw(c);
 
-    // Draw Giant Force Field around Pac-Man
-    player.drawForceField(c, playerPos.x, playerPos.y, BONUS_FORCE_FIELD_RAD, time);
+    // Draw Dynamic Growing Force Field around Pac-Man
+    player.drawForceField(c, playerPos.x, playerPos.y, forceFieldRad, time);
 
     // Draw Pac-Man (tiny scale)
     player.drawBonusPacman(c, playerPos.x, playerPos.y, time, playerAngle);
@@ -1778,7 +1781,7 @@ export class Renderer {
     c.fillStyle = tCol;
     c.fillRect(CW / 2 - 50, 44, 100 * bProg, 4);
 
-    // Left: Kills
+    // Left: Kills & Dynamic Shield Size
     c.font = 'bold 11px monospace';
     c.fillStyle = '#ffd700';
     c.shadowColor = '#ffd700';
@@ -1786,17 +1789,21 @@ export class Renderer {
     c.textAlign = 'left';
     c.fillText('👻 ' + bonusKills + ' PULVÉRISÉS', 12, 33);
     c.shadowBlur = 0;
-    c.font = '8px monospace';
-    c.fillStyle = '#8899aa';
-    c.fillText('FORCE FIELD ACTIF', 12, 48);
+    c.font = 'bold 9px monospace';
+    c.fillStyle = '#00ffff';
+    c.fillText('🛡️ SHIELD ' + Math.round(forceFieldRad) + 'px', 12, 48);
 
-    // Right: Bonus Points
-    c.font = 'bold 12px monospace';
-    c.fillStyle = '#00ffcc';
-    c.shadowColor = '#00ffcc';
+    // Right: Real-time Player Score & Bonus Accumulator
+    c.font = 'bold 13px monospace';
+    c.fillStyle = '#00ffff';
+    c.shadowColor = '#00ffff';
     c.shadowBlur = 8;
     c.textAlign = 'right';
-    c.fillText('⭐ +' + bonusScore, CW - 12, 33);
+    c.fillText('SCORE: ' + Math.round(dScore), CW - 12, 33);
+    c.shadowBlur = 0;
+    c.font = 'bold 9px monospace';
+    c.fillStyle = '#ffd700';
+    c.fillText('⭐ +' + bonusScore + ' BONUS', CW - 12, 48);
     c.shadowBlur = 0;
     c.font = '8px monospace';
     c.fillStyle = '#8899aa';

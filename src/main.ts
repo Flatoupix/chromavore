@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_RAD, BONUS_SWARM_MAX } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS, MADNESS_LEVELS } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -598,8 +598,7 @@ class Game {
     superItems.resetAll();
     input.resetKombos();
     input.nextDir = { x: 0, y: 0 };
-    powerups.voidRelic = null;
-    powerups.voidRelicTimer = 14.0;
+    powerups.reset();
     particles.paintSplats = [];
 
     // Always start at Level 1
@@ -834,7 +833,6 @@ class Game {
       if (this.bonusTallyTimer <= 0) {
         // Safe return back to the maze
         this.state = 'playing';
-        this.score += this.bonusScore;
         this.player.invuln = 1.8;
         sounds.play('start');
       }
@@ -906,8 +904,10 @@ class Game {
       });
     }
 
+    // Dynamic Force Field radius: starts small (26px) and expands with kills (up to 80px)!
+    const curRad = Math.min(BONUS_FORCE_FIELD_MAX_RAD, BONUS_FORCE_FIELD_BASE_RAD + this.bonusKills * 0.75);
+
     // Move ghosts towards Pac-Man & check Force Field collision
-    const curRad = BONUS_FORCE_FIELD_RAD;
     for (const g of this.bonusGhosts) {
       if (!g.alive) continue;
       const dx = this.bonusPacPos.x - g.x;
@@ -920,10 +920,14 @@ class Game {
         this.bonusKills++;
         const pts = 200 + Math.min(2000, this.bonusKills * 25);
         this.bonusScore += pts;
+        this.score += pts; // Real-time player score addition!
+
+        // Floating points popup directly above defeated ghost in arena
+        particles.addPop(g.x, g.y - 12, '+' + pts, '#ffd700', 14);
 
         sounds.play('crunch');
         particles.emit(g.x, g.y, 8, g.color, { speed: 130, size: 3.5, life: 0.45 });
-        particles.shake(1.8, 0.08);
+        particles.shake(1.5, 0.06);
 
         // Career frags & unlocks
         progression.addGhostKills(1);
@@ -1522,6 +1526,7 @@ class Game {
     this.renderer.clear(this.maze.currentLevel, this.time, this.gameMode === 'madness');
 
     if (this.state === 'bonus') {
+      const curRad = Math.min(BONUS_FORCE_FIELD_MAX_RAD, BONUS_FORCE_FIELD_BASE_RAD + this.bonusKills * 0.75);
       this.renderer.drawBonusStage(
         this.bonusPacPos,
         this.bonusPacAngle,
@@ -1530,6 +1535,9 @@ class Game {
         this.bonusTimer,
         this.bonusKills,
         this.bonusScore,
+        this.score,
+        this.dScore,
+        curRad,
         this.time,
         this.player
       );
