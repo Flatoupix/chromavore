@@ -46,6 +46,8 @@ class Game {
   public waveT: number = 0;
   public hitlag: number = 0;
   public loopCount: number = 0;
+  public codexTab: 'skills' | 'badges' = 'skills';
+  public badgePage: number = 0;
   public get loopSpeedMultiplier(): number {
     return 1 + this.loopCount * 0.10;
   }
@@ -72,6 +74,7 @@ class Game {
 
     this.setupNameModal();
     this.setupProfileModals();
+    badges.syncWithProfile();
     this.bindInputs();
     this.startLoop();
   }
@@ -143,7 +146,7 @@ class Game {
         restoreStatus.textContent = `Succès ! Profil ${p} chargé (${profileManager.profile.careerGhosts} 👻)`;
         badges.hiScore = profileManager.profile.hiScore;
         badges.bestMadnessKills = profileManager.profile.bestMadnessKills;
-        badges.unlocked = profileManager.profile.badges || {};
+        badges.syncWithProfile();
         setTimeout(() => {
           restoreModal.style.display = 'none';
           this.state = 'menu';
@@ -270,13 +273,20 @@ class Game {
       const cy = (e.clientY - rect.top) * (CH / rect.height);
 
       if (this.state === 'menu') {
-        // Leaderboard click at bottom
+        // Navigation links click at bottom:
+        // [S] ARSENAL | [B] SUCCÈS | [L] SCORES | [K] REPRENDRE
         if (cy >= CH * 0.93) {
-          if (cx < CW * 0.38) {
+          if (cx < CW * 0.28) {
             this.state = 'codex';
+            this.codexTab = 'skills';
             sounds.play('dot');
             return;
-          } else if (cx < CW * 0.68) {
+          } else if (cx < CW * 0.54) {
+            this.state = 'codex';
+            this.codexTab = 'badges';
+            sounds.play('dot');
+            return;
+          } else if (cx < CW * 0.78) {
             this.state = 'leaderboard';
             this.leaderboardMode = this.gameMode;
             leaderboard.syncRemote();
@@ -313,6 +323,27 @@ class Game {
       }
 
       if (this.state === 'codex') {
+        const tabW = 200, tabH = 26, tabY = 36;
+        // Click Tab 1 (Skills)
+        if (cy >= tabY && cy <= tabY + tabH && cx >= CW / 2 - tabW - 8 && cx <= CW / 2 - 8) {
+          this.codexTab = 'skills';
+          sounds.play('dot');
+          return;
+        }
+        // Click Tab 2 (Badges)
+        if (cy >= tabY && cy <= tabY + tabH && cx >= CW / 2 + 8 && cx <= CW / 2 + tabW + 8) {
+          this.codexTab = 'badges';
+          sounds.play('dot');
+          return;
+        }
+        // If in badges and clicking bottom pagination
+        if (this.codexTab === 'badges' && cy >= CH - 45) {
+          if (cx > CW * 0.25 && cx < CW * 0.75) {
+            this.badgePage = (this.badgePage + 1) % 2;
+            sounds.play('dot');
+            return;
+          }
+        }
         this.state = 'menu';
         sounds.play('dot');
         return;
@@ -327,6 +358,7 @@ class Game {
             leaderboard.syncRemote();
           } else {
             this.state = 'codex';
+            this.codexTab = 'skills';
           }
           sounds.play('dot');
           return;
@@ -479,6 +511,24 @@ class Game {
           sounds.play('dot');
           e.preventDefault();
         }
+      } else if (this.state === 'codex') {
+        if (e.code === 'Digit1' || e.code === 'Numpad1') {
+          this.codexTab = 'skills';
+          sounds.play('dot');
+          e.preventDefault();
+        } else if (e.code === 'Digit2' || e.code === 'Numpad2') {
+          this.codexTab = 'badges';
+          sounds.play('dot');
+          e.preventDefault();
+        } else if (e.code === 'Tab') {
+          this.codexTab = this.codexTab === 'skills' ? 'badges' : 'skills';
+          sounds.play('dot');
+          e.preventDefault();
+        } else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+          this.badgePage = (this.badgePage + 1) % 2;
+          sounds.play('dot');
+          e.preventDefault();
+        }
       }
     });
   }
@@ -581,10 +631,16 @@ class Game {
       if (this.madnessKills === 35 && this.maze.currentLevel === 0) this.warpToLevel(1);
       else if (this.madnessKills === 80 && this.maze.currentLevel === 1) this.warpToLevel(2);
       else if (this.madnessKills === 140 && this.maze.currentLevel === 2) this.warpToLevel(3);
-      else if (this.madnessKills === 210 && this.maze.currentLevel === 3) this.warpToLevel(4);
+      else if (this.madnessKills === 210 && this.maze.currentLevel === 3) {
+        this.warpToLevel(4);
+        badges.unlock('wave5');
+      }
       else if (this.madnessKills > 300 && (this.madnessKills - 300) % 100 === 0) {
         this.warpToLevel((this.maze.currentLevel + 1) % LEVELS.length);
       }
+
+      if (this.madnessKills >= 50) badges.unlock('madness50');
+      if (this.madnessKills >= 100) badges.unlock('madness100');
 
       badges.saveMadnessKills(this.madnessKills);
       this.madnessTimer = Math.min(45, this.madnessTimer + 0.35);
@@ -762,6 +818,7 @@ class Game {
           if (this.combo.m >= 8) badges.unlock('combo8');
           if (this.combo.m >= 16) badges.unlock('combo16');
           if (this.combo.m >= 32) {
+            badges.unlock('combo32');
             sounds.play('powerup');
             particles.flash('#00ffff', 0.35);
             particles.shake(8, 0.25);
@@ -777,7 +834,7 @@ class Game {
         this.waveT = 2.5;
         this.wave++;
         this.score += 1000 * (this.wave - 1);
-        if (this.wave >= 5) badges.unlock('wave5');
+        if (this.wave >= 5 || this.maze.currentLevel >= 4) badges.unlock('wave5');
         sounds.play('wave');
       }
     }
@@ -841,12 +898,31 @@ class Game {
       return;
     }
 
+    if (input.isBadgesRequested) {
+      if (this.state === 'menu' || this.state === 'gameover') {
+        this.state = 'codex';
+        this.codexTab = 'badges';
+        sounds.play('dot');
+      } else if (this.state === 'codex' && this.codexTab === 'badges') {
+        this.state = 'menu';
+        sounds.play('dot');
+      } else if (this.state === 'codex' && this.codexTab === 'skills') {
+        this.codexTab = 'badges';
+        sounds.play('dot');
+      }
+      input.isBadgesRequested = false;
+    }
+
     if (input.isCodexRequested) {
       if (this.state === 'menu' || this.state === 'gameover') {
         this.state = 'codex';
+        this.codexTab = 'skills';
         sounds.play('dot');
-      } else if (this.state === 'codex') {
+      } else if (this.state === 'codex' && this.codexTab === 'skills') {
         this.state = 'menu';
+        sounds.play('dot');
+      } else if (this.state === 'codex' && this.codexTab === 'badges') {
+        this.codexTab = 'skills';
         sounds.play('dot');
       }
       input.isCodexRequested = false;
@@ -1155,12 +1231,15 @@ class Game {
           // When completing Level 5 (index 4), loop back to Level 1 and increase speed by +10%!
           if (completedLvl === LEVELS.length - 1) {
             this.loopCount++;
+            badges.unlock('loop1');
+            if (this.loopCount >= 2) badges.unlock('loop2');
             particles.addPop(CW / 2, (ROWS * T) / 2, `👑 BOUCLE ${this.loopCount + 1} ! (+${this.loopCount * 10}% VITESSE)`, '#ffd700', 24);
             particles.flash('#ffd700', 0.45);
             particles.shake(12, 0.4);
             sounds.play('powerup');
           }
           const nextLvl = (completedLvl + 1) % LEVELS.length;
+          if (nextLvl === 4) badges.unlock('wave5');
           const speedMult = this.loopSpeedMultiplier;
           this.maze.build(nextLvl);
           this.enemyManager.spawnClassic(4, speedMult);
@@ -1189,7 +1268,7 @@ class Game {
     }
 
     if (this.state === 'codex') {
-      this.renderer.drawCodex(this.time);
+      this.renderer.drawCodex(this.time, this.codexTab, this.badgePage);
       return;
     }
 

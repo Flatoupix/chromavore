@@ -6,6 +6,7 @@ import { profileManager } from './ProfileManager';
 import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { CW, ROWS, T } from '../config/constants';
+import { badges } from './BadgeSystem';
 
 export interface SkillDef {
   id: string;             // e.g. 'dash_v1', 'dash_v2'
@@ -191,7 +192,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'OCTO BEAMS V2',
     icon: '⚡',
-    threshold: 2000,
+    threshold: 20000,
     category: 'item',
     command: 'Touche [E] ou Bouton 💣',
     desc: 'Lasers à 8 directions (cruciformes + 4 diagonales) rasant intégralement la carte'
@@ -230,6 +231,9 @@ class ProgressionManager {
     const next = prev + count;
     profileManager.profile.careerGhosts = next;
     profileManager.saveProfile();
+
+    // Check kill-based achievement badges
+    badges.checkKillBadges(next);
 
     const newlyUnlocked: SkillDef[] = [];
     for (const s of SKILL_TREE) {

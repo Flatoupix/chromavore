@@ -21,6 +21,7 @@ export class InputManager {
   public isStartRequested: boolean = false;
   public isRestartRequested: boolean = false;
   public isCodexRequested: boolean = false;
+  public isBadgesRequested: boolean = false;
   public isRestoreRequested: boolean = false;
   public isSelectMode1Requested: boolean = false;
   public isSelectMode2Requested: boolean = false;
@@ -87,6 +88,9 @@ export class InputManager {
       }
       if (e.code === 'KeyS') {
         this.isCodexRequested = true;
+      }
+      if (e.code === 'KeyB') {
+        this.isBadgesRequested = true;
       }
       if (e.code === 'KeyK') {
         this.isRestoreRequested = true;

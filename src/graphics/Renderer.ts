@@ -9,7 +9,7 @@ import { EnemyManager } from '../entities/Enemy';
 import { PowerupManager } from '../entities/Powerups';
 import { SuperItemManager } from '../systems/SuperItems';
 import { ParticleSystem } from '../systems/ParticleSystem';
-import { BadgeManager } from '../systems/BadgeSystem';
+import { BadgeManager, badges, BADGES } from '../systems/BadgeSystem';
 import { sounds } from '../audio/SoundManager';
 import { settingsManager, PAUSE_BUTTONS } from '../systems/SettingsManager';
 import { progression, SKILL_TREE } from '../systems/ProgressionSystem';
@@ -476,11 +476,13 @@ export class Renderer {
     c.fillText(`👤 ${profileManager.profile.pseudo}  •  CODE ID : ${profileManager.profile.syncCode}`, CW / 2, CH * 0.92);
 
     // Navigation Links
-    c.font = 'bold 11px monospace';
+    c.font = 'bold 10px monospace';
     c.fillStyle = '#00f0ff';
     c.shadowColor = '#00f0ff';
     c.shadowBlur = 8;
-    c.fillText(`⚡ [S] ARSENAL (${unlockedCount}/18)  |  🏆 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, CH * 0.96);
+    const unlockedBadges = badges.getUnlockedCount();
+    const totalBadges = badges.getTotalCount();
+    c.fillText(`⚡ [S] ARSENAL (${unlockedCount}/18)  |  🏆 [B] SUCCÈS (${unlockedBadges}/${totalBadges})  |  📊 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, CH * 0.96);
     c.shadowBlur = 0;
   }
 
@@ -507,7 +509,7 @@ export class Renderer {
     }
 
     c.fillStyle = '#ffd700'; c.font = '12px monospace';
-    c.fillText('🏆 Badges: ' + badgesUnlocked + '/6 Débloqués', CW / 2, cy + 130);
+    c.fillText('🏆 Badges & Succès : ' + badgesUnlocked + '/' + badges.getTotalCount() + ' Débloqués', CW / 2, cy + 130);
 
     // Career Progression Bar
     const nxt = progression.getNextUnlock();
@@ -690,10 +692,15 @@ export class Renderer {
     c.fillText('[ ESPACE / ECHAP ] RETOUR  •  [ 1 ] CLASSIQUE  •  [ 2 ] MADNESS', CW / 2, CH - 14);
   }
 
-  public drawCodex(time: number) {
+  public drawCodex(time: number, tab: 'skills' | 'badges' = 'skills', page: number = 0) {
     const c = this.ctx;
     c.fillStyle = '#06010f';
     c.fillRect(0, 0, CW, CH);
+
+    const isSkills = tab === 'skills';
+    const unlockedSkills = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
+    const unlockedBadges = badges.getUnlockedCount();
+    const totalBadges = badges.getTotalCount();
 
     // Title
     c.save();
@@ -704,72 +711,227 @@ export class Renderer {
     grad.addColorStop(0.5, '#ff00aa');
     grad.addColorStop(1, '#ffd700');
     c.fillStyle = grad;
-    c.shadowColor = '#00ffff';
+    c.shadowColor = isSkills ? '#00ffff' : '#ffd700';
     c.shadowBlur = 10;
-    c.fillText('⚡ ARSENAL & ARBRE DES COMPÉTENCES ⚡', CW / 2, 28);
+    c.fillText(isSkills ? '⚡ ARSENAL & ARBRE DES COMPÉTENCES ⚡' : '🏆 SUCCÈS & TROPHÉES DE CARRIÈRE 🏆', CW / 2, 26);
     c.shadowBlur = 0;
     c.restore();
 
-    // Career Progress Bar Header
-    const nxt = progression.getNextUnlock();
-    const barW = 460, barH = 10;
-    const barX = CW / 2 - barW / 2, barY = 54;
-    c.fillStyle = 'rgba(15, 20, 35, 0.9)';
-    c.strokeStyle = '#00ffff';
-    c.lineWidth = 1;
+    // Tab Switcher Bar at top (y: 36, h: 26)
+    const tabW = 200, tabH = 24, tabY = 36;
+
+    // Tab 1: Skills
+    c.fillStyle = isSkills ? 'rgba(0, 240, 255, 0.22)' : 'rgba(15, 20, 35, 0.7)';
+    c.strokeStyle = isSkills ? '#00f0ff' : '#223348';
+    c.lineWidth = isSkills ? 1.8 : 1;
+    c.shadowColor = isSkills ? '#00f0ff' : 'transparent';
+    c.shadowBlur = isSkills ? 8 : 0;
     c.beginPath();
-    c.roundRect(barX, barY, barW, barH, 4);
+    c.roundRect(CW / 2 - tabW - 8, tabY, tabW, tabH, 5);
     c.fill();
     c.stroke();
-
-    const fillW = Math.max(0, Math.min(barW, barW * nxt.progress));
-    c.fillStyle = '#00ffcc';
-    c.shadowColor = '#00ffcc';
-    c.shadowBlur = 8;
-    c.beginPath();
-    c.roundRect(barX, barY, fillW, barH, 4);
-    c.fill();
     c.shadowBlur = 0;
-
     c.font = 'bold 10px monospace';
-    c.fillStyle = '#ffffff';
+    c.fillStyle = isSkills ? '#00f0ff' : '#8899aa';
     c.textAlign = 'center';
-    if (nxt.skill) {
-      c.fillText(`👻 TOTAL CARRIÈRE : ${progression.totalGhosts} ➔ PROCHAIN : ${nxt.skill.name} (${nxt.remaining} 👻)`, CW / 2, 46);
-    } else {
-      c.fillText(`👑 TOTAL CARRIÈRE : ${progression.totalGhosts} 👻 (ARSENAL MAÎTRISÉ À 100% !)`, CW / 2, 46);
-    }
+    c.fillText(`[1] ⚡ ARSENAL (${unlockedSkills}/18)`, CW / 2 - tabW / 2 - 8, tabY + 16);
 
-    // 2 Columns of 9 skills each:
-    const v1Skills = SKILL_TREE.filter(s => s.version === 1);
-    const v2Skills = SKILL_TREE.filter(s => s.version === 2);
-
-    const colW = 265, cardH = 50;
-    const col1X = 24, col2X = 299;
-    const startY = 74, gapY = 56;
-
-    // Draw Column 1: V1
-    for (let i = 0; i < v1Skills.length; i++) {
-      const s = v1Skills[i];
-      const y = startY + i * gapY;
-      this.drawSkillCard(c, s, col1X, y, colW, cardH);
-    }
-
-    // Draw Column 2: V2
-    for (let i = 0; i < v2Skills.length; i++) {
-      const s = v2Skills[i];
-      const y = startY + i * gapY;
-      this.drawSkillCard(c, s, col2X, y, colW, cardH);
-    }
-
-    // Footer
-    c.font = 'bold 11px monospace';
-    c.fillStyle = '#00ffff';
-    c.textAlign = 'center';
-    c.shadowColor = '#00ffff';
-    c.shadowBlur = 6;
-    c.fillText('PRESS [ÉCHAP] OU [S] OU CLIQUEZ POUR RETOURNER AU MENU', CW / 2, CH - 14);
+    // Tab 2: Badges
+    const isBadges = tab === 'badges';
+    c.fillStyle = isBadges ? 'rgba(255, 215, 0, 0.22)' : 'rgba(15, 20, 35, 0.7)';
+    c.strokeStyle = isBadges ? '#ffd700' : '#223348';
+    c.lineWidth = isBadges ? 1.8 : 1;
+    c.shadowColor = isBadges ? '#ffd700' : 'transparent';
+    c.shadowBlur = isBadges ? 8 : 0;
+    c.beginPath();
+    c.roundRect(CW / 2 + 8, tabY, tabW, tabH, 5);
+    c.fill();
+    c.stroke();
     c.shadowBlur = 0;
+    c.font = 'bold 10px monospace';
+    c.fillStyle = isBadges ? '#ffd700' : '#8899aa';
+    c.fillText(`[2] 🏆 SUCCÈS (${unlockedBadges}/${totalBadges})`, CW / 2 + tabW / 2 + 8, tabY + 16);
+
+    if (isSkills) {
+      // Career Progress Bar Header
+      const nxt = progression.getNextUnlock();
+      const barW = 460, barH = 8;
+      const barX = CW / 2 - barW / 2, barY = 76;
+      c.fillStyle = 'rgba(15, 20, 35, 0.9)';
+      c.strokeStyle = '#00ffff';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(barX, barY, barW, barH, 4);
+      c.fill();
+      c.stroke();
+
+      const fillW = Math.max(0, Math.min(barW, barW * nxt.progress));
+      c.fillStyle = '#00ffcc';
+      c.shadowColor = '#00ffcc';
+      c.shadowBlur = 8;
+      c.beginPath();
+      c.roundRect(barX, barY, fillW, barH, 4);
+      c.fill();
+      c.shadowBlur = 0;
+
+      c.font = 'bold 9.5px monospace';
+      c.fillStyle = '#ffffff';
+      c.textAlign = 'center';
+      if (nxt.skill) {
+        c.fillText(`👻 TOTAL CARRIÈRE : ${progression.totalGhosts.toLocaleString()} ➔ PROCHAIN : ${nxt.skill.name} (${nxt.remaining.toLocaleString()} 👻)`, CW / 2, 70);
+      } else {
+        c.fillText(`👑 TOTAL CARRIÈRE : ${progression.totalGhosts.toLocaleString()} 👻 (ARSENAL MAÎTRISÉ À 100% !)`, CW / 2, 70);
+      }
+
+      // 2 Columns of 9 skills each:
+      const v1Skills = SKILL_TREE.filter(s => s.version === 1);
+      const v2Skills = SKILL_TREE.filter(s => s.version === 2);
+
+      const colW = 265, cardH = 49;
+      const col1X = 24, col2X = 299;
+      const startY = 92, gapY = 54;
+
+      for (let i = 0; i < v1Skills.length; i++) {
+        const s = v1Skills[i];
+        const y = startY + i * gapY;
+        this.drawSkillCard(c, s, col1X, y, colW, cardH);
+      }
+      for (let i = 0; i < v2Skills.length; i++) {
+        const s = v2Skills[i];
+        const y = startY + i * gapY;
+        this.drawSkillCard(c, s, col2X, y, colW, cardH);
+      }
+
+      // Footer
+      c.font = 'bold 10.5px monospace';
+      c.fillStyle = '#00ffff';
+      c.textAlign = 'center';
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 6;
+      c.fillText('[1] ARSENAL  •  [2] SUCCÈS  •  [TAB] BASCULER  •  [ECHAP / S] RETOUR', CW / 2, CH - 14);
+      c.shadowBlur = 0;
+    } else {
+      // BADGES & ACHIEVEMENTS GALLERY
+      const allBadges = Object.values(BADGES);
+      const pageSize = 14;
+      const maxPages = Math.ceil(allBadges.length / pageSize);
+      const curPage = Math.max(0, Math.min(page, maxPages - 1));
+      const pageBadges = allBadges.slice(curPage * pageSize, (curPage + 1) * pageSize);
+
+      // Progress bar header for badges
+      const ratio = unlockedBadges / allBadges.length;
+      const barW = 460, barH = 8;
+      const barX = CW / 2 - barW / 2, barY = 76;
+      c.fillStyle = 'rgba(15, 20, 35, 0.9)';
+      c.strokeStyle = '#ffd700';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(barX, barY, barW, barH, 4);
+      c.fill();
+      c.stroke();
+
+      const fillW = Math.max(0, Math.min(barW, barW * ratio));
+      c.fillStyle = '#ffd700';
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 8;
+      c.beginPath();
+      c.roundRect(barX, barY, fillW, barH, 4);
+      c.fill();
+      c.shadowBlur = 0;
+
+      c.font = 'bold 9.5px monospace';
+      c.fillStyle = '#ffffff';
+      c.textAlign = 'center';
+      c.fillText(`🏆 SUCCÈS ACCOMPLIS : ${unlockedBadges} / ${allBadges.length} (${Math.round(ratio * 100)}%)`, CW / 2, 70);
+
+      // Draw 2 Columns of 7 cards
+      const colW = 265, cardH = 64;
+      const col1X = 24, col2X = 299;
+      const startY = 92, gapY = 70;
+
+      for (let i = 0; i < pageBadges.length; i++) {
+        const b = pageBadges[i];
+        const isCol2 = i >= 7;
+        const colX = isCol2 ? col2X : col1X;
+        const rowIdx = isCol2 ? i - 7 : i;
+        const y = startY + rowIdx * gapY;
+        this.drawBadgeCard(c, b, colX, y, colW, cardH);
+      }
+
+      // Footer
+      c.font = 'bold 10.5px monospace';
+      c.fillStyle = '#ffd700';
+      c.textAlign = 'center';
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 6;
+      c.fillText(`[1] ARSENAL  •  [2] SUCCÈS  •  [PAGE ${curPage + 1}/${maxPages} • FLÈCHES ← / →]  •  [ECHAP / B] RETOUR`, CW / 2, CH - 14);
+      c.shadowBlur = 0;
+    }
+  }
+
+  private drawBadgeCard(c: CanvasRenderingContext2D, b: import('../systems/BadgeSystem').BadgeDef, x: number, y: number, w: number, h: number) {
+    const unlocked = badges.isUnlocked(b.id);
+    c.save();
+
+    c.fillStyle = unlocked ? 'rgba(255, 215, 0, 0.09)' : 'rgba(15, 20, 35, 0.7)';
+    c.strokeStyle = unlocked ? '#ffd700' : '#223348';
+    c.lineWidth = unlocked ? 1.5 : 1;
+    if (unlocked) {
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 8;
+    }
+    c.beginPath();
+    c.roundRect(x, y, w, h, 6);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Icon
+    c.font = '16px monospace';
+    c.textAlign = 'left';
+    c.fillText(b.icon, x + 8, y + 20);
+
+    // Name
+    c.font = 'bold 10px monospace';
+    c.fillStyle = unlocked ? '#ffd700' : '#8899aa';
+    c.fillText(b.name, x + 30, y + 17);
+
+    // Status tag
+    c.textAlign = 'right';
+    c.font = 'bold 8.5px monospace';
+    if (unlocked) {
+      c.fillStyle = '#00ffcc';
+      c.fillText('✅ OBTENU', x + w - 8, y + 17);
+    } else {
+      c.fillStyle = '#667788';
+      c.fillText(b.killsRequired ? `🔒 ${b.killsRequired.toLocaleString()} 👻` : '🔒 DÉFI', x + w - 8, y + 17);
+    }
+
+    // Description
+    c.textAlign = 'left';
+    c.font = '8.5px monospace';
+    c.fillStyle = unlocked ? '#dddddd' : '#556677';
+    c.fillText(b.desc.slice(0, 48), x + 8, y + 36);
+
+    // Progress bar for kill badges if locked
+    if (!unlocked && b.killsRequired) {
+      const pRatio = Math.max(0, Math.min(1, progression.totalGhosts / b.killsRequired));
+      const pbW = w - 16, pbH = 4, pbX = x + 8, pbY = y + 46;
+      c.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      c.fillRect(pbX, pbY, pbW, pbH);
+      c.fillStyle = '#00ffff';
+      c.fillRect(pbX, pbY, pbW * pRatio, pbH);
+      c.font = '7.5px monospace';
+      c.fillStyle = '#00ffff';
+      c.textAlign = 'right';
+      c.fillText(`${progression.totalGhosts.toLocaleString()} / ${b.killsRequired.toLocaleString()} 👻`, pbX + pbW, pbY + 11);
+    } else if (unlocked) {
+      c.font = '7.5px monospace';
+      c.fillStyle = '#ffaa00';
+      c.fillText('🏆 Trophée enregistré au profil cloud', x + 8, y + 54);
+    }
+
+    c.restore();
   }
 
   private drawSkillCard(c: CanvasRenderingContext2D, s: import('../systems/ProgressionSystem').SkillDef, x: number, y: number, w: number, h: number) {
