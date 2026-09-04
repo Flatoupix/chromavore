@@ -104,7 +104,8 @@ export class Player {
     isMadness: boolean,
     isNitro: boolean,
     inputDir: { x: number; y: number },
-    onCollectDot: (c: number, r: number) => void
+    onCollectDot: (c: number, r: number) => void,
+    speedMult: number = 1.0
   ) {
     // Dash streaks
     for (let i = this.dashStreaks.length - 1; i >= 0; i--) {
@@ -120,7 +121,7 @@ export class Player {
     this.sq += (1 - this.sq) * 0.12;
 
     const curSpeed = isMadness ? (isNitro ? P_MADNESS_SPEED * 1.35 : P_MADNESS_SPEED) : P_SPEED;
-    this.speed = curSpeed;
+    this.speed = curSpeed * speedMult;
 
     // Accept input direction
     if (inputDir.x !== 0 || inputDir.y !== 0) {

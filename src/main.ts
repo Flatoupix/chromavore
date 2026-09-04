@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS, MADNESS_LEVELS } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -582,19 +582,44 @@ class Game {
 
   private warpToLevel(lvlIndex: number) {
     const isMadness = this.gameMode === 'madness';
+    const list = isMadness ? MADNESS_LEVELS : LEVELS;
     this.maze.build(lvlIndex, isMadness);
+
+    // Reposition player only if trapped inside a wall in the new layout, preserving direction and motion!
     if (!this.maze.isWalkable(this.player.x, this.player.y, false)) {
-      this.player.reset(isMadness, this.maze);
+      const safe = this.maze.findNearestWalkable(this.player.x, this.player.y, false);
+      this.player.x = this.player.fx = safe.x;
+      this.player.y = this.player.fy = safe.y;
+      this.player.t = 1;
+    } else if (!this.maze.isWalkable(this.player.fx, this.player.fy, false)) {
+      this.player.fx = this.player.x;
+      this.player.fy = this.player.y;
+      this.player.t = 1;
     }
-    // Wall safety: relocate any ghosts trapped in new layout
-    for (const e of this.enemyManager.enemies) {
-      if (e.st !== 'dead' && !this.maze.isWalkable(e.x, e.y, true)) {
-        const safe = this.maze.findNearestWalkable(e.x, e.y, true);
-        e.x = e.fx = safe.x;
-        e.y = e.fy = safe.y;
-        e.t = 1;
+
+    // Grant 1.8s invulnerability on level warp to avoid instant collision
+    this.player.invuln = Math.max(this.player.invuln, 1.8);
+    this.player.speed = (isMadness ? P_MADNESS_SPEED : P_SPEED) * this.loopSpeedMultiplier;
+
+    // Ghost management
+    if (isMadness) {
+      // Relocate any ghosts trapped in new layout
+      for (const e of this.enemyManager.enemies) {
+        if (e.st !== 'dead' && !this.maze.isWalkable(e.x, e.y, true)) {
+          const safe = this.maze.findNearestWalkable(e.x, e.y, true);
+          e.x = e.fx = safe.x;
+          e.y = e.fy = safe.y;
+          e.t = 1;
+        }
       }
+      if (this.enemyManager.enemies.length < 8) {
+        this.enemyManager.spawnMadness(8 - this.enemyManager.enemies.length, this.madnessKills);
+      }
+      this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
+    } else {
+      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier);
     }
+
     // Wall safety: relocate any active powerup or relic trapped in new layout
     if (powerups.current && !this.maze.isWalkable(powerups.current.x, powerups.current.y, false)) {
       const safe = this.maze.findNearestWalkable(powerups.current.x, powerups.current.y, false);
@@ -608,12 +633,11 @@ class Game {
     }
 
     const def = this.maze.getLevelDef();
-    this.madnessTimer = Math.min(45, this.madnessTimer + 8.0);
     sounds.play('wave');
-    particles.flash('#00ffff', 0.4);
-    particles.emit(CW / 2, (ROWS * T) / 2, 60, def.glowColor, { speed: 240, size: 6, life: 0.9 });
-    particles.shake(10, 0.35);
-    particles.addPop(CW / 2, (ROWS * T) / 2, `🌀 WARP TO ${def.name} ! (+8s)`, '#00ffff', 22);
+    particles.flash(def.glowColor, 0.35);
+    particles.emit(CW / 2, (ROWS * T) / 2, 50, def.glowColor, { speed: 220, size: 5, life: 0.8 });
+    particles.shake(6, 0.25);
+    particles.addPop(CW / 2, HUD_H + 35, `🌀 NIVEAU ${lvlIndex + 1}/${list.length} : ${def.name}`, def.glowColor, 22);
   }
 
   private onKillGhost(e: Ghost, ex: number, ey: number) {
@@ -822,13 +846,33 @@ class Game {
 
       if (this.combo.n > this.bestCombo) this.bestCombo = this.combo.n;
 
-      if (this.maze.remainingDots <= 0) {
-        this.state = 'waveTrans';
-        this.waveT = 2.5;
+      if (this.maze.remainingDots <= 0 && this.state === 'playing') {
+        const completedLvl = this.maze.currentLevel;
+        const isMadness = this.gameMode === 'madness';
+        const list = isMadness ? MADNESS_LEVELS : LEVELS;
+
+        const bonus = 2000 + (this.wave - 1) * 500;
+        this.score += bonus;
+        particles.addPop(px, py - 25, `+${bonus} BONUS NIVEAU !`, '#ffd700', 22);
+        sounds.play('powerup');
+        particles.flash('#ffd700', 0.25);
+        particles.shake(6, 0.25);
+
+        // When completing Level 10 (last level), loop back to Level 1 and increase speed by +10%!
+        if (completedLvl === list.length - 1) {
+          this.loopCount++;
+          badges.unlock('loop1');
+          if (this.loopCount >= 2) badges.unlock('loop2');
+          particles.addPop(CW / 2, HUD_H + 60, `👑 BOUCLE ${this.loopCount + 1} ! (+${this.loopCount * 10}% VITESSE)`, '#ffd700', 24);
+          particles.flash('#ffd700', 0.45);
+          particles.shake(12, 0.4);
+        }
+
         this.wave++;
-        this.score += 1000 * (this.wave - 1);
         if (this.wave >= 5 || this.maze.currentLevel >= 4) badges.unlock('wave5');
-        sounds.play('wave');
+
+        const nextLvl = (completedLvl + 1) % list.length;
+        this.warpToLevel(nextLvl);
       }
     }
   }
@@ -1076,7 +1120,7 @@ class Game {
         }
 
         // Entities update
-        this.player.update(dt, this.maze, isMadness, input.nitroActive > 0, input.nextDir, (c, r) => this.onCollectDot(c, r));
+        this.player.update(dt, this.maze, isMadness, input.nitroActive > 0, input.nextDir, (c, r) => this.onCollectDot(c, r), this.loopSpeedMultiplier);
         this.enemyManager.update(dt, this.maze, this.player.getPos(), powerups.fx.timewarp);
 
         // Force Field suction (Dots & Frightened Ghosts)
@@ -1218,40 +1262,7 @@ class Game {
         break;
 
       case 'waveTrans':
-        this.waveT -= dt;
-        if (this.waveT <= 0) {
-          const completedLvl = this.maze.currentLevel;
-          const isMadness = this.gameMode === 'madness';
-          const list = isMadness ? MADNESS_LEVELS : LEVELS;
-
-          // When completing Level 10 (last level), loop back to Level 1 and increase speed by +10%!
-          if (completedLvl === list.length - 1) {
-            this.loopCount++;
-            badges.unlock('loop1');
-            if (this.loopCount >= 2) badges.unlock('loop2');
-            particles.addPop(CW / 2, (ROWS * T) / 2, `👑 BOUCLE ${this.loopCount + 1} ! (+${this.loopCount * 10}% VITESSE)`, '#ffd700', 24);
-            particles.flash('#ffd700', 0.45);
-            particles.shake(12, 0.4);
-            sounds.play('powerup');
-          }
-          const nextLvl = (completedLvl + 1) % list.length;
-          if (nextLvl >= 4) badges.unlock('wave5');
-          const speedMult = this.loopSpeedMultiplier;
-          this.maze.build(nextLvl, isMadness);
-          if (isMadness) {
-            this.enemyManager.enemies = [];
-            this.enemyManager.spawnMadness(8 + Math.min(8, this.loopCount * 2), this.madnessKills);
-            this.player.reset(true, this.maze, speedMult);
-            this.madnessTimer = Math.min(45, this.madnessTimer + 10.0); // Reward for clearing all dots in Madness!
-            sounds.play('powerup');
-            particles.flash('#00ffff', 0.4);
-          } else {
-            this.enemyManager.spawnClassic(4, speedMult);
-            this.player.reset(false, this.maze, speedMult);
-          }
-          this.state = 'ready';
-          this.readyT = 1.8;
-        }
+        this.state = 'playing';
         break;
     }
   }
