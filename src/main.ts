@@ -28,7 +28,7 @@ class Game {
   private touchDeck: TouchDeckManager;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' = 'menu';
   public leaderboardMode: 'classic' | 'madness' = 'madness';
   public playerRank: number = 0;
   public playerDate: string = '';
@@ -274,21 +274,35 @@ class Game {
       const cx = (e.clientX - rect.left) * (CW / rect.width);
       const cy = (e.clientY - rect.top) * (CH / rect.height);
 
+      if (this.state === 'instructions') {
+        this.state = 'menu';
+        sounds.play('dot');
+        return;
+      }
+
       if (this.state === 'menu') {
         // Navigation links click at bottom:
-        // [C] ARSENAL | [B] SUCCÈS | [L] SCORES | [K] REPRENDRE
-        if (cy >= CH * 0.92) {
-          if (cx < CW * 0.28) {
+        // Line 1 (y: ~615): 📖 [I] COMMENT JOUER | ⚡ [C] ARSENAL | 🏆 [B] SUCCÈS
+        if (cy >= 600 && cy < 626) {
+          if (cx < CW * 0.35) {
+            this.state = 'instructions';
+            sounds.play('dot');
+            return;
+          } else if (cx < CW * 0.68) {
             this.state = 'codex';
             this.codexTab = 'skills';
             sounds.play('dot');
             return;
-          } else if (cx < CW * 0.54) {
+          } else {
             this.state = 'codex';
             this.codexTab = 'badges';
             sounds.play('dot');
             return;
-          } else if (cx < CW * 0.78) {
+          }
+        }
+        // Line 2 (y: ~638): 📊 [L] SCORES | 📲 [K] REPRENDRE UNE PARTIE
+        if (cy >= 626 && cy <= 655) {
+          if (cx < CW * 0.5) {
             this.state = 'leaderboard';
             this.leaderboardMode = this.gameMode;
             leaderboard.syncRemote();
@@ -299,18 +313,21 @@ class Game {
             return;
           }
         }
-        // Copy sync code if tapping player line
-        if (cy >= CH * 0.86 && cy < CH * 0.92) {
+        // Copy sync code if tapping player line (y: 528)
+        if (cy >= 515 && cy < 545) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(CW / 2, CH * 0.89, '📋 CODE ID COPIÉ !', '#00ffff', 14);
+          particles.addPop(CW / 2, 528, '📋 CODE ID COPIÉ !', '#00ffff', 14);
           sounds.play('dot');
           return;
         }
 
-        const madY = CH * 0.38;
-        const madX = CW / 2 - 180, madW = 360, madH = 60;
-        const clY = madY + madH + 12;
-        const clX = CW / 2 - 130, clW = 260, clH = 36;
+        const madW = 350, madH = 62;
+        const madX = CW / 2 - madW / 2;
+        const madY = 240;
+
+        const clW = 240, clH = 36;
+        const clX = CW / 2 - clW / 2;
+        const clY = 318;
 
         // Click on Madness Card [1]
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
@@ -979,11 +996,32 @@ class Game {
       input.isCodexRequested = false;
     }
 
+    if (input.isInstructionsRequested) {
+      if (this.state === 'menu' || this.state === 'gameover') {
+        this.state = 'instructions';
+        sounds.play('dot');
+      } else if (this.state === 'instructions') {
+        this.state = 'menu';
+        sounds.play('dot');
+      }
+      input.isInstructionsRequested = false;
+    }
+
     if (input.isRestoreRequested) {
       if (this.state === 'menu') {
         this.showRestoreModal();
       }
       input.isRestoreRequested = false;
+    }
+
+    if (this.state === 'instructions') {
+      if (input.isPauseRequested || input.isStartRequested) {
+        this.state = 'menu';
+        sounds.play('dot');
+        input.isPauseRequested = false;
+        input.isStartRequested = false;
+      }
+      return;
     }
 
     if (this.state === 'codex') {
@@ -1299,6 +1337,11 @@ class Game {
 
     if (this.state === 'codex') {
       this.renderer.drawCodex(this.time, this.codexTab, this.badgePage);
+      return;
+    }
+
+    if (this.state === 'instructions') {
+      this.renderer.drawInstructions(this.time);
       return;
     }
 

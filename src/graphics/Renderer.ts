@@ -321,14 +321,14 @@ export class Renderer {
     c.textAlign = 'center';
 
     // Perspective Synthwave Grid on horizon
-    const horizonY = CH * 0.44;
+    const horizonY = 195;
     c.save();
-    c.strokeStyle = 'rgba(255, 0, 128, 0.16)';
+    c.strokeStyle = 'rgba(255, 0, 128, 0.14)';
     c.lineWidth = 1.2;
 
     // Horizontal perspective lines
-    for (let i = 1; i <= 14; i++) {
-      const lineY = horizonY + Math.pow(i / 14, 2.2) * (CH - horizonY);
+    for (let i = 1; i <= 12; i++) {
+      const lineY = horizonY + Math.pow(i / 12, 2.2) * (CH - horizonY);
       c.beginPath();
       c.moveTo(0, lineY);
       c.lineTo(CW, lineY);
@@ -344,8 +344,8 @@ export class Renderer {
       c.stroke();
     }
 
-    // 80s Outrun Striped Sunset Sun
-    const sunX = CW / 2, sunY = horizonY - 18, sunR = 56;
+    // 80s Outrun Striped Sunset Sun (positioned compactly on the horizon)
+    const sunX = CW / 2, sunY = 175, sunR = 40;
     const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
     sunGrad.addColorStop(0, '#ffee00');
     sunGrad.addColorStop(0.45, '#ff4400');
@@ -357,31 +357,30 @@ export class Renderer {
     c.closePath();
     c.fillStyle = sunGrad;
     c.shadowColor = '#ff007f';
-    c.shadowBlur = 24;
+    c.shadowBlur = 20;
     c.fill();
     c.shadowBlur = 0;
 
     // Horizontal slice gaps through the sun
     c.fillStyle = '#080114';
-    for (let s = 1; s <= 6; s++) {
-      const sliceY = sunY - sunR * 0.75 + s * 10;
-      const sliceH = 1 + s * 0.8;
+    for (let s = 1; s <= 5; s++) {
+      const sliceY = sunY - sunR * 0.7 + s * 8;
+      const sliceH = 1 + s * 0.7;
       c.fillRect(sunX - sunR - 4, sliceY, (sunR + 4) * 2, sliceH);
     }
     c.restore();
     c.restore();
 
     // Title: 80s Chrome & Sunset Gradient
-    const ty = CH * 0.16, p = 1 + Math.sin(time * 2) * 0.04;
+    const ty = 66, p = 1 + Math.sin(time * 2) * 0.03;
     c.save();
-    c.font = `bold ${42 * p}px monospace`;
+    c.font = `bold ${38 * p}px monospace`;
     c.textAlign = 'center';
 
-    // Deep Magenta Neon Glow
     c.shadowColor = '#ff007f';
-    c.shadowBlur = 28;
+    c.shadowBlur = 24;
 
-    const titleGrad = c.createLinearGradient(CW / 2, ty - 26, CW / 2, ty + 12);
+    const titleGrad = c.createLinearGradient(CW / 2, ty - 24, CW / 2, ty + 10);
     titleGrad.addColorStop(0, '#ffffff');
     titleGrad.addColorStop(0.35, '#00f0ff');
     titleGrad.addColorStop(0.65, '#ff00aa');
@@ -391,49 +390,47 @@ export class Renderer {
     c.shadowBlur = 0;
 
     // Subtitle
-    c.font = 'bold 11px monospace';
+    c.font = 'bold 10px monospace';
     c.fillStyle = '#00f0ff';
     c.shadowColor = '#00f0ff';
     c.shadowBlur = 8;
-    c.fillText('⚡ RETRO SYNTHWAVE EDITION • OUTRUN THE SHADOWS ⚡', CW / 2, ty + 24);
+    c.fillText('⚡ RETRO SYNTHWAVE EDITION • OUTRUN THE SHADOWS ⚡', CW / 2, ty + 22);
     c.shadowBlur = 0;
 
     // Version Tag
-    c.font = 'bold 9.5px monospace';
-    c.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    c.fillText(GAME_VERSION, CW / 2, ty + 39);
+    c.font = 'bold 9px monospace';
+    c.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    c.fillText(GAME_VERSION, CW / 2, ty + 36);
     c.restore();
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
 
-    // Pac-Man & Dots Preview
+    // Pac-Man & Dots Preview (sitting cleanly along horizon)
     c.fillStyle = C_PLAYER;
     c.shadowColor = '#ff007f';
-    c.shadowBlur = 15;
+    c.shadowBlur = 14;
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
-    c.beginPath(); c.arc(CW / 2 - 36, CH * 0.32, 17, ma, PI2 - ma); c.lineTo(CW / 2 - 36, CH * 0.32); c.fill(); c.shadowBlur = 0;
+    c.beginPath(); c.arc(CW / 2 - 34, 186, 14, ma, PI2 - ma); c.lineTo(CW / 2 - 34, 186); c.fill(); c.shadowBlur = 0;
     for (let i = 0; i < 4; i++) {
       c.fillStyle = C_DOT; c.shadowColor = C_DOT; c.shadowBlur = 8;
-      c.beginPath(); c.arc(CW / 2 - 4 + i * 18, CH * 0.32, 3.5, 0, PI2); c.fill(); c.shadowBlur = 0;
+      c.beginPath(); c.arc(CW / 2 - 4 + i * 16, 186, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // Vertical Mode Selection Stack:
-    // [1] MADNESS (Hero Card, wide, vibrant neon, default primary mode)
-    // [2] CLASSIQUE (Subtle, compact, casual arcade chill)
+    // Vertical Mode Selection Cards (starting well below horizon, zero overlap)
     const isMad = gameMode === 'madness';
     const isCl = gameMode === 'classic';
 
-    // --- CARD 1: MODE MADNESS (Au-dessus, grand, hero) ---
-    const madW = 360, madH = 60;
+    // --- CARD 1: MODE MADNESS (Hero Card, Principal) ---
+    const madW = 350, madH = 62;
     const madX = CW / 2 - madW / 2;
-    const madY = CH * 0.38;
+    const madY = 240;
 
     c.save();
-    c.fillStyle = isMad ? 'rgba(255, 0, 127, 0.22)' : 'rgba(25, 10, 25, 0.6)';
-    c.strokeStyle = isMad ? '#ff007f' : '#552238';
+    c.fillStyle = isMad ? 'rgba(255, 0, 127, 0.25)' : 'rgba(20, 10, 22, 0.6)';
+    c.strokeStyle = isMad ? '#ff007f' : '#552035';
     c.lineWidth = isMad ? 2.5 : 1.2;
     c.shadowColor = isMad ? '#ff007f' : 'transparent';
-    c.shadowBlur = isMad ? 20 : 0;
+    c.shadowBlur = isMad ? 18 : 0;
     c.beginPath();
     c.roundRect(madX, madY, madW, madH, 8);
     c.fill();
@@ -448,7 +445,7 @@ export class Renderer {
       c.shadowColor = '#ff007f';
       c.shadowBlur = 10;
     }
-    c.fillText('[1] ⚡ MODE MADNESS', madX + 16, madY + 24);
+    c.fillText('[1] ⚡ MODE MADNESS', madX + 16, madY + 25);
     c.shadowBlur = 0;
 
     // Badge "MODE PRINCIPAL"
@@ -459,20 +456,20 @@ export class Renderer {
       c.shadowColor = '#ffd700';
       c.shadowBlur = 8;
     }
-    c.fillText('★ MODE PRINCIPAL', madX + madW - 16, madY + 23);
+    c.fillText('★ MODE PRINCIPAL', madX + madW - 16, madY + 24);
     c.shadowBlur = 0;
 
     // Subtitle inside Madness Card
     c.textAlign = 'left';
     c.font = '10.5px monospace';
     c.fillStyle = isMad ? '#ff99cc' : '#775566';
-    c.fillText('10 Arènes Ouvertes • Swarm Infini • Dash Tranchant • Super-Items', madX + 16, madY + 46);
+    c.fillText('10 Arènes Ouvertes • Swarm Infini • Overdrive • Super-Items', madX + 16, madY + 47);
     c.restore();
 
-    // --- CARD 2: MODE CLASSIQUE (En-dessous, plus petit, plus anecdotique/détente) ---
-    const clW = 260, clH = 36;
+    // --- CARD 2: MODE CLASSIQUE (Plus petit, détente) ---
+    const clW = 240, clH = 36;
     const clX = CW / 2 - clW / 2;
-    const clY = madY + madH + 12;
+    const clY = 318;
 
     c.save();
     c.fillStyle = isCl ? 'rgba(0, 240, 255, 0.16)' : 'rgba(12, 16, 26, 0.6)';
@@ -496,39 +493,27 @@ export class Renderer {
     c.fillText('[2] 🕹️ Mode Classique (Détente / Rétro)', CW / 2, clY + 22);
     c.restore();
 
-    // Subtitle gameplay description
+    // Start prompt (Clean, high visibility)
     c.textAlign = 'center';
-    c.font = 'bold 11px monospace';
-    if (isMad) {
-      c.fillStyle = '#ffaa00';
-      c.fillText('🔥 OVERDRIVE CONTINU • PURGEZ LE SWARM • VITESSE ADRENALINE', CW / 2, 395);
-    } else {
-      c.fillStyle = '#00f0ff';
-      c.fillText('🕹️ COLLECTE D\'ORBES DÉTENDUE • 4 FANTÔMES • SURVIE TACTIQUE', CW / 2, 395);
-    }
-
-    // Start prompt
-    c.font = 'bold 14px monospace';
+    c.font = 'bold 15px monospace';
     c.fillStyle = '#ffffff';
     if (Math.sin(time * 4) > 0) {
       c.shadowColor = isMad ? '#ff007f' : '#00f0ff';
-      c.shadowBlur = 12;
-      c.fillText('▶ PRESS SPACE OU TAP POUR JOUER ◀', CW / 2, 438);
+      c.shadowBlur = 14;
+      c.fillText('▶ PRESS SPACE OU CLIQUEZ POUR JOUER ◀', CW / 2, 405);
       c.shadowBlur = 0;
     }
 
-    // Controls guide
-    c.font = '11px monospace';
-    c.fillStyle = '#8899bb';
-    c.fillText('Flèches / ZQSD : Déplacement  |  SPACE : Dash Offensif', CW / 2, 478);
+    // Records
+    c.font = 'bold 12px monospace';
+    c.fillStyle = '#ffd700';
     if (isMad) {
-      c.fillText('Kombos : ← → ← → (Wiggle EMP)  |  ↑ ↓ ↑ ↓ (Nitro Jet)', CW / 2, 500);
-      c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item', CW / 2, 522);
+      c.fillText('🏆 RECORD DU SWARM : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, 468);
     } else {
-      c.fillText('P : Pause & Réglages FX  |  M : Audio Synthwave', CW / 2, 500);
+      c.fillText('🏆 RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, 468);
     }
 
-    // CRT Scanlines on menu too
+    // CRT Scanlines
     if (settingsManager.settings.crtScanlines) {
       c.save();
       c.fillStyle = 'rgba(0, 0, 0, 0.12)';
@@ -536,30 +521,147 @@ export class Renderer {
       c.restore();
     }
 
-    // Records
-    c.font = 'bold 12px monospace';
-    c.fillStyle = '#ffd700';
-    if (isMad) {
-      c.fillText('🏆 RECORD DU SWARM : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, 560);
-    } else {
-      c.fillText('🏆 RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, 560);
-    }
-
     // Player Profile & Sync ID Card
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
     c.font = 'bold 11px monospace';
     c.fillStyle = '#ffffff';
-    c.fillText(`👤 ${profileManager.profile.pseudo}  •  CODE ID : ${profileManager.profile.syncCode}`, CW / 2, 598);
+    c.fillText(`👤 ${profileManager.profile.pseudo}  •  CODE ID : ${profileManager.profile.syncCode}`, CW / 2, 528);
 
-    // Navigation Links
-    c.font = 'bold 10px monospace';
+    // Navigation Links (Airy and well spaced)
+    c.font = 'bold 10.5px monospace';
     c.fillStyle = '#00f0ff';
     c.shadowColor = '#00f0ff';
     c.shadowBlur = 8;
     const unlockedBadges = badges.getUnlockedCount();
     const totalBadges = badges.getTotalCount();
-    c.fillText(`⚡ [C] ARSENAL (${unlockedCount}/18)  |  🏆 [B] SUCCÈS (${unlockedBadges}/${totalBadges})  |  📊 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, 638);
+    c.fillText(`📖 [I] COMMENT JOUER  |  ⚡ [C] ARSENAL (${unlockedCount}/18)  |  🏆 [B] SUCCÈS (${unlockedBadges}/${totalBadges})`, CW / 2, 615);
+    c.fillText(`📊 [L] SCORES  |  📲 [K] REPRENDRE UNE PARTIE`, CW / 2, 638);
     c.shadowBlur = 0;
+  }
+
+  public drawInstructions(time: number) {
+    const c = this.ctx;
+    c.fillStyle = '#06010f';
+    c.fillRect(0, 0, CW, CH);
+
+    // Background synthwave grid
+    c.strokeStyle = 'rgba(0, 240, 255, 0.07)';
+    c.lineWidth = 1;
+    for (let x = 0; x < CW; x += 30) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke(); }
+    for (let y = 0; y < CH; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(CW, y); c.stroke(); }
+
+    // Header Title
+    const titleGrad = c.createLinearGradient(CW / 2, 16, CW / 2, 48);
+    titleGrad.addColorStop(0, '#ffffff');
+    titleGrad.addColorStop(0.5, '#00f0ff');
+    titleGrad.addColorStop(1, '#ff007f');
+    c.font = 'bold 22px monospace'; c.textAlign = 'center'; c.fillStyle = titleGrad;
+    c.shadowColor = '#00f0ff'; c.shadowBlur = 16;
+    c.fillText('📖 GUIDE & INSTRUCTIONS', CW / 2, 38);
+    c.shadowBlur = 0;
+
+    c.font = 'bold 10px monospace'; c.fillStyle = '#8899bb';
+    c.fillText('TOUT CE QU\'IL FAUT SAVOIR POUR DOMINER LE LABYRINTHE', CW / 2, 54);
+
+    // Card 1: CONTRÔLES DE BASE (y: 68, h: 96)
+    this.drawInstructionCard(c, 24, 68, CW - 48, 96, '#00f0ff', '🎮 CONTRÔLES DE BASE', [
+      { key: 'Flèches / ZQSD', desc: 'Déplacement fluide (virages anticipés & demi-tour direct)' },
+      { key: 'ESPACE / ⚡ DASH', desc: 'Dash Offensif : téléporte de 3 cases + taillade les spectres' },
+      { key: 'P / Échap', desc: 'Pause du jeu, réglages audio synthwave & effet scanlines CRT' }
+    ]);
+
+    // Card 2: KOMBOS DE DÉPLACEMENT SECRETS (y: 174, h: 84)
+    this.drawInstructionCard(c, 24, 174, CW - 48, 84, '#ffd700', '🥋 KOMBOS DE DÉPLACEMENT SECRETS', [
+      { key: '← → ← →', desc: 'Wiggle EMP : onde de choc radiale qui étourdit et repousse les fantômes' },
+      { key: '↑ ↓ ↑ ↓', desc: 'Nitro Jet : vitesse turbo + traînée de feu incinératrice au sol' }
+    ]);
+
+    // Card 3: SUPER-ITEMS & ARSENAL (y: 268, h: 84)
+    this.drawInstructionCard(c, 24, 268, CW - 48, 84, '#ff007f', '💣 SUPER-ITEMS (DÉBLOQUÉS PAR VOS FRAGS)', [
+      { key: 'E / Shift / Bouton 💣', desc: 'Déclenche le Super-Item actif débloqué lors des séries de kills' },
+      { key: 'Arsenal disponible', desc: 'Méga Nova, Trou Noir, Lasers, Gel Cryo, Tsunami...' }
+    ]);
+
+    // Card 4: LES 2 MODES DE JEU (y: 362, h: 178)
+    this.drawInstructionCard(c, 24, 362, CW - 48, 178, '#a855f7', '⚔️ LES 2 MODES DE JEU', [
+      { key: '⚡ MODE MADNESS', desc: 'Le mode principal ! 10 arènes grandes vitesses, chrono Overdrive,' },
+      { key: '', desc: 'swarm infini rechargé à chaque frag. Mangez toutes les orbes pour avancer !' },
+      { key: '🕹️ MODE CLASSIQUE', desc: 'L\'arcade rétro détente ! 10 niveaux, 4 fantômes réguliers, survie' },
+      { key: '', desc: 'tactique traditionnelle avec pastilles de puissance à votre rythme.' },
+      { key: '👑 BOUCLE ACTIVE', desc: 'Terminez le Niveau 10 pour boucler avec +10% de vitesse permanente !' }
+    ]);
+
+    // CRT Scanlines
+    if (settingsManager.settings.crtScanlines) {
+      c.save();
+      c.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      for (let y = 0; y < CH; y += 3) c.fillRect(0, y, CW, 1);
+      c.restore();
+    }
+
+    // Back prompt at bottom
+    c.font = 'bold 12.5px monospace';
+    c.fillStyle = '#ffffff';
+    c.textAlign = 'center';
+    if (Math.sin(time * 4) > 0) {
+      c.shadowColor = '#00f0ff';
+      c.shadowBlur = 12;
+      c.fillText('▶ PRESS [ESPACE], [I] OU CLIQUEZ POUR RETOURNER AU MENU ◀', CW / 2, 595);
+      c.shadowBlur = 0;
+    }
+  }
+
+  private drawInstructionCard(
+    c: CanvasRenderingContext2D,
+    x: number, y: number, w: number, h: number,
+    accent: string, title: string,
+    lines: { key: string; desc: string }[]
+  ) {
+    c.save();
+    c.fillStyle = 'rgba(12, 16, 28, 0.8)';
+    c.strokeStyle = accent;
+    c.lineWidth = 1.2;
+    c.shadowColor = accent;
+    c.shadowBlur = 8;
+    c.beginPath();
+    c.roundRect(x, y, w, h, 7);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Header badge
+    c.font = 'bold 11.5px monospace';
+    c.fillStyle = accent;
+    c.textAlign = 'left';
+    c.fillText(title, x + 14, y + 18);
+
+    // Separator line
+    c.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(x + 10, y + 25);
+    c.lineTo(x + w - 10, y + 25);
+    c.stroke();
+
+    // Content lines
+    let ly = y + 42;
+    for (const item of lines) {
+      if (item.key) {
+        c.font = 'bold 10px monospace';
+        c.fillStyle = '#ffffff';
+        c.fillText(item.key, x + 14, ly);
+
+        c.font = '10px monospace';
+        c.fillStyle = '#99aabb';
+        c.fillText(item.desc, x + 145, ly);
+      } else {
+        c.font = '10px monospace';
+        c.fillStyle = '#99aabb';
+        c.fillText(item.desc, x + 14, ly);
+      }
+      ly += 18;
+    }
+    c.restore();
   }
 
   public drawGameOver(isMadness: boolean, score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number, loopCount: number = 0) {
