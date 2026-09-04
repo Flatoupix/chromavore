@@ -417,48 +417,115 @@ export class Renderer {
       c.beginPath(); c.arc(CW / 2 - 4 + i * 18, CH * 0.32, 3.5, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // Tabs
-    const my = CH * 0.44;
+    // Vertical Mode Selection Stack:
+    // [1] MADNESS (Hero Card, wide, vibrant neon, default primary mode)
+    // [2] CLASSIQUE (Subtle, compact, casual arcade chill)
+    const isMad = gameMode === 'madness';
     const isCl = gameMode === 'classic';
-    c.fillStyle = isCl ? 'rgba(0, 240, 255, 0.15)' : 'rgba(15, 20, 35, 0.7)';
+
+    // --- CARD 1: MODE MADNESS (Au-dessus, grand, hero) ---
+    const madW = 360, madH = 60;
+    const madX = CW / 2 - madW / 2;
+    const madY = CH * 0.38;
+
+    c.save();
+    c.fillStyle = isMad ? 'rgba(255, 0, 127, 0.22)' : 'rgba(25, 10, 25, 0.6)';
+    c.strokeStyle = isMad ? '#ff007f' : '#552238';
+    c.lineWidth = isMad ? 2.5 : 1.2;
+    c.shadowColor = isMad ? '#ff007f' : 'transparent';
+    c.shadowBlur = isMad ? 20 : 0;
+    c.beginPath();
+    c.roundRect(madX, madY, madW, madH, 8);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Header inside Madness Card
+    c.textAlign = 'left';
+    c.font = 'bold 15px monospace';
+    c.fillStyle = isMad ? '#ffffff' : '#cc7799';
+    if (isMad) {
+      c.shadowColor = '#ff007f';
+      c.shadowBlur = 10;
+    }
+    c.fillText('[1] ⚡ MODE MADNESS', madX + 16, madY + 24);
+    c.shadowBlur = 0;
+
+    // Badge "MODE PRINCIPAL"
+    c.textAlign = 'right';
+    c.font = 'bold 10px monospace';
+    c.fillStyle = isMad ? '#ffd700' : '#885566';
+    if (isMad) {
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 8;
+    }
+    c.fillText('★ MODE PRINCIPAL', madX + madW - 16, madY + 23);
+    c.shadowBlur = 0;
+
+    // Subtitle inside Madness Card
+    c.textAlign = 'left';
+    c.font = '10.5px monospace';
+    c.fillStyle = isMad ? '#ff99cc' : '#775566';
+    c.fillText('10 Arènes Ouvertes • Swarm Infini • Dash Tranchant • Super-Items', madX + 16, madY + 46);
+    c.restore();
+
+    // --- CARD 2: MODE CLASSIQUE (En-dessous, plus petit, plus anecdotique/détente) ---
+    const clW = 260, clH = 36;
+    const clX = CW / 2 - clW / 2;
+    const clY = madY + madH + 12;
+
+    c.save();
+    c.fillStyle = isCl ? 'rgba(0, 240, 255, 0.16)' : 'rgba(12, 16, 26, 0.6)';
     c.strokeStyle = isCl ? '#00f0ff' : '#223348';
     c.lineWidth = isCl ? 2 : 1;
-    c.shadowColor = isCl ? '#00f0ff' : 'transparent'; c.shadowBlur = isCl ? 14 : 0;
-    c.beginPath(); c.roundRect(CW / 2 - 145, my, 135, 34, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
-    c.font = 'bold 11px monospace'; c.fillStyle = isCl ? '#00f0ff' : '#8899aa'; c.fillText('[1] CLASSIQUE', CW / 2 - 78, my + 21);
+    c.shadowColor = isCl ? '#00f0ff' : 'transparent';
+    c.shadowBlur = isCl ? 14 : 0;
+    c.beginPath();
+    c.roundRect(clX, clY, clW, clH, 6);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
 
-    const isMad = gameMode === 'madness';
-    c.fillStyle = isMad ? 'rgba(255, 0, 127, 0.2)' : 'rgba(25, 10, 25, 0.7)';
-    c.strokeStyle = isMad ? '#ff007f' : '#442030';
-    c.lineWidth = isMad ? 2 : 1;
-    c.shadowColor = isMad ? '#ff007f' : 'transparent'; c.shadowBlur = isMad ? 16 : 0;
-    c.beginPath(); c.roundRect(CW / 2 + 10, my, 135, 34, 6); c.fill(); c.stroke(); c.shadowBlur = 0;
-    c.font = 'bold 11px monospace'; c.fillStyle = isMad ? '#ff007f' : '#8899aa'; c.fillText('[2] MADNESS ⚡', CW / 2 + 78, my + 21);
+    c.textAlign = 'center';
+    c.font = isCl ? 'bold 11.5px monospace' : '11px monospace';
+    c.fillStyle = isCl ? '#00f0ff' : '#667788';
+    if (isCl) {
+      c.shadowColor = '#00f0ff';
+      c.shadowBlur = 8;
+    }
+    c.fillText('[2] 🕹️ Mode Classique (Détente / Rétro)', CW / 2, clY + 22);
+    c.restore();
 
-
-
-    // Subtitle description
-    c.font = '11px monospace'; c.fillStyle = '#ffaa00';
+    // Subtitle gameplay description
+    c.textAlign = 'center';
+    c.font = 'bold 11px monospace';
     if (isMad) {
-      c.fillText('PAC-MAN VULNÉRABLE • DASH TRANCHANT • GAUCHE-DROITE [EMP] • 3X SPEED', CW / 2, CH * 0.63);
+      c.fillStyle = '#ffaa00';
+      c.fillText('🔥 OVERDRIVE CONTINU • PURGEZ LE SWARM • VITESSE ADRENALINE', CW / 2, 395);
     } else {
-      c.fillText('SURVIE TACTIQUE • 204 ORBES • 4 LABYRINTHES NÉON • DASH & COMBOS', CW / 2, CH * 0.63);
+      c.fillStyle = '#00f0ff';
+      c.fillText('🕹️ COLLECTE D\'ORBES DÉTENDUE • 4 FANTÔMES • SURVIE TACTIQUE', CW / 2, 395);
     }
 
     // Start prompt
-    c.font = 'bold 14px monospace'; c.fillStyle = '#fff';
-    c.shadowColor = '#00f0ff'; c.shadowBlur = 10;
-    if (Math.sin(time * 4) > 0) c.fillText('PRESS SPACE OU TAP POUR COMMENCER', CW / 2, CH * 0.70);
-    c.shadowBlur = 0;
+    c.font = 'bold 14px monospace';
+    c.fillStyle = '#ffffff';
+    if (Math.sin(time * 4) > 0) {
+      c.shadowColor = isMad ? '#ff007f' : '#00f0ff';
+      c.shadowBlur = 12;
+      c.fillText('▶ PRESS SPACE OU TAP POUR JOUER ◀', CW / 2, 438);
+      c.shadowBlur = 0;
+    }
 
     // Controls guide
-    c.font = '11px monospace'; c.fillStyle = '#8899bb';
-    c.fillText('Flèches / ZQSD : Déplacement  |  SPACE : Dash Offensif', CW / 2, CH * 0.76);
+    c.font = '11px monospace';
+    c.fillStyle = '#8899bb';
+    c.fillText('Flèches / ZQSD : Déplacement  |  SPACE : Dash Offensif', CW / 2, 478);
     if (isMad) {
-      c.fillText('Kombos : ← → ← → (Wiggle EMP)  |  ↑ ↓ ↑ ↓ (Nitro Jet)', CW / 2, CH * 0.80);
-      c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item', CW / 2, CH * 0.84);
+      c.fillText('Kombos : ← → ← → (Wiggle EMP)  |  ↑ ↓ ↑ ↓ (Nitro Jet)', CW / 2, 500);
+      c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item', CW / 2, 522);
     } else {
-      c.fillText('P : Pause & Réglages FX  |  M : Audio Synthwave', CW / 2, CH * 0.80);
+      c.fillText('P : Pause & Réglages FX  |  M : Audio Synthwave', CW / 2, 500);
     }
 
     // CRT Scanlines on menu too
@@ -470,18 +537,19 @@ export class Renderer {
     }
 
     // Records
-    c.font = 'bold 12px monospace'; c.fillStyle = '#ffd700';
+    c.font = 'bold 12px monospace';
+    c.fillStyle = '#ffd700';
     if (isMad) {
-      c.fillText('RECORD MADNESS : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, CH * 0.88);
+      c.fillText('🏆 RECORD DU SWARM : ' + bestMadnessKills + ' FANTÔMES PURGÉS', CW / 2, 560);
     } else {
-      c.fillText('RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, CH * 0.88);
+      c.fillText('🏆 RECORD CLASSIQUE : ' + hi + ' PTS', CW / 2, 560);
     }
 
     // Player Profile & Sync ID Card
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
     c.font = 'bold 11px monospace';
     c.fillStyle = '#ffffff';
-    c.fillText(`👤 ${profileManager.profile.pseudo}  •  CODE ID : ${profileManager.profile.syncCode}`, CW / 2, CH * 0.92);
+    c.fillText(`👤 ${profileManager.profile.pseudo}  •  CODE ID : ${profileManager.profile.syncCode}`, CW / 2, 598);
 
     // Navigation Links
     c.font = 'bold 10px monospace';
@@ -490,7 +558,7 @@ export class Renderer {
     c.shadowBlur = 8;
     const unlockedBadges = badges.getUnlockedCount();
     const totalBadges = badges.getTotalCount();
-    c.fillText(`⚡ [C] ARSENAL (${unlockedCount}/18)  |  🏆 [B] SUCCÈS (${unlockedBadges}/${totalBadges})  |  📊 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, CH * 0.96);
+    c.fillText(`⚡ [C] ARSENAL (${unlockedCount}/18)  |  🏆 [B] SUCCÈS (${unlockedBadges}/${totalBadges})  |  📊 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, 638);
     c.shadowBlur = 0;
   }
 

@@ -29,10 +29,10 @@ class Game {
 
   // Game state
   public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' = 'menu';
-  public leaderboardMode: 'classic' | 'madness' = 'classic';
+  public leaderboardMode: 'classic' | 'madness' = 'madness';
   public playerRank: number = 0;
   public playerDate: string = '';
-  public gameMode: 'classic' | 'madness' = 'classic';
+  public gameMode: 'classic' | 'madness' = 'madness';
   public score: number = 0;
   public dScore: number = 0;
   public lives: number = 3;
@@ -276,8 +276,8 @@ class Game {
 
       if (this.state === 'menu') {
         // Navigation links click at bottom:
-        // [S] ARSENAL | [B] SUCCÈS | [L] SCORES | [K] REPRENDRE
-        if (cy >= CH * 0.93) {
+        // [C] ARSENAL | [B] SUCCÈS | [L] SCORES | [K] REPRENDRE
+        if (cy >= CH * 0.92) {
           if (cx < CW * 0.28) {
             this.state = 'codex';
             this.codexTab = 'skills';
@@ -300,26 +300,40 @@ class Game {
           }
         }
         // Copy sync code if tapping player line
-        if (cy >= CH * 0.90 && cy < CH * 0.93) {
+        if (cy >= CH * 0.86 && cy < CH * 0.92) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(CW / 2, CH * 0.91, '📋 CODE ID COPIÉ !', '#00ffff', 14);
+          particles.addPop(CW / 2, CH * 0.89, '📋 CODE ID COPIÉ !', '#00ffff', 14);
           sounds.play('dot');
           return;
         }
 
-        const my = CH * 0.44;
-        if (cy >= my && cy <= my + 38) {
-          if (cx >= CW / 2 - 145 && cx <= CW / 2 - 10) {
-            this.gameMode = 'classic';
-            sounds.play('dot');
-            return;
-          }
-          if (cx >= CW / 2 + 10 && cx <= CW / 2 + 145) {
+        const madY = CH * 0.38;
+        const madX = CW / 2 - 180, madW = 360, madH = 60;
+        const clY = madY + madH + 12;
+        const clX = CW / 2 - 130, clW = 260, clH = 36;
+
+        // Click on Madness Card [1]
+        if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
+          if (this.gameMode === 'madness') {
+            this.startGame('madness');
+          } else {
             this.gameMode = 'madness';
             sounds.play('nova');
-            return;
           }
+          return;
         }
+
+        // Click on Classique Card [2]
+        if (cx >= clX && cx <= clX + clW && cy >= clY && cy <= clY + clH) {
+          if (this.gameMode === 'classic') {
+            this.startGame('classic');
+          } else {
+            this.gameMode = 'classic';
+            sounds.play('dot');
+          }
+          return;
+        }
+
         this.startGame(this.gameMode);
         return;
       }
@@ -893,12 +907,12 @@ class Game {
       input.isAudioToggleRequested = false;
     }
     if (input.isSelectMode1Requested && this.state === 'menu') {
-      this.gameMode = 'classic';
-      sounds.play('dot');
+      this.gameMode = 'madness';
+      sounds.play('nova');
       input.isSelectMode1Requested = false;
     }
     if (input.isSelectMode2Requested && this.state === 'menu') {
-      this.gameMode = 'madness';
+      this.gameMode = 'classic';
       sounds.play('dot');
       input.isSelectMode2Requested = false;
     }
@@ -917,12 +931,12 @@ class Game {
 
     if (this.state === 'leaderboard') {
       if (input.isSelectMode1Requested) {
-        this.leaderboardMode = 'classic';
+        this.leaderboardMode = 'madness';
         sounds.play('dot');
         input.isSelectMode1Requested = false;
       }
       if (input.isSelectMode2Requested) {
-        this.leaderboardMode = 'madness';
+        this.leaderboardMode = 'classic';
         sounds.play('dot');
         input.isSelectMode2Requested = false;
       }
