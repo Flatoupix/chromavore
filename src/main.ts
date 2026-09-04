@@ -4,7 +4,7 @@
 
 import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION } from './config/constants';
 import { sounds } from './audio/SoundManager';
-import { MazeManager, LEVELS } from './levels/levels';
+import { MazeManager, LEVELS, MADNESS_LEVELS } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
 import { input } from './core/InputManager';
 import { Player } from './entities/Player';
@@ -560,9 +560,10 @@ class Game {
     powerups.voidRelicTimer = 14.0;
     particles.paintSplats = [];
 
-    // Always start at Level 1 (The Circuit)
-    this.maze.build(0);
-    this.player.reset(this.gameMode === 'madness', this.maze, this.loopSpeedMultiplier);
+    // Always start at Level 1
+    const isMadness = this.gameMode === 'madness';
+    this.maze.build(0, isMadness);
+    this.player.reset(isMadness, this.maze, this.loopSpeedMultiplier);
 
     if (this.gameMode === 'madness') {
       this.enemyManager.enemies = [];
@@ -580,9 +581,10 @@ class Game {
   }
 
   private warpToLevel(lvlIndex: number) {
-    this.maze.build(lvlIndex);
+    const isMadness = this.gameMode === 'madness';
+    this.maze.build(lvlIndex, isMadness);
     if (!this.maze.isWalkable(this.player.x, this.player.y, false)) {
-      this.player.reset(this.gameMode === 'madness', this.maze);
+      this.player.reset(isMadness, this.maze);
     }
     // Wall safety: relocate any ghosts trapped in new layout
     for (const e of this.enemyManager.enemies) {
@@ -605,12 +607,13 @@ class Game {
       powerups.voidRelic.y = safe.y;
     }
 
+    const def = this.maze.getLevelDef();
     this.madnessTimer = Math.min(45, this.madnessTimer + 8.0);
     sounds.play('wave');
     particles.flash('#00ffff', 0.4);
-    particles.emit(CW / 2, (ROWS * T) / 2, 60, LEVELS[lvlIndex].glowColor, { speed: 240, size: 6, life: 0.9 });
+    particles.emit(CW / 2, (ROWS * T) / 2, 60, def.glowColor, { speed: 240, size: 6, life: 0.9 });
     particles.shake(10, 0.35);
-    particles.addPop(CW / 2, (ROWS * T) / 2, `🌀 WARP TO ${LEVELS[lvlIndex].name} ! (+8s)`, '#00ffff', 22);
+    particles.addPop(CW / 2, (ROWS * T) / 2, `🌀 WARP TO ${def.name} ! (+8s)`, '#00ffff', 22);
   }
 
   private onKillGhost(e: Ghost, ex: number, ey: number) {
@@ -638,7 +641,7 @@ class Game {
         badges.unlock('wave5');
       }
       else if (this.madnessKills > 300 && (this.madnessKills - 300) % 100 === 0) {
-        this.warpToLevel((this.maze.currentLevel + 1) % LEVELS.length);
+        this.warpToLevel((this.maze.currentLevel + 1) % MADNESS_LEVELS.length);
       }
 
       if (this.madnessKills >= 50) badges.unlock('madness50');
@@ -1254,7 +1257,7 @@ class Game {
   }
 
   private render() {
-    this.renderer.clear(this.maze.currentLevel, this.time);
+    this.renderer.clear(this.maze.currentLevel, this.time, this.gameMode === 'madness');
 
     if (this.state === 'menu') {
       const topClassic = Math.max(badges.hiScore, leaderboard.getTopScore('classic'));
@@ -1358,7 +1361,7 @@ class Game {
     badges.drawBanner(this.renderer.ctx);
 
     if (this.state === 'waveTrans') {
-      this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount);
+      this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount, this.gameMode === 'madness');
     }
 
     if (this.state === 'gameover') {

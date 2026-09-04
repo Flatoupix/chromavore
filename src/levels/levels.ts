@@ -84,6 +84,140 @@ export const ML5: number[][] = [
   [1,1,1,1,1,1,1,1,1,1,1]
 ];
 
+// ═══════════════════════════════════════════════════════════════
+//  MADNESS MODE MAPS (HIGH-SPEED, FLUID, NO BOTTLENECKS/NOOKS)
+// ═══════════════════════════════════════════════════════════════
+
+// MADNESS 1 : NEON VELOCITY — Grande avenue centrale & double boucle périphérique
+export const MM1: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,1,1,1,2,1,4,1,1,6,4],
+  [8,4,4,4,2,4,4,1,5,5,5],
+  [1,1,1,1,2,1,4,1,1,1,1],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,1,1,1,1,1,1,1]
+];
+
+// MADNESS 2 : CYBER SUPERGRID — Boulevards express 2-voies & îlots monolithiques
+export const MM2: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,1,1,1,1,2,2,1,1,2,2],
+  [1,1,1,1,1,2,4,1,1,6,4],
+  [8,4,4,4,4,2,4,1,5,5,5],
+  [1,1,1,1,1,2,4,1,1,1,1],
+  [1,1,1,1,1,2,2,1,1,2,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,2,1,1,1,2,2,1,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,1,1,1,1,1,1,1]
+];
+
+// MADNESS 3 : QUANTUM SPEEDWAY — Anneau ovale & circulation continue sans virages serrés
+export const MM3: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,1,1,1,2,2],
+  [1,2,1,1,1,1,1,1,1,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,2,2,2,2,2,2,2],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,1,1,1,2,1,4,1,1,6,4],
+  [8,4,4,4,2,4,4,1,5,5,5],
+  [1,1,1,1,2,1,4,1,1,1,1],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,1,1,1,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,1,1,1,2,2],
+  [1,2,1,1,1,1,1,1,1,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,1,1,1,1,1,1,1]
+];
+
+// MADNESS 4 : SYNTH BULLET RUN — Pistes d'accélération horizontales & Hyper Beams
+export const MM4: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,1,2,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,1,2,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,1,1,1,2,1,4,1,1,6,4],
+  [8,4,4,4,2,4,4,1,5,5,5],
+  [1,1,1,1,2,1,4,1,1,1,1],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,1,2,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,1,1,1,1,1,2,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,1,1,1,1,1,1,1]
+];
+
+// MADNESS 5 : HYPERION FREEWAY — Espace ouvert maximal (85%), swarms immenses & vitesse pure
+export const MM5: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,1,1,1,2,2,1,1,2],
+  [1,2,2,1,1,1,2,2,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,1,1,1,2,1,4,1,1,6,4],
+  [8,4,4,4,2,4,4,1,5,5,5],
+  [1,1,1,1,2,1,4,1,1,1,1],
+  [1,1,1,1,2,2,2,1,1,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,1,1,1,2,2,1,1,2],
+  [1,2,2,1,1,1,2,2,1,1,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,2,2,2,2,2,2,2,2,2,2],
+  [1,3,2,2,2,2,2,2,2,2,2],
+  [1,1,1,1,1,1,1,1,1,1,1]
+];
+
 export const LEVELS: LevelDef[] = [
   {
     name: 'NEON SUNSET',
@@ -132,12 +266,61 @@ export const LEVELS: LevelDef[] = [
   }
 ];
 
+export const MADNESS_LEVELS: LevelDef[] = [
+  {
+    name: 'NEON VELOCITY',
+    glowColor: '#ff007f',
+    dotColor: '#00ffff',
+    pelletColor: '#ffd700',
+    wallColor: '#2b0042',
+    bg: '#0a0118',
+    layout: MM1
+  },
+  {
+    name: 'CYBER SUPERGRID',
+    glowColor: '#00f0ff',
+    dotColor: '#39ff14',
+    pelletColor: '#ffaa00',
+    wallColor: '#062438',
+    bg: '#020d1a',
+    layout: MM2
+  },
+  {
+    name: 'QUANTUM SPEEDWAY',
+    glowColor: '#bf00ff',
+    dotColor: '#ffd700',
+    pelletColor: '#00ffff',
+    wallColor: '#240638',
+    bg: '#0d0216',
+    layout: MM3
+  },
+  {
+    name: 'SYNTH BULLET RUN',
+    glowColor: '#ff5500',
+    dotColor: '#00ffff',
+    pelletColor: '#ff00aa',
+    wallColor: '#361406',
+    bg: '#140502',
+    layout: MM4
+  },
+  {
+    name: 'HYPERION FREEWAY',
+    glowColor: '#ffd700',
+    dotColor: '#ff0055',
+    pelletColor: '#00ffcc',
+    wallColor: '#2e2204',
+    bg: '#120900',
+    layout: MM5
+  }
+];
+
 export class MazeManager {
   public map: number[][] = [];
   public dotMap: number[][] = [];
   public totalDots: number = 0;
   public remainingDots: number = 0;
   public currentLevel: number = 0;
+  public isMadness: boolean = false;
   public mOff: HTMLCanvasElement;
   private mc: CanvasRenderingContext2D;
 
@@ -149,9 +332,17 @@ export class MazeManager {
     this.build(0);
   }
 
-  public build(lvlIndex: number) {
-    this.currentLevel = lvlIndex % LEVELS.length;
-    const half = LEVELS[this.currentLevel].layout;
+  public getLevelDef(): LevelDef {
+    const list = this.isMadness ? MADNESS_LEVELS : LEVELS;
+    return list[this.currentLevel % list.length];
+  }
+
+  public build(lvlIndex: number, isMadness: boolean = false) {
+    this.isMadness = isMadness;
+    const list = this.isMadness ? MADNESS_LEVELS : LEVELS;
+    this.currentLevel = lvlIndex % list.length;
+    const def = list[this.currentLevel];
+    const half = def.layout;
     this.map = [];
     this.dotMap = [];
     this.totalDots = 0;
@@ -234,7 +425,7 @@ export class MazeManager {
   }
 
   public renderOffscreen() {
-    const lvl = LEVELS[this.currentLevel];
+    const lvl = this.getLevelDef();
     const c = this.mc;
     c.clearRect(0, 0, COLS * T, ROWS * T);
     c.fillStyle = lvl.bg;

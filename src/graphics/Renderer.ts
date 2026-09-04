@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier, GAME_VERSION } from '../config/constants';
-import { LEVELS, MazeManager } from '../levels/levels';
+import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
 import { PowerupManager } from '../entities/Powerups';
@@ -24,8 +24,9 @@ export class Renderer {
     this.ctx = canvas.getContext('2d')!;
   }
 
-  public clear(lvlIndex: number, time: number = 0) {
-    const lvl = LEVELS[lvlIndex % LEVELS.length];
+  public clear(lvlIndex: number, time: number = 0, isMadness: boolean = false) {
+    const list = isMadness ? MADNESS_LEVELS : LEVELS;
+    const lvl = list[lvlIndex % list.length];
     const c = this.ctx;
     c.clearRect(0, 0, CW, CH);
 
@@ -54,7 +55,7 @@ export class Renderer {
   }
 
   public drawDots(maze: MazeManager, time: number) {
-    const lvl = LEVELS[maze.currentLevel];
+    const lvl = maze.getLevelDef();
     const c = this.ctx;
     for (let r = 0; r < ROWS; r++) {
       for (let col = 0; col < COLS; col++) {
@@ -269,7 +270,8 @@ export class Renderer {
     // Hi-Score & Level
     c.font = '11px monospace'; c.fillStyle = '#666'; c.textAlign = 'center';
     c.fillText('HI-SCORE: ' + hi.toString().padStart(6, '0'), CW / 2, 14);
-    const lvl = LEVELS[currentLevel];
+    const list = isMadness ? MADNESS_LEVELS : LEVELS;
+    const lvl = list[currentLevel % list.length];
     c.font = 'bold 12px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 8;
     c.fillText('LVL ' + (currentLevel + 1) + ': ' + lvl.name, CW / 2, 30); c.shadowBlur = 0;
     c.font = 'bold 11px monospace'; c.fillStyle = loopCount > 0 ? '#ffd700' : '#aaa';
@@ -1216,9 +1218,10 @@ export class Renderer {
     c.restore();
   }
 
-  public drawWaveTrans(currentLevel: number, wave: number, loopCount: number = 0) {
+  public drawWaveTrans(currentLevel: number, wave: number, loopCount: number = 0, isMadness: boolean = false) {
     const c = this.ctx;
-    const lvl = LEVELS[currentLevel % LEVELS.length];
+    const list = isMadness ? MADNESS_LEVELS : LEVELS;
+    const lvl = list[currentLevel % list.length];
     c.font = 'bold 36px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 25;
     c.textAlign = 'center'; c.fillText('NIVEAU ' + (currentLevel + 1), CW / 2, CH / 2 - 12); c.shadowBlur = 0;
     c.font = 'bold 18px monospace'; c.fillStyle = '#ffffff'; c.fillText(lvl.name, CW / 2, CH / 2 + 20);
