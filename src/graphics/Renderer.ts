@@ -321,12 +321,11 @@ export class Renderer {
     if (combo.m > 1) {
       const tier = getComboTier(combo.n);
       const isGod = combo.m >= 32;
-      const pulse = 1 + Math.sin(time * (isGod ? 14 : 8)) * (isGod ? 0.18 : 0.1);
-      const sz = (16 + tier * 2.5) * pulse;
+      const sz = 16 + tier * 2;
       c.font = `bold ${sz}px monospace`;
-      c.fillStyle = isGod ? (Math.sin(time * 16) > 0 ? '#00ffff' : '#ffd700') : CC[tier];
+      c.fillStyle = isGod ? '#00ffff' : CC[tier];
       c.shadowColor = isGod ? '#00ffff' : CC[tier];
-      c.shadowBlur = isGod ? 18 : 10;
+      c.shadowBlur = isGod ? 16 : 8;
       c.textAlign = 'right';
       c.fillText(isGod ? '⚡ x32 INVINCIBLE ⚡' : 'x' + combo.m, CW - 15, 46);
       c.shadowBlur = 0;
@@ -1515,10 +1514,10 @@ export class Renderer {
     }
   }
 
-  public drawDangerVignette(madnessTimer: number, time: number) {
+  public drawDangerVignette(madnessTimer: number, _time: number) {
     if (madnessTimer >= 8.0) return;
     const c = this.ctx;
-    const vAlpha = (0.28 + Math.sin(time * 14) * 0.22) * (1 - madnessTimer / 8.0);
+    const vAlpha = 0.22 * (1 - madnessTimer / 8.0);
     c.save();
     c.fillStyle = `rgba(255,0,50,${vAlpha})`;
     c.fillRect(0, 0, CW, 8); c.fillRect(0, CH - 8, CW, 8);
@@ -1526,57 +1525,12 @@ export class Renderer {
     c.restore();
   }
 
-  public drawPredatorMazeGlow(mOff: HTMLCanvasElement, time: number, isWarn: boolean) {
-    const c = this.ctx;
-    c.save();
-    c.globalCompositeOperation = 'source-atop';
-    const pulse = 0.32 + 0.15 * Math.sin(time * 10);
-    c.fillStyle = isWarn
-      ? (Math.sin(time * 16) > 0 ? 'rgba(255, 68, 0, 0.65)' : 'rgba(0, 240, 255, 0.45)')
-      : `rgba(0, 240, 255, ${pulse})`;
-    c.fillRect(0, 0, CW, ROWS * T);
-    c.restore();
+  public drawPredatorMazeGlow(_mOff: HTMLCanvasElement, _time: number, _isWarn: boolean) {
+    // Strobing wall glow removed for visual comfort
   }
 
-  public drawPredatorVignette(time: number, predTimer: number, isWarn: boolean) {
-    const c = this.ctx;
-    c.save();
-
-    // Pulsing radial vignette around canvas edges
-    const pulse = 0.5 + 0.5 * Math.sin(time * 8);
-    const edgeCol = isWarn
-      ? (Math.sin(time * 14) > 0 ? `rgba(255, 34, 68, ${0.35 + 0.25 * pulse})` : `rgba(255, 120, 0, ${0.25 + 0.2 * pulse})`)
-      : `rgba(0, 240, 255, ${0.22 + 0.15 * pulse})`;
-
-    const grad = c.createRadialGradient(CW / 2, (ROWS * T) / 2 + HUD_H, (ROWS * T) * 0.35, CW / 2, (ROWS * T) / 2 + HUD_H, (ROWS * T) * 0.78);
-    grad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    grad.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
-    grad.addColorStop(1, edgeCol);
-
-    c.fillStyle = grad;
-    c.fillRect(0, HUD_H, CW, CH - HUD_H);
-
-    // Neon Corner Targeting Brackets
-    const brkCol = isWarn ? '#ff3344' : '#00ffff';
-    c.strokeStyle = brkCol;
-    c.shadowColor = brkCol;
-    c.shadowBlur = 12;
-    c.lineWidth = 2.5;
-
-    const bLen = 22;
-    const topY = HUD_H + 8, botY = CH - 8;
-    const leftX = 8, rightX = CW - 8;
-
-    // Top-Left
-    c.beginPath(); c.moveTo(leftX, topY + bLen); c.lineTo(leftX, topY); c.lineTo(leftX + bLen, topY); c.stroke();
-    // Top-Right
-    c.beginPath(); c.moveTo(rightX - bLen, topY); c.lineTo(rightX, topY); c.lineTo(rightX, topY + bLen); c.stroke();
-    // Bottom-Left
-    c.beginPath(); c.moveTo(leftX, botY - bLen); c.lineTo(leftX, botY); c.lineTo(leftX + bLen, botY); c.stroke();
-    // Bottom-Right
-    c.beginPath(); c.moveTo(rightX - bLen, botY); c.lineTo(rightX, botY); c.lineTo(rightX, botY - bLen); c.stroke();
-
-    c.restore();
+  public drawPredatorVignette(_time: number, _predTimer: number, _isWarn: boolean) {
+    // Strobing screen edge vignette and brackets removed for visual comfort
   }
 
   public drawTouchDashButton(dashCd: number, maxCd: number) {

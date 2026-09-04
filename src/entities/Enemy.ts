@@ -304,7 +304,7 @@ export class EnemyManager {
       let alpha = 1;
 
       if (e.st === 'flee') {
-        col = predWarn ? (Math.sin(time * 14) > 0 ? '#ffffff' : '#ff4400') : '#2563eb';
+        col = predWarn ? '#6366f1' : '#2563eb';
       }
       if (ret) alpha = 0.5;
       if (e.type === 'phaser' && !ret) alpha = 0.7 + Math.sin(time * 6) * 0.15;

@@ -361,8 +361,8 @@ export class Player {
 
       // Dynamic Predator / God glow
       if (isPredator) {
-        c.shadowColor = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
-        c.shadowBlur = 24;
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 18;
       } else {
         c.shadowColor = isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff');
         c.shadowBlur = isGodMode ? 22 : 12;
@@ -370,13 +370,7 @@ export class Player {
 
       const mouth = Math.abs(Math.sin(this.ma)) * 0.7;
 
-      if (isPredator) {
-        c.fillStyle = isWarn
-          ? (Math.sin(time * 16) > 0 ? '#ffffff' : '#ff3344')
-          : (Math.sin(time * 10) > 0 ? '#ffffff' : '#ffd700');
-      } else {
-        c.fillStyle = isGodMode ? '#ffffff' : C_PLAYER;
-      }
+      c.fillStyle = isGodMode ? '#ffffff' : C_PLAYER;
 
       c.beginPath();
       c.arc(0, 0, P_RAD, mouth, PI2 - mouth);
@@ -387,8 +381,8 @@ export class Player {
       // Predator electric sparks
       if (isPredator) {
         c.save();
-        c.strokeStyle = isWarn ? '#ff3344' : '#00ffff';
-        c.shadowColor = isWarn ? '#ff3344' : '#00ffff';
+        c.strokeStyle = '#00ffff';
+        c.shadowColor = '#00ffff';
         c.shadowBlur = 10;
         c.lineWidth = 1.6;
         for (let i = 0; i < 4; i++) {
@@ -478,7 +472,7 @@ export class Player {
       if (isPredator && predTimer > 0) {
         const prog = Math.max(0, Math.min(1, predTimer / predMaxTimer));
         const isWarn = predTimer < 2.5;
-        const arcCol = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
+        const arcCol = isWarn ? '#ffaa00' : '#00ffff';
         const r = P_RAD + 8;
 
         c.save();
@@ -490,7 +484,7 @@ export class Player {
 
         c.strokeStyle = arcCol;
         c.shadowColor = arcCol;
-        c.shadowBlur = isWarn ? 14 : 10;
+        c.shadowBlur = 10;
         c.lineWidth = 3.2;
         c.lineCap = 'round';
         c.beginPath();
@@ -518,9 +512,9 @@ export class Player {
         let prog = 1;
 
         if (isPredator) {
-          badgeCol = isWarn ? (Math.sin(time * 14) > 0 ? '#ff2244' : '#ffd700') : '#00ffff';
+          badgeCol = isWarn ? '#ffaa00' : '#00ffff';
           badgeText = combo.m > 1 ? `⚡ x${combo.m} • ${predTimer.toFixed(1)}s` : `⚡ ${predTimer.toFixed(1)}s`;
-          if (isWarn) badgeText = combo.m > 1 ? `⚠️ x${combo.m} • ${predTimer.toFixed(1)}s` : `⚠️ ${predTimer.toFixed(1)}s`;
+          if (isWarn) badgeText = combo.m > 1 ? `⏳ x${combo.m} • ${predTimer.toFixed(1)}s` : `⏳ ${predTimer.toFixed(1)}s`;
           prog = Math.max(0, Math.min(1, predTimer / predMaxTimer));
         } else if (combo.m > 1) {
           const tier = getComboTier(combo.n);

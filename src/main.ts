@@ -744,7 +744,6 @@ class Game {
 
     particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
     particles.shake(3, 0.12);
-    particles.flash('#00ffff', 0.12);
     if (settingsManager.settings.freezeFrame) {
       this.hitlag = Math.max(this.hitlag, 0.035);
     }
@@ -980,7 +979,6 @@ class Game {
         } else if (this.combo.m >= 32) {
           // x32 GOD MODE INVINCIBLE: Devour ghost on contact!
           this.onKillGhost(e, ep.x, ep.y);
-          particles.flash('#00ffff', 0.25);
           particles.shake(6, 0.2);
           particles.addPop(ep.x, ep.y - 15, '💥 x32 ANNIHILATION !', '#00ffff', 18);
           sounds.play('pellet');
@@ -1018,7 +1016,6 @@ class Game {
         particles.addPop(px, py - 15, '+' + pts, '#ff5555', 18);
         particles.emit(px, py, 20, C_PELLET, { speed: 100, size: 4, life: 0.6 });
         powerups.triggerPredator(this.enemyManager.enemies);
-        particles.flash('#ff0055', 0.25);
         particles.shake(4, 0.2);
         sounds.play('pellet');
       } else {
