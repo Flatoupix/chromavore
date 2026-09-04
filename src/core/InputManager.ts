@@ -205,6 +205,22 @@ export class InputManager {
     this.nitroActive = 0;
     this.nitroTrail = [];
   }
+
+  public getVector(): { x: number; y: number } {
+    let vx = 0, vy = 0;
+    if (this.keys['ArrowLeft'] || this.keys['KeyA'] || this.keys['KeyQ']) vx -= 1;
+    if (this.keys['ArrowRight'] || this.keys['KeyD']) vx += 1;
+    if (this.keys['ArrowUp'] || this.keys['KeyW'] || this.keys['KeyZ']) vy -= 1;
+    if (this.keys['ArrowDown'] || this.keys['KeyS']) vy += 1;
+    if (vx !== 0 && vy !== 0) {
+      const len = Math.hypot(vx, vy);
+      vx /= len; vy /= len;
+    }
+    if (vx === 0 && vy === 0 && (this.nextDir.x !== 0 || this.nextDir.y !== 0)) {
+      return { x: this.nextDir.x, y: this.nextDir.y };
+    }
+    return { x: vx, y: vy };
+  }
 }
 
 export const input = new InputManager();

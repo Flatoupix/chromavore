@@ -48,7 +48,8 @@ export const BADGES: Record<string, BadgeDef> = {
   loop1:        { id: 'loop1',        name: 'SAUT TEMPOREL',        desc: 'Compléter le Niveau 5 et lancer la Boucle 2',       icon: '🌀', category: 'feat' },
   loop2:        { id: 'loop2',        name: 'VITESSE SUPRASONIQUE', desc: 'Atteindre la Boucle 3 (+20% Vitesse)',              icon: '🚀', category: 'feat' },
   madness50:    { id: 'madness50',    name: 'BERSERK TRANSCENDANT', desc: 'Éliminer 50 spectres en une session Folie',         icon: '💀', category: 'feat' },
-  madness100:   { id: 'madness100',   name: 'EXTERMINATEUR TOTAL',  desc: 'Éliminer 100 spectres en une session Folie',        icon: '🌌', category: 'feat' }
+  madness100:   { id: 'madness100',   name: 'EXTERMINATEUR TOTAL',  desc: 'Éliminer 100 spectres en une session Folie',        icon: '🌌', category: 'feat' },
+  bonus50:      { id: 'bonus50',      name: 'SWARM SLAYER',         desc: 'Pulvériser 50 spectres en un Niveau Bonus',         icon: '🌀', category: 'feat' }
 };
 
 export class BadgeManager {

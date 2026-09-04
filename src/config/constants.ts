@@ -47,7 +47,8 @@ export const PC: Record<string, string> = {
   nova: '#ffd700',
   timewarp: '#00ffaa',
   magnet: '#ff007f',
-  overdrive: '#00ffcc'
+  overdrive: '#00ffcc',
+  portal: '#d946ef'
 };
 
 export const PN: Record<string, string> = {
@@ -55,7 +56,8 @@ export const PN: Record<string, string> = {
   nova: 'NOVA BURST',
   timewarp: 'TIME WARP',
   magnet: 'FORCE FIELD',
-  overdrive: 'DASH INFINI'
+  overdrive: 'DASH INFINI',
+  portal: '🌀 VORTEX RAMPAGE'
 };
 
 export const PI_: Record<string, string> = {
@@ -63,8 +65,16 @@ export const PI_: Record<string, string> = {
   nova: '✦',
   timewarp: '◎',
   magnet: '◈',
-  overdrive: '⚡'
+  overdrive: '⚡',
+  portal: '🌀'
 };
+
+// Bonus Stage Hyper-Swarm Settings
+export const BONUS_DURATION = 15.0;
+export const BONUS_SWARM_MAX = 85;
+export const BONUS_FORCE_FIELD_RAD = 54;
+export const BONUS_ARENA_W = 860;
+export const BONUS_ARENA_H = 920;
 
 // Combo settings
 export const CT = [0, 5, 12, 25, 50, 90];
@@ -103,6 +113,6 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v2.8.0';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v2.9.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v2.8.0';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v2.9.0';

@@ -236,6 +236,44 @@ class SoundManager {
           });
           break;
         }
+        case 'portal': {
+          // Cosmic Warp / Portal entry whoosh
+          const osc = this.actx.createOscillator();
+          const filter = this.actx.createBiquadFilter();
+          const g = this.actx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, t);
+          osc.frequency.exponentialRampToValueAtTime(980, t + 0.45);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(300, t);
+          filter.frequency.exponentialRampToValueAtTime(3200, t + 0.45);
+          g.gain.setValueAtTime(0.22, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+          osc.connect(filter);
+          filter.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + 0.5);
+          break;
+        }
+        case 'crunch': {
+          // Satisfying Force Field vaporization crunch
+          const now = performance.now();
+          if (now - this.lastKillSfxTime < 35) return;
+          this.lastKillSfxTime = now;
+          const osc = this.actx.createOscillator();
+          const g = this.actx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(380, t);
+          osc.frequency.exponentialRampToValueAtTime(90, t + 0.12);
+          g.gain.setValueAtTime(0.18, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+          osc.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + 0.14);
+          break;
+        }
       }
     } catch {}
   }

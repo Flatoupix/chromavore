@@ -580,4 +580,95 @@ export class Player {
 
     c.globalAlpha = 1;
   }
+
+  public drawForceField(c: CanvasRenderingContext2D, px: number, py: number, radius: number, time: number) {
+    c.save();
+    c.translate(px, py);
+
+    const pulse = 1 + Math.sin(time * 12) * 0.08;
+    const curR = radius * pulse;
+
+    // Outer plasma radial field
+    const grad = c.createRadialGradient(0, 0, curR * 0.2, 0, 0, curR);
+    grad.addColorStop(0, 'rgba(0, 240, 255, 0.04)');
+    grad.addColorStop(0.5, 'rgba(0, 240, 255, 0.16)');
+    grad.addColorStop(0.85, 'rgba(217, 70, 239, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 240, 255, 0.7)');
+    c.fillStyle = grad;
+    c.beginPath();
+    c.arc(0, 0, curR, 0, PI2);
+    c.fill();
+
+    // Boundary neon rings
+    c.strokeStyle = '#00ffff';
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 18;
+    c.lineWidth = 2.5;
+    c.beginPath();
+    c.arc(0, 0, curR, 0, PI2);
+    c.stroke();
+
+    c.strokeStyle = '#d946ef';
+    c.shadowColor = '#d946ef';
+    c.shadowBlur = 14;
+    c.lineWidth = 1.8;
+    c.beginPath();
+    c.arc(0, 0, curR - 4, 0, PI2);
+    c.stroke();
+
+    // Orbiting electromagnetic shield emitter nodes
+    for (let i = 0; i < 4; i++) {
+      const a = time * 4 + (i * PI2) / 4;
+      const nx = Math.cos(a) * (curR - 2);
+      const ny = Math.sin(a) * (curR - 2);
+      c.fillStyle = '#ffffff';
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 10;
+      c.beginPath();
+      c.arc(nx, ny, 3.5, 0, PI2);
+      c.fill();
+
+      // Electric arc segment
+      c.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(0, 0, curR - 2, a, a + 0.35);
+      c.stroke();
+    }
+
+    // Crackling electric discharges inside
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      const a = time * 6 + i * 2.1;
+      const r1 = curR * 0.3;
+      const r2 = curR * 0.85;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+      c.lineTo(Math.cos(a + 0.2) * ((r1 + r2) / 2), Math.sin(a + 0.2) * ((r1 + r2) / 2));
+      c.lineTo(Math.cos(a - 0.1) * r2, Math.sin(a - 0.1) * r2);
+      c.stroke();
+    }
+
+    c.restore();
+  }
+
+  public drawBonusPacman(c: CanvasRenderingContext2D, px: number, py: number, time: number, angle: number) {
+    c.save();
+    c.translate(px, py);
+    c.rotate(angle);
+
+    // Glowing core body (miniaturized for zoomed-out perspective)
+    const mouth = Math.abs(Math.sin(time * 18)) * 0.7;
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 16;
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(0, 0, 7.5, mouth, PI2 - mouth);
+    c.lineTo(0, 0);
+    c.fill();
+    c.shadowBlur = 0;
+
+    c.restore();
+  }
 }

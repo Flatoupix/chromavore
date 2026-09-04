@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_RAD, BONUS_SWARM_MAX } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS, MADNESS_LEVELS } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -28,11 +28,21 @@ class Game {
   private touchDeck: TouchDeckManager;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' = 'menu';
   public leaderboardMode: 'classic' | 'madness' = 'madness';
   public playerRank: number = 0;
   public playerDate: string = '';
   public gameMode: 'classic' | 'madness' = 'madness';
+
+  // Bonus Level Hyper-Swarm specific
+  public bonusTimer: number = BONUS_DURATION;
+  public bonusKills: number = 0;
+  public bonusScore: number = 0;
+  public bonusTallyTimer: number = 0;
+  public bonusPacPos = { x: BONUS_ARENA_W / 2, y: BONUS_ARENA_H / 2 };
+  public bonusPacVel = { x: 0, y: 0 };
+  public bonusPacAngle: number = 0;
+  public bonusGhosts: { x: number; y: number; vx: number; vy: number; color: string; alive: boolean }[] = [];
   public score: number = 0;
   public dScore: number = 0;
   public lives: number = 3;
@@ -782,6 +792,172 @@ class Game {
     this.combo = { n: 0, t: 0, m: 1 };
   }
 
+  public enterBonusStage() {
+    this.state = 'bonus';
+    this.bonusTimer = BONUS_DURATION;
+    this.bonusKills = 0;
+    this.bonusScore = 0;
+    this.bonusTallyTimer = 0;
+    this.bonusPacPos = { x: BONUS_ARENA_W / 2, y: BONUS_ARENA_H / 2 };
+    this.bonusPacVel = { x: 0, y: 0 };
+    this.bonusPacAngle = 0;
+    this.bonusGhosts = [];
+
+    // Pre-spawn initial swarm of 50 ghosts around the perimeter
+    const colors = ['#00f0ff', '#ff007f', '#ffd700', '#00ffaa', '#b000ff', '#ff6600'];
+    for (let i = 0; i < 50; i++) {
+      const edge = (Math.random() * 4) | 0;
+      let gx = 0, gy = 0;
+      if (edge === 0) { gx = Math.random() * BONUS_ARENA_W; gy = 20; }
+      else if (edge === 1) { gx = Math.random() * BONUS_ARENA_W; gy = BONUS_ARENA_H - 20; }
+      else if (edge === 2) { gx = 20; gy = Math.random() * BONUS_ARENA_H; }
+      else { gx = BONUS_ARENA_W - 20; gy = Math.random() * BONUS_ARENA_H; }
+
+      this.bonusGhosts.push({
+        x: gx,
+        y: gy,
+        vx: 0,
+        vy: 0,
+        color: colors[(Math.random() * colors.length) | 0],
+        alive: true
+      });
+    }
+
+    sounds.play('portal');
+    particles.shake(6, 0.3);
+    particles.addPop(CW / 2, HUD_H + 45, '🌀 RAMPAGE DU VORTEX ! (15s)', '#d946ef', 22);
+  }
+
+  public updateBonusStage(dt: number) {
+    if (this.bonusTallyTimer > 0) {
+      this.bonusTallyTimer -= dt;
+      if (this.bonusTallyTimer <= 0) {
+        // Safe return back to the maze
+        this.state = 'playing';
+        this.score += this.bonusScore;
+        this.player.invuln = 1.8;
+        sounds.play('start');
+      }
+      return;
+    }
+
+    this.bonusTimer -= dt;
+
+    // Player controls in the arena (free 2D motion with analog/digital vector)
+    const inDir = input.getVector();
+    const speed = 290;
+    if (inDir.x !== 0 || inDir.y !== 0) {
+      this.bonusPacVel.x = inDir.x * speed;
+      this.bonusPacVel.y = inDir.y * speed;
+      this.bonusPacAngle = Math.atan2(inDir.y, inDir.x);
+    } else {
+      this.bonusPacVel.x *= 0.85;
+      this.bonusPacVel.y *= 0.85;
+    }
+
+    // Dash support in bonus arena!
+    if (this.player.dashCd > 0) this.player.dashCd -= dt;
+    if (input.isDashRequested && this.player.dashCd <= 0) {
+      const faceAngle = this.bonusPacAngle;
+      const dDist = 130;
+      const oldX = this.bonusPacPos.x, oldY = this.bonusPacPos.y;
+      this.bonusPacPos.x += Math.cos(faceAngle) * dDist;
+      this.bonusPacPos.y += Math.sin(faceAngle) * dDist;
+      this.player.dashStreaks.push({
+        x1: oldX, y1: oldY,
+        x2: this.bonusPacPos.x, y2: this.bonusPacPos.y,
+        life: 0.28, maxLife: 0.28
+      });
+      this.player.dashCd = 0.75;
+      sounds.play('dash');
+      particles.shake(4, 0.18);
+    }
+    input.isDashRequested = false;
+
+    // Update dash streaks
+    for (let i = this.player.dashStreaks.length - 1; i >= 0; i--) {
+      const s = this.player.dashStreaks[i];
+      s.life -= dt;
+      if (s.life <= 0) this.player.dashStreaks.splice(i, 1);
+    }
+
+    this.bonusPacPos.x += this.bonusPacVel.x * dt;
+    this.bonusPacPos.y += this.bonusPacVel.y * dt;
+    this.bonusPacPos.x = Math.max(35, Math.min(BONUS_ARENA_W - 35, this.bonusPacPos.x));
+    this.bonusPacPos.y = Math.max(35, Math.min(BONUS_ARENA_H - 35, this.bonusPacPos.y));
+
+    // Continuous swarm replenishment up to BONUS_SWARM_MAX
+    const colors = ['#00f0ff', '#ff007f', '#ffd700', '#00ffaa', '#b000ff', '#ff6600'];
+    while (this.bonusGhosts.length < BONUS_SWARM_MAX) {
+      const edge = (Math.random() * 4) | 0;
+      let gx = 0, gy = 0;
+      if (edge === 0) { gx = Math.random() * BONUS_ARENA_W; gy = 15; }
+      else if (edge === 1) { gx = Math.random() * BONUS_ARENA_W; gy = BONUS_ARENA_H - 15; }
+      else if (edge === 2) { gx = 15; gy = Math.random() * BONUS_ARENA_H; }
+      else { gx = BONUS_ARENA_W - 15; gy = Math.random() * BONUS_ARENA_H; }
+
+      this.bonusGhosts.push({
+        x: gx,
+        y: gy,
+        vx: 0,
+        vy: 0,
+        color: colors[(Math.random() * colors.length) | 0],
+        alive: true
+      });
+    }
+
+    // Move ghosts towards Pac-Man & check Force Field collision
+    const curRad = BONUS_FORCE_FIELD_RAD;
+    for (const g of this.bonusGhosts) {
+      if (!g.alive) continue;
+      const dx = this.bonusPacPos.x - g.x;
+      const dy = this.bonusPacPos.y - g.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist <= curRad) {
+        // Obliterate ghost!
+        g.alive = false;
+        this.bonusKills++;
+        const pts = 200 + Math.min(2000, this.bonusKills * 25);
+        this.bonusScore += pts;
+
+        sounds.play('crunch');
+        particles.emit(g.x, g.y, 8, g.color, { speed: 130, size: 3.5, life: 0.45 });
+        particles.shake(1.8, 0.08);
+
+        // Career frags & unlocks
+        progression.addGhostKills(1);
+        if (this.gameMode === 'madness') {
+          this.madnessKills++;
+        }
+      } else {
+        const gSpeed = 135 + Math.random() * 35;
+        g.vx = (dx / (dist || 1)) * gSpeed;
+        g.vy = (dy / (dist || 1)) * gSpeed;
+        g.x += g.vx * dt;
+        g.y += g.vy * dt;
+      }
+    }
+
+    // Clean up dead ghosts
+    this.bonusGhosts = this.bonusGhosts.filter(g => g.alive);
+
+    // End of 15 seconds
+    if (this.bonusTimer <= 0) {
+      this.bonusTimer = 0;
+      this.bonusTallyTimer = 1.8;
+      sounds.play('badge');
+      // Fireworks for remaining ghosts
+      for (const g of this.bonusGhosts) {
+        particles.emit(g.x, g.y, 10, g.color, { speed: 140, size: 4, life: 0.6 });
+      }
+      this.bonusGhosts = [];
+      if (this.bonusKills >= 50) {
+        badges.unlock('bonus50');
+      }
+    }
+  }
+
   private checkCollisions() {
     if (this.state !== 'playing') return;
     const pp = this.player.getPos();
@@ -863,16 +1039,27 @@ class Game {
           particles.addPop(px, py - 28, 'x' + this.combo.m + '!', CC[tier], 16 + tier * 3);
           particles.emit(px, py, 8 + tier * 4, CC[tier], { speed: 60 + tier * 20, size: 3, life: 0.5 });
           particles.shake(1 + tier, 0.15);
-          particles.flash(CC[tier], 0.15);
+          // Note: Screen flash removed on combo steps (especially x8) for visual comfort!
           if (this.combo.m >= 8) badges.unlock('combo8');
           if (this.combo.m >= 16) badges.unlock('combo16');
           if (this.combo.m >= 32) {
             badges.unlock('combo32');
             sounds.play('powerup');
-            particles.flash('#00ffff', 0.35);
             particles.shake(8, 0.25);
-            particles.addPop(px, py - 36, '👑 x32 GOD MODE (INVINCIBLE) ! 👑', '#00ffff', 20);
+            particles.addPop(px, py - 36, '👑 x32 MODE INVINCIBLE ! 👑', '#00ffff', 20);
+            powerups.triggerPredator(this.enemyManager.enemies);
+            powerups.pred.t = 7.0;
+            powerups.pred.maxT = 7.0;
           }
+        }
+
+        // 32x Invincible Mode Maintenance via dots (strictly capped at 7.0s max)
+        if (this.combo.m >= 32) {
+          if (!powerups.pred.on) {
+            powerups.triggerPredator(this.enemyManager.enemies);
+          }
+          powerups.pred.t = Math.min(powerups.pred.maxT, powerups.pred.t + 0.6);
+          powerups.pred.warn = powerups.pred.t < 2.5;
         }
       }
 
@@ -1055,7 +1242,13 @@ class Game {
       }
     }
 
-    sounds.updateBGM(dt, this.state === 'playing', powerups.pred.on, this.gameMode === 'madness', powerups.pred.warn);
+    sounds.updateBGM(
+      dt,
+      this.state === 'playing' || this.state === 'bonus',
+      powerups.pred.on || this.state === 'bonus',
+      this.gameMode === 'madness' || this.state === 'bonus',
+      this.state === 'bonus' ? this.bonusTimer < 3.0 : powerups.pred.warn
+    );
     badges.update(dt);
     particles.update(dt);
 
@@ -1264,7 +1457,8 @@ class Game {
                 if (Math.hypot(px - ep.x, py - ep.y) < T * 4) this.onKillGhost(e, ep.x, ep.y);
               }
             }
-          }
+          },
+          () => this.enterBonusStage()
         );
 
         // Super-Items update (with wall-safe gravitational suction and dot suction)
@@ -1317,11 +1511,33 @@ class Game {
       case 'waveTrans':
         this.state = 'playing';
         break;
+
+      case 'bonus':
+        this.updateBonusStage(dt);
+        break;
     }
   }
 
   private render() {
     this.renderer.clear(this.maze.currentLevel, this.time, this.gameMode === 'madness');
+
+    if (this.state === 'bonus') {
+      this.renderer.drawBonusStage(
+        this.bonusPacPos,
+        this.bonusPacAngle,
+        this.player.dashStreaks,
+        this.bonusGhosts,
+        this.bonusTimer,
+        this.bonusKills,
+        this.bonusScore,
+        this.time,
+        this.player
+      );
+      if (this.bonusTallyTimer > 0) {
+        this.renderer.drawBonusTally(this.bonusKills, this.bonusScore, this.time);
+      }
+      return;
+    }
 
     if (this.state === 'menu') {
       const topClassic = Math.max(badges.hiScore, leaderboard.getTopScore('classic'));

@@ -2,13 +2,13 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier, GAME_VERSION } from '../config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_RAD } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
 import { PowerupManager } from '../entities/Powerups';
 import { SuperItemManager } from '../systems/SuperItems';
-import { ParticleSystem } from '../systems/ParticleSystem';
+import { ParticleSystem, particles } from '../systems/ParticleSystem';
 import { BadgeManager, badges, BADGES } from '../systems/BadgeSystem';
 import { sounds } from '../audio/SoundManager';
 import { settingsManager, PAUSE_BUTTONS } from '../systems/SettingsManager';
@@ -1603,6 +1603,262 @@ export class Renderer {
     c.fillStyle = isReady ? '#ffffff' : '#8899aa';
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText('⚡DASH', DASH_BTN.x, DASH_BTN.y);
+    c.restore();
+  }
+
+  public drawBonusStage(
+    playerPos: { x: number; y: number },
+    playerAngle: number,
+    dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number }[],
+    swarmGhosts: { x: number; y: number; vx: number; vy: number; color: string; alive: boolean }[],
+    bonusTimer: number,
+    bonusKills: number,
+    bonusScore: number,
+    time: number,
+    player: Player
+  ) {
+    const c = this.ctx;
+    c.clearRect(0, 0, CW, CH);
+
+    // Deep cosmic arena background
+    const bgGrad = c.createLinearGradient(0, 0, 0, CH);
+    bgGrad.addColorStop(0, '#050012');
+    bgGrad.addColorStop(0.5, '#0a0224');
+    bgGrad.addColorStop(1, '#18002a');
+    c.fillStyle = bgGrad;
+    c.fillRect(0, 0, CW, CH);
+
+    // Save context for scaled zoomed-out arena (viewed from afar)
+    c.save();
+    c.beginPath();
+    c.rect(0, HUD_H, CW, CH - HUD_H);
+    c.clip();
+
+    const scale = CW / BONUS_ARENA_W; // ~0.52x zoom out!
+    c.translate(0, HUD_H);
+    c.scale(scale, scale);
+
+    // Cosmic Grid Floor
+    c.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+    c.lineWidth = 1;
+    const gridStep = 40;
+    const offset = (time * 25) % gridStep;
+    for (let x = 0; x < BONUS_ARENA_W; x += gridStep) {
+      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, BONUS_ARENA_H); c.stroke();
+    }
+    for (let y = offset; y < BONUS_ARENA_H; y += gridStep) {
+      c.beginPath(); c.moveTo(0, y); c.lineTo(BONUS_ARENA_W, y); c.stroke();
+    }
+
+    // Glowing Neon Perimeter Barrier
+    const pulse = 1 + Math.sin(time * 6) * 0.12;
+    c.strokeStyle = '#d946ef';
+    c.shadowColor = '#d946ef';
+    c.shadowBlur = 18 * pulse;
+    c.lineWidth = 4;
+    c.strokeRect(8, 8, BONUS_ARENA_W - 16, BONUS_ARENA_H - 16);
+
+    c.strokeStyle = '#00ffff';
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 10;
+    c.lineWidth = 1.8;
+    c.strokeRect(14, 14, BONUS_ARENA_W - 28, BONUS_ARENA_H - 28);
+    c.shadowBlur = 0;
+
+    // Dash streaks in arena coords
+    for (const s of dashStreaks) {
+      const a = s.life / s.maxLife;
+      c.save();
+      c.globalAlpha = a * 0.9;
+      c.strokeStyle = '#00ffff';
+      c.lineWidth = 12 * a;
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 16;
+      c.beginPath();
+      c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2);
+      c.stroke();
+      c.restore();
+    }
+
+    // Swarm Ghosts
+    for (const g of swarmGhosts) {
+      if (!g.alive) continue;
+      c.save();
+      c.translate(g.x, g.y);
+
+      // Ghost aura
+      c.fillStyle = g.color;
+      c.shadowColor = g.color;
+      c.shadowBlur = 10;
+
+      // Small ghost shape
+      const r = 8;
+      c.beginPath();
+      c.arc(0, -2, r, Math.PI, 0, false);
+      c.lineTo(r, r);
+      // Scalloped bottom
+      c.lineTo(r * 0.33, r - 3);
+      c.lineTo(0, r);
+      c.lineTo(-r * 0.33, r - 3);
+      c.lineTo(-r, r);
+      c.closePath();
+      c.fill();
+      c.shadowBlur = 0;
+
+      // Scared wide eyes converging on Pac-Man
+      const eyeDx = playerPos.x - g.x;
+      const eyeDy = playerPos.y - g.y;
+      const eyeAngle = Math.atan2(eyeDy, eyeDx);
+      const exOff = Math.cos(eyeAngle) * 2;
+      const eyOff = Math.sin(eyeAngle) * 2;
+
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.arc(-3, -3, 2.5, 0, PI2);
+      c.arc(3, -3, 2.5, 0, PI2);
+      c.fill();
+
+      c.fillStyle = '#0000aa';
+      c.beginPath();
+      c.arc(-3 + exOff, -3 + eyOff, 1.4, 0, PI2);
+      c.arc(3 + exOff, -3 + eyOff, 1.4, 0, PI2);
+      c.fill();
+
+      c.restore();
+    }
+
+    // Draw Particles in Arena space
+    particles.draw(c);
+
+    // Draw Giant Force Field around Pac-Man
+    player.drawForceField(c, playerPos.x, playerPos.y, BONUS_FORCE_FIELD_RAD, time);
+
+    // Draw Pac-Man (tiny scale)
+    player.drawBonusPacman(c, playerPos.x, playerPos.y, time, playerAngle);
+
+    c.restore();
+
+    // Special Bonus HUD at normal scale (on top of canvas)
+    c.save();
+    // HUD Header background bar
+    const hudGrad = c.createLinearGradient(0, 0, 0, HUD_H);
+    hudGrad.addColorStop(0, '#100224');
+    hudGrad.addColorStop(1, '#050012');
+    c.fillStyle = hudGrad;
+    c.fillRect(0, 0, CW, HUD_H);
+
+    // Neon divider line
+    c.strokeStyle = '#d946ef';
+    c.shadowColor = '#d946ef';
+    c.shadowBlur = 8;
+    c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(0, HUD_H); c.lineTo(CW, HUD_H); c.stroke();
+    c.shadowBlur = 0;
+
+    // Subtitle / Mode Name
+    c.font = 'bold 9px monospace';
+    c.fillStyle = '#d946ef';
+    c.textAlign = 'center';
+    c.fillText('🌀 HYPER-SWARM FORCE FIELD RAMPAGE 🌀', CW / 2, 14);
+
+    // Big Countdown Timer in Center
+    const isUrgent = bonusTimer < 3.0;
+    const tCol = isUrgent ? (Math.sin(time * 16) > 0 ? '#ff2244' : '#ffffff') : '#00ffff';
+    c.font = 'bold 20px monospace';
+    c.fillStyle = tCol;
+    c.shadowColor = tCol;
+    c.shadowBlur = 12;
+    c.fillText('⏱️ ' + Math.max(0, bonusTimer).toFixed(1) + 's', CW / 2, 36);
+    c.shadowBlur = 0;
+
+    // Timer bar
+    const bProg = Math.max(0, bonusTimer / BONUS_DURATION);
+    c.fillStyle = '#221133';
+    c.fillRect(CW / 2 - 50, 44, 100, 4);
+    c.fillStyle = tCol;
+    c.fillRect(CW / 2 - 50, 44, 100 * bProg, 4);
+
+    // Left: Kills
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#ffd700';
+    c.shadowColor = '#ffd700';
+    c.shadowBlur = 8;
+    c.textAlign = 'left';
+    c.fillText('👻 ' + bonusKills + ' PULVÉRISÉS', 12, 33);
+    c.shadowBlur = 0;
+    c.font = '8px monospace';
+    c.fillStyle = '#8899aa';
+    c.fillText('FORCE FIELD ACTIF', 12, 48);
+
+    // Right: Bonus Points
+    c.font = 'bold 12px monospace';
+    c.fillStyle = '#00ffcc';
+    c.shadowColor = '#00ffcc';
+    c.shadowBlur = 8;
+    c.textAlign = 'right';
+    c.fillText('⭐ +' + bonusScore, CW - 12, 33);
+    c.shadowBlur = 0;
+    c.font = '8px monospace';
+    c.fillStyle = '#8899aa';
+    c.fillText('SCORE BONUS', CW - 12, 48);
+
+    // Bottom Controls Hint
+    c.font = 'bold 9px monospace';
+    c.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    c.textAlign = 'center';
+    c.fillText('⚡ TRAVERSEZ LES SPECTRES AVEC LE FORCE FIELD • [ESPACE] DASH', CW / 2, CH - 14);
+
+    c.restore();
+  }
+
+  public drawBonusTally(bonusKills: number, bonusScore: number, time: number) {
+    const c = this.ctx;
+    c.save();
+
+    // Dark backdrop overlay
+    c.fillStyle = 'rgba(5, 0, 16, 0.82)';
+    c.fillRect(0, HUD_H, CW, CH - HUD_H);
+
+    const bx = CW / 2 - 160, by = CH / 2 - 90, bw = 320, bh = 180;
+    const pulse = 1 + Math.sin(time * 8) * 0.05;
+
+    // Card frame
+    c.fillStyle = '#0c021c';
+    c.strokeStyle = '#d946ef';
+    c.shadowColor = '#d946ef';
+    c.shadowBlur = 24 * pulse;
+    c.lineWidth = 2.5;
+    c.strokeRect(bx, by, bw, bh);
+    c.fillRect(bx, by, bw, bh);
+    c.shadowBlur = 0;
+
+    // Title
+    c.font = 'bold 16px monospace';
+    c.fillStyle = '#ffd700';
+    c.shadowColor = '#ffd700';
+    c.shadowBlur = 14;
+    c.textAlign = 'center';
+    c.fillText('🌀 RAMPAGE DU VORTEX TERMINÉ ! 🌀', CW / 2, by + 34);
+    c.shadowBlur = 0;
+
+    // Kills line
+    c.font = 'bold 14px monospace';
+    c.fillStyle = '#ffffff';
+    c.fillText(`👻 ${bonusKills} SPECTRES DÉTRUITS`, CW / 2, by + 74);
+
+    // Score line
+    c.font = 'bold 18px monospace';
+    c.fillStyle = '#00ffff';
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 12;
+    c.fillText(`+${bonusScore} POINTS !`, CW / 2, by + 112);
+    c.shadowBlur = 0;
+
+    // Subtitle
+    c.font = '9px monospace';
+    c.fillStyle = '#a855f7';
+    c.fillText('RETOUR AU LABYRINTHE...', CW / 2, by + 150);
+
     c.restore();
   }
 }

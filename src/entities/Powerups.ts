@@ -21,6 +21,13 @@ export interface VoidRelic {
   maxTimer: number;
 }
 
+export interface VortexPortal {
+  x: number;
+  y: number;
+  timer: number;
+  maxTimer: number;
+}
+
 export class PowerupManager {
   public current: PowerupItem | null = null;
   public spawnTimer: number = 10;
@@ -29,6 +36,9 @@ export class PowerupManager {
 
   public voidRelic: VoidRelic | null = null;
   public voidRelicTimer: number = 14.0;
+
+  public vortexPortal: VortexPortal | null = null;
+  public vortexPortalTimer: number = 22.0;
 
   private spawnPoints = [
     { x: 10, y: 8 }, { x: 4, y: 14 }, { x: 16, y: 14 }, { x: 10, y: 4 }
@@ -42,7 +52,8 @@ export class PowerupManager {
     enemies: any[],
     onTitanTransform: () => void,
     onVoidIntercepted: () => void,
-    onNovaCollect: (px: number, py: number) => void
+    onNovaCollect: (px: number, py: number) => void,
+    onEnterBonusStage?: () => void
   ) {
     // Powerup Spawner
     if (!this.current) {
@@ -92,6 +103,47 @@ export class PowerupManager {
     // Void Relic in Madness Mode
     if (isMadness) {
       this.updateVoidRelic(dt, maze, plPos, enemies, onTitanTransform, onVoidIntercepted);
+    }
+
+    // Vortex Bonus Portal (both Classic and Madness)
+    this.updateVortexPortal(dt, maze, plPos, onEnterBonusStage);
+  }
+
+  private updateVortexPortal(
+    dt: number,
+    maze: MazeManager,
+    plPos: { x: number; y: number },
+    onEnterBonusStage?: () => void
+  ) {
+    if (!this.vortexPortal) {
+      this.vortexPortalTimer -= dt;
+      if (this.vortexPortalTimer <= 0) {
+        this.vortexPortalTimer = 35.0 + Math.random() * 20.0;
+        const pt = maze.getRandomWalkable(false);
+        this.vortexPortal = { x: pt.x, y: pt.y, timer: 14.0, maxTimer: 14.0 };
+        sounds.play('portal');
+        particles.shake(4, 0.25);
+        particles.addPop(CW / 2, 70, '🌀 PORTAIL VORTEX APPARU !', '#d946ef', 18);
+      }
+    } else {
+      if (!maze.isWalkable(this.vortexPortal.x, this.vortexPortal.y, false)) {
+        const safe = maze.findNearestWalkable(this.vortexPortal.x, this.vortexPortal.y, false);
+        this.vortexPortal.x = safe.x;
+        this.vortexPortal.y = safe.y;
+      }
+      this.vortexPortal.timer -= dt;
+      const vx = this.vortexPortal.x * T + HALF, vy = this.vortexPortal.y * T + HALF;
+      if (Math.random() < 0.25) {
+        particles.emit(vx, vy, 1, Math.random() < 0.5 ? '#d946ef' : '#00ffff', { speed: 30, size: 2, life: 0.3 });
+      }
+      if (this.vortexPortal.timer <= 0) {
+        this.vortexPortal = null;
+      } else if (Math.hypot(plPos.x - vx, plPos.y - vy) < T * 0.95) {
+        particles.emit(vx, vy, 50, '#d946ef', { speed: 180, size: 5, life: 0.75 });
+        sounds.play('portal');
+        this.vortexPortal = null;
+        if (onEnterBonusStage) onEnterBonusStage();
+      }
     }
   }
 
@@ -231,6 +283,50 @@ export class PowerupManager {
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillText('☠️', rx, ry);
+      c.restore();
+    }
+
+    if (this.vortexPortal) {
+      const vx = this.vortexPortal.x * T + HALF, vy = this.vortexPortal.y * T + HALF;
+      const pulse = 1 + Math.sin(time * 8) * 0.2;
+      c.save();
+      c.translate(vx, vy);
+
+      // Rotating elliptical neon plasma rings
+      c.strokeStyle = '#00ffff';
+      c.lineWidth = 2.2;
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 14;
+      c.beginPath();
+      c.ellipse(0, 0, T * 0.6 * pulse, T * 0.28, time * 2.5, 0, PI2);
+      c.stroke();
+
+      c.strokeStyle = '#d946ef';
+      c.lineWidth = 2.4;
+      c.shadowColor = '#d946ef';
+      c.shadowBlur = 18;
+      c.beginPath();
+      c.ellipse(0, 0, T * 0.6 * pulse, T * 0.28, -time * 2.2, 0, PI2);
+      c.stroke();
+
+      // Cosmic core gradient
+      const grad = c.createRadialGradient(0, 0, 1, 0, 0, T * 0.45 * pulse);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.35, '#d946ef');
+      grad.addColorStop(1, 'rgba(80, 0, 200, 0)');
+      c.fillStyle = grad;
+      c.beginPath();
+      c.arc(0, 0, T * 0.45 * pulse, 0, PI2);
+      c.fill();
+
+      // Portal symbol
+      c.font = 'bold 15px monospace';
+      c.fillStyle = '#ffffff';
+      c.shadowColor = '#ffffff';
+      c.shadowBlur = 8;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText('🌀', 0, 0);
       c.restore();
     }
   }
