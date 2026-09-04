@@ -41,17 +41,19 @@ export class InputManager {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       this.keys[e.code] = true;
 
-      // Directions
-      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+      const k = e.key ? e.key.toLowerCase() : '';
+
+      // Directions: Support ZQSD (AZERTY) as primary, plus WASD and Arrow keys
+      if (e.code === 'ArrowUp' || k === 'z' || k === 'w' || e.code === 'KeyW' || e.code === 'KeyZ') {
         this.setNextDir(0, -1);
         e.preventDefault();
-      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+      } else if (e.code === 'ArrowDown' || k === 's' || e.code === 'KeyS') {
         this.setNextDir(0, 1);
         e.preventDefault();
-      } else if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
+      } else if (e.code === 'ArrowLeft' || k === 'q' || k === 'a' || e.code === 'KeyA' || e.code === 'KeyQ') {
         this.setNextDir(-1, 0);
         e.preventDefault();
-      } else if (e.code === 'ArrowRight' || e.code === 'KeyD') {
+      } else if (e.code === 'ArrowRight' || k === 'd' || e.code === 'KeyD') {
         this.setNextDir(1, 0);
         e.preventDefault();
       }
@@ -65,13 +67,14 @@ export class InputManager {
       if (e.code === 'Enter') {
         this.isStartRequested = true;
       }
-      if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyQ' || e.code === 'KeyF') {
+      // Super-Items: E, Shift, F (KeyQ removed so AZERTY Q=Gauche doesn't waste items!)
+      if (k === 'e' || e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || k === 'f' || e.code === 'KeyF') {
         this.isItemRequested = true;
       }
       if (e.code === 'KeyP' || e.code === 'Escape') {
         this.isPauseRequested = true;
       }
-      if (e.code === 'KeyM') {
+      if (k === 'm' || e.code === 'KeyM') {
         this.isAudioToggleRequested = true;
       }
       if (e.code === 'Digit1' || e.code === 'Numpad1') {
@@ -80,19 +83,20 @@ export class InputManager {
       if (e.code === 'Digit2' || e.code === 'Numpad2') {
         this.isSelectMode2Requested = true;
       }
-      if (e.code === 'KeyL') {
+      if (k === 'l' || e.code === 'KeyL') {
         this.isLeaderboardRequested = true;
       }
-      if (e.code === 'KeyR') {
+      if (k === 'r' || e.code === 'KeyR') {
         this.isRestartRequested = true;
       }
-      if (e.code === 'KeyS') {
+      // Codex / Arsenal shortcut on C (Codex) so S is 100% reserved for Down
+      if (k === 'c' || e.code === 'KeyC') {
         this.isCodexRequested = true;
       }
-      if (e.code === 'KeyB') {
+      if (k === 'b' || e.code === 'KeyB') {
         this.isBadgesRequested = true;
       }
-      if (e.code === 'KeyK') {
+      if (k === 'k' || e.code === 'KeyK') {
         this.isRestoreRequested = true;
       }
     });

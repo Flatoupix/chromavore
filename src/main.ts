@@ -632,18 +632,6 @@ class Game {
       particles.addPaintSplat(ex, ey, e.isTitan ? '#ff0055' : '#00ffff');
       this.checkRampageMilestone(this.madnessStreak);
 
-      // Automatic level progression in Madness mode across all 5 levels!
-      if (this.madnessKills === 35 && this.maze.currentLevel === 0) this.warpToLevel(1);
-      else if (this.madnessKills === 80 && this.maze.currentLevel === 1) this.warpToLevel(2);
-      else if (this.madnessKills === 140 && this.maze.currentLevel === 2) this.warpToLevel(3);
-      else if (this.madnessKills === 210 && this.maze.currentLevel === 3) {
-        this.warpToLevel(4);
-        badges.unlock('wave5');
-      }
-      else if (this.madnessKills > 300 && (this.madnessKills - 300) % 100 === 0) {
-        this.warpToLevel((this.maze.currentLevel + 1) % MADNESS_LEVELS.length);
-      }
-
       if (this.madnessKills >= 50) badges.unlock('madness50');
       if (this.madnessKills >= 100) badges.unlock('madness100');
 
@@ -834,7 +822,7 @@ class Game {
 
       if (this.combo.n > this.bestCombo) this.bestCombo = this.combo.n;
 
-      if (this.maze.remainingDots <= 0 && this.gameMode === 'classic') {
+      if (this.maze.remainingDots <= 0) {
         this.state = 'waveTrans';
         this.waveT = 2.5;
         this.wave++;
@@ -1233,8 +1221,11 @@ class Game {
         this.waveT -= dt;
         if (this.waveT <= 0) {
           const completedLvl = this.maze.currentLevel;
-          // When completing Level 5 (index 4), loop back to Level 1 and increase speed by +10%!
-          if (completedLvl === LEVELS.length - 1) {
+          const isMadness = this.gameMode === 'madness';
+          const list = isMadness ? MADNESS_LEVELS : LEVELS;
+
+          // When completing Level 10 (last level), loop back to Level 1 and increase speed by +10%!
+          if (completedLvl === list.length - 1) {
             this.loopCount++;
             badges.unlock('loop1');
             if (this.loopCount >= 2) badges.unlock('loop2');
@@ -1243,12 +1234,21 @@ class Game {
             particles.shake(12, 0.4);
             sounds.play('powerup');
           }
-          const nextLvl = (completedLvl + 1) % LEVELS.length;
-          if (nextLvl === 4) badges.unlock('wave5');
+          const nextLvl = (completedLvl + 1) % list.length;
+          if (nextLvl >= 4) badges.unlock('wave5');
           const speedMult = this.loopSpeedMultiplier;
-          this.maze.build(nextLvl);
-          this.enemyManager.spawnClassic(4, speedMult);
-          this.player.reset(false, this.maze, speedMult);
+          this.maze.build(nextLvl, isMadness);
+          if (isMadness) {
+            this.enemyManager.enemies = [];
+            this.enemyManager.spawnMadness(8 + Math.min(8, this.loopCount * 2), this.madnessKills);
+            this.player.reset(true, this.maze, speedMult);
+            this.madnessTimer = Math.min(45, this.madnessTimer + 10.0); // Reward for clearing all dots in Madness!
+            sounds.play('powerup');
+            particles.flash('#00ffff', 0.4);
+          } else {
+            this.enemyManager.spawnClassic(4, speedMult);
+            this.player.reset(false, this.maze, speedMult);
+          }
           this.state = 'ready';
           this.readyT = 1.8;
         }

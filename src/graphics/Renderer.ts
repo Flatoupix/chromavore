@@ -196,8 +196,9 @@ export class Renderer {
       // Timer in Center
       const tRatio = Math.min(1, madnessTimer / 30);
       const tCol = madnessTimer < 8 ? (Math.sin(time * 12) > 0 ? '#ff2244' : '#ffffff') : '#00ffff';
-      c.font = 'bold 12px monospace'; c.fillStyle = '#888'; c.textAlign = 'center';
-      c.fillText('OVERDRIVE TIMER', CW / 2, 14);
+      const mDef = MADNESS_LEVELS[currentLevel % MADNESS_LEVELS.length];
+      c.font = 'bold 10px monospace'; c.fillStyle = loopCount > 0 ? '#ffd700' : '#8899bb'; c.textAlign = 'center';
+      c.fillText(loopCount > 0 ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} • B.${loopCount + 1} (+${loopCount * 10}%)` : `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} : ${mDef.name}`, CW / 2, 14);
       c.font = 'bold 18px monospace'; c.fillStyle = tCol; c.shadowColor = tCol; c.shadowBlur = 8;
       c.fillText('⏱️ ' + madnessTimer.toFixed(1) + 's', CW / 2, 33); c.shadowBlur = 0;
       c.fillStyle = '#222'; c.fillRect(CW / 2 - 50, 44, 100, 4);
@@ -273,7 +274,7 @@ export class Renderer {
     const list = isMadness ? MADNESS_LEVELS : LEVELS;
     const lvl = list[currentLevel % list.length];
     c.font = 'bold 12px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 8;
-    c.fillText('LVL ' + (currentLevel + 1) + ': ' + lvl.name, CW / 2, 30); c.shadowBlur = 0;
+    c.fillText('LVL ' + (currentLevel + 1) + '/' + list.length + ': ' + lvl.name, CW / 2, 30); c.shadowBlur = 0;
     c.font = 'bold 11px monospace'; c.fillStyle = loopCount > 0 ? '#ffd700' : '#aaa';
     c.fillText(loopCount > 0 ? `WAVE ${wave} • BOUCLE ${loopCount + 1} (+${loopCount * 10}%)` : 'WAVE ' + wave, CW / 2, 46);
 
@@ -452,7 +453,7 @@ export class Renderer {
 
     // Controls guide
     c.font = '11px monospace'; c.fillStyle = '#8899bb';
-    c.fillText('Flèches / WASD : Déplacement  |  SPACE : Dash Offensif', CW / 2, CH * 0.76);
+    c.fillText('Flèches / ZQSD : Déplacement  |  SPACE : Dash Offensif', CW / 2, CH * 0.76);
     if (isMad) {
       c.fillText('Kombos : ← → ← → (Wiggle EMP)  |  ↑ ↓ ↑ ↓ (Nitro Jet)', CW / 2, CH * 0.80);
       c.fillText('E / SHIFT / Bouton 💣 : Déclencher Super-Item', CW / 2, CH * 0.84);
@@ -489,7 +490,7 @@ export class Renderer {
     c.shadowBlur = 8;
     const unlockedBadges = badges.getUnlockedCount();
     const totalBadges = badges.getTotalCount();
-    c.fillText(`⚡ [S] ARSENAL (${unlockedCount}/18)  |  🏆 [B] SUCCÈS (${unlockedBadges}/${totalBadges})  |  📊 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, CH * 0.96);
+    c.fillText(`⚡ [C] ARSENAL (${unlockedCount}/18)  |  🏆 [B] SUCCÈS (${unlockedBadges}/${totalBadges})  |  📊 [L] SCORES  |  📲 [K] REPRENDRE`, CW / 2, CH * 0.96);
     c.shadowBlur = 0;
   }
 
@@ -553,7 +554,7 @@ export class Renderer {
     // Leaderboard link
     c.font = 'bold 11px monospace'; c.fillStyle = '#ff007f';
     c.shadowColor = '#ff007f'; c.shadowBlur = 8;
-    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] CLASSEMENT  |  [ S ] ARSENAL & SKILLS', CW / 2, cy + 220);
+    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] CLASSEMENT  |  [ C ] ARSENAL & SKILLS', CW / 2, cy + 220);
     c.shadowBlur = 0;
 
     // Version Tag
@@ -821,7 +822,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = '#00ffff';
       c.shadowBlur = 6;
-      c.fillText('[1] ARSENAL  •  [2] SUCCÈS  •  [TAB] BASCULER  •  [ECHAP / S] RETOUR', CW / 2, CH - 14);
+      c.fillText('[1] ARSENAL  •  [2] SUCCÈS  •  [TAB] BASCULER  •  [ECHAP / C] RETOUR', CW / 2, CH - 14);
       c.shadowBlur = 0;
     } else {
       // BADGES & ACHIEVEMENTS GALLERY
