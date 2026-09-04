@@ -278,7 +278,7 @@ class SoundManager {
     } catch {}
   }
 
-  public updateBGM(dt: number, isPlaying: boolean, _isPredator: boolean = false, isMadness: boolean = false, _isWarn: boolean = false) {
+  public updateBGM(dt: number, isPlaying: boolean, is32xGod: boolean = false, isMadness: boolean = false) {
     if (this.muted || !isPlaying) return;
     this.initCtx();
     if (!this.actx) return;
@@ -287,7 +287,8 @@ class SoundManager {
     // Step duration:
     // Normal: 0.125s (120 BPM)
     // Madness: 0.10s (150 BPM)
-    const stepDuration = isMadness ? 0.10 : 0.125;
+    // 32x Invincible God Mode: 0.09s (166 BPM high-energy overdrive)
+    const stepDuration = is32xGod ? 0.09 : (isMadness ? 0.10 : 0.125);
 
     if (this.bgmTime >= stepDuration) {
       this.bgmTime -= stepDuration;
@@ -307,7 +308,15 @@ class SoundManager {
         82.4, 82.4, 164.8, 82.4, 65.4, 65.4, 130.8, 65.4
       ];
 
-      const bassFreq = isMadness ? madnessRoots[this.bgmStep % madnessRoots.length] : roots[this.bgmStep % roots.length];
+      // 32x God Mode: Pumping Octave Overdrive Bass
+      const godRoots = [
+        110, 220, 110, 220, 130.8, 261.6, 130.8, 261.6,
+        146.8, 293.6, 146.8, 293.6, 164.8, 329.6, 164.8, 329.6
+      ];
+
+      const bassFreq = is32xGod
+        ? godRoots[this.bgmStep % godRoots.length]
+        : (isMadness ? madnessRoots[this.bgmStep % madnessRoots.length] : roots[this.bgmStep % roots.length]);
 
       try {
         // Synthwave Bass with Resonant Lowpass Filter Envelope
@@ -319,11 +328,11 @@ class SoundManager {
         osc.frequency.setValueAtTime(bassFreq, t);
 
         filter.type = 'lowpass';
-        filter.Q.setValueAtTime(isMadness ? 6 : 4.5, t);
-        filter.frequency.setValueAtTime(isMadness ? 1200 : 850, t);
+        filter.Q.setValueAtTime(is32xGod ? 6.5 : (isMadness ? 6 : 4.5), t);
+        filter.frequency.setValueAtTime(is32xGod ? 1600 : (isMadness ? 1200 : 850), t);
         filter.frequency.exponentialRampToValueAtTime(140, t + stepDuration * 0.85);
 
-        const bassVol = isMadness ? 0.05 : 0.045;
+        const bassVol = is32xGod ? 0.055 : (isMadness ? 0.05 : 0.045);
         g.gain.setValueAtTime(bassVol, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.9);
 
@@ -334,24 +343,31 @@ class SoundManager {
         osc.start(t);
         osc.stop(t + stepDuration * 0.9);
 
-        // Standard Synthwave Arpeggio lead note
-        if (this.bgmStep % 4 === 0) {
-          const arpScale = [440, 523.25, 659.25, 783.99, 880, 1046.5];
-          const arpFreq = arpScale[(this.bgmStep / 2) % arpScale.length];
+        // Melodic Arpeggio Synth Lead
+        // 32x God Mode: Soaring bright triumphant arpeggio every 2 steps
+        // Normal/Madness: Classic synthwave arpeggio every 4 steps
+        const isArpStep = is32xGod ? (this.bgmStep % 2 === 0) : (this.bgmStep % 4 === 0);
+
+        if (isArpStep) {
+          const normalScale = [440, 523.25, 659.25, 783.99, 880, 1046.5];
+          const godScale = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+          const scale = is32xGod ? godScale : normalScale;
+          const arpFreq = scale[(this.bgmStep / (is32xGod ? 1 : 2)) % scale.length];
 
           const arpOsc = this.actx.createOscillator();
           const arpG = this.actx.createGain();
-          arpOsc.type = 'sine';
+          arpOsc.type = is32xGod ? 'triangle' : 'sine';
           arpOsc.frequency.setValueAtTime(arpFreq, t);
 
-          arpG.gain.setValueAtTime(0.02, t);
-          arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 1.5);
+          const arpVol = is32xGod ? 0.035 : 0.02;
+          arpG.gain.setValueAtTime(arpVol, t);
+          arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * (is32xGod ? 1.2 : 1.5));
 
           arpOsc.connect(arpG);
           arpG.connect(this.actx.destination);
 
           arpOsc.start(t);
-          arpOsc.stop(t + stepDuration * 1.5);
+          arpOsc.stop(t + stepDuration * (is32xGod ? 1.2 : 1.5));
         }
       } catch {}
     }

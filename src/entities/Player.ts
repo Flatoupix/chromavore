@@ -360,12 +360,15 @@ export class Player {
       const isWarn = isPredator && predTimer < 2.5;
 
       // Dynamic Predator / God glow
-      if (isPredator) {
+      if (isGodMode) {
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 30;
+      } else if (isPredator) {
         c.shadowColor = '#00ffff';
         c.shadowBlur = 18;
       } else {
-        c.shadowColor = isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff');
-        c.shadowBlur = isGodMode ? 22 : 12;
+        c.shadowColor = isMadness ? '#ffd700' : '#00ffff';
+        c.shadowBlur = 12;
       }
 
       const mouth = Math.abs(Math.sin(this.ma)) * 0.7;
@@ -378,17 +381,18 @@ export class Player {
       c.fill();
       c.shadowBlur = 0;
 
-      // Predator electric sparks
-      if (isPredator) {
+      // Electric plasma sparks (Predator or God mode)
+      if (isPredator || isGodMode) {
         c.save();
-        c.strokeStyle = '#00ffff';
+        c.strokeStyle = isGodMode ? '#ffd700' : '#00ffff';
         c.shadowColor = '#00ffff';
-        c.shadowBlur = 10;
-        c.lineWidth = 1.6;
-        for (let i = 0; i < 4; i++) {
-          const a = time * 8 + (i * Math.PI) / 2;
+        c.shadowBlur = 12;
+        c.lineWidth = isGodMode ? 2.0 : 1.6;
+        const sparkCount = isGodMode ? 6 : 4;
+        for (let i = 0; i < sparkCount; i++) {
+          const a = time * 8 + (i * PI2) / sparkCount;
           const r1 = P_RAD + 2;
-          const r2 = P_RAD + 7 + Math.sin(time * 20 + i * 3) * 3;
+          const r2 = P_RAD + 8 + Math.sin(time * 20 + i * 3) * 3;
           c.beginPath();
           c.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
           c.lineTo(Math.cos(a + 0.15) * ((r1 + r2) / 2), Math.sin(a + 0.15) * ((r1 + r2) / 2));
@@ -399,25 +403,25 @@ export class Player {
       }
 
       // God Mode x32 Radiant Aura & Star Crown
-      if (isGodMode && !isPredator) {
+      if (isGodMode) {
         c.save();
-        const auraPulse = 1 + Math.sin(time * 12) * 0.15;
+        const auraPulse = 1 + Math.sin(time * 8) * 0.12;
         c.strokeStyle = '#00ffff';
         c.shadowColor = '#00ffff';
         c.shadowBlur = 24;
         c.lineWidth = 3;
         c.beginPath();
-        c.arc(0, 0, (P_RAD + 7) * auraPulse, 0, PI2);
+        c.arc(0, 0, (P_RAD + 6) * auraPulse, 0, PI2);
         c.stroke();
 
         c.strokeStyle = '#ffd700';
         c.shadowColor = '#ffd700';
-        c.shadowBlur = 16;
-        c.lineWidth = 2;
+        c.shadowBlur = 18;
+        c.lineWidth = 2.2;
         for (let i = 0; i < 6; i++) {
-          const a = time * 4 + (i * PI2) / 6;
+          const a = time * 3 + (i * PI2) / 6;
           const r1 = P_RAD + 7;
-          const r2 = P_RAD + 13 + Math.sin(time * 10 + i) * 3;
+          const r2 = P_RAD + 14 + Math.sin(time * 8 + i) * 3;
           c.beginPath();
           c.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
           c.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
@@ -469,10 +473,9 @@ export class Player {
 
     // Circular Countdown Ring around Pac-Man (World coordinates)
     const renderCountdownRing = (ox: number = 0) => {
-      if (isPredator && predTimer > 0) {
-        const prog = Math.max(0, Math.min(1, predTimer / predMaxTimer));
-        const isWarn = predTimer < 2.5;
-        const arcCol = isWarn ? '#ffaa00' : '#00ffff';
+      if ((isPredator || isGodMode) && predTimer > 0) {
+        const prog = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
+        const arcCol = isGodMode ? '#ffd700' : '#00ffff';
         const r = P_RAD + 8;
 
         c.save();
@@ -483,9 +486,9 @@ export class Player {
         c.stroke();
 
         c.strokeStyle = arcCol;
-        c.shadowColor = arcCol;
-        c.shadowBlur = 10;
-        c.lineWidth = 3.2;
+        c.shadowColor = isGodMode ? '#00ffff' : arcCol;
+        c.shadowBlur = 12;
+        c.lineWidth = 3.5;
         c.lineCap = 'round';
         c.beginPath();
         c.arc(pp.x + ox, pp.y, r, -Math.PI / 2, -Math.PI / 2 + prog * PI2);
@@ -494,7 +497,7 @@ export class Player {
         const headAng = -Math.PI / 2 + prog * PI2;
         c.fillStyle = '#ffffff';
         c.beginPath();
-        c.arc(pp.x + ox + Math.cos(headAng) * r, pp.y + Math.sin(headAng) * r, 2.5, 0, PI2);
+        c.arc(pp.x + ox + Math.cos(headAng) * r, pp.y + Math.sin(headAng) * r, 2.8, 0, PI2);
         c.fill();
         c.restore();
       }
@@ -502,20 +505,22 @@ export class Player {
 
     // Upright Floating Overhead HUD Pill directly above Pac-Man (World coordinates)
     const renderOverheadHUD = (ox: number = 0) => {
-      if (isPredator || combo.m > 1) {
+      if (isGodMode || isPredator || combo.m > 1) {
         c.save();
-        const badgeY = pp.y - P_RAD - 14;
-        const isWarn = isPredator && predTimer < 2.5;
+        const badgeY = pp.y - P_RAD - 15;
 
         let badgeText = '';
         let badgeCol = '#00ffff';
         let prog = 1;
 
-        if (isPredator) {
-          badgeCol = isWarn ? '#ffaa00' : '#00ffff';
+        if (isGodMode || combo.m >= 32) {
+          badgeCol = '#ffd700';
+          badgeText = `👑 x32 • ${predTimer.toFixed(1)}s`;
+          prog = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
+        } else if (isPredator) {
+          badgeCol = '#00ffff';
           badgeText = combo.m > 1 ? `⚡ x${combo.m} • ${predTimer.toFixed(1)}s` : `⚡ ${predTimer.toFixed(1)}s`;
-          if (isWarn) badgeText = combo.m > 1 ? `⏳ x${combo.m} • ${predTimer.toFixed(1)}s` : `⏳ ${predTimer.toFixed(1)}s`;
-          prog = Math.max(0, Math.min(1, predTimer / predMaxTimer));
+          prog = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
         } else if (combo.m > 1) {
           const tier = getComboTier(combo.n);
           badgeCol = CC[tier] || '#00ffff';

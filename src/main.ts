@@ -976,11 +976,11 @@ class Game {
           this.onKillGhost(e, ep.x, ep.y);
         } else if (powerups.fx.phase > 0) {
           continue;
-        } else if (this.combo.m >= 32) {
+        } else if (this.combo.m >= 32 || powerups.pred.on) {
           // x32 GOD MODE INVINCIBLE: Devour ghost on contact!
           this.onKillGhost(e, ep.x, ep.y);
           particles.shake(6, 0.2);
-          particles.addPop(ep.x, ep.y - 15, '💥 x32 ANNIHILATION !', '#00ffff', 18);
+          particles.addPop(ep.x, ep.y - 15, '💥 x32 ANNIHILATION !', '#ffd700', 18);
           sounds.play('pellet');
         } else {
           // Pac-Man is MORTAL in Madness mode!
@@ -1047,10 +1047,11 @@ class Game {
             badges.unlock('combo32');
             sounds.play('powerup');
             particles.shake(8, 0.25);
-            particles.addPop(px, py - 36, '👑 x32 MODE INVINCIBLE ! 👑', '#00ffff', 20);
+            particles.addPop(px, py - 36, '👑 x32 MODE INVINCIBLE ! 👑', '#ffd700', 22);
             powerups.triggerPredator(this.enemyManager.enemies);
             powerups.pred.t = 7.0;
             powerups.pred.maxT = 7.0;
+            this.combo.t = 7.0;
           }
         }
 
@@ -1060,7 +1061,7 @@ class Game {
             powerups.triggerPredator(this.enemyManager.enemies);
           }
           powerups.pred.t = Math.min(powerups.pred.maxT, powerups.pred.t + 0.6);
-          powerups.pred.warn = powerups.pred.t < 2.5;
+          this.combo.t = powerups.pred.t;
         }
       }
 
@@ -1243,12 +1244,12 @@ class Game {
       }
     }
 
+    const is32xGod = this.combo.m >= 32 || powerups.pred.on || this.state === 'bonus';
     sounds.updateBGM(
       dt,
       this.state === 'playing' || this.state === 'bonus',
-      powerups.pred.on || this.state === 'bonus',
-      this.gameMode === 'madness' || this.state === 'bonus',
-      this.state === 'bonus' ? this.bonusTimer < 3.0 : powerups.pred.warn
+      is32xGod,
+      this.gameMode === 'madness' || this.state === 'bonus'
     );
     badges.update(dt);
     particles.update(dt);
@@ -1474,13 +1475,18 @@ class Game {
 
         // Combo decay
         if (this.combo.n > 0) {
-          this.combo.t -= dt;
-          if (this.combo.t <= 0) {
-            this.combo.n = 0;
-            this.combo.m = 1;
+          if (this.combo.m >= 32 && powerups.pred.on && powerups.pred.t > 0) {
+            // Locked in 32x Invincible God Mode: decay is driven by 32x predator timer!
+            this.combo.t = powerups.pred.t;
           } else {
-            const tier = getComboTier(this.combo.n);
-            this.combo.m = CM[tier];
+            this.combo.t -= dt;
+            if (this.combo.t <= 0) {
+              this.combo.n = 0;
+              this.combo.m = 1;
+            } else {
+              const tier = getComboTier(this.combo.n);
+              this.combo.m = CM[tier];
+            }
           }
         }
 
@@ -1572,9 +1578,10 @@ class Game {
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
 
-      // Glowing predator electric maze walls
-      if (powerups.pred.on) {
-        this.renderer.drawPredatorMazeGlow(this.maze.mOff, this.time, powerups.pred.warn);
+      // Electrified supercharged maze walls in 32x God Mode
+      const is32xGod = this.combo.m >= 32 || powerups.pred.on;
+      if (is32xGod) {
+        this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time);
       }
 
       particles.drawPaintSplats(this.renderer.ctx);
@@ -1585,7 +1592,7 @@ class Game {
         this.renderer.ctx,
         this.time,
         this.gameMode === 'madness',
-        this.combo.m >= 32,
+        is32xGod,
         powerups.pred.on,
         powerups.pred.t,
         powerups.pred.maxT,
@@ -1614,9 +1621,10 @@ class Game {
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
     this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
 
-    // Glowing predator electric maze walls
-    if (powerups.pred.on) {
-      this.renderer.drawPredatorMazeGlow(this.maze.mOff, this.time, powerups.pred.warn);
+    // Electrified supercharged maze walls in 32x God Mode
+    const is32xGod = this.combo.m >= 32 || powerups.pred.on;
+    if (is32xGod) {
+      this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time);
     }
 
     particles.drawPaintSplats(this.renderer.ctx);
@@ -1632,7 +1640,7 @@ class Game {
       this.renderer.ctx,
       this.time,
       this.gameMode === 'madness',
-      this.combo.m >= 32,
+      is32xGod,
       powerups.pred.on,
       powerups.pred.t,
       powerups.pred.maxT,
@@ -1667,9 +1675,11 @@ class Game {
       this.renderer.drawDangerVignette(this.madnessTimer, this.time);
     }
 
-    // Predator / Invincible border vignette & targeting cyber-brackets
-    if (powerups.pred.on && this.state === 'playing') {
-      this.renderer.drawPredatorVignette(this.time, powerups.pred.t, powerups.pred.warn);
+    // 32x Invincible God Mode border vignette & targeting cyber-brackets
+    const is32xGodActive = (this.combo.m >= 32 || powerups.pred.on) && this.state === 'playing';
+    if (is32xGodActive) {
+      const godTimer = powerups.pred.t > 0 ? powerups.pred.t : this.combo.t;
+      this.renderer.draw32xVignette(this.time, godTimer, powerups.pred.maxT || 7.0);
     }
 
     // Touch button on-screen (only on mobile/touch devices, never on desktop)
