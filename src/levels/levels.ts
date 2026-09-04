@@ -671,6 +671,7 @@ export class MazeManager {
   public remainingDots: number = 0;
   public currentLevel: number = 0;
   public isMadness: boolean = false;
+  public ghostReturnDist: number[][] = [];
   public mOff: HTMLCanvasElement;
   private mc: CanvasRenderingContext2D;
 
@@ -720,7 +721,53 @@ export class MazeManager {
       }
     }
     this.remainingDots = this.totalDots;
+    this.computeGhostReturnDist();
     this.renderOffscreen();
+  }
+
+  public computeGhostReturnDist() {
+    this.ghostReturnDist = [];
+    for (let r = 0; r < ROWS; r++) {
+      this.ghostReturnDist[r] = new Array(COLS).fill(Infinity);
+    }
+
+    const queue: { x: number; y: number; dist: number }[] = [];
+
+    // Ghost house target tiles (door at row 9, interior at row 10, exit at row 8)
+    const seeds = [
+      { x: 10, y: 8 },
+      { x: 10, y: 9 },
+      { x: 9, y: 10 },
+      { x: 10, y: 10 },
+      { x: 11, y: 10 }
+    ];
+
+    for (const pt of seeds) {
+      if (this.isWalkable(pt.x, pt.y, true)) {
+        this.ghostReturnDist[pt.y][pt.x] = 0;
+        queue.push({ x: pt.x, y: pt.y, dist: 0 });
+      }
+    }
+
+    let head = 0;
+    const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+
+    while (head < queue.length) {
+      const cur = queue[head++];
+      for (const d of dirs) {
+        let nx = cur.x + d.x;
+        const ny = cur.y + d.y;
+        if (nx < 0) nx = COLS - 1;
+        if (nx >= COLS) nx = 0;
+
+        if (this.isWalkable(nx, ny, true)) {
+          if (this.ghostReturnDist[ny][nx] > cur.dist + 1) {
+            this.ghostReturnDist[ny][nx] = cur.dist + 1;
+            queue.push({ x: nx, y: ny, dist: cur.dist + 1 });
+          }
+        }
+      }
+    }
   }
 
   public isWalkable(c: number, r: number, isEnemy: boolean = false): boolean {

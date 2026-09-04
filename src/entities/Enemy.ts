@@ -23,6 +23,7 @@ export interface Ghost {
   nm: boolean;
   frozen: boolean;
   isTitan?: boolean;
+  returnTimer?: number;
 }
 
 export class EnemyManager {
@@ -54,15 +55,16 @@ export class EnemyManager {
     }
   }
 
-  public spawnMadness(count: number, madnessKills: number) {
+  public spawnMadness(count: number, madnessKills: number, maze?: MazeManager) {
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
     const pts = [
-      { x: 10, y: 9 }, { x: 10, y: 10 }, { x: 9, y: 10 }, { x: 11, y: 10 },
+      { x: 10, y: 8 }, { x: 10, y: 9 }, { x: 9, y: 8 }, { x: 11, y: 8 },
       { x: 0, y: 10 }, { x: COLS - 1, y: 10 }
     ];
     for (let i = 0; i < count; i++) {
       if (this.enemies.length >= 36) break;
-      const pt = pts[(Math.random() * pts.length) | 0];
+      const ptCandidate = pts[(Math.random() * pts.length) | 0];
+      const pt = maze ? (maze.isWalkable(ptCandidate.x, ptCandidate.y, true) ? ptCandidate : maze.findNearestWalkable(ptCandidate.x, ptCandidate.y, true)) : ptCandidate;
       const tp = types[(Math.random() * types.length) | 0];
       const spd = (E_SPEED + Math.min(2.5, madnessKills * 0.015)) * (tp === 'rusher' ? 1.3 : tp === 'orbiter' ? 1.1 : 1.0);
       this.enemies.push({
@@ -130,7 +132,12 @@ export class EnemyManager {
 
       let spd = e.speed;
       if (e.st === 'flee') spd *= 0.55;
-      if (e.st === 'return') spd *= 2.5;
+      if (e.st === 'return') {
+        spd *= 2.5;
+        e.returnTimer = (e.returnTimer || 0) + dt;
+      } else {
+        e.returnTimer = 0;
+      }
       if (timewarp > 0) spd *= 0.45;
 
       if (e.t < 1) {
@@ -144,18 +151,39 @@ export class EnemyManager {
 
       if (e.t >= 1) {
         // Wall safety check for ghost: if inside decor / wall, relocate to nearest walkable corridor
-        if (e.st === 'active' && !maze.isWalkable(e.x, e.y, true)) {
+        if (!maze.isWalkable(e.x, e.y, true)) {
           const safe = maze.findNearestWalkable(e.x, e.y, true);
           e.x = e.fx = safe.x;
           e.y = e.fy = safe.y;
+          e.t = 1;
         }
 
-        // Returned to ghost house
-        if (e.st === 'return' && e.x >= 9 && e.x <= 11 && e.y >= 9 && e.y <= 11) {
+        // Active ghost inside ghost house safety: eject outside the door
+        if (e.st === 'active' && e.x >= 9 && e.x <= 11 && e.y >= 9 && e.y <= 11) {
+          const exitPt = maze.isWalkable(10, 8, true) ? { x: 10, y: 8 } : maze.findNearestWalkable(10, 8, true);
+          e.x = e.fx = exitPt.x;
+          e.y = e.fy = exitPt.y;
+          e.t = 1;
+          e.dy = -1;
+          e.dx = 0;
+        }
+
+        // Returned to ghost house or timeout (max 3.5s): revive immediately outside the door
+        const atHome = (e.x >= 9 && e.x <= 11 && e.y >= 8 && e.y <= 11) ||
+                       (maze.ghostReturnDist && maze.ghostReturnDist[e.y] && maze.ghostReturnDist[e.y][e.x] === 0);
+        if (e.st === 'return' && (atHome || (e.returnTimer && e.returnTimer >= 3.5))) {
           e.st = 'active';
           e.speed = E_SPEED * (e.type === 'rusher' ? 1.25 : e.type === 'orbiter' ? 1.08 : 1.0) * this.speedMultiplier;
           e.isTitan = false;
+          e.returnTimer = 0;
+          const exitPt = maze.isWalkable(10, 8, true) ? { x: 10, y: 8 } : maze.findNearestWalkable(10, 8, true);
+          e.x = e.fx = exitPt.x;
+          e.y = e.fy = exitPt.y;
+          e.t = 1;
+          e.dy = -1;
+          e.dx = 0;
         }
+
         this.decideNextStep(e, maze, plPos);
       }
     }
@@ -187,8 +215,33 @@ export class EnemyManager {
       return;
     }
 
+    // BFS Shortest-Path flow-field for returning ghosts: guarantees optimal corridor traversal without getting stuck
+    if (e.st === 'return') {
+      let bestDir = valid[0];
+      let bestDist = Infinity;
+      for (const d of valid) {
+        const nx = this.wrapX(e.x + d.x), ny = e.y + d.y;
+        const dist = (maze.ghostReturnDist && maze.ghostReturnDist[ny] && maze.ghostReturnDist[ny][nx] !== undefined)
+          ? maze.ghostReturnDist[ny][nx]
+          : (nx - 10) ** 2 + (ny - 8) ** 2;
+
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestDir = d;
+        }
+      }
+      e.dx = bestDir.x;
+      e.dy = bestDir.y;
+      e.fx = e.x;
+      e.fy = e.y;
+      e.x = this.wrapX(e.x + e.dx);
+      e.y = e.y + e.dy;
+      e.t = 0;
+      return;
+    }
+
     let target = { x: Math.floor(plPos.x / T), y: Math.floor(plPos.y / T) };
-    if (superItems.vortex && e.st !== 'return' && e.st !== 'spawn') {
+    if (superItems.vortex && e.st !== 'spawn') {
       const vDist = Math.hypot(superItems.vortex.x - (e.x * T + T / 2), superItems.vortex.y - (e.y * T + T / 2));
       const vRadius = progression.getSkillLevel('vortex') >= 2 ? 250 : 180;
       if (vDist < vRadius) {
@@ -200,8 +253,6 @@ export class EnemyManager {
       }
     } else if (e.st === 'flee') {
       target = { x: COLS - 1 - target.x, y: ROWS - 1 - target.y };
-    } else if (e.st === 'return') {
-      target = { x: 10, y: 9 };
     } else if (e.type === 'rusher') {
       target = { x: target.x + e.dx * 3, y: target.y + e.dy * 3 };
     } else if (e.type === 'orbiter') {

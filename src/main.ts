@@ -567,7 +567,7 @@ class Game {
 
     if (this.gameMode === 'madness') {
       this.enemyManager.enemies = [];
-      this.enemyManager.spawnMadness(8, 0);
+      this.enemyManager.spawnMadness(8, 0, this.maze);
       this.state = 'ready';
       this.readyT = 1.5;
       sounds.play('powerup');
@@ -613,7 +613,7 @@ class Game {
         }
       }
       if (this.enemyManager.enemies.length < 8) {
-        this.enemyManager.spawnMadness(8 - this.enemyManager.enemies.length, this.madnessKills);
+        this.enemyManager.spawnMadness(8 - this.enemyManager.enemies.length, this.madnessKills, this.maze);
       }
       this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
     } else {
@@ -1031,7 +1031,7 @@ class Game {
           this.madnessSpawnTimer -= dt;
           if (this.madnessSpawnTimer <= 0) {
             this.madnessSpawnTimer = Math.max(0.18, 0.75 - this.madnessKills * 0.004);
-            this.enemyManager.spawnMadness(1 + (this.madnessKills > 50 ? 1 : 0), this.madnessKills);
+            this.enemyManager.spawnMadness(1 + (this.madnessKills > 50 ? 1 : 0), this.madnessKills, this.maze);
           }
         }
 
