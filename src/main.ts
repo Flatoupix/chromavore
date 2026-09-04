@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -75,6 +75,8 @@ class Game {
     this.setupNameModal();
     this.setupProfileModals();
     badges.syncWithProfile();
+    const vOverlay = document.getElementById('chv-version-overlay');
+    if (vOverlay) vOverlay.textContent = GAME_VERSION;
     this.bindInputs();
     this.startLoop();
   }

@@ -97,3 +97,12 @@ export const DASH_BTN = { x: CW - 38, y: ROWS * T - 26, r: 24 };
 // Spawn coords
 export const SPAWN_X = 10;
 export const SPAWN_Y = 16;
+
+// Game Version & Git Build ID
+declare const __APP_VERSION__: string | undefined;
+declare const __COMMIT_HASH__: string | undefined;
+declare const __VERSION_NUM__: string | undefined;
+
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v2.4.0';
+export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v2.4.0';

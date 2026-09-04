@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier } from '../config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier, GAME_VERSION } from '../config/constants';
 import { LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -394,6 +394,11 @@ export class Renderer {
     c.shadowBlur = 8;
     c.fillText('⚡ RETRO SYNTHWAVE EDITION • OUTRUN THE SHADOWS ⚡', CW / 2, ty + 24);
     c.shadowBlur = 0;
+
+    // Version Tag
+    c.font = 'bold 9.5px monospace';
+    c.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    c.fillText(GAME_VERSION, CW / 2, ty + 39);
     c.restore();
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
@@ -548,6 +553,12 @@ export class Renderer {
     c.shadowColor = '#ff007f'; c.shadowBlur = 8;
     if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] CLASSEMENT  |  [ S ] ARSENAL & SKILLS', CW / 2, cy + 220);
     c.shadowBlur = 0;
+
+    // Version Tag
+    c.font = '8.5px monospace';
+    c.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    c.textAlign = 'center';
+    c.fillText(GAME_VERSION, CW / 2, CH - 8);
   }
 
   public drawLeaderboard(
@@ -1196,6 +1207,11 @@ export class Renderer {
       c.fillStyle = '#ffd700';
       c.fillText(`MODE MADNESS • Kills : ${kills} • Streak : x${streak}`, CW / 2, cardY + cardH - 12);
     }
+
+    c.font = '8.5px monospace';
+    c.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    c.textAlign = 'center';
+    c.fillText(GAME_VERSION, CW / 2, cardY + cardH + 18);
 
     c.restore();
   }
