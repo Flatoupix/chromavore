@@ -1858,6 +1858,7 @@ class Game {
         // Entities update
         // Tone down x32 excessive speed (+18% max instead of +35%)
         const comboSpeedMult = this.loopSpeedMultiplier * (1 + (this.combo.m > 1 ? Math.min(0.18, Math.log2(this.combo.m) * 0.036) : 0));
+        const chronoScale = this.isChronoActive ? timeScale : 1.0;
         this.player.update(
           dt,
           this.maze,
@@ -1866,7 +1867,8 @@ class Game {
           input.nextDir,
           (c, r) => this.onCollectDot(c, r),
           comboSpeedMult,
-          input.heldDirections
+          input.heldDirections,
+          chronoScale
         );
         this.enemyManager.update(dt * timeScale, this.maze, this.player.getPos(), powerups.fx.timewarp);
 
@@ -1933,7 +1935,7 @@ class Game {
         // Powerups & Void relic (Pass isPowerful state for dynamic Force Field priority)
         const isPlayerPowerful = (this.combo.m >= 4) || (this.madnessStreak >= 8) || (this.player.pelletSpeedBonus >= 1.2) || (powerups.fx.overdrive > 0) || (powerups.pred.on);
         powerups.update(
-          dt,
+          dt * chronoScale,
           isMadness,
           this.maze,
           this.player.getPos(),
@@ -1970,7 +1972,7 @@ class Game {
 
         // Super-Items update (with wall-safe gravitational suction and dot suction)
         superItems.update(
-          dt,
+          dt * chronoScale,
           this.player.getPos(),
           this.enemyManager.enemies,
           (e, x, y) => this.onKillGhost(e, x, y),
@@ -1980,7 +1982,7 @@ class Game {
 
         // Combo decay
         if (this.combo.n > 0) {
-          this.combo.t -= dt;
+          this.combo.t -= dt * chronoScale;
           if (this.combo.t <= 0) {
             const wasGod = this.combo.m >= 32;
             this.combo.n = 0;

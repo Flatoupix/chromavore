@@ -161,7 +161,8 @@ export class Player {
     inputDir: { x: number; y: number },
     onCollectDot: (c: number, r: number) => void,
     speedMult: number = 1.0,
-    heldDirections: { x: number; y: number; code: string }[] = []
+    heldDirections: { x: number; y: number; code: string }[] = [],
+    chronoScale: number = 1.0
   ) {
     this.currentCols = maze.cols;
     // Dash streaks
@@ -171,23 +172,23 @@ export class Player {
       if (s.life <= 0) this.dashStreaks.splice(i, 1);
     }
     if (this.dashCd > 0) this.dashCd -= dt;
-    if (this.invuln > 0) this.invuln -= dt;
+    if (this.invuln > 0) this.invuln -= dt * chronoScale;
 
     // Movement interpolation
     this.st += (1 - this.st) * 0.12;
     this.sq += (1 - this.sq) * 0.12;
 
-    // Dynamic speed ramp: base speed + pellet eating bonus + super-pellet boost, scaled by combo
-    if (this.superPelletBoostTimer > 0) this.superPelletBoostTimer -= dt;
+    // Dynamic speed ramp: base speed + pellet eating bonus + super-pellet boost, scaled by combo & bullet time
+    if (this.superPelletBoostTimer > 0) this.superPelletBoostTimer -= dt * chronoScale;
     if (this.pelletSpeedBonus > 0) {
-      this.pelletSpeedBonus = Math.max(0, this.pelletSpeedBonus - dt * 0.45);
+      this.pelletSpeedBonus = Math.max(0, this.pelletSpeedBonus - dt * 0.45 * chronoScale);
     }
     const pelletSurge = (this.superPelletBoostTimer > 0 ? 1.8 : 0) + this.pelletSpeedBonus;
     const isWide = maze ? maze.cols > 21 : false;
     const progressionBoost = isWide ? 4.3 : Math.min(2.5, (progression.totalGhosts / 300) * 2.5);
     const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
     const baseSpeed = isMadness ? (isNitro ? madnessCalculatedSpeed * 1.30 : madnessCalculatedSpeed) : P_SPEED;
-    this.speed = (baseSpeed + pelletSurge) * speedMult;
+    this.speed = (baseSpeed + pelletSurge) * speedMult * chronoScale;
 
     // Accept input direction
     if (inputDir.x !== 0 || inputDir.y !== 0) {
@@ -260,7 +261,7 @@ export class Player {
 
     if (this.dx !== 0 || this.dy !== 0) {
       this.t += dt * this.speed;
-      this.ma += dt * 15;
+      this.ma += dt * 15 * chronoScale;
       if (this.t >= 1) {
         onCollectDot(this.x, this.y);
       }
