@@ -44,7 +44,7 @@ export class ParticleSystem {
   public flsh = { a: 0, c: '#fff' };
 
   public readonly MAX_PARTS = 1000;
-  public readonly MAX_POPS = 40;
+  public readonly MAX_POPS = 120;
   public readonly MAX_SPLATS = 60;
 
   public emit(x: number, y: number, n: number, col: string, o: any = {}) {
@@ -81,16 +81,7 @@ export class ParticleSystem {
   }
 
   public addPaintSplat(x: number, y: number, col: string) {
-    if (!settingsManager.settings.paintSplats) return;
-    if (this.paintSplats.length >= this.MAX_SPLATS) this.paintSplats.shift();
-    this.paintSplats.push({
-      x,
-      y,
-      col,
-      r: 10 + Math.random() * 12,
-      life: 5.0,
-      maxLife: 5.0
-    });
+    // Disabled: prevents messy circle splats across the game board
   }
 
   public shake(intensity: number, duration: number) {
@@ -168,26 +159,30 @@ export class ParticleSystem {
 
     // Popups
     for (const p of this.pops) {
+      c.save();
       c.globalAlpha = Math.min(p.life / 0.3, 1);
       c.font = `bold ${p.sz}px monospace`;
-      c.fillStyle = p.col;
       c.textAlign = 'center';
+      c.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+      c.lineWidth = 2.5;
+      c.strokeText(p.t, p.x, p.y);
+      c.fillStyle = p.col;
       c.fillText(p.t, p.x, p.y);
+      c.restore();
     }
     c.globalAlpha = 1;
   }
 
   public drawPaintSplats(c: CanvasRenderingContext2D) {
-    for (const s of this.paintSplats) {
-      const a = Math.min(s.life / 0.8, 1);
-      c.save();
-      c.globalAlpha = a * 0.35;
-      c.fillStyle = s.col;
-      c.beginPath();
-      c.arc(s.x, s.y, s.r, 0, PI2);
-      c.fill();
-      c.restore();
-    }
+    // Disabled: clean retro board with zero circular stains
+  }
+
+  public clearAll() {
+    this.parts = [];
+    this.pops = [];
+    this.paintSplats = [];
+    this.shk = { x: 0, y: 0, i: 0, t: 0 };
+    this.flsh = { a: 0, c: '#fff' };
   }
 }
 

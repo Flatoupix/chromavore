@@ -16,6 +16,8 @@ export class InputManager {
   public nextDir = { x: 0, y: 0 };
   public isDashRequested: boolean = false;
   public isItemRequested: boolean = false;
+  public isChronoRequested: boolean = false;
+  public isChronoKeyHeld: boolean = false;
   public isPauseRequested: boolean = false;
   public isAudioToggleRequested: boolean = false;
   public isStartRequested: boolean = false;
@@ -38,6 +40,8 @@ export class InputManager {
     this.setupKeyboard();
   }
 
+  public heldDirections: { x: number; y: number; code: string }[] = [];
+
   private setupKeyboard() {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       this.keys[e.code] = true;
@@ -45,18 +49,25 @@ export class InputManager {
       const k = e.key ? e.key.toLowerCase() : '';
 
       // Directions: Support ZQSD (AZERTY) as primary, plus WASD and Arrow keys
+      let dir: { x: number; y: number } | null = null;
       if (e.code === 'ArrowUp' || k === 'z' || k === 'w' || e.code === 'KeyW' || e.code === 'KeyZ') {
-        this.setNextDir(0, -1);
+        dir = { x: 0, y: -1 };
         e.preventDefault();
       } else if (e.code === 'ArrowDown' || k === 's' || e.code === 'KeyS') {
-        this.setNextDir(0, 1);
+        dir = { x: 0, y: 1 };
         e.preventDefault();
       } else if (e.code === 'ArrowLeft' || k === 'q' || k === 'a' || e.code === 'KeyA' || e.code === 'KeyQ') {
-        this.setNextDir(-1, 0);
+        dir = { x: -1, y: 0 };
         e.preventDefault();
       } else if (e.code === 'ArrowRight' || k === 'd' || e.code === 'KeyD') {
-        this.setNextDir(1, 0);
+        dir = { x: 1, y: 0 };
         e.preventDefault();
+      }
+
+      if (dir) {
+        this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
+        this.heldDirections.push({ x: dir.x, y: dir.y, code: e.code });
+        this.setNextDir(dir.x, dir.y);
       }
 
       // Actions
@@ -68,8 +79,12 @@ export class InputManager {
       if (e.code === 'Enter') {
         this.isStartRequested = true;
       }
-      // Super-Items: E, Shift, F (KeyQ removed so AZERTY Q=Gauche doesn't waste items!)
-      if (k === 'e' || e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || k === 'f' || e.code === 'KeyF') {
+      // Bullet Time (Chrono-Shift) on Shift
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.isChronoKeyHeld = true;
+      }
+      // Super-Items: E, F (KeyQ removed so AZERTY Q=Gauche doesn't waste items!)
+      if (k === 'e' || e.code === 'KeyE' || k === 'f' || e.code === 'KeyF') {
         this.isItemRequested = true;
       }
       if (e.code === 'KeyP' || e.code === 'Escape') {
@@ -107,6 +122,14 @@ export class InputManager {
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
       this.keys[e.code] = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        this.isChronoKeyHeld = false;
+      }
+      this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
+      if (this.heldDirections.length > 0) {
+        const top = this.heldDirections[this.heldDirections.length - 1];
+        this.setNextDir(top.x, top.y);
+      }
     });
   }
 

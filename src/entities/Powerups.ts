@@ -1,17 +1,22 @@
-// ═══════════════════════════════════════════════════════════════
-//  CHROMAVORE — POWER-UPS & VOID CORE RELIC
-// ═══════════════════════════════════════════════════════════════
-
 import { T, HALF, COLS, ROWS, CW, PC, PI_, PI2, PN } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
+import { spriteAtlas } from '../graphics/SpriteAtlas';
+import { profileManager } from '../systems/ProfileManager';
 
 export interface PowerupItem {
   x: number;
   y: number;
   type: string;
   timer: number;
+}
+
+export interface ForceFieldDrop {
+  x: number;
+  y: number;
+  timer: number;
+  maxTimer: number;
 }
 
 export interface VoidRelic {
@@ -29,8 +34,14 @@ export interface VortexPortal {
 }
 
 export class PowerupManager {
+  // Channel 1: Action Items (Nova, Overdrive, Timewarp, Phase)
   public current: PowerupItem | null = null;
-  public spawnTimer: number = 10;
+  public spawnTimer: number = 12;
+
+  // Channel 2: Force Field System (Independent channel!)
+  public forceFieldItem: ForceFieldDrop | null = null;
+  public forceFieldSpawnTimer: number = 18.0;
+
   public fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
   public pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false };
 
@@ -46,13 +57,62 @@ export class PowerupManager {
 
   public reset() {
     this.current = null;
-    this.spawnTimer = 10;
+    this.spawnTimer = 12;
+    this.forceFieldItem = null;
+    this.forceFieldSpawnTimer = 14.0;
     this.fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
     this.pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false };
     this.voidRelic = null;
     this.voidRelicTimer = 14.0;
     this.vortexPortal = null;
     this.vortexPortalTimer = 85.0 + Math.random() * 35.0;
+  }
+
+  public getForceFieldStats(careerKills: number, isMadness: boolean): { cooldown: number; duration: number } {
+    let baseCooldown: number;
+    let duration: number;
+
+    if (careerKills < 100) {
+      baseCooldown = 24.0;
+      duration = 6.0;
+    } else if (careerKills < 400) {
+      baseCooldown = 18.0;
+      duration = 6.5;
+    } else if (careerKills < 1000) {
+      baseCooldown = 14.0;
+      duration = 7.0;
+    } else {
+      // 1000+ kills: Hyperspace / Cyber Dash V2 era
+      baseCooldown = 11.0;
+      duration = 8.0;
+    }
+
+    return { cooldown: baseCooldown, duration };
+  }
+
+  public findDotDenseWalkable(maze: MazeManager): { x: number; y: number } {
+    const candidates: { x: number; y: number; dots: number }[] = [];
+    for (let r = 2; r < maze.rows - 2; r++) {
+      for (let c = 1; c < maze.cols - 1; c++) {
+        if (maze.isWalkable(c, r, false) && !maze.isInGhostHouse(c, r) && maze.map[r][c] !== 1 && maze.map[r][c] !== 0) {
+          // Count dots in 3-tile radius
+          let count = 0;
+          for (let dr = -3; dr <= 3; dr++) {
+            const nr = r + dr;
+            if (nr < 0 || nr >= maze.rows) continue;
+            for (let dc = -3; dc <= 3; dc++) {
+              const nc = (c + dc + maze.cols) % maze.cols;
+              if (maze.dotMap[nr] && maze.dotMap[nr][nc] > 0) count++;
+            }
+          }
+          candidates.push({ x: c, y: r, dots: count });
+        }
+      }
+    }
+    if (!candidates.length) return maze.getRandomWalkable(false);
+    candidates.sort((a, b) => b.dots - a.dots);
+    const topSlice = candidates.slice(0, Math.max(1, Math.min(6, candidates.length)));
+    return topSlice[(Math.random() * topSlice.length) | 0];
   }
 
   public update(
@@ -64,18 +124,43 @@ export class PowerupManager {
     onTitanTransform: () => void,
     onVoidIntercepted: () => void,
     onNovaCollect: (px: number, py: number) => void,
-    onEnterBonusStage?: () => void
+    onEnterBonusStage?: () => void,
+    isPowerful: boolean = false
   ) {
-    // Powerup Spawner
+    // ═════════════════════════════════════════════════════════════
+    // MODE CLASSIQUE : STRICTEMENT AUCUN OBJET / POWERUP (PAC-MAN PUR)
+    // ═════════════════════════════════════════════════════════════
+    if (!isMadness) {
+      if (this.current || this.forceFieldItem || this.voidRelic || this.vortexPortal) {
+        this.reset();
+      }
+      // Only predator (energizer frightened ghosts) timer runs in classic if active
+      if (this.pred.on) {
+        this.pred.t -= dt;
+        this.pred.warn = this.pred.t < 2.0;
+        if (this.pred.t <= 0) {
+          this.pred.on = false;
+          for (const e of enemies) {
+            if (e.st === 'flee') e.st = 'active';
+          }
+        }
+      }
+      return;
+    }
+
+    const careerKills = profileManager.profile.careerGhosts;
+
+    // ─────────────────────────────────────────────────────────────
+    // CHANNEL 1: ACTION ITEMS (Nova, Overdrive, Timewarp, Phase)
+    // ─────────────────────────────────────────────────────────────
     if (!this.current) {
-      this.spawnTimer -= dt * (isMadness ? 3.2 : 1.0);
+      this.spawnTimer -= dt * (isMadness ? 2.0 : 1.0);
       if (this.spawnTimer <= 0) {
-        this.spawn(isMadness, maze);
-        this.spawnTimer = isMadness ? 5 + Math.random() * 4 : 18 + Math.random() * 12;
+        this.spawnActionItem(isMadness, maze);
+        this.spawnTimer = isMadness ? 6.0 + Math.random() * 4.0 : 18.0 + Math.random() * 8.0;
       }
     } else {
-      // Wall safety check for powerup: relocate if inside decor
-      if (!maze.isWalkable(this.current.x, this.current.y, false)) {
+      if (!maze.isWalkable(this.current.x, this.current.y, false) || maze.isInGhostHouse(this.current.x, this.current.y)) {
         const safe = maze.findNearestWalkable(this.current.x, this.current.y, false);
         this.current.x = safe.x;
         this.current.y = safe.y;
@@ -89,6 +174,46 @@ export class PowerupManager {
         if (Math.hypot(plPos.x - px, plPos.y - py) < T * 0.9) {
           this.collect(this.current, onNovaCollect);
           this.current = null;
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // CHANNEL 2: FORCE FIELD SYSTEM (Independent progression drop!)
+    // ─────────────────────────────────────────────────────────────
+    if (!this.forceFieldItem) {
+      // If player doesn't currently have active magnet, progress cooldown to spawn next Force Field
+      if (this.fx.magnet <= 0) {
+        const stats = this.getForceFieldStats(careerKills, isMadness);
+        const speedScale = isPowerful ? 1.4 : 1.0;
+        this.forceFieldSpawnTimer -= dt * speedScale;
+        if (this.forceFieldSpawnTimer <= 0) {
+          this.spawnForceField(maze, stats.duration);
+          this.forceFieldSpawnTimer = stats.cooldown + Math.random() * 2.0;
+        }
+      }
+    } else {
+      if (!maze.isWalkable(this.forceFieldItem.x, this.forceFieldItem.y, false) || maze.isInGhostHouse(this.forceFieldItem.x, this.forceFieldItem.y)) {
+        const safe = maze.findNearestWalkable(this.forceFieldItem.x, this.forceFieldItem.y, false);
+        this.forceFieldItem.x = safe.x;
+        this.forceFieldItem.y = safe.y;
+      }
+
+      this.forceFieldItem.timer -= dt;
+      if (this.forceFieldItem.timer <= 0) {
+        this.forceFieldItem = null;
+      } else {
+        const fx = this.forceFieldItem.x * T + HALF, fy = this.forceFieldItem.y * T + HALF;
+        if (Math.hypot(plPos.x - fx, plPos.y - fy) < T * 0.95) {
+          const stats = this.getForceFieldStats(careerKills, isMadness);
+          this.fx.magnet = stats.duration;
+          this.forceFieldItem = null;
+          this.forceFieldSpawnTimer = stats.cooldown + Math.random() * 2.0;
+          particles.addPop(fx, fy - 15, 'FORCE FIELD ACTIVÉ !', '#00ffff', 18);
+          particles.emit(fx, fy, 25, '#00f0ff', { speed: 120, size: 4.5, life: 0.6 });
+          particles.shake(4, 0.2);
+          particles.flash('#00f0ff', 0.25);
+          sounds.play('powerup');
         }
       }
     }
@@ -130,14 +255,19 @@ export class PowerupManager {
       this.vortexPortalTimer -= dt;
       if (this.vortexPortalTimer <= 0) {
         this.vortexPortalTimer = 110.0 + Math.random() * 50.0;
-        const pt = maze.getRandomWalkable(false);
+        let pt = maze.getRandomWalkable(false);
+        let attempts = 0;
+        while (maze.isInGhostHouse(pt.x, pt.y) && attempts < 15) {
+          pt = maze.getRandomWalkable(false);
+          attempts++;
+        }
         this.vortexPortal = { x: pt.x, y: pt.y, timer: 14.0, maxTimer: 14.0 };
         sounds.play('portal');
         particles.shake(4, 0.25);
-        particles.addPop(CW / 2, 70, '🌀 PORTAIL VORTEX APPARU !', '#d946ef', 18);
+        particles.addPop(CW / 2, 70, 'PORTAIL VORTEX APPARU !', '#d946ef', 18);
       }
     } else {
-      if (!maze.isWalkable(this.vortexPortal.x, this.vortexPortal.y, false)) {
+      if (!maze.isWalkable(this.vortexPortal.x, this.vortexPortal.y, false) || maze.isInGhostHouse(this.vortexPortal.x, this.vortexPortal.y)) {
         const safe = maze.findNearestWalkable(this.vortexPortal.x, this.vortexPortal.y, false);
         this.vortexPortal.x = safe.x;
         this.vortexPortal.y = safe.y;
@@ -160,11 +290,33 @@ export class PowerupManager {
     }
   }
 
-  public spawn(isMadness: boolean, maze: MazeManager) {
-    const pt = maze.getRandomWalkable(false);
-    const types = ['phase', 'nova', 'timewarp', 'magnet', 'overdrive'];
-    const tp = isMadness && Math.random() < 0.5 ? 'overdrive' : types[(Math.random() * types.length) | 0];
+  public spawnActionItem(isMadness: boolean, maze: MazeManager) {
+    const types = ['overdrive', 'nova', 'timewarp', 'phase'];
+    const tp = types[(Math.random() * types.length) | 0];
+    let pt = maze.getRandomWalkable(false);
+    let attempts = 0;
+    while (maze.isInGhostHouse(pt.x, pt.y) && attempts < 15) {
+      pt = maze.getRandomWalkable(false);
+      attempts++;
+    }
     this.current = { x: pt.x, y: pt.y, type: tp, timer: isMadness ? 12 : 10 };
+  }
+
+  public spawnForceField(maze: MazeManager, duration: number) {
+    let pt = this.findDotDenseWalkable(maze);
+    let attempts = 0;
+    while (maze.isInGhostHouse(pt.x, pt.y) && attempts < 15) {
+      pt = maze.getRandomWalkable(false);
+      attempts++;
+    }
+    this.forceFieldItem = { x: pt.x, y: pt.y, timer: 14.0, maxTimer: 14.0 };
+    sounds.play('powerup');
+    particles.addPop(pt.x * T + HALF, pt.y * T - 14, 'FORCE FIELD DÉTECTÉ !', '#00ffff', 18);
+    particles.emit(pt.x * T + HALF, pt.y * T + HALF, 24, '#00f0ff', { speed: 85, size: 4, life: 0.55 });
+  }
+
+  public spawn(isMadness: boolean, maze: MazeManager, isPowerful: boolean = false) {
+    this.spawnActionItem(isMadness, maze);
   }
 
   public collect(pu: PowerupItem, onNovaCollect: (px: number, py: number) => void) {
@@ -179,7 +331,7 @@ export class PowerupManager {
       case 'phase': this.fx.phase = 4; break;
       case 'nova': onNovaCollect(px, py); break;
       case 'timewarp': this.fx.timewarp = 5; break;
-      case 'magnet': this.fx.magnet = 8; break;
+      case 'magnet': this.fx.magnet = 9.0; break;
       case 'overdrive': this.fx.overdrive = 7.0; break;
     }
   }
@@ -208,16 +360,21 @@ export class PowerupManager {
       this.voidRelicTimer -= dt;
       if (this.voidRelicTimer <= 0) {
         this.voidRelicTimer = 16.0 + Math.random() * 8.0;
-        const pt = maze.getRandomWalkable(false);
+        let pt = maze.getRandomWalkable(false);
+        let attempts = 0;
+        while (maze.isInGhostHouse(pt.x, pt.y) && attempts < 15) {
+          pt = maze.getRandomWalkable(false);
+          attempts++;
+        }
         this.voidRelic = { x: pt.x, y: pt.y, timer: 9.0, maxTimer: 9.0 };
         sounds.play('near');
         particles.shake(5, 0.25);
         particles.flash('#ff0055', 0.3);
-        particles.addPop(CW / 2, 70, '⚠️ RELIQUE DU VIDE APPARUE !', '#ff0055', 18);
+        particles.addPop(CW / 2, 70, 'RELIQUE DU VIDE APPARUE !', '#ff0055', 18);
       }
     } else {
-      // Wall safety check for Void Relic: relocate if inside decor
-      if (!maze.isWalkable(this.voidRelic.x, this.voidRelic.y, false)) {
+      // Wall safety check for Void Relic: relocate if inside decor or ghost house
+      if (!maze.isWalkable(this.voidRelic.x, this.voidRelic.y, false) || maze.isInGhostHouse(this.voidRelic.x, this.voidRelic.y)) {
         const safe = maze.findNearestWalkable(this.voidRelic.x, this.voidRelic.y, false);
         this.voidRelic.x = safe.x;
         this.voidRelic.y = safe.y;
@@ -256,11 +413,14 @@ export class PowerupManager {
   }
 
   public draw(c: CanvasRenderingContext2D, time: number) {
+    // 1. Action Item (Nova, Overdrive, Timewarp, Phase)
     if (this.current) {
       const px = this.current.x * T + HALF, py = this.current.y * T + HALF;
-      const col = PC[this.current.type];
+      const col = PC[this.current.type] || '#ff00ff';
       const pulse = 1 + Math.sin(time * 5) * 0.2;
       const dis = this.current.timer < 3;
+
+      c.save();
       c.globalAlpha = dis ? (Math.sin(time * 10) > 0 ? 1 : 0.3) : 1;
       c.fillStyle = col;
       c.shadowColor = col;
@@ -268,13 +428,28 @@ export class PowerupManager {
       c.beginPath();
       c.arc(px, py, T * 0.35 * pulse, 0, PI2);
       c.fill();
+      spriteAtlas.drawIcon(c, this.current.type, px, py, 18);
+      c.restore();
+    }
+
+    // 2. Force Field Item (drawn cleanly like standard powerups, no outer bubble/rings)
+    if (this.forceFieldItem) {
+      const fx = this.forceFieldItem.x * T + HALF, fy = this.forceFieldItem.y * T + HALF;
+      const col = PC['magnet'] || '#00f0ff';
+      const pulse = 1 + Math.sin(time * 5) * 0.2;
+      const dis = this.forceFieldItem.timer < 3;
+
+      c.save();
+      c.globalAlpha = dis ? (Math.sin(time * 10) > 0 ? 1 : 0.3) : 1;
+      c.fillStyle = col;
+      c.shadowColor = col;
+      c.shadowBlur = 15;
+      c.beginPath();
+      c.arc(fx, fy, T * 0.35 * pulse, 0, PI2);
+      c.fill();
       c.shadowBlur = 0;
-      c.fillStyle = '#fff';
-      c.font = 'bold 14px monospace';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText(PI_[this.current.type], px, py);
-      c.globalAlpha = 1;
+      spriteAtlas.drawIcon(c, 'magnet', fx, fy, 18);
+      c.restore();
     }
 
     if (this.voidRelic) {
@@ -291,11 +466,9 @@ export class PowerupManager {
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
-      c.font = 'bold 16px monospace';
-      c.fillStyle = '#ffffff';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText('☠️', rx, ry);
+
+      // Crisp Pixel-Art Void Relic Icon 
+      spriteAtlas.drawIcon(c, 'void_relic', rx, ry, 22);
       c.restore();
     }
 
@@ -332,14 +505,8 @@ export class PowerupManager {
       c.arc(0, 0, T * 0.45 * pulse, 0, PI2);
       c.fill();
 
-      // Portal symbol
-      c.font = 'bold 15px monospace';
-      c.fillStyle = '#ffffff';
-      c.shadowColor = '#ffffff';
-      c.shadowBlur = 8;
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText('🌀', 0, 0);
+      // Crisp Pixel-Art Cosmic Singularity 
+      spriteAtlas.drawIcon(c, 'vortex_portal', 0, 0, 24);
       c.restore();
     }
   }

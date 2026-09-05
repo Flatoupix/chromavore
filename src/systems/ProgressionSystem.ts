@@ -26,10 +26,10 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'dash',
     version: 1,
     name: 'DASH OFFENSIF',
-    icon: '⚡',
-    threshold: 5,
+    icon: 'dash',
+    threshold: 10,
     category: 'movement',
-    command: 'ESPACE ou BOUTON ⚡',
+    command: 'ESPACE ou BOUTON DASH',
     desc: 'Téléportation offensive de 3 cases à travers les fantômes avec taillade'
   },
   {
@@ -37,19 +37,30 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'wiggle',
     version: 1,
     name: 'WIGGLE EMP',
-    icon: '⚡',
-    threshold: 15,
+    icon: 'wiggle',
+    threshold: 30,
     category: 'kombo',
     command: '← → ← → (Wiggle)',
     desc: 'Onde de choc EMP qui repousse et étourdit les fantômes proches pendant 2.5s'
+  },
+  {
+    id: 'chrono_v1',
+    baseId: 'chrono',
+    version: 1,
+    name: 'CHRONO SHIFT',
+    icon: 'chrono',
+    threshold: 50,
+    category: 'movement',
+    command: 'SHIFT ou BOUTON CHRONO',
+    desc: 'Dilatation temporelle : ralentit le monde à 18% pour esquiver les essaims'
   },
   {
     id: 'nitro_v1',
     baseId: 'nitro',
     version: 1,
     name: 'NITRO JET',
-    icon: '🔥',
-    threshold: 35,
+    icon: 'nitro',
+    threshold: 75,
     category: 'kombo',
     command: '↑ ↓ ↑ ↓ (Pompage)',
     desc: 'Vitesse turbo accrue + traînée ardente brûlant les fantômes pendant 3.2s'
@@ -59,10 +70,10 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'nova',
     version: 1,
     name: 'MEGA NOVA',
-    icon: '💣',
-    threshold: 80,
+    icon: 'nova',
+    threshold: 150,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Explosion thermo-nucléaire qui purge instantanément tous les fantômes'
   },
   {
@@ -70,10 +81,10 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'overdrive',
     version: 1,
     name: 'DASH INFINI',
-    icon: '⚡',
-    threshold: 160,
+    icon: 'overdrive',
+    threshold: 250,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Dash illimité sans aucun temps de recharge pendant 8 secondes'
   },
   {
@@ -81,109 +92,120 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'vortex',
     version: 1,
     name: 'BLACK HOLE',
-    icon: '🕳️',
+    icon: 'black_hole',
     threshold: 400,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Vortex gravitationnel qui attire et désintègre tous les spectres'
-  },
-  {
-    id: 'wiggle_v2',
-    baseId: 'wiggle',
-    version: 2,
-    name: 'GIGA EMP V2',
-    icon: '⚡',
-    threshold: 700,
-    category: 'kombo',
-    command: '← → ← → (Wiggle)',
-    desc: 'Rayon doublé (160px), étourdissement 4s et rend les fantômes vulnérables/mangeables'
-  },
-  {
-    id: 'dash_v2',
-    baseId: 'dash',
-    version: 2,
-    name: 'CYBER DASH V2',
-    icon: '⚡',
-    threshold: 1000,
-    category: 'movement',
-    command: 'ESPACE ou BOUTON ⚡',
-    desc: 'Portée augmentée à 4 cases, recharge -25% et onde de choc étourdissante à l\'arrivée'
   },
   {
     id: 'laser_v1',
     baseId: 'laser',
     version: 1,
     name: 'HYPER BEAMS',
-    icon: '⚡',
-    threshold: 1500,
+    icon: 'laser',
+    threshold: 600,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Canons lasers cruciformes découpant les couloirs horizontaux et verticaux'
-  },
-  {
-    id: 'nitro_v2',
-    baseId: 'nitro',
-    version: 2,
-    name: 'PLASMA BURNER V2',
-    icon: '🔥',
-    threshold: 2000,
-    category: 'kombo',
-    command: '↑ ↓ ↑ ↓ (Pompage)',
-    desc: 'Vitesse turbo +20%, durée 4.5s et traînée de feu persistante au sol pendant 2.5s'
   },
   {
     id: 'cryo_v1',
     baseId: 'cryo',
     version: 1,
     name: 'CRYO SHATTER',
-    icon: '❄️',
-    threshold: 3000,
+    icon: 'cryo',
+    threshold: 800,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Zéro absolu : gèle tous les spectres pour les briser au moindre contact'
-  },
-  {
-    id: 'nova_v2',
-    baseId: 'nova',
-    version: 2,
-    name: 'SUPERNOVA V2',
-    icon: '💣',
-    threshold: 4500,
-    category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
-    desc: 'Purge totale + pluie d\'orbes dorées bonus et multiplicateurs instantanés'
   },
   {
     id: 'tsunami_v1',
     baseId: 'tsunami',
     version: 1,
     name: 'LIGHT TSUNAMI',
-    icon: '👑',
-    threshold: 6500,
+    icon: 'tsunami',
+    threshold: 1000,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Vague royale sacrée balayant tout le labyrinthe + bonus de temps de survie'
+  },
+  {
+    id: 'dash_v2',
+    baseId: 'dash',
+    version: 2,
+    name: 'CYBER DASH V2',
+    icon: 'dash',
+    threshold: 1200,
+    category: 'movement',
+    command: 'ESPACE ou BOUTON DASH',
+    desc: 'Portée 4 cases, recharge -25% et déblocage de l\'Arène Widescreen 16:9 !'
+  },
+  {
+    id: 'wiggle_v2',
+    baseId: 'wiggle',
+    version: 2,
+    name: 'GIGA EMP V2',
+    icon: 'wiggle',
+    threshold: 1500,
+    category: 'kombo',
+    command: '← → ← → (Wiggle)',
+    desc: 'Rayon doublé (160px), étourdissement 4s et rend les fantômes vulnérables/mangeables'
+  },
+  {
+    id: 'chrono_v2',
+    baseId: 'chrono',
+    version: 2,
+    name: 'QUANTUM DILATION V2',
+    icon: 'chrono',
+    threshold: 1800,
+    category: 'movement',
+    command: 'SHIFT ou BOUTON CHRONO',
+    desc: 'Ralentissement extrême à 12%, jauge 150% et régénération passive accélérée'
+  },
+  {
+    id: 'nitro_v2',
+    baseId: 'nitro',
+    version: 2,
+    name: 'PLASMA BURNER V2',
+    icon: 'nitro',
+    threshold: 2100,
+    category: 'kombo',
+    command: '↑ ↓ ↑ ↓ (Pompage)',
+    desc: 'Vitesse turbo +20%, durée 4.5s et traînée de feu persistante au sol pendant 2.5s'
+  },
+  {
+    id: 'nova_v2',
+    baseId: 'nova',
+    version: 2,
+    name: 'SUPERNOVA V2',
+    icon: 'nova',
+    threshold: 2600,
+    category: 'item',
+    command: 'Touche [E] ou Bouton ITEM',
+    desc: 'Purge totale + pluie d\'orbes dorées bonus et multiplicateurs instantanés'
   },
   {
     id: 'overdrive_v2',
     baseId: 'overdrive',
     version: 2,
     name: 'CHRONO OVERDRIVE V2',
-    icon: '⚡',
-    threshold: 9500,
+    icon: 'overdrive',
+    threshold: 3200,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
-    desc: 'Dash infini + ralentit le temps des spectres de 50% pendant toute la durée'
+    command: 'Touche [E] ou Bouton ITEM',
+    desc: 'Dash infini + invulnérabilité totale sans surchauffe pendant toute la durée'
   },
   {
     id: 'vortex_v2',
     baseId: 'vortex',
     version: 2,
     name: 'DARK MATTER V2',
-    icon: '🕳️',
-    threshold: 14000,
+    icon: 'black_hole',
+    threshold: 3900,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Le trou noir aspire également toutes les pastilles et orbes de la zone'
   },
   {
@@ -191,10 +213,10 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'laser',
     version: 2,
     name: 'OCTO BEAMS V2',
-    icon: '⚡',
-    threshold: 20000,
+    icon: 'laser',
+    threshold: 4700,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Lasers à 8 directions (cruciformes + 4 diagonales) rasant intégralement la carte'
   },
   {
@@ -202,10 +224,10 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'cryo',
     version: 2,
     name: 'ABSOLUTE ZERO V2',
-    icon: '❄️',
-    threshold: 30000,
+    icon: 'cryo',
+    threshold: 5600,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
+    command: 'Touche [E] ou Bouton ITEM',
     desc: 'Gèle tous les fantômes et les fait exploser en chaîne au bout de 3 secondes'
   },
   {
@@ -213,17 +235,23 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'tsunami',
     version: 2,
     name: 'SOLAR ECLIPSE V2',
-    icon: '👑',
-    threshold: 50000,
+    icon: 'tsunami',
+    threshold: 6500,
     category: 'item',
-    command: 'Touche [E] ou Bouton 💣',
-    desc: 'Double vague royale aller-retour + recharge instantanée du super-item suivant'
+    command: 'Touche [E] ou Bouton ITEM',
+    desc: 'Double vague royale aller-retour + recharge instantanée de l\'arsenal (100% Maîtrisé)'
   }
 ];
 
 class ProgressionManager {
+  public readonly SKILL_TREE = SKILL_TREE;
+
   public get totalGhosts(): number {
     return profileManager.profile.careerGhosts;
+  }
+
+  public set totalGhosts(val: number) {
+    profileManager.profile.careerGhosts = val;
   }
 
   public addGhostKills(count: number): SkillDef[] {
@@ -240,7 +268,7 @@ class ProgressionManager {
       if (prev < s.threshold && next >= s.threshold) {
         newlyUnlocked.push(s);
         sounds.play('badge');
-        particles.addPop(CW / 2, (ROWS * T) / 2, `🎉 ${s.name} DÉBLOQUÉ !`, '#ffd700', 22);
+        particles.addPop(CW / 2, (ROWS * T) / 2, `${s.name} DÉBLOQUÉ !`, '#ffd700', 22);
         particles.flash('#ffd700', 0.4);
         particles.shake(8, 0.25);
       }

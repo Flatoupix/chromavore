@@ -54,6 +54,24 @@ export class TouchDeckManager {
       input.isStartRequested = true;
     });
     bindBtn('item-btn', () => { input.isItemRequested = true; });
+
+    const chronoBtn = document.getElementById('chrono-btn');
+    if (chronoBtn) {
+      chronoBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        input.isChronoRequested = true;
+        chronoBtn.classList.add('active-chrono');
+      });
+      const releaseChrono = (e: Event) => {
+        e.preventDefault();
+        input.isChronoRequested = false;
+        chronoBtn.classList.remove('active-chrono');
+      };
+      chronoBtn.addEventListener('pointerup', releaseChrono);
+      chronoBtn.addEventListener('pointercancel', releaseChrono);
+      chronoBtn.addEventListener('pointerleave', releaseChrono);
+    }
+
     bindBtn('btn-pause', () => { input.isPauseRequested = true; });
     bindBtn('btn-mute', () => { input.isAudioToggleRequested = true; });
   }
@@ -200,9 +218,11 @@ export class TouchDeckManager {
 
     const availW = Math.max(200, window.innerWidth - padW);
     const availH = Math.max(160, window.innerHeight - deckH - padH);
-    const s = Math.min(availW / CW, availH / CH, 2.5);
+    const curCw = this.canvas.width || CW;
+    const curCh = this.canvas.height || CH;
+    const s = Math.min(availW / curCw, availH / curCh, 2.5);
 
-    this.canvas.style.width = Math.round(CW * s) + 'px';
-    this.canvas.style.height = Math.round(CH * s) + 'px';
+    this.canvas.style.width = Math.round(curCw * s) + 'px';
+    this.canvas.style.height = Math.round(curCh * s) + 'px';
   }
 }

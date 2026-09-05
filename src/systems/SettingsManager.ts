@@ -33,6 +33,32 @@ export const PAUSE_BUTTONS: PauseButtonRect[] = [
   { id: 'home',            x: 379, y: 456, w: 125, h: 42 },
 ];
 
+export function updatePauseButtonPositions(cw: number) {
+  const cardW = 500;
+  const cardX = Math.floor((cw - cardW) / 2);
+  const offset = cardX - 44;
+
+  const baseButtons: PauseButtonRect[] = [
+    { id: 'freezeFrame',     x: 74, y: 155, w: 440, h: 34 },
+    { id: 'screenShake',     x: 74, y: 197, w: 440, h: 34 },
+    { id: 'screenFlash',     x: 74, y: 239, w: 440, h: 34 },
+    { id: 'crtScanlines',    x: 74, y: 281, w: 440, h: 34 },
+    { id: 'particleDensity', x: 74, y: 323, w: 440, h: 34 },
+    { id: 'audio',           x: 74, y: 365, w: 440, h: 34 },
+    { id: 'wipeData',        x: 74, y: 407, w: 440, h: 34 },
+    { id: 'resume',          x: 64, y: 456, w: 145, h: 42 },
+    { id: 'restart',         x: 219, y: 456, w: 150, h: 42 },
+    { id: 'home',            x: 379, y: 456, w: 125, h: 42 },
+  ];
+
+  for (let i = 0; i < PAUSE_BUTTONS.length; i++) {
+    PAUSE_BUTTONS[i].x = baseButtons[i].x + offset;
+    PAUSE_BUTTONS[i].y = baseButtons[i].y;
+    PAUSE_BUTTONS[i].w = baseButtons[i].w;
+    PAUSE_BUTTONS[i].h = baseButtons[i].h;
+  }
+}
+
 const STORAGE_KEY = 'chv_visual_settings';
 
 export class SettingsManager {

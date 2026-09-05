@@ -26,7 +26,10 @@ export interface AbsorbedGhost {
 }
 
 export class SuperItemManager {
+  public currentCols: number = COLS;
   public activeSlot: SuperItem | null = null;
+  public energy: number = 0;
+  public maxEnergy: number = 100;
   public vortex: { x: number; y: number; life: number; maxLife: number } | null = null;
   public absorbedGhosts: AbsorbedGhost[] = [];
   public laserTimer: number = 0;
@@ -37,18 +40,39 @@ export class SuperItemManager {
     return this.laserTimer > 0 || this.vortex !== null || this.tsunamiX >= 0 || this.cryoTimer > 0;
   }
 
+  public addEnergy(amount: number, unlockedPool: string[]): boolean {
+    if (this.activeSlot) return false;
+    if (!unlockedPool || unlockedPool.length === 0) return false;
+    this.energy = Math.min(this.maxEnergy, this.energy + amount);
+    if (this.energy >= this.maxEnergy) {
+      this.energy = this.maxEnergy;
+      const meta: Record<string, { name: string; icon: string }> = {
+        nova: { name: 'MEGA NOVA', icon: 'nova' },
+        overdrive: { name: 'DASH INFINI', icon: 'overdrive' },
+        vortex: { name: 'BLACK HOLE', icon: 'black_hole' },
+        laser: { name: 'HYPER BEAMS', icon: 'laser' },
+        cryo: { name: 'CRYO SHATTER', icon: 'cryo' },
+        tsunami: { name: 'LIGHT TSUNAMI', icon: 'tsunami' }
+      };
+      const chosen = unlockedPool[(Math.random() * unlockedPool.length) | 0];
+      const m = meta[chosen] || { name: 'SUPER ITEM', icon: 'nova' };
+      this.unlock(chosen, m.name, m.icon);
+      return true;
+    }
+    return false;
+  }
+
   public unlock(type: string, name: string, icon: string) {
     if (this.activeSlot) return;
     this.activeSlot = { type: type as any, name, icon, ready: true };
     sounds.play('badge');
     particles.flash('#00ffff', 0.25);
     particles.shake(4, 0.15);
-    particles.addPop(CW / 2, 80, `⚡ SUPER-ITEM : ${name} ! [E]`, '#00ffff', 20);
+    particles.addPop((this.currentCols * T) / 2, 80, `SUPER-ITEM : ${name} ! [E]`, '#00ffff', 20);
 
     const itmBtn = document.getElementById('item-btn');
     if (itmBtn) {
       itmBtn.classList.add('ready');
-      itmBtn.innerText = icon;
     }
   }
 
@@ -76,7 +100,7 @@ export class SuperItemManager {
             onKillGhost(e, e.x * T + T / 2, e.y * T + T / 2);
           }
         }
-        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '💣 SUPERNOVA V2 !' : '💥 MEGA NOVA !', '#ffd700', lvl >= 2 ? 26 : 22);
+        particles.addPop((this.currentCols * T) / 2, (ROWS * T) / 2, lvl >= 2 ? 'SUPERNOVA V2 !' : 'MEGA NOVA !', '#ffd700', lvl >= 2 ? 26 : 22);
         break;
       }
       case 'vortex': {
@@ -84,7 +108,7 @@ export class SuperItemManager {
         this.vortex = { x: plPos.x, y: plPos.y, life: lvl >= 2 ? 5.0 : 3.5, maxLife: lvl >= 2 ? 5.0 : 3.5 };
         particles.shake(7, 0.25);
         particles.flash('#bb44ff', 0.25);
-        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? '🕳️ DARK MATTER V2 !' : '🕳️ BLACK HOLE !', '#bb44ff', 22);
+        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? 'DARK MATTER V2 !' : 'BLACK HOLE !', '#bb44ff', 22);
         break;
       }
       case 'laser': {
@@ -92,7 +116,7 @@ export class SuperItemManager {
         this.laserTimer = lvl >= 2 ? 4.5 : 3.2;
         particles.shake(6, 0.25);
         particles.flash('#00ffff', 0.25);
-        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '⚡ OCTO BEAMS V2 !' : '⚡ HYPER BEAMS !', '#00ffff', 22);
+        particles.addPop((this.currentCols * T) / 2, (ROWS * T) / 2, lvl >= 2 ? 'OCTO BEAMS V2 !' : 'HYPER BEAMS !', '#00ffff', 22);
         break;
       }
       case 'cryo': {
@@ -101,7 +125,7 @@ export class SuperItemManager {
         for (const e of enemies) e.frozen = true;
         particles.shake(6, 0.25);
         particles.flash('#aaffff', 0.25);
-        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '❄️ ABSOLUTE ZERO V2 !' : '❄️ GHOSTS FROZEN !', '#aaffff', 22);
+        particles.addPop((this.currentCols * T) / 2, (ROWS * T) / 2, lvl >= 2 ? 'ABSOLUTE ZERO V2 !' : 'GHOSTS FROZEN !', '#aaffff', 22);
         break;
       }
       case 'tsunami': {
@@ -110,7 +134,7 @@ export class SuperItemManager {
         addMadnessTime(lvl >= 2 ? 14.0 : 8.0);
         particles.shake(9, 0.35);
         particles.flash('#ffffff', 0.35);
-        particles.addPop(CW / 2, (ROWS * T) / 2, lvl >= 2 ? '👑 SOLAR ECLIPSE V2 !' : '👑 LIGHT TSUNAMI !', '#ffffff', 22);
+        particles.addPop((this.currentCols * T) / 2, (ROWS * T) / 2, lvl >= 2 ? 'SOLAR ECLIPSE V2 !' : 'LIGHT TSUNAMI !', '#ffffff', 22);
         break;
       }
       case 'overdrive': {
@@ -118,12 +142,13 @@ export class SuperItemManager {
         if (activateOverdrive) activateOverdrive();
         particles.shake(6, 0.2);
         particles.flash('#00ffcc', 0.35);
-        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? '⚡ CHRONO OVERDRIVE V2 !' : '⚡ DASH INFINI (8s) !', '#00ffcc', 22);
+        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? 'CHRONO OVERDRIVE V2 !' : 'DASH INFINI (8s) !', '#00ffcc', 22);
         break;
       }
     }
 
     this.activeSlot = null;
+    this.energy = 0;
     const itmBtn = document.getElementById('item-btn');
     if (itmBtn) itmBtn.classList.remove('ready');
     return true;
@@ -137,6 +162,9 @@ export class SuperItemManager {
     maze?: MazeManager,
     onCollectDot?: (c: number, r: number) => void
   ) {
+    if (maze) this.currentCols = maze.cols;
+    const cols = this.currentCols;
+    const cw = cols * T;
     if (this.laserTimer > 0) {
       this.laserTimer -= dt;
       const isOcto = progression.getSkillLevel('laser') >= 2;
@@ -181,7 +209,7 @@ export class SuperItemManager {
         const vTileY = Math.floor(vY / T);
         for (let dy = -tileRadius; dy <= tileRadius; dy++) {
           for (let dx = -tileRadius; dx <= tileRadius; dx++) {
-            const tx = (vTileX + dx + COLS) % COLS;
+            const tx = (vTileX + dx + cols) % cols;
             const ty = vTileY + dy;
             if (ty >= 0 && ty < ROWS && maze.dotMap[ty] && maze.dotMap[ty][tx] > 0) {
               const dDist = Math.hypot(tx * T + T / 2 - vX, ty * T + T / 2 - vY);
@@ -200,15 +228,15 @@ export class SuperItemManager {
 
         // Current real position of ghost in pixels
         let fx_ = e.fx, fy_ = e.fy, tx = e.x, ty = e.y;
-        if (Math.abs(tx - fx_) > COLS / 2) {
-          if (tx > fx_) fx_ += COLS;
-          else tx += COLS;
+        if (Math.abs(tx - fx_) > cols / 2) {
+          if (tx > fx_) fx_ += cols;
+          else tx += cols;
         }
         const t = Math.min(e.t, 1);
         let curX = (fx_ + (tx - fx_) * t) * T + HALF;
         let curY = (fy_ + (ty - fy_) * t) * T + HALF;
-        if (curX < 0) curX += COLS * T;
-        if (curX >= COLS * T) curX -= COLS * T;
+        if (curX < 0) curX += cw;
+        if (curX >= cw) curX -= cw;
 
         const dx = vX - curX;
         const dy = vY - curY;
@@ -301,7 +329,7 @@ export class SuperItemManager {
     }
 
     if (this.tsunamiX >= 0) {
-      this.tsunamiX += CW * dt * 1.6;
+      this.tsunamiX += cw * dt * 1.6;
       particles.emit(this.tsunamiX, Math.random() * ROWS * T, 5, '#ffffff', { speed: 100, size: 4, life: 0.3 });
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
@@ -311,7 +339,7 @@ export class SuperItemManager {
           }
         }
       }
-      if (this.tsunamiX > CW + 60) this.tsunamiX = -1;
+      if (this.tsunamiX > cw + 60) this.tsunamiX = -1;
     }
   }
 
@@ -323,7 +351,7 @@ export class SuperItemManager {
       c.shadowBlur = 18;
       c.lineWidth = 10 + Math.sin(time * 25) * 3;
       c.beginPath();
-      c.moveTo(0, plPos.y); c.lineTo(CW, plPos.y);
+      c.moveTo(0, plPos.y); c.lineTo(c.canvas.width, plPos.y);
       c.moveTo(plPos.x, 0); c.lineTo(plPos.x, ROWS * T);
       c.stroke();
       c.strokeStyle = '#ffffff';
@@ -432,6 +460,7 @@ export class SuperItemManager {
   public resetAll() {
     this.resetEffects();
     this.activeSlot = null;
+    this.energy = 0;
     const itmBtn = document.getElementById('item-btn');
     if (itmBtn) itmBtn.classList.remove('ready');
   }

@@ -2,7 +2,7 @@
 //  CHROMAVORE — LEVEL MAPS & MAZE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
-import { T, COLS, ROWS, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL } from '../config/constants';
+import { T, COLS, ROWS, CLASSIC_COLS, MADNESS_COLS, HUD_H, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL } from '../config/constants';
 
 export interface LevelDef {
   name: string;
@@ -571,7 +571,273 @@ export const LEVELS: LevelDef[] = [
   }
 ];
 
-export const MADNESS_LEVELS: LevelDef[] = [
+// ═══════════════════════════════════════════════════════════════
+//  MADNESS 16:9 WIDESCREEN MAPS (RICH, DENSE, HIGH-SPEED 39×22)
+// ═══════════════════════════════════════════════════════════════
+
+// MM1: NEON VELOCITY
+export const MM1_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,2,1,1,1,1,2,1,1,1,2,2,1,1,1,2], // 2
+  [1,2,1,1,1,2,1,1,1,1,2,1,1,1,2,2,1,1,1,2], // 3
+  [1,2,2,2,2,2,2,2,2,2,3,1,1,1,2,2,2,2,2,2], // 4
+  [1,2,1,1,1,2,1,1,1,1,2,1,1,1,2,2,1,1,1,2], // 5
+  [1,2,2,2,2,2,1,1,1,1,2,2,2,2,2,2,1,1,1,2], // 6
+  [1,1,1,1,2,2,1,1,1,1,2,1,1,1,2,2,1,1,1,2], // 7
+  [1,1,1,1,2,2,2,2,2,2,2,1,1,1,2,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,1,2,1,1,1,2,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,1,2,1,1,1,2,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,1,2,1,1,1,2,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,1,1,1,1,2,1,1,1,2,2,1,1,1,2], // 13
+  [1,2,2,2,2,2,2,2,2,2,2,1,1,1,2,2,1,1,1,2], // 14
+  [1,2,1,1,1,2,1,1,1,1,2,2,2,2,2,2,1,1,1,2], // 15
+  [1,2,2,2,2,2,1,1,1,1,3,1,1,1,2,2,2,2,2,7], // 16
+  [1,2,1,1,1,2,1,1,1,1,2,1,1,1,2,2,1,1,1,2], // 17
+  [1,2,1,1,1,2,2,2,2,2,2,1,1,1,2,2,1,1,1,2], // 18
+  [1,2,1,1,1,2,1,1,1,1,2,2,2,2,2,2,1,1,1,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM2: HYPER SPEEDWAY
+export const MM2_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,2], // 2
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,2], // 3
+  [1,2,2,2,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,2], // 4
+  [1,2,1,1,1,2,2,1,1,1,1,1,1,1,2,2,1,1,1,2], // 5
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,2], // 6
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,2], // 7
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,1,2,2,1,1,1,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,2], // 13
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,2], // 14
+  [1,2,1,1,1,2,2,1,1,1,1,1,1,1,2,2,1,1,1,2], // 15
+  [1,2,2,2,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,7], // 16
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,2], // 17
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM3: TWIN SPIRAL
+export const MM3_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,2], // 2
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,2], // 3
+  [1,2,1,1,2,2,2,2,2,3,2,2,2,2,2,2,1,1,1,2], // 4
+  [1,2,1,1,2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,2], // 5
+  [1,2,2,2,2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,2], // 6
+  [1,1,1,1,2,2,2,2,2,2,2,2,1,1,1,2,2,2,2,2], // 7
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,1,2,2,1,1,1,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,2,2,2,2], // 13
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,2], // 14
+  [1,2,1,1,2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,2], // 15
+  [1,2,1,1,2,2,1,1,1,1,1,1,1,1,2,2,2,2,2,7], // 16
+  [1,2,1,1,2,2,2,2,2,3,2,2,2,2,2,2,1,1,1,2], // 17
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,2], // 18
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM4: DIAMOND MATRIX
+export const MM4_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 2
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 3
+  [1,2,2,2,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,2], // 4
+  [1,2,1,1,1,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 5
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 6
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2], // 7
+  [1,1,1,1,2,2,2,1,1,1,1,1,2,2,2,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,2,2,1,1,1,2,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,2,1,1,1,1,1,2,2,2,2,2,1,1,2], // 13
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 14
+  [1,2,1,1,1,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 15
+  [1,2,2,2,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,7], // 16
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 17
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM5: NEON METROPOLIS
+export const MM5_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 2
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 3
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 4
+  [1,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,2,2,2,2], // 5
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 6
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 7
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,1,2,2,1,1,1,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 13
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 14
+  [1,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,2,2,2,2], // 15
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,7], // 16
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 17
+  [1,2,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM6: DUAL VORTEX
+export const MM6_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,2], // 2
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,2], // 3
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,2], // 4
+  [1,2,1,1,1,2,2,1,1,1,1,1,2,2,2,2,2,1,1,2], // 5
+  [1,2,2,2,2,2,2,1,1,1,1,1,2,2,2,2,2,1,1,2], // 6
+  [1,1,1,1,2,2,2,1,1,1,1,1,2,1,1,2,2,2,2,2], // 7
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,2,2,2,1,1,1,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,2,2,2,1,1,1,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,2,2,2,1,1,1,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,2,1,1,1,1,1,2,1,1,2,2,1,1,2], // 13
+  [1,2,2,2,2,2,2,1,1,1,1,1,2,1,1,2,2,1,1,2], // 14
+  [1,2,1,1,1,2,2,1,1,1,1,1,2,2,2,2,2,1,1,2], // 15
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,7], // 16
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,2], // 17
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM7: CROSSFIRE BOULEVARD
+export const MM7_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,1,2], // 2
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,1,2], // 3
+  [1,2,2,2,2,2,2,2,3,1,1,1,1,2,2,2,2,2,2,2], // 4
+  [1,2,1,1,1,1,1,1,2,1,1,1,1,2,2,1,1,1,1,2], // 5
+  [1,2,2,2,2,1,1,1,2,2,2,2,2,2,2,1,1,1,1,2], // 6
+  [1,1,1,1,2,1,1,1,2,2,2,2,2,2,2,1,1,1,1,2], // 7
+  [1,1,1,1,2,2,2,2,2,2,1,1,1,1,2,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,1,2,2,2,2,2,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,1,2,2,2,2,2,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,1,2,2,2,2,2,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,1,1,1,1,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,1,1,1,2,2,2,2,2,2,2,1,1,1,1,2], // 13
+  [1,2,2,2,2,1,1,1,2,2,2,2,2,2,2,1,1,1,1,2], // 14
+  [1,2,1,1,1,1,1,1,2,1,1,1,1,2,2,1,1,1,1,2], // 15
+  [1,2,2,2,2,2,2,2,3,1,1,1,1,2,2,2,2,2,2,7], // 16
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,1,2], // 17
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM8: CYBER LABYRINTH
+export const MM8_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,1,2], // 2
+  [1,2,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,1,2], // 3
+  [1,2,2,2,2,2,3,1,1,1,1,1,2,2,2,2,2,2,2,2], // 4
+  [1,2,1,1,1,2,2,2,2,2,2,1,1,1,2,2,1,1,1,2], // 5
+  [1,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,1,2], // 6
+  [1,1,1,1,2,1,1,1,1,2,2,1,1,1,2,2,1,1,1,2], // 7
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,2,2,1,1,1,2,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,1,1,1,1,2,2,1,1,1,2,2,1,1,1,2], // 13
+  [1,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,1,2], // 14
+  [1,2,1,1,1,2,2,2,2,2,2,1,1,1,2,2,1,1,1,2], // 15
+  [1,2,2,2,2,2,3,1,1,1,1,1,2,2,2,2,2,2,2,7], // 16
+  [1,2,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,1,2], // 17
+  [1,2,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM9: OVERDRIVE COLOSSEUM
+export const MM9_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,2], // 2
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,2], // 3
+  [1,2,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,2,2,2], // 4
+  [1,2,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,2], // 5
+  [1,2,2,2,2,2,2,1,1,1,2,2,1,1,1,2,2,1,1,2], // 6
+  [1,1,1,1,2,2,2,1,1,1,2,2,1,1,1,2,2,1,1,2], // 7
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,2,2,1,1,1,2,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,2,1,1,1,2,2,1,1,1,2,2,1,1,2], // 13
+  [1,2,2,2,2,2,2,1,1,1,2,2,1,1,1,2,2,1,1,2], // 14
+  [1,2,1,1,1,2,2,1,1,1,2,2,1,1,1,2,2,1,1,2], // 15
+  [1,2,2,2,2,2,2,2,3,2,2,2,2,2,2,2,2,2,2,7], // 16
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,2], // 17
+  [1,2,1,1,1,1,1,2,2,1,1,1,1,1,2,2,1,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+// MM10: OMEGA NEXUS
+export const MM10_169: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 0
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 1
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,2], // 2
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,2], // 3
+  [1,2,2,2,2,2,2,2,2,2,3,1,1,1,1,2,2,2,2,2], // 4
+  [1,2,1,1,1,2,1,1,1,1,2,2,2,2,2,2,2,1,1,2], // 5
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 6
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 7
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 8
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,6], // 9
+  [8,4,4,4,2,2,1,1,1,1,2,2,1,1,1,2,1,5,5,5], // 10
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,1,1,1,1], // 11
+  [1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 12
+  [1,1,1,1,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 13
+  [1,2,2,2,2,2,1,1,1,1,2,2,1,1,1,2,2,1,1,2], // 14
+  [1,2,1,1,1,2,1,1,1,1,2,2,2,2,2,2,2,1,1,2], // 15
+  [1,2,2,2,2,2,2,2,2,2,3,1,1,1,1,2,2,2,2,7], // 16
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,2], // 17
+  [1,2,1,1,1,1,1,1,1,2,2,1,1,1,1,2,2,1,1,2], // 18
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 19
+  [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 20
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 21
+];
+
+
+
+export const MADNESS_LEVELS_4_3: LevelDef[] = [
   {
     name: 'NEON VELOCITY',
     glowColor: '#ff007f',
@@ -664,57 +930,115 @@ export const MADNESS_LEVELS: LevelDef[] = [
   }
 ];
 
+export const MADNESS_LEVELS_16_9: LevelDef[] = [
+  { name: 'NEON VELOCITY', glowColor: '#ff007f', dotColor: '#00ffff', pelletColor: '#ffd700', wallColor: '#2b0042', bg: '#0a0118', layout: MM1_169 },
+  { name: 'CYBER SUPERGRID', glowColor: '#00f0ff', dotColor: '#39ff14', pelletColor: '#ffaa00', wallColor: '#062438', bg: '#020d1a', layout: MM2_169 },
+  { name: 'QUANTUM SPEEDWAY', glowColor: '#bf00ff', dotColor: '#ffd700', pelletColor: '#00ffff', wallColor: '#240638', bg: '#0d0216', layout: MM3_169 },
+  { name: 'SYNTH BULLET RUN', glowColor: '#ff5500', dotColor: '#00ffff', pelletColor: '#ff00aa', wallColor: '#361406', bg: '#140502', layout: MM4_169 },
+  { name: 'HYPERION FREEWAY', glowColor: '#ffd700', dotColor: '#ff0055', pelletColor: '#00ffcc', wallColor: '#2e2204', bg: '#120900', layout: MM5_169 },
+  { name: 'VORTEX RING', glowColor: '#a855f7', dotColor: '#22c55e', pelletColor: '#ec4899', wallColor: '#240b3b', bg: '#0d0317', layout: MM6_169 },
+  { name: 'COSMIC CROSSWAY', glowColor: '#f43f5e', dotColor: '#38bdf8', pelletColor: '#fbbf24', wallColor: '#380914', bg: '#140307', layout: MM7_169 },
+  { name: 'MATRIX SPEEDWAY', glowColor: '#10b981', dotColor: '#ffffff', pelletColor: '#f59e0b', wallColor: '#052e20', bg: '#01120c', layout: MM8_169 },
+  { name: 'CHRONO DOWNTOWN', glowColor: '#f97316', dotColor: '#06b6d4', pelletColor: '#ec4899', wallColor: '#3b1604', bg: '#140701', layout: MM9_169 },
+  { name: 'INFINITY ARENA', glowColor: '#eab308', dotColor: '#00f0ff', pelletColor: '#ff007f', wallColor: '#332403', bg: '#120c01', layout: MM10_169 }
+];
+
+export const MADNESS_LEVELS = MADNESS_LEVELS_4_3;
+
 export class MazeManager {
+  public cols: number = CLASSIC_COLS;
+  public rows: number = ROWS;
   public map: number[][] = [];
   public dotMap: number[][] = [];
   public totalDots: number = 0;
   public remainingDots: number = 0;
   public currentLevel: number = 0;
   public isMadness: boolean = false;
+  public isWidescreen: boolean = false;
   public ghostReturnDist: number[][] = [];
   public mOff: HTMLCanvasElement;
-  private mc: CanvasRenderingContext2D;
+  public mc: CanvasRenderingContext2D;
+
+  public get cw(): number { return this.cols * T; }
+  public get ch(): number { return this.rows * T + HUD_H; }
 
   constructor() {
     this.mOff = document.createElement('canvas');
-    this.mOff.width = COLS * T;
+    this.mOff.width = CLASSIC_COLS * T;
     this.mOff.height = ROWS * T;
     this.mc = this.mOff.getContext('2d')!;
     this.build(0);
   }
 
   public getLevelDef(): LevelDef {
-    const list = this.isMadness ? MADNESS_LEVELS : LEVELS;
-    return list[this.currentLevel % list.length];
+    if (!this.isMadness) return LEVELS[this.currentLevel % LEVELS.length];
+    return this.isWidescreen
+      ? MADNESS_LEVELS_16_9[this.currentLevel % MADNESS_LEVELS_16_9.length]
+      : MADNESS_LEVELS_4_3[this.currentLevel % MADNESS_LEVELS_4_3.length];
   }
 
-  public build(lvlIndex: number, isMadness: boolean = false) {
+  public getSpawn(): { x: number; y: number } {
+    return { x: Math.floor(this.cols / 2), y: 16 };
+  }
+
+  public getGhostHouseSeed(): { x: number; y: number } {
+    return { x: Math.floor(this.cols / 2), y: 8 };
+  }
+
+  public isInGhostHouse(c: number, r: number): boolean {
+    const ic = Math.floor(c);
+    const ir = Math.floor(r);
+    if (ir < 0 || ir >= this.rows || ic < 0 || ic >= this.cols) return false;
+    const v = this.map[ir] ? this.map[ir][ic] : WALL;
+    if (v === GHOST || v === DOOR) return true;
+    const centerCol = Math.floor(this.cols / 2);
+    // Interior chamber of central ghost house (rows 9..11, within 2 tiles of centerCol)
+    if (ir >= 9 && ir <= 11 && Math.abs(ic - centerCol) <= 2) {
+      return true;
+    }
+    return false;
+  }
+
+  public build(lvlIndex: number, isMadness: boolean = false, isWidescreen: boolean = false) {
     this.isMadness = isMadness;
-    const list = this.isMadness ? MADNESS_LEVELS : LEVELS;
+    this.isWidescreen = isMadness && isWidescreen;
+    this.cols = (isMadness && isWidescreen) ? MADNESS_COLS : CLASSIC_COLS;
+    this.mOff.width = this.cols * T;
+    this.mOff.height = this.rows * T;
+
+    const list = !isMadness
+      ? LEVELS
+      : (isWidescreen ? MADNESS_LEVELS_16_9 : MADNESS_LEVELS_4_3);
     this.currentLevel = lvlIndex % list.length;
     const def = list[this.currentLevel];
     const half = def.layout;
+    const halfWidth = (isMadness && isWidescreen) ? 20 : 11;
     this.map = [];
     this.dotMap = [];
     this.totalDots = 0;
 
-    for (let r = 0; r < ROWS; r++) {
+    for (let r = 0; r < this.rows; r++) {
       this.map[r] = [];
       this.dotMap[r] = [];
       const rowHalf = half[r];
-      for (let c = 0; c < 11; c++) {
+      for (let c = 0; c < halfWidth; c++) {
         const val = rowHalf[c];
         this.map[r][c] = val;
-        if (c < 10) {
-          const mirCol = 20 - c;
+        if (c < halfWidth - 1) {
+          const mirCol = (this.cols - 1) - c;
           this.map[r][mirCol] = val === TUNNEL ? TUNNEL : val === DOOR ? DOOR : val;
         }
       }
-      for (let c = 0; c < COLS; c++) {
+      for (let c = 0; c < this.cols; c++) {
         const v = this.map[r][c];
         if (v === DOT || v === PELLET) {
-          this.dotMap[r][c] = v;
-          this.totalDots++;
+          if (this.isInGhostHouse(c, r)) {
+            this.dotMap[r][c] = 0;
+            this.map[r][c] = EMPTY;
+          } else {
+            this.dotMap[r][c] = v;
+            this.totalDots++;
+          }
         } else {
           this.dotMap[r][c] = 0;
         }
@@ -727,19 +1051,19 @@ export class MazeManager {
 
   public computeGhostReturnDist() {
     this.ghostReturnDist = [];
-    for (let r = 0; r < ROWS; r++) {
-      this.ghostReturnDist[r] = new Array(COLS).fill(Infinity);
+    for (let r = 0; r < this.rows; r++) {
+      this.ghostReturnDist[r] = new Array(this.cols).fill(Infinity);
     }
 
     const queue: { x: number; y: number; dist: number }[] = [];
+    const centerCol = Math.floor(this.cols / 2);
 
-    // Ghost house target tiles (door at row 9, interior at row 10, exit at row 8)
     const seeds = [
-      { x: 10, y: 8 },
-      { x: 10, y: 9 },
-      { x: 9, y: 10 },
-      { x: 10, y: 10 },
-      { x: 11, y: 10 }
+      { x: centerCol, y: 8 },
+      { x: centerCol, y: 9 },
+      { x: centerCol - 1, y: 10 },
+      { x: centerCol, y: 10 },
+      { x: centerCol + 1, y: 10 }
     ];
 
     for (const pt of seeds) {
@@ -757,8 +1081,8 @@ export class MazeManager {
       for (const d of dirs) {
         let nx = cur.x + d.x;
         const ny = cur.y + d.y;
-        if (nx < 0) nx = COLS - 1;
-        if (nx >= COLS) nx = 0;
+        if (nx < 0) nx = this.cols - 1;
+        if (nx >= this.cols) nx = 0;
 
         if (this.isWalkable(nx, ny, true)) {
           if (this.ghostReturnDist[ny][nx] > cur.dist + 1) {
@@ -773,9 +1097,9 @@ export class MazeManager {
   public isWalkable(c: number, r: number, isEnemy: boolean = false): boolean {
     const ir = Math.floor(r);
     const ic = Math.floor(c);
-    if (ir < 0 || ir >= ROWS) return false;
-    if (ic < 0 || ic >= COLS) {
-      const wrappedC = ((ic % COLS) + COLS) % COLS;
+    if (ir < 0 || ir >= this.rows) return false;
+    if (ic < 0 || ic >= this.cols) {
+      const wrappedC = ((ic % this.cols) + this.cols) % this.cols;
       const row = this.map[ir];
       return !!row && (row[wrappedC] === TUNNEL || row[wrappedC] === EMPTY || row[wrappedC] === DOT);
     }
@@ -785,57 +1109,61 @@ export class MazeManager {
     if (v === WALL) return false;
     if (v === DOOR) return isEnemy;
     if (v === VOID) return false;
+    if (!isEnemy && (v === GHOST || this.isInGhostHouse(ic, ir))) return false;
     return true;
   }
 
   public findNearestWalkable(c: number, r: number, isEnemy: boolean = false): { x: number; y: number } {
     const ic = Math.floor(c);
     const ir = Math.floor(r);
-    if (this.isWalkable(ic, ir, isEnemy)) return { x: ic, y: ir };
+    if (this.isWalkable(ic, ir, isEnemy) && (isEnemy || !this.isInGhostHouse(ic, ir))) return { x: ic, y: ir };
     for (let dist = 1; dist <= 8; dist++) {
       for (let dy = -dist; dy <= dist; dy++) {
         for (let dx = -dist; dx <= dist; dx++) {
           if (Math.abs(dx) === dist || Math.abs(dy) === dist) {
-            const tx = ((ic + dx) % COLS + COLS) % COLS;
+            const tx = ((ic + dx) % this.cols + this.cols) % this.cols;
             const ty = ir + dy;
-            if (this.isWalkable(tx, ty, isEnemy)) {
+            if (this.isWalkable(tx, ty, isEnemy) && (isEnemy || !this.isInGhostHouse(tx, ty))) {
               return { x: tx, y: ty };
             }
           }
         }
       }
     }
-    return { x: 10, y: 16 };
+    return this.getSpawn();
   }
 
   public getRandomWalkable(isEnemy: boolean = false): { x: number; y: number } {
     const valid: { x: number; y: number }[] = [];
-    for (let r = 2; r < ROWS - 2; r++) {
-      for (let c = 1; c < COLS - 1; c++) {
+    for (let r = 2; r < this.rows - 2; r++) {
+      for (let c = 1; c < this.cols - 1; c++) {
         if (this.isWalkable(c, r, isEnemy) && this.map[r][c] !== WALL && this.map[r][c] !== VOID) {
+          if (!isEnemy && this.isInGhostHouse(c, r)) continue;
           valid.push({ x: c, y: r });
         }
       }
     }
     if (valid.length) return valid[(Math.random() * valid.length) | 0];
-    return { x: 10, y: 16 };
+    return this.getSpawn();
   }
 
   public renderOffscreen() {
     const lvl = this.getLevelDef();
     const c = this.mc;
-    c.clearRect(0, 0, COLS * T, ROWS * T);
+    const w = this.cols * T;
+    const h = this.rows * T;
+    c.clearRect(0, 0, w, h);
     c.fillStyle = lvl.bg;
-    c.fillRect(0, 0, COLS * T, ROWS * T);
+    c.fillRect(0, 0, w, h);
 
     // Retro wireframe grid
     c.strokeStyle = 'rgba(255, 0, 128, 0.05)';
     c.lineWidth = 1;
-    for (let x = 0; x < COLS * T; x += T) {
-      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, ROWS * T); c.stroke();
+    for (let x = 0; x < w; x += T) {
+      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
     }
-    for (let y = 0; y < ROWS * T; y += T) {
-      c.beginPath(); c.moveTo(0, y); c.lineTo(COLS * T, y); c.stroke();
+    for (let y = 0; y < h; y += T) {
+      c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
     }
 
     // Walls with glowing dual contour
@@ -843,8 +1171,8 @@ export class MazeManager {
     c.shadowColor = lvl.glowColor;
     c.shadowBlur = 12;
     c.lineWidth = 1.5;
-    for (let r = 0; r < ROWS; r++) {
-      for (let col = 0; col < COLS; col++) {
+    for (let r = 0; r < this.rows; r++) {
+      for (let col = 0; col < this.cols; col++) {
         if (this.map[r][col] === WALL) {
           const x = col * T, y = r * T;
           c.fillStyle = lvl.wallColor;

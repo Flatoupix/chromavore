@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090117">
 <title>CHROMAVORE v2.4.0 // SYNTHWAVE 1984</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='55,5 15,55 45,55 35,95 85,45 55,45' fill='%2300f0ff'/></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{
@@ -137,6 +137,17 @@ canvas{
 #item-btn:active{transform:scale(0.92);background:#ff007f;color:#ffffff}
 #item-label{font-size:8px;color:#ffd700;letter-spacing:1px;font-weight:bold}
 
+#chrono-btn{
+  width:50px;height:50px;border-radius:50%;background:radial-gradient(circle,#003344 0%,#06111e 100%);
+  border:2px solid #00f0ff;color:#00f0ff;font-size:10px;font-weight:bold;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  box-shadow:0 0 12px rgba(0, 240, 255, 0.35);touch-action:none;outline:none;
+  -webkit-tap-highlight-color:transparent;font-family:monospace;
+  transition:transform 0.08s, box-shadow 0.08s, background 0.12s;
+}
+#chrono-btn:active,#chrono-btn.active-chrono{transform:scale(0.92);background:#00f0ff;color:#050a14;box-shadow:0 0 24px #00f0ff, 0 0 12px #ffffff}
+#chrono-label{font-size:8px;color:#00f0ff;letter-spacing:1px;font-weight:bold}
+
 #dash-btn{
   width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#5a0044 0%,#1a0028 100%);
   border:3px solid #00f0ff;color:#fff;font-size:11px;font-weight:bold;
@@ -193,7 +204,11 @@ canvas{
       padding:36px 40px;max-width:360px;width:90%;text-align:center;
       box-shadow:0 0 40px rgba(255,0,127,0.4),0 0 20px rgba(0,240,255,0.2);
     ">
-      <div style="font-size:28px;margin-bottom:8px;">🏆</div>
+      <div style="display:flex;justify-content:center;margin-bottom:8px;">
+        <svg width="36" height="36" viewBox="0 0 32 32" style="filter:drop-shadow(0 0 8px #ffd700);">
+          <path d="M7 6h18v8c0 5-4 9-9 9s-9-4-9-9V6zm-3 2h3v4c0 3 2 5 4 5H7c-2 0-3-2-3-4V8zm21 0h3v5c0 2-1 4-3 4h-1c2 0 4-2 4-5V8zM14 23h4v4h-4zm-4 4h12v3H10z" fill="#ffd700"/>
+        </svg>
+      </div>
       <div id="name-modal-title" style="
         color:#00f0ff;font-size:14px;font-weight:bold;
         letter-spacing:2px;margin-bottom:6px;
@@ -222,7 +237,7 @@ canvas{
         letter-spacing:2px;cursor:pointer;
         box-shadow:0 0 18px rgba(255,0,127,0.5);
         transition:transform 0.1s,box-shadow 0.1s;
-      ">✓ VALIDER</button>
+      ">VALIDER</button>
       <button id="pseudo-skip" style="
         margin-top:8px;width:100%;padding:8px;
         background:transparent;border:1px solid #334466;
@@ -245,7 +260,13 @@ canvas{
       padding:32px 36px;max-width:380px;width:90%;text-align:center;
       box-shadow:0 0 40px rgba(0,240,255,0.4);
     ">
-      <div style="font-size:28px;margin-bottom:8px;">📲</div>
+      <div style="display:flex;justify-content:center;margin-bottom:8px;">
+        <svg width="36" height="36" viewBox="0 0 32 32" style="filter:drop-shadow(0 0 8px #00f0ff);">
+          <rect x="8" y="4" width="16" height="24" rx="3" fill="none" stroke="#00f0ff" stroke-width="2"/>
+          <line x1="12" y1="8" x2="20" y2="8" stroke="#00f0ff" stroke-width="2"/>
+          <circle cx="16" cy="23" r="1.5" fill="#00f0ff"/>
+        </svg>
+      </div>
       <div style="color:#00f0ff;font-size:15px;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">
         REPRENDRE UNE PARTIE
       </div>
@@ -278,7 +299,7 @@ canvas{
         font-family:monospace;font-size:12px;font-weight:bold;
         letter-spacing:2px;cursor:pointer;
         box-shadow:0 0 16px rgba(0,240,255,0.4);
-      ">✓ RESTAURER MON PROFIL</button>
+      ">RESTAURER MON PROFIL</button>
       <button id="restore-cancel" style="
         margin-top:8px;width:100%;padding:8px;
         background:transparent;border:1px solid #334466;
@@ -300,7 +321,13 @@ canvas{
       padding:32px 36px;max-width:380px;width:90%;text-align:center;
       box-shadow:0 0 40px rgba(255,0,85,0.4);
     ">
-      <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+      <div style="display:flex;justify-content:center;margin-bottom:8px;">
+        <svg width="36" height="36" viewBox="0 0 32 32" style="filter:drop-shadow(0 0 8px #ff0055);">
+          <polygon points="16,4 30,28 2,28" fill="none" stroke="#ff0055" stroke-width="2.5"/>
+          <line x1="16" y1="12" x2="16" y2="20" stroke="#ff0055" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="16" cy="24" r="1.5" fill="#ff0055"/>
+        </svg>
+      </div>
       <div style="color:#ff0055;font-size:15px;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">
         RÉINITIALISER LA PROGRESSION ?
       </div>
@@ -314,7 +341,7 @@ canvas{
         font-family:monospace;font-size:12px;font-weight:bold;
         letter-spacing:2px;cursor:pointer;
         box-shadow:0 0 16px rgba(255,0,85,0.4);
-      ">⚠️ OUI, TOUT EFFACER</button>
+      ">OUI, TOUT EFFACER</button>
       <button id="wipe-cancel" style="
         margin-top:8px;width:100%;padding:8px;
         background:transparent;border:1px solid #334466;
@@ -334,20 +361,27 @@ canvas{
       </div>
     </div>
     <div class="util-btns">
-      <button class="ubtn" id="btn-pause">⏸ PAUSE</button>
-      <button class="ubtn" id="btn-mute">🔊 AUDIO</button>
+      <button class="ubtn" id="btn-pause"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>PAUSE</button>
+      <button class="ubtn" id="btn-mute"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M2 5h3l4-4v14l-4-4H2V5zm10 0c1.5 1.5 1.5 4.5 0 6m2-8c2.5 2.5 2.5 7.5 0 10"/></svg>AUDIO</button>
     </div>
     <div class="action-btns">
       <div class="dash-wrap">
+        <button id="chrono-btn" aria-label="Chrono Shift Bullet Time">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 4px #00f0ff);"><circle cx="12" cy="13" r="8" stroke="#00f0ff" stroke-width="2"/><line x1="12" y1="1" x2="12" y2="4" stroke="#00f0ff" stroke-width="2"/><line x1="12" y1="13" x2="12" y2="8" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="13" x2="16" y2="13" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/></svg>
+          <span style="font-size:8px">CHRONO</span>
+        </button>
+        <span id="chrono-label">100%</span>
+      </div>
+      <div class="dash-wrap">
         <button id="item-btn" aria-label="Item">
-          <span style="font-size:18px" id="item-txt">💣</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 4px #ffd700);"><polygon points="12,2 15,9 22,12 15,15 12,22 9,15 2,12 9,9" fill="#ffd700"/></svg>
           <span style="font-size:9px">ITEM</span>
         </button>
         <span id="item-label"></span>
       </div>
       <div class="dash-wrap">
         <button id="dash-btn" aria-label="Dash">
-          <span style="font-size:20px">⚡</span>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 4px #00f0ff);"><polygon points="13,2 4,14 11,14 9,22 20,10 13,10" fill="#00f0ff"/></svg>
           <span style="font-size:10px">DASH</span>
         </button>
         <span id="dash-label">READY</span>
@@ -355,7 +389,7 @@ canvas{
     </div>
   </div>
 </div>
-<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v2.4.0</div>
+<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v2.9.3</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

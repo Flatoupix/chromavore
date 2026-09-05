@@ -8,10 +8,24 @@ class SoundManager {
   private bgmTime: number = 0;
   private bgmStep: number = 0;
   private lastDotFreq: number = 440;
+  private dotStreakCount: number = 0;
+  private lastDotTime: number = 0;
+  private isChronoActive: boolean = false;
   private lastKillSfxTime: number = 0;
 
   constructor() {
     this.muted = localStorage.getItem('chv_muted') === 'true';
+  }
+
+  public setChronoActive(active: boolean) {
+    if (this.isChronoActive === active) return;
+    this.isChronoActive = active;
+    this.play(active ? 'chrono_on' : 'chrono_off');
+  }
+
+  public resetDotStreak() {
+    this.dotStreakCount = 0;
+    this.lastDotTime = 0;
   }
 
   private initCtx() {
@@ -50,18 +64,67 @@ class SoundManager {
 
     try {
       switch (type) {
-        case 'dot': {
+        case 'click': {
           const osc = this.actx.createOscillator();
           const g = this.actx.createGain();
           osc.type = 'sine';
-          this.lastDotFreq = this.lastDotFreq === 440 ? 520 : 440;
-          osc.frequency.setValueAtTime(this.lastDotFreq, t);
-          g.gain.setValueAtTime(0.06, t);
-          g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+          osc.frequency.setValueAtTime(560, t);
+          osc.frequency.exponentialRampToValueAtTime(740, t + 0.035);
+          g.gain.setValueAtTime(0.045, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
           osc.connect(g);
           g.connect(this.actx.destination);
           osc.start(t);
-          osc.stop(t + 0.05);
+          osc.stop(t + 0.04);
+          break;
+        }
+        case 'dot': {
+          const now = performance.now();
+          const MAX_DOT_STREAK = 70; // Sustained tension ramp over 70 consecutive dots
+          const GRACE_PERIOD_MS = 850; // Keep full streak across corners and short empty junctions
+          const DECAY_STEP_MS = 45; // Progressive decay instead of abrupt drop
+
+          if (this.lastDotTime > 0) {
+            const pause = now - this.lastDotTime;
+            if (pause < GRACE_PERIOD_MS) {
+              this.dotStreakCount = Math.min(MAX_DOT_STREAK, this.dotStreakCount + 1);
+            } else {
+              const lostSteps = Math.floor((pause - GRACE_PERIOD_MS) / DECAY_STEP_MS);
+              this.dotStreakCount = Math.max(0, this.dotStreakCount - lostSteps);
+              this.dotStreakCount = Math.min(MAX_DOT_STREAK, this.dotStreakCount + 1);
+            }
+          } else {
+            this.dotStreakCount = 1;
+          }
+          this.lastDotTime = now;
+
+          // Smooth microtonal exponential curve from 320 Hz up to ~785 Hz (+1.28 octaves)
+          const progress = this.dotStreakCount / MAX_DOT_STREAK;
+          const baseFreq = 320 * Math.pow(2.45, progress);
+
+          // Subtle alternating harmonic waka-waka oscillation (~5.5% modulation)
+          const altMultiplier = (this.dotStreakCount % 2 === 1) ? 1.055 : 1.0;
+          let freq = baseFreq * altMultiplier;
+
+          // Slow-motion downpitching if Chrono Shift / Bullet Time is engaged
+          if (this.isChronoActive) {
+            freq *= 0.72;
+          }
+
+          // Equal-loudness compensation: slightly lower gain at high frequencies to maintain pleasant ear balance
+          const gainVal = Math.max(0.045, 0.065 - progress * 0.018);
+          const duration = this.isChronoActive ? 0.075 : 0.048;
+
+          const osc = this.actx.createOscillator();
+          const g = this.actx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, t);
+          g.gain.setValueAtTime(gainVal, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + duration);
+          osc.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + duration);
           break;
         }
         case 'pellet': {
@@ -97,6 +160,8 @@ class SoundManager {
           break;
         }
         case 'death': {
+          this.dotStreakCount = 0;
+          this.lastDotTime = 0;
           const osc = this.actx.createOscillator();
           const g = this.actx.createGain();
           osc.type = 'sawtooth';
@@ -274,6 +339,41 @@ class SoundManager {
           osc.stop(t + 0.14);
           break;
         }
+        case 'chrono_on': {
+          // Temporal slow-motion warp pulse
+          const osc = this.actx.createOscillator();
+          const filter = this.actx.createBiquadFilter();
+          const g = this.actx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(540, t);
+          osc.frequency.exponentialRampToValueAtTime(110, t + 0.28);
+          filter.type = 'lowpass';
+          filter.frequency.setValueAtTime(1800, t);
+          filter.frequency.exponentialRampToValueAtTime(220, t + 0.28);
+          g.gain.setValueAtTime(0.20, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+          osc.connect(filter);
+          filter.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + 0.32);
+          break;
+        }
+        case 'chrono_off': {
+          // Temporal snap resumption
+          const osc = this.actx.createOscillator();
+          const g = this.actx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(140, t);
+          osc.frequency.exponentialRampToValueAtTime(620, t + 0.16);
+          g.gain.setValueAtTime(0.15, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.20);
+          osc.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + 0.20);
+          break;
+        }
       }
     } catch {}
   }
@@ -285,10 +385,11 @@ class SoundManager {
 
     this.bgmTime += dt;
     // Step duration:
+    // Chrono-Shift: 0.36s (heavy, immersive slow-motion pulse)
     // Normal: 0.125s (120 BPM)
     // Madness: 0.10s (150 BPM)
     // 32x Invincible God Mode: 0.09s (166 BPM high-energy overdrive)
-    const stepDuration = is32xGod ? 0.09 : (isMadness ? 0.10 : 0.125);
+    const stepDuration = this.isChronoActive ? 0.36 : (is32xGod ? 0.09 : (isMadness ? 0.10 : 0.125));
 
     if (this.bgmTime >= stepDuration) {
       this.bgmTime -= stepDuration;
@@ -329,8 +430,8 @@ class SoundManager {
 
         filter.type = 'lowpass';
         filter.Q.setValueAtTime(is32xGod ? 6.5 : (isMadness ? 6 : 4.5), t);
-        filter.frequency.setValueAtTime(is32xGod ? 1600 : (isMadness ? 1200 : 850), t);
-        filter.frequency.exponentialRampToValueAtTime(140, t + stepDuration * 0.85);
+        filter.frequency.setValueAtTime(is32xGod ? 1600 : (this.isChronoActive ? 380 : (isMadness ? 1200 : 850)), t);
+        filter.frequency.exponentialRampToValueAtTime(this.isChronoActive ? 90 : 140, t + stepDuration * 0.85);
 
         const bassVol = is32xGod ? 0.055 : (isMadness ? 0.05 : 0.045);
         g.gain.setValueAtTime(bassVol, t);

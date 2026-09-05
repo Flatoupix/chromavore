@@ -2,11 +2,12 @@
 //  CHROMAVORE — PLAYER ENTITY & OFFENSIVE DASH
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_SPEED, CC, COMBO_DECAY, getComboTier } from '../config/constants';
+import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_BASE_SPEED, P_MADNESS_SPEED, CC, COMBO_DECAY, getComboTier } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
 import { progression } from '../systems/ProgressionSystem';
+import { spriteAtlas } from '../graphics/SpriteAtlas';
 
 export function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
   const l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
@@ -29,6 +30,8 @@ export class Player {
   public lastDx: number = 1;
   public lastDy: number = 0;
   public speed: number = P_SPEED;
+  public pelletSpeedBonus: number = 0;
+  public superPelletBoostTimer: number = 0;
   public sq: number = 1;
   public st: number = 1;
   public ma: number = 0;
@@ -37,21 +40,30 @@ export class Player {
   public dashCd: number = 0;
   public dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number }[] = [];
   public invuln: number = 2;
+  public currentCols: number = COLS;
+
+  public addDotSpeed() {
+    // Each eaten dot ramps up speed (+0.04 up to +3.2 tiles/sec max)
+    this.pelletSpeedBonus = Math.min(3.2, this.pelletSpeedBonus + 0.04);
+  }
+
+  public addSuperPelletBoost() {
+    // Super-pellet provides immediate high-octane speed surge
+    this.superPelletBoostTimer = 3.5;
+    this.pelletSpeedBonus = Math.min(3.5, this.pelletSpeedBonus + 1.2);
+  }
 
   public reset(isMadness: boolean, maze?: MazeManager, speedMult: number = 1.0) {
-    let sx = 10, sy = 16;
-    if (maze && !maze.isWalkable(sx, sy, false)) {
-      let found = false;
-      for (let dist = 1; dist <= 6 && !found; dist++) {
-        for (let dy = -dist; dy <= dist && !found; dy++) {
-          for (let dx = -dist; dx <= dist && !found; dx++) {
-            if (maze.isWalkable(10 + dx, 16 + dy, false)) {
-              sx = 10 + dx;
-              sy = 16 + dy;
-              found = true;
-            }
-          }
-        }
+    let sx = isMadness ? 19 : 10, sy = 16;
+    if (maze) {
+      this.currentCols = maze.cols;
+      const sp = maze.getSpawn();
+      sx = sp.x;
+      sy = sp.y;
+      if (!maze.isWalkable(sx, sy, false)) {
+        const safe = maze.findNearestWalkable(sx, sy, false);
+        sx = safe.x;
+        sy = safe.y;
       }
     }
     this.x = this.fx = sx;
@@ -63,23 +75,28 @@ export class Player {
     this.sq = 1;
     this.st = 1;
     this.trail = [];
-    this.speed = (isMadness ? P_MADNESS_SPEED : P_SPEED) * speedMult;
+    this.pelletSpeedBonus = 0;
+    const isWide = maze ? maze.cols > 21 : false;
+    const progressionBoost = isWide ? 4.3 : Math.min(2.5, (progression.totalGhosts / 300) * 2.5);
+    const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
+    this.speed = (isMadness ? madnessCalculatedSpeed : P_SPEED) * speedMult;
     this.invuln = 2.0;
     this.dashCd = 0;
     this.dashStreaks = [];
   }
 
   public getPos(): { x: number; y: number } {
+    const cols = this.currentCols;
     let fx_ = this.fx, fy_ = this.fy, tx = this.x, ty = this.y;
-    if (Math.abs(tx - fx_) > COLS / 2) {
-      if (tx > fx_) fx_ += COLS;
-      else tx += COLS;
+    if (Math.abs(tx - fx_) > cols / 2) {
+      if (tx > fx_) fx_ += cols;
+      else tx += cols;
     }
     const t = Math.min(this.t, 1);
     let px = (fx_ + (tx - fx_) * t) * T + HALF;
     let py = (fy_ + (ty - fy_) * t) * T + HALF;
-    if (px < 0) px += COLS * T;
-    if (px >= COLS * T) px -= COLS * T;
+    if (px < 0) px += cols * T;
+    if (px >= cols * T) px -= cols * T;
     return { x: px, y: py };
   }
 
@@ -98,6 +115,44 @@ export class Player {
     this.st = 1.28;
   }
 
+  private handleCornerAutoTurn(maze: MazeManager, heldDirections: { x: number; y: number }[] = []) {
+    // If forward is blocked, look for open orthogonal turns (excluding backward)
+    const dirs = [
+      { x: 0, y: -1 },
+      { x: 0, y: 1 },
+      { x: -1, y: 0 },
+      { x: 1, y: 0 }
+    ].filter(d => !(this.dx !== 0 && d.x === -this.dx && d.y === -this.dy));
+
+    const openDirs = dirs.filter(d => maze.isWalkable(this.wrapX(this.x + d.x), this.y + d.y, false));
+    if (openDirs.length === 0) {
+      this.dx = 0;
+      this.dy = 0;
+      return;
+    }
+
+    // 1. If any held direction matches an open dir, take it immediately!
+    for (let i = heldDirections.length - 1; i >= 0; i--) {
+      const h = heldDirections[i];
+      const match = openDirs.find(d => d.x === h.x && d.y === h.y);
+      if (match) {
+        this.doMove(match.x, match.y, maze);
+        return;
+      }
+    }
+
+    // 2. If unambiguous 90-degree corner: enrouler la courbe naturellement (virage unique)
+    if (openDirs.length === 1) {
+      this.doMove(openDirs[0].x, openDirs[0].y, maze);
+      return;
+    }
+
+    // 3. At T-junction or crossroads: never make autonomous decisions!
+    // Pac-Man stops against the wall until the player commands a direction.
+    this.dx = 0;
+    this.dy = 0;
+  }
+
   public update(
     dt: number,
     maze: MazeManager,
@@ -105,8 +160,10 @@ export class Player {
     isNitro: boolean,
     inputDir: { x: number; y: number },
     onCollectDot: (c: number, r: number) => void,
-    speedMult: number = 1.0
+    speedMult: number = 1.0,
+    heldDirections: { x: number; y: number; code: string }[] = []
   ) {
+    this.currentCols = maze.cols;
     // Dash streaks
     for (let i = this.dashStreaks.length - 1; i >= 0; i--) {
       const s = this.dashStreaks[i];
@@ -120,8 +177,17 @@ export class Player {
     this.st += (1 - this.st) * 0.12;
     this.sq += (1 - this.sq) * 0.12;
 
-    const curSpeed = isMadness ? (isNitro ? P_MADNESS_SPEED * 1.35 : P_MADNESS_SPEED) : P_SPEED;
-    this.speed = curSpeed * speedMult;
+    // Dynamic speed ramp: base speed + pellet eating bonus + super-pellet boost, scaled by combo
+    if (this.superPelletBoostTimer > 0) this.superPelletBoostTimer -= dt;
+    if (this.pelletSpeedBonus > 0) {
+      this.pelletSpeedBonus = Math.max(0, this.pelletSpeedBonus - dt * 0.45);
+    }
+    const pelletSurge = (this.superPelletBoostTimer > 0 ? 1.8 : 0) + this.pelletSpeedBonus;
+    const isWide = maze ? maze.cols > 21 : false;
+    const progressionBoost = isWide ? 4.3 : Math.min(2.5, (progression.totalGhosts / 300) * 2.5);
+    const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
+    const baseSpeed = isMadness ? (isNitro ? madnessCalculatedSpeed * 1.30 : madnessCalculatedSpeed) : P_SPEED;
+    this.speed = (baseSpeed + pelletSurge) * speedMult;
 
     // Accept input direction
     if (inputDir.x !== 0 || inputDir.y !== 0) {
@@ -129,7 +195,7 @@ export class Player {
       this.ndy = inputDir.y;
     }
 
-    // Immediate 180° turn responsiveness
+    // 1. Immediate 180° turn responsiveness
     if (this.ndx === -this.dx && this.ndy === -this.dy && (this.ndx !== 0 || this.ndy !== 0)) {
       const tempX = this.x, tempY = this.y;
       this.x = this.fx; this.y = this.fy;
@@ -139,28 +205,56 @@ export class Player {
       this.t = Math.max(0, 1 - this.t);
     }
 
+    // 2. Corner Leniency (Late Turn / Post-Intersection Slide)
+    // If player tapped perpendicular turn slightly late (within first 38% of tile), check if opening at previous tile was valid
+    const isPerp = (this.ndx !== 0 && this.dx === 0) || (this.ndy !== 0 && this.dy === 0);
+    if (isPerp && (this.dx !== 0 || this.dy !== 0) && this.t <= 0.38) {
+      const lateTurnX = this.wrapX(this.fx + this.ndx);
+      const lateTurnY = this.fy + this.ndy;
+      if (maze.isWalkable(lateTurnX, lateTurnY, false)) {
+        this.x = lateTurnX;
+        this.y = lateTurnY;
+        this.dx = this.ndx;
+        this.dy = this.ndy;
+        this.lastDx = this.dx;
+        this.lastDy = this.dy;
+        this.t = Math.max(0.08, this.t * 0.4);
+        onCollectDot(this.fx, this.fy);
+      }
+    }
+
+    // 3. Tile Reached / Step Decision with Wall-Sliding Contour Assistance
     if (this.t >= 1) {
-      if (this.ndx !== 0 || this.ndy !== 0) {
-        const nx = this.wrapX(this.x + this.ndx), ny = this.y + this.ndy;
-        if (maze.isWalkable(nx, ny, false)) {
-          this.doMove(this.ndx, this.ndy, maze);
-        } else if (this.dx !== 0 || this.dy !== 0) {
-          const mx = this.wrapX(this.x + this.dx), my = this.y + this.dy;
-          if (maze.isWalkable(mx, my, false)) {
-            this.doMove(this.dx, this.dy, maze);
-          } else {
-            this.dx = 0; this.dy = 0;
+      // Find best walkable direction among desired input and held keys
+      let targetDir = { x: this.ndx, y: this.ndy };
+      let nx = this.wrapX(this.x + targetDir.x), ny = this.y + targetDir.y;
+      if (!maze.isWalkable(nx, ny, false)) {
+        // Desired direction blocked by wall! Check if another held key is walkable (wall-contouring)
+        for (let i = heldDirections.length - 1; i >= 0; i--) {
+          const h = heldDirections[i];
+          const hx = this.wrapX(this.x + h.x), hy = this.y + h.y;
+          if (maze.isWalkable(hx, hy, false)) {
+            targetDir = { x: h.x, y: h.y };
+            nx = hx;
+            ny = hy;
+            break;
           }
-        } else {
-          this.dx = 0; this.dy = 0;
         }
+      }
+
+      if (maze.isWalkable(nx, ny, false) && (targetDir.x !== 0 || targetDir.y !== 0)) {
+        this.doMove(targetDir.x, targetDir.y, maze);
       } else if (this.dx !== 0 || this.dy !== 0) {
+        // Forward is open along the current corridor: keep gliding along the wall!
         const mx = this.wrapX(this.x + this.dx), my = this.y + this.dy;
         if (maze.isWalkable(mx, my, false)) {
           this.doMove(this.dx, this.dy, maze);
         } else {
-          this.dx = 0; this.dy = 0;
+          this.handleCornerAutoTurn(maze, heldDirections);
         }
+      } else {
+        // Stopped: unstick by sliding along wall if orthogonal path is open
+        this.handleCornerAutoTurn(maze, heldDirections);
       }
     }
 
@@ -187,12 +281,13 @@ export class Player {
     hasForceField: boolean = false,
     isOverdrive: boolean = false
   ): boolean {
+    if (!isMadness) return false;
     if (this.dashCd > 0 && !isOverdrive) return false;
 
     const dashLvl = progression.getSkillLevel('dash');
     if (dashLvl === 0) {
       const pp = this.getPos();
-      particles.addPop(pp.x, pp.y - 20, '🔒 DASH DÉBLOQUÉ À 5 👻', '#ffaa00', 12);
+      particles.addPop(pp.x, pp.y - 20, 'DASH DÉBLOQUÉ À 10 SPECTRES', '#ffaa00', 12);
       return false;
     }
 
@@ -226,10 +321,13 @@ export class Player {
 
       // If Force Field active, vacuum dots in a wide corridor along dash!
       if (hasForceField) {
-        for (let radY = -2; radY <= 2; radY++) {
-          for (let radX = -2; radX <= 2; radX++) {
+        const isWide = this.currentCols > 21;
+        const dashR = isWide ? 3.2 : 2.2;
+        const radLimit = Math.ceil(dashR);
+        for (let radY = -radLimit; radY <= radLimit; radY++) {
+          for (let radX = -radLimit; radX <= radLimit; radX++) {
             const rx = this.wrapX(nx + radX), ry = ny + radY;
-            if (ry >= 0 && ry < ROWS && Math.hypot(radX, radY) <= 2.2) {
+            if (ry >= 0 && ry < ROWS && Math.hypot(radX, radY) <= dashR) {
               onCollectDot(rx, ry);
             }
           }
@@ -281,9 +379,9 @@ export class Player {
           }
         }
       }
-      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? '⚡ CYBER OVERDRIVE !' : '⚡ CYBER DASH V2 !', '#00ffff', 16);
+      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'CYBER OVERDRIVE !' : 'CYBER DASH V2 !', '#00ffff', 16);
     } else {
-      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? '⚡ HYPER DASH !' : '⚡ DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
+      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'HYPER DASH !' : 'DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
     }
 
     particles.emit(startPos.x, startPos.y, 16, isOverdrive ? '#00ffcc' : '#00e5ff', { speed: 130, size: 4, life: 0.45 });
@@ -296,8 +394,8 @@ export class Player {
   }
 
   public wrapX(c: number): number {
-    if (c < 0) return COLS - 1;
-    if (c >= COLS) return 0;
+    if (c < 0) return this.currentCols - 1;
+    if (c >= this.currentCols) return 0;
     return c;
   }
 
@@ -309,7 +407,8 @@ export class Player {
     isPredator: boolean = false,
     predTimer: number = 0,
     predMaxTimer: number = 7.0,
-    combo: { m: number; t: number; n: number } = { m: 1, t: 0, n: 0 }
+    combo: { m: number; t: number; n: number } = { m: 1, t: 0, n: 0 },
+    isChronoActive: boolean = false
   ) {
     const pp = this.getPos();
 
@@ -332,6 +431,26 @@ export class Player {
       c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2);
       c.stroke();
       c.restore();
+    }
+
+    // Chrono-Shift Temporal Strobe Afterimages
+    if (isChronoActive) {
+      const pAngle = (this.dx || this.dy) ? Math.atan2(this.dy, this.dx) : Math.atan2(this.lastDy, this.lastDx);
+      const echoDistances = [12, 24, 36];
+      const echoColors = ['rgba(0, 240, 255, 0.45)', 'rgba(255, 0, 127, 0.35)', 'rgba(0, 255, 200, 0.25)'];
+      for (let i = 0; i < echoDistances.length; i++) {
+        const d = echoDistances[i];
+        const ex = pp.x - Math.cos(pAngle) * d;
+        const ey = pp.y - Math.sin(pAngle) * d;
+        c.save();
+        c.fillStyle = echoColors[i];
+        c.shadowColor = echoColors[i];
+        c.shadowBlur = 10;
+        c.beginPath();
+        c.arc(ex, ey, P_RAD * (0.85 - i * 0.12), 0, PI2);
+        c.fill();
+        c.restore();
+      }
     }
 
     // Motion Trail & Predator Chromatic Ghost Afterimages
@@ -371,15 +490,25 @@ export class Player {
         c.shadowBlur = 12;
       }
 
-      const mouth = Math.abs(Math.sin(this.ma)) * 0.7;
-
-      c.fillStyle = isGodMode ? '#ffffff' : C_PLAYER;
-
-      c.beginPath();
-      c.arc(0, 0, P_RAD, mouth, PI2 - mouth);
-      c.lineTo(0, 0);
-      c.fill();
-      c.shadowBlur = 0;
+      if (isMadness) {
+        this.drawChromavoreEntity(
+          c,
+          P_RAD,
+          time,
+          this.ma,
+          isGodMode,
+          isPredator,
+          combo.m,
+          true
+        );
+      } else {
+        // Pure Classic Retro Pac-Man
+        c.fillStyle = C_PLAYER;
+        c.beginPath();
+        c.arc(0, 0, P_RAD, this.ma, PI2 - this.ma);
+        c.lineTo(0, 0);
+        c.fill();
+      }
 
       // Electric plasma sparks (Predator or God mode)
       if (isPredator || isGodMode) {
@@ -430,32 +559,56 @@ export class Player {
         c.restore();
       }
 
-      // Dash Ring
-      const maxCd = isMadness ? DASH_MADNESS_CD : DASH_CD;
-      if (this.dashCd > 0) {
-        const ringAngle = (1 - this.dashCd / maxCd) * PI2;
+      // Chrono-Shift Quantum Bubble (Dilatation Temporelle)
+      if (isChronoActive) {
         c.save();
-        c.strokeStyle = isMadness ? 'rgba(255,180,0,0.75)' : 'rgba(0,255,255,0.45)';
-        c.lineWidth = 2.5;
+        const chPulse = 1 + Math.sin(time * 12) * 0.12;
+        c.strokeStyle = '#00f0ff';
+        c.shadowColor = '#00f0ff';
+        c.shadowBlur = 18;
+        c.lineWidth = 2.4;
         c.beginPath();
-        c.arc(0, 0, P_RAD + 4, -Math.PI / 2, -Math.PI / 2 + ringAngle);
+        c.arc(0, 0, P_RAD * 1.4 * chPulse, 0, PI2);
         c.stroke();
-        c.restore();
-      } else {
-        const pulse = 0.3 + Math.sin(time * 8) * 0.2;
-        c.save();
-        c.strokeStyle = isMadness ? '#ffd700' : `rgba(0,255,255,${pulse})`;
-        c.shadowColor = isMadness ? '#ffd700' : '#00ffff';
-        c.shadowBlur = 8;
-        c.lineWidth = 1.8;
+
+        // Technical rotating reticle ticks around player
+        c.strokeStyle = 'rgba(255, 0, 128, 0.7)';
+        c.lineWidth = 1.2;
+        c.setLineDash([4, 4]);
         c.beginPath();
-        c.arc(0, 0, P_RAD + 4, 0, PI2);
+        c.arc(0, 0, P_RAD * 1.7, time * 4, time * 4 + PI2);
         c.stroke();
         c.restore();
       }
 
-      // Invulnerability shield
-      if (this.invuln > 0) {
+      // Dash Ring (Mode Madness only)
+      if (isMadness) {
+        const maxCd = DASH_MADNESS_CD;
+        if (this.dashCd > 0) {
+          const ringAngle = (1 - this.dashCd / maxCd) * PI2;
+          c.save();
+          c.strokeStyle = 'rgba(255,180,0,0.75)';
+          c.lineWidth = 2.5;
+          c.beginPath();
+          c.arc(0, 0, P_RAD + 4, -Math.PI / 2, -Math.PI / 2 + ringAngle);
+          c.stroke();
+          c.restore();
+        } else {
+          const pulse = 0.3 + Math.sin(time * 8) * 0.2;
+          c.save();
+          c.strokeStyle = '#ffd700';
+          c.shadowColor = '#ffd700';
+          c.shadowBlur = 8;
+          c.lineWidth = 1.8;
+          c.beginPath();
+          c.arc(0, 0, P_RAD + 4, 0, PI2);
+          c.stroke();
+          c.restore();
+        }
+      }
+
+      // Invulnerability shield (Mode Madness only)
+      if (isMadness && this.invuln > 0) {
         c.save();
         c.strokeStyle = 'rgba(0,255,255,0.85)';
         c.shadowColor = '#00ffff';
@@ -510,27 +663,32 @@ export class Player {
         const badgeY = pp.y - P_RAD - 15;
 
         let badgeText = '';
+        let badgeIcon = '';
         let badgeCol = '#00ffff';
         let prog = 1;
 
         if (isGodMode || combo.m >= 32) {
           badgeCol = '#ffd700';
-          badgeText = `👑 x32 • ${predTimer.toFixed(1)}s`;
+          badgeIcon = 'crown';
+          badgeText = `x32 • ${predTimer.toFixed(1)}s`;
           prog = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
         } else if (isPredator) {
           badgeCol = '#00ffff';
-          badgeText = combo.m > 1 ? `⚡ x${combo.m} • ${predTimer.toFixed(1)}s` : `⚡ ${predTimer.toFixed(1)}s`;
+          badgeIcon = 'lightning';
+          badgeText = combo.m > 1 ? `x${combo.m} • ${predTimer.toFixed(1)}s` : `${predTimer.toFixed(1)}s`;
           prog = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
         } else if (combo.m > 1) {
           const tier = getComboTier(combo.n);
           badgeCol = CC[tier] || '#00ffff';
-          badgeText = `🔥 x${combo.m}`;
+          badgeIcon = 'flame';
+          badgeText = `x${combo.m}`;
           prog = Math.max(0, Math.min(1, combo.t / COMBO_DECAY));
         }
 
         c.font = 'bold 9.5px monospace';
         const tw = c.measureText(badgeText).width;
-        const bw = tw + 12;
+        const iconPad = badgeIcon ? 14 : 0;
+        const bw = tw + 12 + iconPad;
         const bh = 14;
         const bx = pp.x + ox - bw / 2;
         const by = badgeY - bh / 2;
@@ -553,11 +711,14 @@ export class Player {
           c.fillRect(bx + 2, by + bh - 2, (bw - 4) * prog, 1.5);
         }
 
-        // Text
+        // Icon & Text
+        if (badgeIcon) {
+          spriteAtlas.drawIcon(c, badgeIcon, bx + 7, badgeY, 10);
+        }
         c.fillStyle = '#ffffff';
-        c.textAlign = 'center';
+        c.textAlign = badgeIcon ? 'left' : 'center';
         c.textBaseline = 'middle';
-        c.fillText(badgeText, pp.x + ox, badgeY);
+        c.fillText(badgeText, badgeIcon ? bx + 14 : pp.x + ox, badgeY);
 
         c.restore();
       }
@@ -567,14 +728,15 @@ export class Player {
     renderCountdownRing(0);
     renderOverheadHUD(0);
 
+    const cw = this.currentCols * T;
     if (pp.x < P_RAD * 2) {
-      renderPlayer(CW);
-      renderCountdownRing(CW);
-      renderOverheadHUD(CW);
-    } else if (pp.x > CW - P_RAD * 2) {
-      renderPlayer(-CW);
-      renderCountdownRing(-CW);
-      renderOverheadHUD(-CW);
+      renderPlayer(cw);
+      renderCountdownRing(cw);
+      renderOverheadHUD(cw);
+    } else if (pp.x > cw - P_RAD * 2) {
+      renderPlayer(-cw);
+      renderCountdownRing(-cw);
+      renderOverheadHUD(-cw);
     }
 
     c.globalAlpha = 1;
@@ -652,21 +814,208 @@ export class Player {
     c.restore();
   }
 
+  public drawChromavoreEntity(
+    c: CanvasRenderingContext2D,
+    rad: number,
+    time: number,
+    mouthAnim: number,
+    isGodMode: boolean = false,
+    isPredator: boolean = false,
+    comboMultiplier: number = 1,
+    isMadness: boolean = true
+  ) {
+    Player.drawChromavore(c, rad, time, mouthAnim, isGodMode, isPredator, comboMultiplier, isMadness);
+  }
+
+  public static drawChromavore(
+    c: CanvasRenderingContext2D,
+    rad: number,
+    time: number,
+    mouthAnim: number,
+    isGodMode: boolean = false,
+    isPredator: boolean = false,
+    comboMultiplier: number = 1,
+    isMadness: boolean = true
+  ) {
+    // Dynamic Chroma palette
+    let coreColor = '#00f0ff';
+    let carapaceColor = '#100326';
+    let accentGlow = '#00ffff';
+    let eyeColor = '#00ffff';
+
+    if (isGodMode) {
+      coreColor = '#ffffff';
+      accentGlow = '#00ffff';
+      eyeColor = '#ffffff';
+      carapaceColor = '#05182e';
+    } else if (isPredator || comboMultiplier >= 16) {
+      coreColor = '#ff007f';
+      accentGlow = '#ff0055';
+      eyeColor = '#ffff00';
+      carapaceColor = '#240217';
+    } else if (comboMultiplier >= 8) {
+      coreColor = '#ffd700';
+      accentGlow = '#ffd700';
+      eyeColor = '#ffffff';
+      carapaceColor = '#1f1602';
+    } else if (isMadness) {
+      coreColor = '#00f0ff';
+      accentGlow = '#00f0ff';
+      eyeColor = '#ffffff';
+      carapaceColor = '#08021a';
+    } else {
+      coreColor = '#00ffcc';
+      accentGlow = '#00f0ff';
+      eyeColor = '#ffffff';
+      carapaceColor = '#051515';
+    }
+
+    // 1. Dual Rear Ion Thrusters (Flickering propulsion flamelets at -X)
+    const thrusterLength = (rad * 0.42) + Math.sin(time * 32) * (rad * 0.22);
+    c.save();
+    c.fillStyle = coreColor;
+    c.shadowColor = accentGlow;
+    c.shadowBlur = 8;
+    // Upper thruster
+    c.beginPath();
+    c.moveTo(-rad * 0.65, -rad * 0.35);
+    c.lineTo(-rad * 0.65 - thrusterLength, -rad * 0.22);
+    c.lineTo(-rad * 0.65, -rad * 0.08);
+    c.closePath();
+    c.fill();
+    // Lower thruster
+    c.beginPath();
+    c.moveTo(-rad * 0.65, rad * 0.08);
+    c.lineTo(-rad * 0.65 - thrusterLength, rad * 0.22);
+    c.lineTo(-rad * 0.65, rad * 0.35);
+    c.closePath();
+    c.fill();
+    c.restore();
+
+    // 2. Aerodynamic Cyber Carapace (Layered Biomechanical Shell)
+    c.save();
+    c.fillStyle = carapaceColor;
+    c.strokeStyle = accentGlow;
+    c.lineWidth = 1.6;
+    c.shadowColor = accentGlow;
+    c.shadowBlur = 10;
+
+    c.beginPath();
+    c.moveTo(rad * 0.45, -rad * 0.75);
+    c.quadraticCurveTo(-rad * 0.2, -rad * 0.95, -rad * 0.75, -rad * 0.45);
+    c.lineTo(-rad * 0.75, rad * 0.45);
+    c.quadraticCurveTo(-rad * 0.2, rad * 0.95, rad * 0.45, rad * 0.75);
+    c.lineTo(rad * 0.2, 0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.restore();
+
+    // 3. Articulated Plasma Mandibles (The Devourer Maw at +X)
+    const jawSpread = 0.24 + Math.abs(Math.sin(mouthAnim)) * 0.58;
+    const upperJawY = -Math.sin(jawSpread) * (rad * 0.95);
+    const lowerJawY = Math.sin(jawSpread) * (rad * 0.95);
+    const jawTipX = rad * 1.18;
+
+    c.save();
+    c.fillStyle = coreColor;
+    c.strokeStyle = '#ffffff';
+    c.lineWidth = 1.2;
+    c.shadowColor = accentGlow;
+    c.shadowBlur = 12;
+
+    // Upper Plasma Mandible
+    c.beginPath();
+    c.moveTo(rad * 0.35, -rad * 0.65);
+    c.quadraticCurveTo(rad * 0.8, upperJawY * 1.15, jawTipX, upperJawY);
+    c.lineTo(rad * 0.75, upperJawY * 0.5);
+    c.quadraticCurveTo(rad * 0.4, -rad * 0.25, rad * 0.1, -rad * 0.15);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Lower Plasma Mandible
+    c.beginPath();
+    c.moveTo(rad * 0.35, rad * 0.65);
+    c.quadraticCurveTo(rad * 0.8, lowerJawY * 1.15, jawTipX, lowerJawY);
+    c.lineTo(rad * 0.75, lowerJawY * 0.5);
+    c.quadraticCurveTo(rad * 0.4, rad * 0.25, rad * 0.1, rad * 0.15);
+    c.closePath();
+    c.fill();
+    c.stroke();
+
+    // Suction Core Singularity (inward light vortex in the throat)
+    const vortexPulse = 0.6 + Math.sin(time * 20) * 0.3;
+    c.fillStyle = isGodMode ? '#ffffff' : coreColor;
+    c.beginPath();
+    c.ellipse(rad * 0.2, 0, Math.max(0.1, rad * 0.28 * vortexPulse), Math.max(0.1, rad * 0.45 * Math.sin(jawSpread)), 0, 0, PI2);
+    c.fill();
+    c.restore();
+
+    // 4. Chroma Core (Central Pulsing Singularity Nucleus)
+    const corePulse = 1 + Math.sin(time * 14) * 0.15;
+    c.save();
+    c.shadowColor = accentGlow;
+    c.shadowBlur = 16;
+    c.fillStyle = coreColor;
+    c.beginPath();
+    c.arc(-rad * 0.1, 0, rad * 0.38 * corePulse, 0, PI2);
+    c.fill();
+
+    // Inner incandescent white hot-spot
+    c.fillStyle = '#ffffff';
+    c.beginPath();
+    c.arc(-rad * 0.1, 0, rad * 0.18, 0, PI2);
+    c.fill();
+    c.restore();
+
+    // 5. Predatory Cyber-Optic Visor
+    c.save();
+    c.fillStyle = eyeColor;
+    c.shadowColor = eyeColor;
+    c.shadowBlur = 10;
+    c.beginPath();
+    c.moveTo(rad * 0.1, -rad * 0.38);
+    c.lineTo(rad * 0.45, -rad * 0.22);
+    c.lineTo(rad * 0.4, -rad * 0.08);
+    c.lineTo(rad * 0.05, -rad * 0.24);
+    c.closePath();
+    c.fill();
+    c.restore();
+  }
+
   public drawBonusPacman(c: CanvasRenderingContext2D, px: number, py: number, time: number, angle: number) {
     c.save();
     c.translate(px, py);
-    c.rotate(angle);
 
-    // Glowing core body (miniaturized for zoomed-out perspective)
-    const mouth = Math.abs(Math.sin(time * 18)) * 0.7;
-    c.shadowColor = '#00ffff';
-    c.shadowBlur = 16;
-    c.fillStyle = '#ffffff';
+    // High-contrast isolation backing (guarantees visibility against any density of colored ghosts)
+    c.fillStyle = '#050114';
     c.beginPath();
-    c.arc(0, 0, 7.5, mouth, PI2 - mouth);
-    c.lineTo(0, 0);
+    c.arc(0, 0, 11, 0, PI2);
     c.fill();
+
+    // Outer plasma pulse ring
+    const ringPulse = 1 + Math.sin(time * 15) * 0.15;
+    c.strokeStyle = '#00ffff';
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 12;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(0, 0, 10 * ringPulse, 0, PI2);
+    c.stroke();
     c.shadowBlur = 0;
+
+    c.rotate(angle);
+    this.drawChromavoreEntity(
+      c,
+      10,
+      time,
+      time * 18,
+      false,
+      true,
+      32,
+      true
+    );
 
     c.restore();
   }
