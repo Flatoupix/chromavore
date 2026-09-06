@@ -11,7 +11,7 @@ import { Player } from './entities/Player';
 import { EnemyManager, Ghost } from './entities/Enemy';
 import { powerups } from './entities/Powerups';
 import { superItems } from './systems/SuperItems';
-import { badges } from './systems/BadgeSystem';
+import { badges, BADGE_MAX_PAGES } from './systems/BadgeSystem';
 import { TouchDeckManager } from './ui/TouchDeck';
 import { Renderer } from './graphics/Renderer';
 import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
@@ -397,7 +397,12 @@ class Game {
         // If in badges and clicking bottom pagination
         if (this.codexTab === 'badges' && cy >= CH - 45) {
           if (cx > curCw * 0.25 && cx < curCw * 0.75) {
-            this.badgePage = (this.badgePage + 1) % 2;
+            const maxPages = BADGE_MAX_PAGES;
+            if (cx < curCw / 2) {
+              this.badgePage = (this.badgePage - 1 + maxPages) % maxPages;
+            } else {
+              this.badgePage = (this.badgePage + 1) % maxPages;
+            }
             sounds.play('click');
             return;
           }
@@ -583,10 +588,18 @@ class Game {
           this.codexTab = this.codexTab === 'skills' ? 'badges' : 'skills';
           sounds.play('click');
           e.preventDefault();
-        } else if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
-          this.badgePage = (this.badgePage + 1) % 2;
-          sounds.play('click');
-          e.preventDefault();
+        } else if (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD' || e.code === 'PageDown') {
+          if (this.codexTab === 'badges') {
+            this.badgePage = (this.badgePage + 1) % BADGE_MAX_PAGES;
+            sounds.play('click');
+            e.preventDefault();
+          }
+        } else if (e.code === 'ArrowLeft' || e.code === 'ArrowUp' || e.code === 'KeyA' || e.code === 'KeyQ' || e.code === 'PageUp') {
+          if (this.codexTab === 'badges') {
+            this.badgePage = (this.badgePage - 1 + BADGE_MAX_PAGES) % BADGE_MAX_PAGES;
+            sounds.play('click');
+            e.preventDefault();
+          }
         }
       }
     });

@@ -1538,15 +1538,16 @@ export class Renderer {
       c.textAlign = 'center';
       c.fillText(`SUCCÈS ACCOMPLIS : ${unlockedBadges} / ${allBadges.length} (${Math.round(ratio * 100)}%)`, this.cw / 2, 70);
 
-      // Draw 2 Columns of 7 cards
+      // Draw 2 Columns of cards (balanced across columns when fewer than 7)
       const cardH = 64;
       const startY = 92, gapY = 70;
+      const col1Count = pageBadges.length > 7 ? 7 : Math.ceil(pageBadges.length / 2);
 
       for (let i = 0; i < pageBadges.length; i++) {
         const b = pageBadges[i];
-        const isCol2 = i >= 7;
+        const isCol2 = i >= col1Count;
         const colX = isCol2 ? col2X : col1X;
-        const rowIdx = isCol2 ? i - 7 : i;
+        const rowIdx = isCol2 ? i - col1Count : i;
         const y = startY + rowIdx * gapY;
         this.drawBadgeCard(c, b, colX, y, colW, cardH);
       }

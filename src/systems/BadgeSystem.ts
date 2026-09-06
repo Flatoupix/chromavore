@@ -56,11 +56,18 @@ export const BADGES: Record<string, BadgeDef> = {
   arena16_9:    { id: 'arena16_9',    name: 'ARÈNE 16:9 DÉBLOQUÉE', desc: 'Débloquer l\'accès au Mode Widescreen Madness',     icon: 'screen', category: 'feat' }
 };
 
+export const BADGE_PAGE_SIZE = 14;
+export const BADGE_MAX_PAGES = Math.ceil(Object.values(BADGES).length / BADGE_PAGE_SIZE);
+
 export class BadgeManager {
   public unlocked: Record<string, boolean> = {};
   public banner: { text: string; icon: string; life: number; ml: number } | null = null;
   public hiScore: number = 0;
   public bestMadnessKills: number = 0;
+
+  public getMaxPages(pageSize: number = BADGE_PAGE_SIZE): number {
+    return Math.ceil(Object.values(BADGES).length / pageSize);
+  }
 
   constructor() {
     try {
