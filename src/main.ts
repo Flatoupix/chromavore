@@ -308,7 +308,7 @@ class Game {
         // Navigation links click at bottom:
         // Row 1 (y: ~538): [I] COMMENT JOUER | [C] ARSENAL
         if (cy >= 522 && cy <= 552) {
-          if (cx < CW / 2) {
+          if (cx < curCw / 2) {
             this.state = 'instructions';
             sounds.play('click');
             return;
@@ -321,12 +321,12 @@ class Game {
         }
         // Row 2 (y: ~566): [B] SUCCÈS | [L] SCORES | [K] SYNC
         if (cy > 552 && cy <= 585) {
-          if (cx < CW * 0.38) {
+          if (cx < curCw * 0.38) {
             this.state = 'codex';
             this.codexTab = 'badges';
             sounds.play('click');
             return;
-          } else if (cx < CW * 0.68) {
+          } else if (cx < curCw * 0.68) {
             this.state = 'leaderboard';
             this.leaderboardMode = this.gameMode;
             leaderboard.syncRemote();
@@ -340,17 +340,17 @@ class Game {
         // Copy sync code if tapping player line (y: 470)
         if (cy >= 455 && cy <= 485) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(CW / 2, 470, 'CODE ID COPIÉ !', '#00ffff', 14);
+          particles.addPop(curCw / 2, 470, 'CODE ID COPIÉ !', '#00ffff', 14);
           sounds.play('click');
           return;
         }
 
         const madW = 380, madH = 68;
-        const madX = CW / 2 - madW / 2;
+        const madX = curCw / 2 - madW / 2;
         const madY = 224;
 
         const clW = 380, clH = 46;
-        const clX = CW / 2 - clW / 2;
+        const clX = curCw / 2 - clW / 2;
         const clY = 302;
 
         // Click on Madness Card [1]
@@ -383,20 +383,20 @@ class Game {
       if (this.state === 'codex') {
         const tabW = 200, tabH = 26, tabY = 36;
         // Click Tab 1 (Skills)
-        if (cy >= tabY && cy <= tabY + tabH && cx >= CW / 2 - tabW - 8 && cx <= CW / 2 - 8) {
+        if (cy >= tabY && cy <= tabY + tabH && cx >= curCw / 2 - tabW - 8 && cx <= curCw / 2 - 8) {
           this.codexTab = 'skills';
           sounds.play('click');
           return;
         }
         // Click Tab 2 (Badges)
-        if (cy >= tabY && cy <= tabY + tabH && cx >= CW / 2 + 8 && cx <= CW / 2 + tabW + 8) {
+        if (cy >= tabY && cy <= tabY + tabH && cx >= curCw / 2 + 8 && cx <= curCw / 2 + tabW + 8) {
           this.codexTab = 'badges';
           sounds.play('click');
           return;
         }
         // If in badges and clicking bottom pagination
         if (this.codexTab === 'badges' && cy >= CH - 45) {
-          if (cx > CW * 0.25 && cx < CW * 0.75) {
+          if (cx > curCw * 0.25 && cx < curCw * 0.75) {
             this.badgePage = (this.badgePage + 1) % 2;
             sounds.play('click');
             return;
@@ -410,7 +410,7 @@ class Game {
       if (this.state === 'gameover') {
         const cyOver = CH * 0.30;
         if (cy >= cyOver + 205 && cy <= cyOver + 235) {
-          if (cx < CW / 2) {
+          if (cx < curCw / 2) {
             this.state = 'leaderboard';
             this.leaderboardMode = this.gameMode;
             leaderboard.syncRemote();

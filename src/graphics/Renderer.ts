@@ -1438,10 +1438,19 @@ export class Renderer {
     spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 + tabW / 2 + 8 - t2w / 2 - 10, tabY + 16, 12);
     c.fillText(tab2Text, this.cw / 2 + tabW / 2 + 8 + 6, tabY + 16);
 
+    // Dynamically center 2 columns of cards across any screen width (Classic 588px or Madness 1092px)
+    const isWide = this.cw >= 750;
+    const colW = isWide ? Math.min(460, Math.floor((this.cw - 80) / 2)) : 265;
+    const gapX = isWide ? 24 : 10;
+    const totalGridW = colW * 2 + gapX;
+    const startX = Math.round((this.cw - totalGridW) / 2);
+    const col1X = startX;
+    const col2X = startX + colW + gapX;
+
     if (isSkills) {
       // Career Progress Bar Header
       const nxt = progression.getNextUnlock();
-      const barW = 460, barH = 8;
+      const barW = Math.min(totalGridW, isWide ? 620 : 460), barH = 8;
       const barX = this.cw / 2 - barW / 2, barY = 76;
       c.fillStyle = 'rgba(15, 20, 35, 0.9)';
       c.strokeStyle = '#00ffff';
@@ -1473,8 +1482,7 @@ export class Renderer {
       const v1Skills = SKILL_TREE.filter(s => s.version === 1);
       const v2Skills = SKILL_TREE.filter(s => s.version === 2);
 
-      const colW = 265, cardH = 45;
-      const col1X = 24, col2X = 299;
+      const cardH = 45;
       const startY = 88, gapY = 49;
 
       for (let i = 0; i < v1Skills.length; i++) {
@@ -1506,7 +1514,7 @@ export class Renderer {
 
       // Progress bar header for badges
       const ratio = unlockedBadges / allBadges.length;
-      const barW = 460, barH = 8;
+      const barW = Math.min(totalGridW, isWide ? 620 : 460), barH = 8;
       const barX = this.cw / 2 - barW / 2, barY = 76;
       c.fillStyle = 'rgba(15, 20, 35, 0.9)';
       c.strokeStyle = '#ffd700';
@@ -1531,8 +1539,7 @@ export class Renderer {
       c.fillText(`SUCCÈS ACCOMPLIS : ${unlockedBadges} / ${allBadges.length} (${Math.round(ratio * 100)}%)`, this.cw / 2, 70);
 
       // Draw 2 Columns of 7 cards
-      const colW = 265, cardH = 64;
-      const col1X = 24, col2X = 299;
+      const cardH = 64;
       const startY = 92, gapY = 70;
 
       for (let i = 0; i < pageBadges.length; i++) {
@@ -1602,7 +1609,9 @@ export class Renderer {
     c.textAlign = 'left';
     c.font = '8.5px monospace';
     c.fillStyle = unlocked ? '#dddddd' : '#556677';
-    c.fillText(b.desc.slice(0, 48), x + 8, y + 36);
+    const maxBadgeChars = Math.floor((w - 16) / 5.5);
+    const badgeDesc = b.desc.length > maxBadgeChars ? b.desc.slice(0, maxBadgeChars - 1) + '…' : b.desc;
+    c.fillText(badgeDesc, x + 8, y + 36);
 
     // Progress bar for kill badges if locked
     if (!unlocked && b.killsRequired) {
@@ -1713,12 +1722,14 @@ export class Renderer {
 
     // Effect summary
     c.font = '8.5px monospace';
+    const maxChars = Math.floor((w - 16) / 5.5);
+    const descText = s.desc.length > maxChars ? s.desc.slice(0, maxChars - 1) + '…' : s.desc;
     if (unlocked) {
       c.fillStyle = isV2 ? '#aaffff' : '#ddd';
-      c.fillText(s.desc.slice(0, 44), x + 8, y + 37);
+      c.fillText(descText, x + 8, y + 37);
     } else if (isNext) {
       c.fillStyle = '#eeddcc';
-      c.fillText(s.desc.slice(0, 44), x + 8, y + 37);
+      c.fillText(descText, x + 8, y + 37);
     } else {
       c.fillStyle = '#2a3848';
       c.fillText('Atteignez le palier précédent pour décoder.', x + 8, y + 37);
