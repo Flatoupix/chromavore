@@ -567,7 +567,7 @@ export class Renderer {
     // Dash / Predator Invincible Gauge
     const dX = 134, dY = 14, dW = 100, dH = 18;
     if (combo.m >= 32) {
-      const pProg = Math.max(0, Math.min(1, combo.t / 5.0));
+      const pProg = Math.max(0, Math.min(1, combo.t / COMBO_DECAY));
       const pCol = '#00ffff';
       c.fillStyle = '#0e1828';
       c.strokeStyle = '#ffd700';

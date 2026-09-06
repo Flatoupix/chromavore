@@ -671,8 +671,10 @@ export class Player {
         if (isGodMode || combo.m >= 32) {
           badgeCol = '#ffd700';
           badgeIcon = 'crown';
-          badgeText = `x32 • ${predTimer.toFixed(1)}s`;
-          prog = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
+          const tVal = combo.m >= 32 ? combo.t : predTimer;
+          const maxVal = combo.m >= 32 ? COMBO_DECAY : (predMaxTimer || 7.0);
+          badgeText = `x32 • ${tVal.toFixed(1)}s`;
+          prog = Math.max(0, Math.min(1, tVal / maxVal));
         } else if (isPredator) {
           badgeCol = '#00ffff';
           badgeIcon = 'lightning';

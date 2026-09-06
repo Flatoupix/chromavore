@@ -55,7 +55,7 @@ class SoundManager {
     return this.muted;
   }
 
-  public play(type: string) {
+  public play(type: string, param?: number) {
     if (this.muted) return;
     this.initCtx();
     if (!this.actx) return;
@@ -80,31 +80,45 @@ class SoundManager {
         }
         case 'dot': {
           const now = performance.now();
-          const MAX_DOT_STREAK = 70; // Sustained tension ramp over 70 consecutive dots
+          const MAX_DOT_STREAK = 180; // Extended, ultra-granular tension ramp over 180 consecutive dots (32x God Mode)
           const GRACE_PERIOD_MS = 850; // Keep full streak across corners and short empty junctions
-          const DECAY_STEP_MS = 45; // Progressive decay instead of abrupt drop
+          const DECAY_STEP_MS = 40; // Progressive decay instead of abrupt drop
+          const timeFactor = this.isChronoActive ? 0.18 : 1.0;
+          const effectiveGrace = GRACE_PERIOD_MS / timeFactor;
+          const effectiveDecayStep = DECAY_STEP_MS / timeFactor;
 
-          if (this.lastDotTime > 0) {
-            const pause = now - this.lastDotTime;
-            if (pause < GRACE_PERIOD_MS) {
-              this.dotStreakCount = Math.min(MAX_DOT_STREAK, this.dotStreakCount + 1);
-            } else {
-              const lostSteps = Math.floor((pause - GRACE_PERIOD_MS) / DECAY_STEP_MS);
-              this.dotStreakCount = Math.max(0, this.dotStreakCount - lostSteps);
-              this.dotStreakCount = Math.min(MAX_DOT_STREAK, this.dotStreakCount + 1);
-            }
+          if (param !== undefined && param >= 0) {
+            // Direct lock with combo counter for 100% audio-visual synchronization!
+            this.dotStreakCount = Math.min(MAX_DOT_STREAK, param);
           } else {
-            this.dotStreakCount = 1;
+            if (this.lastDotTime > 0) {
+              const pause = now - this.lastDotTime;
+              if (pause < effectiveGrace) {
+                this.dotStreakCount = Math.min(MAX_DOT_STREAK, this.dotStreakCount + 1);
+              } else {
+                const lostSteps = Math.floor((pause - effectiveGrace) / effectiveDecayStep);
+                this.dotStreakCount = Math.max(0, this.dotStreakCount - lostSteps);
+                this.dotStreakCount = Math.min(MAX_DOT_STREAK, this.dotStreakCount + 1);
+              }
+            } else {
+              this.dotStreakCount = 1;
+            }
           }
           this.lastDotTime = now;
 
-          // Smooth microtonal exponential curve from 320 Hz up to ~785 Hz (+1.28 octaves)
-          const progress = this.dotStreakCount / MAX_DOT_STREAK;
+          // Smooth microtonal exponential curve from 320 Hz up to ~784 Hz (+1.28 octaves over 180 dots)
+          const progress = Math.min(1.0, this.dotStreakCount / MAX_DOT_STREAK);
           const baseFreq = 320 * Math.pow(2.45, progress);
 
           // Subtle alternating harmonic waka-waka oscillation (~5.5% modulation)
           const altMultiplier = (this.dotStreakCount % 2 === 1) ? 1.055 : 1.0;
           let freq = baseFreq * altMultiplier;
+
+          // Electric shimmer vibrato if at or above God Mode peak (>= 180 dots)
+          if (this.dotStreakCount >= MAX_DOT_STREAK) {
+            const shimmer = 1.0 + Math.sin(t * 30) * 0.022;
+            freq *= shimmer;
+          }
 
           // Slow-motion downpitching if Chrono Shift / Bullet Time is engaged
           if (this.isChronoActive) {
@@ -112,7 +126,7 @@ class SoundManager {
           }
 
           // Equal-loudness compensation: slightly lower gain at high frequencies to maintain pleasant ear balance
-          const gainVal = Math.max(0.045, 0.065 - progress * 0.018);
+          const gainVal = Math.max(0.042, 0.065 - progress * 0.020);
           const duration = this.isChronoActive ? 0.075 : 0.048;
 
           const osc = this.actx.createOscillator();

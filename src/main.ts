@@ -127,7 +127,7 @@ class Game {
       modal.style.display = 'none';
       this.leaderboardMode = this.pendingMode;
       this.state = 'leaderboard';
-      sounds.play('dot');
+      sounds.play('click');
     };
 
     submit.addEventListener('click', save);
@@ -1474,7 +1474,7 @@ class Game {
         // Floating +XXX score popup above eaten dot!
         particles.addPop(px, py - 10, '+' + pts, CC[tier], 10 + tier * 2);
         particles.emit(px, py, 2 + tier * 2, C_DOT, { speed: 40 + tier * 20, size: 2 + tier, life: 0.3 + tier * 0.1 });
-        sounds.play('dot');
+        sounds.play('dot', this.combo.n);
 
         if (this.combo.m > oldM && this.combo.m > 1) {
           this.triggerComboStep(tier, px, py);
@@ -1988,6 +1988,7 @@ class Game {
             this.combo.n = 0;
             this.combo.m = 1;
             this.combo.t = 0;
+            sounds.resetDotStreak();
             if (wasGod) {
               const pp = this.player.getPos();
               particles.addPop(pp.x, pp.y - 20, 'FIN DU MODE x32', '#8899aa', 14);

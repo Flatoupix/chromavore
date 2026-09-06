@@ -80,8 +80,8 @@ export const BONUS_FORCE_FIELD_MAX_RAD = 115; // Massive singularity radius at c
 export const BONUS_ARENA_W = 860;
 export const BONUS_ARENA_H = 920;
 
-// Combo settings: Clear progression with distinct x4, x8, x16, and x32
-export const CT = [0, 6, 16, 36, 68, 100];
+// Combo settings: Clear progression with distinct x4, x8, x16, and extended 95-dot x16 gauntlet to reach x32 (180 dots)
+export const CT = [0, 8, 22, 48, 85, 180];
 export const CM = [1, 2, 4, 8, 16, 32];
 export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff00aa', '#00ffff'];
 export const COMBO_DECAY = 2.0; // Strictly 2.0s between pellets
