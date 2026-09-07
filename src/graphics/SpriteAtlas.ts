@@ -361,6 +361,7 @@ export class SpriteAtlas {
     this.iconSprites.set('magnet', this.createMagnetIcon());
     this.iconSprites.set('audio_on', this.createAudioOnIcon());
     this.iconSprites.set('audio_off', this.createAudioOffIcon());
+    this.iconSprites.set('music', this.createMusicIcon());
     this.iconSprites.set('warning', this.createWarningIcon());
     this.iconSprites.set('rocket', this.createRocketIcon());
     this.iconSprites.set('shield', this.createShieldIcon());
@@ -1002,6 +1003,31 @@ export class SpriteAtlas {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(cx - 7, cy - 2, 2, 4);
     ctx.fillRect(cx + 2, cy - 2, 2, 4);
+
+    return c;
+  }
+
+  // 21b. Music Notes : Neon double eighth note (♪ ♫)
+  private createMusicIcon(): HTMLCanvasElement {
+    const s = 32;
+    const c = document.createElement('canvas');
+    c.width = s; c.height = s;
+    const ctx = c.getContext('2d')!;
+    const cx = 16, cy = 16;
+
+    // Double eighth note with beam
+    ctx.fillStyle = '#ff00aa'; // Neon magenta
+    ctx.fillRect(cx - 7, cy + 3, 5, 4);
+    ctx.fillRect(cx + 2, cy + 1, 5, 4);
+    ctx.fillRect(cx - 3, cy - 6, 2, 10);
+    ctx.fillRect(cx + 6, cy - 8, 2, 10);
+    ctx.fillRect(cx - 3, cy - 7, 11, 3);
+
+    // Cyan highlights
+    ctx.fillStyle = '#00ffff';
+    ctx.fillRect(cx - 6, cy + 4, 2, 2);
+    ctx.fillRect(cx + 3, cy + 2, 2, 2);
+    ctx.fillRect(cx - 2, cy - 7, 9, 1);
 
     return c;
   }

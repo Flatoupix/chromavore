@@ -35,6 +35,7 @@ export const BADGES: Record<string, BadgeDef> = {
   kills2000:    { id: 'kills2000',    name: 'SUPER PASTILLE',       desc: 'Atteindre 2 000 spectres (Effraie aussi les renforts)', icon: 'super_pellet', category: 'kill', killsRequired: 2000 },
   kills2400:    { id: 'kills2400',    name: 'GIGA EMP V2',          desc: 'Atteindre 2 400 spectres (Débloque Giga EMP V2)',     icon: 'wiggle', category: 'kill', killsRequired: 2400 },
   kills2800:    { id: 'kills2800',    name: 'QUANTUM DILATION V2',  desc: 'Atteindre 2 800 spectres (Débloque TimeShift V2)',  icon: 'chrono', category: 'kill', killsRequired: 2800 },
+  kills3000:    { id: 'kills3000',    name: 'OST HD DARKSYNTH',     desc: 'Atteindre 3 000 spectres (Débloque la bande-son HD Studio)', icon: 'music', category: 'kill', killsRequired: 3000 },
   kills3300:    { id: 'kills3300',    name: 'PLASMA BURNER V2',     desc: 'Atteindre 3 300 spectres (Débloque Flammes V2)',      icon: 'nitro', category: 'kill', killsRequired: 3300 },
   kills3900:    { id: 'kills3900',    name: 'SUPERNOVA V2',         desc: 'Atteindre 3 900 spectres (Débloque Supernova V2)',  icon: 'nova', category: 'kill', killsRequired: 3900 },
   kills4500:    { id: 'kills4500',    name: 'HYPER DASH V3',        desc: 'Atteindre 4 500 spectres (Dash de 5 cases)',         icon: 'dash', category: 'kill', killsRequired: 4500 },

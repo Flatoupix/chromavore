@@ -13,6 +13,15 @@ class SoundManager {
   private isChronoActive: boolean = false;
   private lastKillSfxTime: number = 0;
 
+  // HD Audio System (Unlocked at 3000 kills)
+  private hdTracks: Record<'normal' | 'madness' | 'god', HTMLAudioElement> | null = null;
+  private hdSources: Record<'normal' | 'madness' | 'god', { source: MediaElementAudioSourceNode; gain: GainNode }> | null = null;
+  private hdBgmFilter: BiquadFilterNode | null = null;
+  private hdBgmMasterGain: GainNode | null = null;
+  private currentHdTrack: 'normal' | 'madness' | 'god' | null = null;
+  private isHdInitialized: boolean = false;
+  private isHdPlaying: boolean = false;
+
   constructor() {
     this.muted = localStorage.getItem('chv_muted') === 'true';
   }
@@ -21,6 +30,18 @@ class SoundManager {
     if (this.isChronoActive === active) return;
     this.isChronoActive = active;
     this.play(active ? 'chrono_on' : 'chrono_off');
+
+    // Dynamic lowpass filter and slight tape slowdown for active HD track
+    if (this.actx && this.hdBgmFilter) {
+      const targetFreq = active ? 420 : 20000;
+      this.hdBgmFilter.frequency.setTargetAtTime(targetFreq, this.actx.currentTime, 0.08);
+    }
+    if (this.hdTracks && this.currentHdTrack) {
+      const audio = this.hdTracks[this.currentHdTrack];
+      if (audio) {
+        audio.playbackRate = active ? 0.82 : 1.0;
+      }
+    }
   }
 
   public resetDotStreak() {
@@ -49,6 +70,15 @@ class SoundManager {
     try {
       localStorage.setItem('chv_muted', this.muted ? 'true' : 'false');
     } catch {}
+
+    if (this.hdBgmMasterGain && this.actx) {
+      this.hdBgmMasterGain.gain.setValueAtTime(this.muted ? 0 : 0.65, this.actx.currentTime);
+    } else if (this.hdTracks) {
+      Object.values(this.hdTracks).forEach(a => {
+        a.muted = this.muted;
+      });
+    }
+
     if (!this.muted) {
       this.play('dot');
     }
@@ -392,9 +422,159 @@ class SoundManager {
     } catch {}
   }
 
-  public updateBGM(dt: number, isPlaying: boolean, is32xGod: boolean = false, isMadness: boolean = false) {
-    if (this.muted || !isPlaying) return;
+  private initHDMusic() {
+    if (this.isHdInitialized || typeof window === 'undefined') return;
+    this.isHdInitialized = true;
+
+    try {
+      const normal = new Audio('/audio/bgm_normal.mp3');
+      const madness = new Audio('/audio/bgm_madness.mp3');
+      const god = new Audio('/audio/bgm_god.mp3');
+
+      [normal, madness, god].forEach(a => {
+        a.loop = true;
+        a.preload = 'auto';
+        (a as any).playsInline = true;
+      });
+
+      this.hdTracks = { normal, madness, god };
+      if (this.actx) {
+        this.setupHdNodes();
+      }
+    } catch (e) {
+      console.warn('[SoundManager] Failed to init HD audio', e);
+    }
+  }
+
+  private setupHdNodes() {
+    if (!this.actx || !this.hdTracks || this.hdSources) return;
+
+    try {
+      this.hdBgmMasterGain = this.actx.createGain();
+      this.hdBgmMasterGain.gain.setValueAtTime(this.muted ? 0 : 0.65, this.actx.currentTime);
+
+      this.hdBgmFilter = this.actx.createBiquadFilter();
+      this.hdBgmFilter.type = 'lowpass';
+      this.hdBgmFilter.frequency.setValueAtTime(this.isChronoActive ? 420 : 20000, this.actx.currentTime);
+
+      this.hdBgmMasterGain.connect(this.hdBgmFilter);
+      this.hdBgmFilter.connect(this.actx.destination);
+
+      const sources: any = {};
+      const keys: ('normal' | 'madness' | 'god')[] = ['normal', 'madness', 'god'];
+      for (const k of keys) {
+        const audio = this.hdTracks[k];
+        const source = this.actx.createMediaElementSource(audio);
+        const gain = this.actx.createGain();
+        gain.gain.setValueAtTime(0, this.actx.currentTime);
+        source.connect(gain);
+        gain.connect(this.hdBgmMasterGain);
+        sources[k] = { source, gain };
+      }
+      this.hdSources = sources;
+    } catch (e) {
+      this.hdSources = null;
+    }
+  }
+
+  private updateHDMusic(isPlaying: boolean, is32xGod: boolean, isMadness: boolean) {
+    this.initHDMusic();
+    if (!this.hdTracks) return;
+    if (this.actx && !this.hdSources) {
+      this.setupHdNodes();
+    }
+
+    if (!isPlaying || this.muted) {
+      if (this.isHdPlaying) {
+        if (this.hdBgmMasterGain && this.actx) {
+          this.hdBgmMasterGain.gain.setTargetAtTime(0, this.actx.currentTime, 0.1);
+        } else {
+          Object.values(this.hdTracks).forEach(a => a.pause());
+        }
+        this.isHdPlaying = false;
+      }
+      return;
+    }
+
+    const targetTrack: 'normal' | 'madness' | 'god' = is32xGod ? 'god' : (isMadness ? 'madness' : 'normal');
+
+    if (!this.isHdPlaying) {
+      if (this.hdBgmMasterGain && this.actx) {
+        this.hdBgmMasterGain.gain.setTargetAtTime(0.65, this.actx.currentTime, 0.1);
+      }
+      this.isHdPlaying = true;
+    }
+
+    if (this.currentHdTrack !== targetTrack) {
+      const prevTrack = this.currentHdTrack;
+      this.currentHdTrack = targetTrack;
+      const t = this.actx ? this.actx.currentTime : 0;
+
+      const newAudio = this.hdTracks[targetTrack];
+      newAudio.playbackRate = this.isChronoActive ? 0.82 : 1.0;
+      if (targetTrack === 'god') {
+        newAudio.currentTime = 0; // Immediate drop on god mode activation!
+      }
+      newAudio.play().catch(() => {});
+
+      if (this.hdSources && this.actx) {
+        if (prevTrack && this.hdSources[prevTrack]) {
+          this.hdSources[prevTrack].gain.gain.setTargetAtTime(0, t, 0.15);
+          setTimeout(() => {
+            if (this.currentHdTrack !== prevTrack && this.hdTracks) {
+              this.hdTracks[prevTrack].pause();
+            }
+          }, 350);
+        }
+        this.hdSources[targetTrack].gain.gain.setTargetAtTime(1.0, t, 0.15);
+      } else {
+        if (prevTrack && this.hdTracks[prevTrack]) {
+          this.hdTracks[prevTrack].pause();
+        }
+        newAudio.volume = this.muted ? 0 : 0.65;
+      }
+    }
+  }
+
+  private stopHDMusic() {
+    if (!this.hdTracks) return;
+    this.isHdPlaying = false;
+    this.currentHdTrack = null;
+    if (this.hdSources && this.actx) {
+      const t = this.actx.currentTime;
+      for (const k of ['normal', 'madness', 'god'] as const) {
+        this.hdSources[k].gain.gain.setValueAtTime(0, t);
+      }
+    }
+    Object.values(this.hdTracks).forEach(a => {
+      a.pause();
+    });
+  }
+
+  public updateBGM(
+    dt: number,
+    isPlaying: boolean,
+    is32xGod: boolean = false,
+    isMadness: boolean = false,
+    isHDUnlocked: boolean = false
+  ) {
+    if (this.muted || !isPlaying) {
+      if (this.isHdPlaying) {
+        this.updateHDMusic(false, is32xGod, isMadness);
+      }
+      return;
+    }
     this.initCtx();
+
+    if (isHDUnlocked) {
+      this.updateHDMusic(isPlaying, is32xGod, isMadness);
+      return;
+    }
+
+    if (this.isHdPlaying) {
+      this.stopHDMusic();
+    }
+
     if (!this.actx) return;
 
     this.bgmTime += dt;

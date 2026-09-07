@@ -177,6 +177,17 @@ export const SKILL_TREE: SkillDef[] = [
     desc: 'Ralentissement extrême à 12%, jauge 150% et régénération passive accélérée'
   },
   {
+    id: 'hd_audio',
+    baseId: 'audio',
+    version: 1,
+    name: 'OST HD DARKSYNTH',
+    icon: 'music',
+    threshold: 3000,
+    category: 'item',
+    command: 'AUTOMATIQUE (3 000 FRAGS)',
+    desc: 'Métamorphose sonore : débloque la bande-son HD Studio Dark Synthwave complète'
+  },
+  {
     id: 'nitro_v2',
     baseId: 'nitro',
     version: 2,
