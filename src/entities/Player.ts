@@ -288,7 +288,8 @@ export class Player {
     const dashLvl = progression.getSkillLevel('dash');
     if (dashLvl === 0) {
       const pp = this.getPos();
-      particles.addPop(pp.x, pp.y - 20, 'DASH DÉBLOQUÉ À 10 SPECTRES', '#ffaa00', 12);
+      const thresh = progression.SKILL_TREE.find(s => s.id === 'dash_v1')?.threshold || 35;
+      particles.addPop(pp.x, pp.y - 20, `DASH DÉBLOQUÉ À ${thresh} SPECTRES`, '#ffaa00', 13);
       return false;
     }
 

@@ -7,6 +7,7 @@ import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { profileManager } from './ProfileManager';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
+import { wobbleBanner } from '../graphics/WobbleBanner';
 
 export interface BadgeDef {
   id: string;
@@ -20,29 +21,29 @@ export interface BadgeDef {
 export const BADGES: Record<string, BadgeDef> = {
   // === PALIERS DE DÉVORATION (Alignés rigoureusement avec chaque palier de compétence) ===
   firstBlood:   { id: 'firstBlood',   name: 'PREMIER SANG',         desc: 'Dévorer 1 spectre dans votre carrière',              icon: 'skull', category: 'kill', killsRequired: 1 },
-  kills10:      { id: 'kills10',      name: 'DASH OFFENSIF',        desc: 'Atteindre 10 spectres (Débloque Dash V1)',           icon: 'dash', category: 'kill', killsRequired: 10 },
-  kills30:      { id: 'kills30',      name: 'ONDE WIGGLE',          desc: 'Atteindre 30 spectres (Débloque Wiggle EMP V1)',    icon: 'wiggle', category: 'kill', killsRequired: 30 },
-  kills50:      { id: 'kills50',      name: 'CHRONO SHIFT',         desc: 'Atteindre 50 spectres (Débloque TimeShift V1)',     icon: 'chrono', category: 'kill', killsRequired: 50 },
-  kills75:      { id: 'kills75',      name: 'NITRO JET',            desc: 'Atteindre 75 spectres (Débloque Nitro Jet V1)',     icon: 'nitro', category: 'kill', killsRequired: 75 },
-  kills150:     { id: 'kills150',     name: 'MÉGA NOVA',            desc: 'Atteindre 150 spectres (Débloque Mega Nova V1)',    icon: 'nova', category: 'kill', killsRequired: 150 },
-  kills250:     { id: 'kills250',     name: 'DASH INFINI',          desc: 'Atteindre 250 spectres (Débloque Dash Infini V1)',  icon: 'overdrive', category: 'kill', killsRequired: 250 },
-  kills400:     { id: 'kills400',     name: 'TROU NOIR',            desc: 'Atteindre 400 spectres (Débloque Black Hole V1)',   icon: 'black_hole', category: 'kill', killsRequired: 400 },
-  kills600:     { id: 'kills600',     name: 'HYPER BEAMS',          desc: 'Atteindre 600 spectres (Débloque Canons Lasers V1)', icon: 'laser', category: 'kill', killsRequired: 600 },
-  kills800:     { id: 'kills800',     name: 'CRYO SHATTER',         desc: 'Atteindre 800 spectres (Débloque Gel V1)',          icon: 'cryo', category: 'kill', killsRequired: 800 },
-  kills1000:    { id: 'kills1000',    name: 'LIGHT TSUNAMI',        desc: 'Atteindre 1 000 spectres (Débloque Vague Royale V1)', icon: 'tsunami', category: 'kill', killsRequired: 1000 },
-  kills1200:    { id: 'kills1200',    name: 'CYBER DASH V2',        desc: 'Atteindre 1 200 spectres (Mode 16:9 & Dash 4 cases)',  icon: 'screen', category: 'kill', killsRequired: 1200 },
-  kills1400:    { id: 'kills1400',    name: 'SUPER PASTILLE',       desc: 'Atteindre 1 400 spectres (Effraie aussi les renforts)', icon: 'nova', category: 'kill', killsRequired: 1400 },
-  kills1500:    { id: 'kills1500',    name: 'GIGA EMP V2',          desc: 'Atteindre 1 500 spectres (Débloque Giga EMP V2)',     icon: 'wiggle', category: 'kill', killsRequired: 1500 },
-  kills1800:    { id: 'kills1800',    name: 'QUANTUM DILATION V2',  desc: 'Atteindre 1 800 spectres (Débloque TimeShift V2)',  icon: 'chrono', category: 'kill', killsRequired: 1800 },
-  kills2100:    { id: 'kills2100',    name: 'PLASMA BURNER V2',     desc: 'Atteindre 2 100 spectres (Débloque Flammes V2)',      icon: 'nitro', category: 'kill', killsRequired: 2100 },
-  kills2600:    { id: 'kills2600',    name: 'SUPERNOVA V2',         desc: 'Atteindre 2 600 spectres (Débloque Supernova V2)',  icon: 'nova', category: 'kill', killsRequired: 2600 },
-  kills2800:    { id: 'kills2800',    name: 'HYPER DASH V3',        desc: 'Atteindre 2 800 spectres (Dash de 5 cases)',         icon: 'dash', category: 'kill', killsRequired: 2800 },
-  kills3200:    { id: 'kills3200',    name: 'CHRONO DRIVE V2',      desc: 'Atteindre 3 200 spectres (Débloque Overdrive V2)',  icon: 'overdrive', category: 'kill', killsRequired: 3200 },
-  kills3900:    { id: 'kills3900',    name: 'DARK MATTER V2',       desc: 'Atteindre 3 900 spectres (Débloque Vortex V2)',     icon: 'black_hole', category: 'kill', killsRequired: 3900 },
-  kills4700:    { id: 'kills4700',    name: 'OCTO BEAMS V2',        desc: 'Atteindre 4 700 spectres (Débloque Lasers V2)',     icon: 'laser', category: 'kill', killsRequired: 4700 },
-  kills5000:    { id: 'kills5000',    name: 'QUANTUM DASH V4',      desc: 'Atteindre 5 000 spectres (Dash de 6 cases)',         icon: 'dash', category: 'kill', killsRequired: 5000 },
-  kills5600:    { id: 'kills5600',    name: 'ZÉRO ABSOLU V2',       desc: 'Atteindre 5 600 spectres (Débloque Cryo V2)',       icon: 'cryo', category: 'kill', killsRequired: 5600 },
-  kills6500:    { id: 'kills6500',    name: 'ÉCLIPSE SOLAIRE V2',   desc: 'Atteindre 6 500 spectres (Arsenal 100% Maîtrisé)',  icon: 'tsunami', category: 'kill', killsRequired: 6500 },
+  kills35:      { id: 'kills35',      name: 'DASH OFFENSIF',        desc: 'Atteindre 35 spectres (Débloque Dash V1)',           icon: 'dash', category: 'kill', killsRequired: 35 },
+  kills75:      { id: 'kills75',      name: 'MÉGA NOVA',            desc: 'Atteindre 75 spectres (Débloque Mega Nova V1)',    icon: 'nova', category: 'kill', killsRequired: 75 },
+  kills120:     { id: 'kills120',     name: 'ONDE WIGGLE',          desc: 'Atteindre 120 spectres (Débloque Wiggle EMP V1)',    icon: 'wiggle', category: 'kill', killsRequired: 120 },
+  kills180:     { id: 'kills180',     name: 'CHRONO SHIFT',         desc: 'Atteindre 180 spectres (Débloque TimeShift V1)',     icon: 'chrono', category: 'kill', killsRequired: 180 },
+  kills260:     { id: 'kills260',     name: 'DASH INFINI',          desc: 'Atteindre 260 spectres (Débloque Dash Infini V1)',  icon: 'overdrive', category: 'kill', killsRequired: 260 },
+  kills360:     { id: 'kills360',     name: 'NITRO JET',            desc: 'Atteindre 360 spectres (Débloque Nitro Jet V1)',     icon: 'nitro', category: 'kill', killsRequired: 360 },
+  kills500:     { id: 'kills500',     name: 'TROU NOIR',            desc: 'Atteindre 500 spectres (Débloque Black Hole V1)',   icon: 'black_hole', category: 'kill', killsRequired: 500 },
+  kills700:     { id: 'kills700',     name: 'HYPER BEAMS',          desc: 'Atteindre 700 spectres (Débloque Canons Lasers V1)', icon: 'laser', category: 'kill', killsRequired: 700 },
+  kills950:     { id: 'kills950',     name: 'CRYO SHATTER',         desc: 'Atteindre 950 spectres (Débloque Gel V1)',          icon: 'cryo', category: 'kill', killsRequired: 950 },
+  kills1250:    { id: 'kills1250',    name: 'LIGHT TSUNAMI',        desc: 'Atteindre 1 250 spectres (Débloque Vague Royale V1)', icon: 'tsunami', category: 'kill', killsRequired: 1250 },
+  kills1600:    { id: 'kills1600',    name: 'CYBER DASH V2',        desc: 'Atteindre 1 600 spectres (Mode 16:9 & Dash 4 cases)',  icon: 'screen', category: 'kill', killsRequired: 1600 },
+  kills2000:    { id: 'kills2000',    name: 'SUPER PASTILLE',       desc: 'Atteindre 2 000 spectres (Effraie aussi les renforts)', icon: 'super_pellet', category: 'kill', killsRequired: 2000 },
+  kills2400:    { id: 'kills2400',    name: 'GIGA EMP V2',          desc: 'Atteindre 2 400 spectres (Débloque Giga EMP V2)',     icon: 'wiggle', category: 'kill', killsRequired: 2400 },
+  kills2800:    { id: 'kills2800',    name: 'QUANTUM DILATION V2',  desc: 'Atteindre 2 800 spectres (Débloque TimeShift V2)',  icon: 'chrono', category: 'kill', killsRequired: 2800 },
+  kills3300:    { id: 'kills3300',    name: 'PLASMA BURNER V2',     desc: 'Atteindre 3 300 spectres (Débloque Flammes V2)',      icon: 'nitro', category: 'kill', killsRequired: 3300 },
+  kills3900:    { id: 'kills3900',    name: 'SUPERNOVA V2',         desc: 'Atteindre 3 900 spectres (Débloque Supernova V2)',  icon: 'nova', category: 'kill', killsRequired: 3900 },
+  kills4500:    { id: 'kills4500',    name: 'HYPER DASH V3',        desc: 'Atteindre 4 500 spectres (Dash de 5 cases)',         icon: 'dash', category: 'kill', killsRequired: 4500 },
+  kills5200:    { id: 'kills5200',    name: 'CHRONO DRIVE V2',      desc: 'Atteindre 5 200 spectres (Débloque Overdrive V2)',  icon: 'overdrive', category: 'kill', killsRequired: 5200 },
+  kills6000:    { id: 'kills6000',    name: 'DARK MATTER V2',       desc: 'Atteindre 6 000 spectres (Débloque Vortex V2)',     icon: 'black_hole', category: 'kill', killsRequired: 6000 },
+  kills7000:    { id: 'kills7000',    name: 'OCTO BEAMS V2',        desc: 'Atteindre 7 000 spectres (Débloque Lasers V2)',     icon: 'laser', category: 'kill', killsRequired: 7000 },
+  kills8000:    { id: 'kills8000',    name: 'QUANTUM DASH V4',      desc: 'Atteindre 8 000 spectres (Dash de 6 cases)',         icon: 'dash', category: 'kill', killsRequired: 8000 },
+  kills9000:    { id: 'kills9000',    name: 'ZÉRO ABSOLU V2',       desc: 'Atteindre 9 000 spectres (Débloque Cryo V2)',       icon: 'cryo', category: 'kill', killsRequired: 9000 },
+  kills10000:   { id: 'kills10000',   name: 'ÉCLIPSE SOLAIRE V2',   desc: 'Atteindre 10 000 spectres (Arsenal 100% Maîtrisé)',  icon: 'tsunami', category: 'kill', killsRequired: 10000 },
 
   // === EXPLOITS DE MAÎTRISE & GAMEPLAY ===
   ghostHunter:  { id: 'ghostHunter',  name: 'CHASSE ROYALE',        desc: 'Dévorer 4 fantômes durant une seule chasse',        icon: 'spectre', category: 'feat' },
@@ -124,8 +125,9 @@ export class BadgeManager {
 
     this.banner = { text: BADGES[id].name, icon: BADGES[id].icon, life: 3.2, ml: 3.2 };
     sounds.play('badge');
-    particles.addPop(this.currentCw / 2, HUD_H + 36, 'SUCCÈS : ' + BADGES[id].name, '#ffd700', 17);
+    wobbleBanner.show('★ SUCCÈS DÉBLOQUÉ ★', BADGES[id].name, BADGES[id].desc, BADGES[id].icon, '#ffd700', 2.2);
     particles.flash('#ffd700', 0.25);
+    particles.shake(5, 0.18);
   }
 
   public saveScore(score: number): boolean {

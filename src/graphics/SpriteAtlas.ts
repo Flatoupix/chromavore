@@ -366,6 +366,9 @@ export class SpriteAtlas {
     this.iconSprites.set('shield', this.createShieldIcon());
     this.iconSprites.set('screen', this.createScreenIcon());
     this.iconSprites.set('nearmiss', this.createNearMissIcon());
+    this.iconSprites.set('timewarp', this.createTimeWarpIcon());
+    this.iconSprites.set('phase', this.createPhaseIcon());
+    this.iconSprites.set('super_pellet', this.createSuperPelletIcon());
   }
 
   // 1. Void Relic  : Dark cosmic rhomboid core with radiant crimson neon diamond pikes
@@ -1146,6 +1149,110 @@ export class SpriteAtlas {
 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(cx - 1, cy - 1, 2, 2);
+
+    return c;
+  }
+
+  // 28. Time Warp : Cybernetic hourglass with glowing chrono grains
+  private createTimeWarpIcon(): HTMLCanvasElement {
+    const s = 32;
+    const c = document.createElement('canvas');
+    c.width = s; c.height = s;
+    const ctx = c.getContext('2d')!;
+    const cx = 16, cy = 16;
+
+    // Outer neon cyan chrome casing
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(cx - 9, cy - 11, 18, 3);
+    ctx.fillRect(cx - 9, cy + 8, 18, 3);
+    ctx.fillRect(cx - 8, cy - 8, 3, 16);
+    ctx.fillRect(cx + 5, cy - 8, 3, 16);
+
+    // Dark interior glass
+    ctx.fillStyle = '#081220';
+    ctx.fillRect(cx - 5, cy - 8, 10, 16);
+
+    // Upper sand chamber (Emerald / Cyan energy)
+    ctx.fillStyle = '#00ffaa';
+    ctx.fillRect(cx - 4, cy - 7, 8, 3);
+    ctx.fillRect(cx - 3, cy - 4, 6, 2);
+    ctx.fillRect(cx - 1, cy - 2, 2, 2);
+
+    // Falling trickle stream
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 1, cy, 2, 2);
+
+    // Lower accumulating sand mound (Golden stardust)
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(cx - 2, cy + 3, 4, 2);
+    ctx.fillRect(cx - 4, cy + 5, 8, 3);
+
+    return c;
+  }
+
+  // 29. Phase Shift : Quantum holographic phased shield with ghosted silhouette
+  private createPhaseIcon(): HTMLCanvasElement {
+    const s = 32;
+    const c = document.createElement('canvas');
+    c.width = s; c.height = s;
+    const ctx = c.getContext('2d')!;
+    const cx = 16, cy = 16;
+
+    // Holographic outer shield frame (Cyan & Magenta dashed)
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(cx - 8, cy - 10, 16, 2);
+    ctx.fillRect(cx - 10, cy - 8, 2, 10);
+    ctx.fillRect(cx + 8, cy - 8, 2, 10);
+    ctx.fillRect(cx - 9, cy + 2, 4, 4);
+    ctx.fillRect(cx + 5, cy + 2, 4, 4);
+    ctx.fillRect(cx - 5, cy + 6, 10, 3);
+    ctx.fillRect(cx - 2, cy + 9, 4, 2);
+
+    // Phased silhouette (Quantum ripple)
+    ctx.fillStyle = '#d946ef';
+    ctx.fillRect(cx - 5, cy - 6, 10, 7);
+    ctx.fillRect(cx - 3, cy + 1, 6, 4);
+
+    // Specular energy phase spark
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 2, cy - 4, 4, 2);
+    ctx.fillRect(cx - 1, cy - 1, 2, 2);
+
+    return c;
+  }
+
+  // 30. Super Pellet : High-energy cyber power sphere with lightning core
+  private createSuperPelletIcon(): HTMLCanvasElement {
+    const s = 32;
+    const c = document.createElement('canvas');
+    c.width = s; c.height = s;
+    const ctx = c.getContext('2d')!;
+    const cx = 16, cy = 16;
+
+    // Glowing golden outer corona
+    ctx.fillStyle = '#ff8800';
+    ctx.fillRect(cx - 8, cy - 4, 16, 8);
+    ctx.fillRect(cx - 4, cy - 8, 8, 16);
+    ctx.fillRect(cx - 6, cy - 6, 12, 12);
+
+    // Radiant core
+    ctx.fillStyle = '#ffd700';
+    ctx.fillRect(cx - 5, cy - 5, 10, 10);
+    ctx.fillRect(cx - 7, cy - 2, 14, 4);
+    ctx.fillRect(cx - 2, cy - 7, 4, 14);
+
+    // Blazing white electric core
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - 3, cy - 3, 6, 6);
+    ctx.fillRect(cx - 1, cy - 5, 2, 10);
+    ctx.fillRect(cx - 5, cy - 1, 10, 2);
+
+    // Cardinal micro-sparks
+    ctx.fillStyle = '#00ffff';
+    ctx.fillRect(cx - 1, cy - 9, 2, 1);
+    ctx.fillRect(cx - 1, cy + 8, 2, 1);
+    ctx.fillRect(cx - 9, cy - 1, 1, 2);
+    ctx.fillRect(cx + 8, cy - 1, 1, 2);
 
     return c;
   }

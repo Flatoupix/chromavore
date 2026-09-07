@@ -7,6 +7,7 @@ import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { CW, ROWS, T } from '../config/constants';
 import { badges } from './BadgeSystem';
+import { wobbleBanner } from '../graphics/WobbleBanner';
 
 export interface SkillDef {
   id: string;             // e.g. 'dash_v1' to 'dash_v4'
@@ -27,10 +28,21 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'DASH OFFENSIF',
     icon: 'dash',
-    threshold: 10,
+    threshold: 35,
     category: 'movement',
     command: 'ESPACE ou BOUTON DASH',
     desc: 'Téléportation offensive de 3 cases à travers les fantômes avec taillade'
+  },
+  {
+    id: 'nova_v1',
+    baseId: 'nova',
+    version: 1,
+    name: 'MEGA NOVA',
+    icon: 'nova',
+    threshold: 75,
+    category: 'item',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
+    desc: 'Explosion thermo-nucléaire qui purge instantanément tous les fantômes'
   },
   {
     id: 'wiggle_v1',
@@ -38,7 +50,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'WIGGLE EMP',
     icon: 'wiggle',
-    threshold: 30,
+    threshold: 120,
     category: 'kombo',
     command: '← → ← → (Wiggle)',
     desc: 'Onde de choc EMP qui repousse et étourdit les fantômes proches pendant 2.5s'
@@ -49,32 +61,10 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'CHRONO SHIFT',
     icon: 'chrono',
-    threshold: 50,
+    threshold: 180,
     category: 'movement',
     command: 'SHIFT ou BOUTON CHRONO',
     desc: 'Dilatation temporelle : ralentit le monde à 18% pour esquiver les essaims'
-  },
-  {
-    id: 'nitro_v1',
-    baseId: 'nitro',
-    version: 1,
-    name: 'NITRO JET',
-    icon: 'nitro',
-    threshold: 75,
-    category: 'kombo',
-    command: '↑ ↓ ↑ ↓ (Pompage)',
-    desc: 'Vitesse turbo accrue + traînée ardente brûlant les fantômes pendant 3.2s'
-  },
-  {
-    id: 'nova_v1',
-    baseId: 'nova',
-    version: 1,
-    name: 'MEGA NOVA',
-    icon: 'nova',
-    threshold: 150,
-    category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Explosion thermo-nucléaire qui purge instantanément tous les fantômes'
   },
   {
     id: 'overdrive_v1',
@@ -82,10 +72,21 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'DASH INFINI',
     icon: 'overdrive',
-    threshold: 250,
+    threshold: 260,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Dash illimité sans aucun temps de recharge pendant 8 secondes'
+  },
+  {
+    id: 'nitro_v1',
+    baseId: 'nitro',
+    version: 1,
+    name: 'NITRO JET',
+    icon: 'nitro',
+    threshold: 360,
+    category: 'kombo',
+    command: '↑ ↓ ↑ ↓ (Pompage)',
+    desc: 'Vitesse turbo accrue + traînée ardente brûlant les fantômes pendant 3.2s'
   },
   {
     id: 'vortex_v1',
@@ -93,7 +94,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'BLACK HOLE',
     icon: 'black_hole',
-    threshold: 400,
+    threshold: 500,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Vortex gravitationnel qui attire et désintègre tous les spectres'
@@ -104,7 +105,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'HYPER BEAMS',
     icon: 'laser',
-    threshold: 600,
+    threshold: 700,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Canons lasers cruciformes découpant les couloirs horizontaux et verticaux'
@@ -115,7 +116,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'CRYO SHATTER',
     icon: 'cryo',
-    threshold: 800,
+    threshold: 950,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Zéro absolu : gèle tous les spectres pour les briser au moindre contact'
@@ -126,7 +127,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'LIGHT TSUNAMI',
     icon: 'tsunami',
-    threshold: 1000,
+    threshold: 1250,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Vague royale sacrée balayant tout le labyrinthe + bonus de temps de survie'
@@ -137,7 +138,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'CYBER DASH V2',
     icon: 'dash',
-    threshold: 1200,
+    threshold: 1600,
     category: 'movement',
     command: 'ESPACE ou BOUTON DASH',
     desc: 'Portée 4 cases, recharge -25% et déblocage de l\'Arène Widescreen 16:9 !'
@@ -147,8 +148,8 @@ export const SKILL_TREE: SkillDef[] = [
     baseId: 'super_pellet',
     version: 1,
     name: 'SUPER PASTILLE',
-    icon: 'nova',
-    threshold: 1400,
+    icon: 'super_pellet',
+    threshold: 2000,
     category: 'item',
     command: 'AUTOMATIQUE SUR SUPER PASTILLE',
     desc: 'Les renforts qui arrivent pendant la peur sont eux aussi effrayés'
@@ -159,7 +160,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'GIGA EMP V2',
     icon: 'wiggle',
-    threshold: 1500,
+    threshold: 2400,
     category: 'kombo',
     command: '← → ← → (Wiggle)',
     desc: 'Rayon doublé (160px), étourdissement 4s et rend les fantômes vulnérables/mangeables'
@@ -170,7 +171,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'QUANTUM DILATION V2',
     icon: 'chrono',
-    threshold: 1800,
+    threshold: 2800,
     category: 'movement',
     command: 'SHIFT ou BOUTON CHRONO',
     desc: 'Ralentissement extrême à 12%, jauge 150% et régénération passive accélérée'
@@ -181,7 +182,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'PLASMA BURNER V2',
     icon: 'nitro',
-    threshold: 2100,
+    threshold: 3300,
     category: 'kombo',
     command: '↑ ↓ ↑ ↓ (Pompage)',
     desc: 'Vitesse turbo +20%, durée 4.5s et traînée de feu persistante au sol pendant 2.5s'
@@ -192,7 +193,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'SUPERNOVA V2',
     icon: 'nova',
-    threshold: 2600,
+    threshold: 3900,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Purge totale + pluie d\'orbes dorées bonus et multiplicateurs instantanés'
@@ -203,7 +204,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 3,
     name: 'HYPER DASH V3',
     icon: 'dash',
-    threshold: 2800,
+    threshold: 4500,
     category: 'movement',
     command: 'ESPACE ou BOUTON DASH',
     desc: 'Portée 5 cases : traverse les longues lignes du Swarm d\'un seul éclair'
@@ -214,7 +215,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'CHRONO OVERDRIVE V2',
     icon: 'overdrive',
-    threshold: 3200,
+    threshold: 5200,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Dash infini + invulnérabilité totale sans surchauffe pendant toute la durée'
@@ -225,7 +226,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'DARK MATTER V2',
     icon: 'black_hole',
-    threshold: 3900,
+    threshold: 6000,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Le trou noir aspire également toutes les pastilles et orbes de la zone'
@@ -236,7 +237,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'OCTO BEAMS V2',
     icon: 'laser',
-    threshold: 4700,
+    threshold: 7000,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Lasers à 8 directions (cruciformes + 4 diagonales) rasant intégralement la carte'
@@ -247,7 +248,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 4,
     name: 'QUANTUM DASH V4',
     icon: 'dash',
-    threshold: 5000,
+    threshold: 8000,
     category: 'movement',
     command: 'ESPACE ou BOUTON DASH',
     desc: 'Portée 6 cases : percée maximale à travers les essaims les plus denses'
@@ -258,7 +259,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'ABSOLUTE ZERO V2',
     icon: 'cryo',
-    threshold: 5600,
+    threshold: 9000,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Gèle tous les fantômes et les fait exploser en chaîne au bout de 3 secondes'
@@ -269,7 +270,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 2,
     name: 'SOLAR ECLIPSE V2',
     icon: 'tsunami',
-    threshold: 6500,
+    threshold: 10000,
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Double vague royale aller-retour + recharge instantanée de l\'arsenal (100% Maîtrisé)'
@@ -301,9 +302,9 @@ class ProgressionManager {
       if (prev < s.threshold && next >= s.threshold) {
         newlyUnlocked.push(s);
         sounds.play('badge');
-        particles.addPop(CW / 2, (ROWS * T) / 2, `${s.name} DÉBLOQUÉ !`, '#ffd700', 22);
-        particles.flash('#ffd700', 0.4);
-        particles.shake(8, 0.25);
+        wobbleBanner.show('★ NOUVEAU POUVOIR DÉBLOQUÉ ★', s.name, s.command, s.icon, '#00f0ff', 2.4);
+        particles.flash('#00f0ff', 0.35);
+        particles.shake(6, 0.2);
       }
     }
     return newlyUnlocked;

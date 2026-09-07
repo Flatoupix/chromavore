@@ -18,6 +18,7 @@ import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
 import { leaderboard } from './systems/Leaderboard';
 import { progression } from './systems/ProgressionSystem';
 import { profileManager } from './systems/ProfileManager';
+import { wobbleBanner } from './graphics/WobbleBanner';
 
 class Game {
   private canvas: HTMLCanvasElement;
@@ -1619,6 +1620,7 @@ class Game {
       this.gameMode === 'madness' || this.state === 'bonus'
     );
     badges.update(dt);
+    wobbleBanner.update(dt);
     particles.update(dt);
     this.syncTouchControls();
 
@@ -2155,6 +2157,8 @@ class Game {
         this.loopCount
       );
     }
+
+    wobbleBanner.draw(this.renderer.ctx, this.time);
   }
 
   private startLoop() {

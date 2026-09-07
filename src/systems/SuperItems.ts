@@ -7,6 +7,7 @@ import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { progression } from './ProgressionSystem';
 import { MazeManager } from '../levels/levels';
+import { spriteAtlas } from '../graphics/SpriteAtlas';
 
 export interface SuperItem {
   type: 'nova' | 'vortex' | 'laser' | 'cryo' | 'tsunami' | 'overdrive';
@@ -381,25 +382,55 @@ export class SuperItemManager {
     if (this.boardDrop) {
       const x = this.boardDrop.x * T + HALF;
       const y = this.boardDrop.y * T + HALF;
-      const pulse = 1 + Math.sin(time * 8) * 0.18;
+      const bobY = y + Math.sin(time * 5.0) * 3.5;
+      const pulse = 1 + Math.sin(time * 8) * 0.15;
       const warn = this.boardDrop.timer < 3;
       const colors: Record<string, string> = {
-        nova: '#ffd700', overdrive: '#00ffcc', vortex: '#bb44ff', laser: '#00ffff', cryo: '#aaffff', tsunami: '#ffffff'
+        nova: '#ffd700', overdrive: '#00ffcc', vortex: '#bb44ff', laser: '#ff0055', cryo: '#00f0ff', tsunami: '#ffffff'
       };
       const color = colors[this.boardDrop.item.type] || '#ffd700';
+
       c.save();
-      c.globalAlpha = warn && Math.sin(time * 12) < 0 ? 0.35 : 1;
-      c.fillStyle = 'rgba(5, 12, 24, 0.9)';
-      c.strokeStyle = color;
-      c.lineWidth = 2;
-      c.shadowColor = color;
-      c.shadowBlur = 20;
+      c.globalAlpha = warn && Math.sin(time * 14) < 0 ? 0.35 : 1;
+
+      // 1. Ground shadow on maze floor
+      c.fillStyle = 'rgba(0, 0, 0, 0.45)';
       c.beginPath();
-      c.arc(x, y, T * 0.52 * pulse, 0, PI2);
+      c.ellipse(x, y + 9, T * 0.38, T * 0.14, 0, 0, PI2);
+      c.fill();
+
+      // 2. Rotating retro arcade diamond frame
+      c.save();
+      c.translate(x, bobY);
+      c.rotate(time * 1.6);
+      c.strokeStyle = color;
+      c.lineWidth = 1.6;
+      c.shadowColor = color;
+      c.shadowBlur = 12;
+      const halfSize = T * 0.45 * pulse;
+      c.strokeRect(-halfSize, -halfSize, halfSize * 2, halfSize * 2);
+      c.restore();
+
+      // 3. Central glowing pedestal orb
+      c.fillStyle = 'rgba(5, 12, 24, 0.92)';
+      c.strokeStyle = color;
+      c.lineWidth = 2.2;
+      c.shadowColor = color;
+      c.shadowBlur = 22;
+      c.beginPath();
+      c.arc(x, bobY, T * 0.50 * pulse, 0, PI2);
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
-      spriteAtlas.drawIcon(c, this.boardDrop.item.icon, x, y, 22);
+
+      // 4. Crisp Retro Pixel-Art Icon
+      spriteAtlas.drawIcon(c, this.boardDrop.item.icon, x, bobY, 24);
+
+      // 5. Emitting micro sparkle
+      if (Math.random() < 0.15) {
+        particles.emit(x + (Math.random() - 0.5) * 14, bobY, 1, color, { speed: 18, size: 2, life: 0.35 });
+      }
+
       c.restore();
     }
 

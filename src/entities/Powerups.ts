@@ -148,15 +148,9 @@ export class PowerupManager {
     const careerKills = profileManager.profile.careerGhosts;
 
     // ─────────────────────────────────────────────────────────────
-    // CHANNEL 1: ACTION ITEMS (Nova, Overdrive, Timewarp, Phase)
+    // CHANNEL 1: ACTION ITEMS (Madness drops & active pickups)
     // ─────────────────────────────────────────────────────────────
-    if (!this.current) {
-      this.spawnTimer -= dt * (isMadness ? 2.0 : 1.0);
-      if (this.spawnTimer <= 0) {
-        this.spawnActionItem(isMadness, maze);
-        this.spawnTimer = isMadness ? 6.0 + Math.random() * 4.0 : 18.0 + Math.random() * 8.0;
-      }
-    } else {
+    if (this.current) {
       if (!maze.isWalkable(this.current.x, this.current.y, false) || maze.isInGhostHouse(this.current.x, this.current.y)) {
         const safe = maze.findNearestWalkable(this.current.x, this.current.y, false);
         this.current.x = safe.x;
