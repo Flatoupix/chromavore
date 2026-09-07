@@ -42,13 +42,17 @@ export class Player {
   public invuln: number = 2;
   public currentCols: number = COLS;
 
-  public addDotSpeed() {
-    // Each eaten dot ramps up speed (+0.04 up to +3.2 tiles/sec max)
+  public addDotSpeed(comboMultiplier: number = 1) {
+    // Strictly disabled in 4/3 version (early game)!
+    // Speed increase only arrives in 16/9 widescreen mode (cols > 21) after building combo (x2+)
+    if (this.currentCols <= 21) return;
+    if (comboMultiplier < 2) return;
     this.pelletSpeedBonus = Math.min(3.2, this.pelletSpeedBonus + 0.04);
   }
 
   public addSuperPelletBoost() {
-    // Super-pellet provides immediate high-octane speed surge
+    // Super-pellet speed surge is strictly disabled in 4/3 version!
+    if (this.currentCols <= 21) return;
     this.superPelletBoostTimer = 3.5;
     this.pelletSpeedBonus = Math.min(3.5, this.pelletSpeedBonus + 1.2);
   }
@@ -76,10 +80,16 @@ export class Player {
     this.st = 1;
     this.trail = [];
     this.pelletSpeedBonus = 0;
+    this.superPelletBoostTimer = 0;
     const isWide = maze ? maze.cols > 21 : false;
-    const progressionBoost = isWide ? 4.3 : Math.min(2.5, (progression.totalGhosts / 300) * 2.5);
-    const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
-    this.speed = (isMadness ? madnessCalculatedSpeed : P_SPEED) * speedMult;
+    if (!isWide) {
+      // In 4/3 version (early game), strictly authentic P_SPEED (no speed increase)
+      this.speed = P_SPEED * speedMult;
+    } else {
+      const progressionBoost = 4.3;
+      const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
+      this.speed = (isMadness ? madnessCalculatedSpeed : P_SPEED) * speedMult;
+    }
     this.invuln = 2.0;
     this.dashCd = 0;
     this.dashStreaks = [];
@@ -178,17 +188,25 @@ export class Player {
     this.st += (1 - this.st) * 0.12;
     this.sq += (1 - this.sq) * 0.12;
 
-    // Dynamic speed ramp: base speed + pellet eating bonus + super-pellet boost, scaled by combo & bullet time
-    if (this.superPelletBoostTimer > 0) this.superPelletBoostTimer -= dt * chronoScale;
-    if (this.pelletSpeedBonus > 0) {
-      this.pelletSpeedBonus = Math.max(0, this.pelletSpeedBonus - dt * 0.45 * chronoScale);
-    }
-    const pelletSurge = (this.superPelletBoostTimer > 0 ? 1.8 : 0) + this.pelletSpeedBonus;
+    // Dynamic speed ramp: strictly disabled in 4/3 version (early game)!
+    // In 4/3, speed increase is NOT possible (strictly authentic P_SPEED)
+    // Speed increase only arrives in 16/9 widescreen mode (cols > 21)
     const isWide = maze ? maze.cols > 21 : false;
-    const progressionBoost = isWide ? 4.3 : Math.min(2.5, (progression.totalGhosts / 300) * 2.5);
-    const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
-    const baseSpeed = isMadness ? (isNitro ? madnessCalculatedSpeed * 1.30 : madnessCalculatedSpeed) : P_SPEED;
-    this.speed = (baseSpeed + pelletSurge) * speedMult * chronoScale;
+    if (!isWide) {
+      this.pelletSpeedBonus = 0;
+      this.superPelletBoostTimer = 0;
+      this.speed = P_SPEED * speedMult * chronoScale;
+    } else {
+      if (this.superPelletBoostTimer > 0) this.superPelletBoostTimer -= dt * chronoScale;
+      if (this.pelletSpeedBonus > 0) {
+        this.pelletSpeedBonus = Math.max(0, this.pelletSpeedBonus - dt * 0.45 * chronoScale);
+      }
+      const pelletSurge = (this.superPelletBoostTimer > 0 ? 1.8 : 0) + this.pelletSpeedBonus;
+      const progressionBoost = 4.3;
+      const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
+      const baseSpeed = isNitro ? madnessCalculatedSpeed * 1.30 : madnessCalculatedSpeed;
+      this.speed = (baseSpeed + pelletSurge) * speedMult * chronoScale;
+    }
 
     // Accept input direction
     if (inputDir.x !== 0 || inputDir.y !== 0) {

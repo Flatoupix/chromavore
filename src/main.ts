@@ -700,7 +700,7 @@ class Game {
 
     // Grant 1.8s invulnerability on level warp to avoid instant collision
     this.player.invuln = Math.max(this.player.invuln, 1.8);
-    this.player.speed = (isMadness ? P_MADNESS_SPEED : P_SPEED) * this.loopSpeedMultiplier;
+    this.player.speed = (isMadness && this.maze.cols > 21 ? P_MADNESS_SPEED : P_SPEED) * this.loopSpeedMultiplier;
 
     // Ghost management
     if (isMadness) {
@@ -1304,10 +1304,10 @@ class Game {
         const tier = getComboTier(this.combo.n);
         this.combo.m = CM[tier];
 
-        // Power pellet boosts combo timer by +1.2s (strictly capped at COMBO_DECAY = 2.0s max)
-        this.combo.t = Math.min(COMBO_DECAY, this.combo.t + 1.2);
+        // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
+        this.combo.t = COMBO_DECAY;
         if (this.combo.m >= 32) {
-          particles.addPop(px, py - 32, '+1.2s RECHARGE x32 !', '#00ffff', 20);
+          particles.addPop(px, py - 32, '+0.5s RECHARGE x32 !', '#00ffff', 20);
         }
 
         if (this.gameMode === 'madness') {
@@ -1325,7 +1325,7 @@ class Game {
           const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
         }
-        this.player.addDotSpeed();
+        this.player.addDotSpeed(this.combo.m);
         this.combo.n++;
         const oldM = this.combo.m;
         const tier = getComboTier(this.combo.n);
@@ -1869,6 +1869,7 @@ class Game {
             this.combo.n = 0;
             this.combo.m = 1;
             this.combo.t = 0;
+            this.player.pelletSpeedBonus = 0;
             sounds.resetDotStreak();
             if (wasGod) {
               const pp = this.player.getPos();
@@ -1925,7 +1926,9 @@ class Game {
     add('FORCE FIELD', powerups.fx.magnet, Math.max(9, powerups.getForceFieldStats(progression.totalGhosts, this.gameMode === 'madness').duration), '#00f0ff', 'magnet');
     add('PHASE', powerups.fx.phase, 4, '#ff00ff', 'phase');
     add('TIMEWARP', powerups.fx.timewarp, 5, '#b080ff', 'chrono');
-    add('BOOST PASTILLE', this.player.superPelletBoostTimer, 3.5, '#ffd700', 'lightning');
+    if (this.maze.cols > 21) {
+      add('BOOST PASTILLE', this.player.superPelletBoostTimer, 3.5, '#ffd700', 'lightning');
+    }
 
     return effects;
   }

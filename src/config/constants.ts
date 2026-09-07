@@ -84,8 +84,8 @@ export const BONUS_ARENA_H = 920;
 export const CT = [0, 8, 22, 48, 85, 180];
 export const CM = [1, 2, 4, 8, 16, 32];
 export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff00aa', '#00ffff'];
-export const COMBO_DECAY = 2.0; // Strictly 2.0s between pellets
-export const MADNESS_UNLOCK_KILLS = 1200; // Unlocked with Cyber Dash V2 at 1200 career ghost kills
+export const COMBO_DECAY = 0.5; // Strictly 0.5s between pellets (gap without pellets resets combo)
+export const MADNESS_UNLOCK_KILLS = 1600; // Unlocked with Cyber Dash V2 at 1600 career ghost kills
 
 // Bullet Time (Chrono-Shift) settings
 export const CHRONO_MAX = 100;
@@ -93,8 +93,8 @@ export const CHRONO_DRAIN = 28; // % drained per second (~3.6s active duration)
 export const CHRONO_TIMESCALE = 0.18; // V1 Time dilated to 18% speed (~5.5x slowdown)
 export const CHRONO_TIMESCALE_V2 = 0.12; // V2 Time dilated to 12% speed (~8.3x slowdown)
 export const CHRONO_PASSIVE_RECHARGE = 3.2; // % per second passive recharge
-export const CHRONO_DOT_RECHARGE = 0.45; // % per dot eaten
-export const CHRONO_NM_RECHARGE = 6.0; // % per near-miss evasion
+export const CHRONO_DOT_RECHARGE = 0.8; // % per dot eaten
+export const CHRONO_NM_RECHARGE = 6.0; // % per Near-Miss dodge
 
 export function getComboTier(n: number): number {
   for (let i = CT.length - 1; i >= 0; i--) {
@@ -128,6 +128,6 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.1.1';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.1.2';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.1.1';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.1.2';
