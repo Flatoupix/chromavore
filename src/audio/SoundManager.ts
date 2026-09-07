@@ -542,6 +542,12 @@ class SoundManager {
     }
   }
 
+  public stopBgm() {
+    this.stopHDMusic();
+    this.bgmStep = 0;
+    this.bgmTime = 0;
+  }
+
   public updateBGM(
     dt: number,
     isPlaying: boolean,

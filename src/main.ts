@@ -29,7 +29,7 @@ class Game {
   private touchDeck: TouchDeckManager;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' = 'menu';
   public leaderboardMode: 'classic' | 'madness' = 'classic';
   public playerRank: number = 0;
   public playerDate: string = '';
@@ -307,15 +307,19 @@ class Game {
 
       if (this.state === 'menu') {
         // Navigation links click at bottom:
-        // Row 1 (y: ~538): [I] COMMENT JOUER | [C] ARSENAL
+        // Row 1 (y: ~538): [I] AIDE | [C] ARSENAL | [O] PARAMÈTRES
         if (cy >= 522 && cy <= 552) {
-          if (cx < curCw / 2) {
+          if (cx < curCw * 0.33) {
             this.state = 'instructions';
             sounds.play('click');
             return;
-          } else {
+          } else if (cx < curCw * 0.66) {
             this.state = 'codex';
             this.codexTab = 'skills';
+            sounds.play('click');
+            return;
+          } else {
+            this.state = 'settings';
             sounds.play('click');
             return;
           }
@@ -358,17 +362,19 @@ class Game {
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
           if (this.gameMode === 'madness') {
             this.startGame('madness');
+            sounds.play('start');
           } else {
             this.setGameMode('madness');
-            sounds.play('nova');
+            sounds.play('click');
           }
           return;
         }
 
-        // Click on Classique Card [2]
+        // Click on Classic Card [2]
         if (cx >= clX && cx <= clX + clW && cy >= clY && cy <= clY + clH) {
           if (this.gameMode === 'classic') {
             this.startGame('classic');
+            sounds.play('start');
           } else {
             this.setGameMode('classic');
             sounds.play('click');
@@ -376,9 +382,12 @@ class Game {
           return;
         }
 
-        // Click on Play prompt area or anywhere else starts the game
-        this.startGame(this.gameMode);
-        return;
+        // Tap title / banner to start
+        if (cy > 40 && cy < 180) {
+          this.startGame(this.gameMode);
+          sounds.play('start');
+          return;
+        }
       }
 
       if (this.state === 'codex') {
@@ -414,20 +423,47 @@ class Game {
       }
 
       if (this.state === 'gameover') {
-        const cyOver = CH * 0.30;
-        if (cy >= cyOver + 205 && cy <= cyOver + 235) {
+        const madW = 380, madH = 44;
+        const madX = curCw / 2 - madW / 2;
+        const madY = 390;
+
+        const clW = 380, clH = 40;
+        const clX = curCw / 2 - clW / 2;
+        const clY = 444;
+
+        // Restart Current Mode
+        if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
+          this.startGame(this.gameMode);
+          sounds.play('start');
+          return;
+        }
+
+        // Switch to the other mode
+        if (cx >= clX && cx <= clX + clW && cy >= clY && cy <= clY + clH) {
+          const otherMode = this.gameMode === 'madness' ? 'classic' : 'madness';
+          this.startGame(otherMode);
+          sounds.play('start');
+          return;
+        }
+
+        // Bottom Navigation (Codex & Leaderboard)
+        if (cy >= 496 && cy <= 526) {
           if (cx < curCw / 2) {
+            this.state = 'codex';
+            this.codexTab = 'badges';
+            sounds.play('click');
+            return;
+          } else {
             this.state = 'leaderboard';
             this.leaderboardMode = this.gameMode;
             leaderboard.syncRemote();
-          } else {
-            this.state = 'codex';
-            this.codexTab = 'skills';
+            sounds.play('click');
+            return;
           }
-          sounds.play('click');
-          return;
         }
-        this.startGame(this.gameMode);
+
+        this.state = 'menu';
+        sounds.play('click');
         return;
       }
 
@@ -439,6 +475,46 @@ class Game {
         }
         this.state = 'menu';
         sounds.play('click');
+        return;
+      }
+
+      if (this.state === 'settings') {
+        for (const btn of PAUSE_BUTTONS) {
+          if (cx >= btn.x && cx <= btn.x + btn.w && cy >= btn.y && cy <= btn.y + btn.h) {
+            switch (btn.id) {
+              case 'freezeFrame':
+                settingsManager.toggleFreezeFrame();
+                sounds.play('click');
+                return;
+              case 'screenShake':
+                settingsManager.toggleScreenShake();
+                sounds.play('click');
+                return;
+              case 'screenFlash':
+                settingsManager.toggleScreenFlash();
+                sounds.play('click');
+                return;
+              case 'crtScanlines':
+                settingsManager.toggleCrtScanlines();
+                sounds.play('click');
+                return;
+              case 'particleDensity':
+                settingsManager.toggleParticleDensity();
+                sounds.play('click');
+                return;
+              case 'audio':
+                sounds.toggleMute();
+                return;
+              case 'wipeData':
+                this.showWipeModal();
+                return;
+              case 'home':
+                this.state = 'menu';
+                sounds.play('click');
+                return;
+            }
+          }
+        }
         return;
       }
 
@@ -483,12 +559,12 @@ class Game {
               case 'home':
                 this.state = 'menu';
                 sounds.play('click');
+                sounds.stopBgm();
                 return;
             }
           }
         }
-        // If clicking outside the cards or on resume, resume playing
-        this.state = 'playing';
+        // Do not unpause on misclick outside buttons
         return;
       }
 
@@ -496,15 +572,7 @@ class Game {
       const btnX = this.renderer.cw - 38, btnY = ROWS * T - 26;
       if (this.touchDeck.isTouch() && Math.hypot(cx - btnX, cy - btnY) < 24 + 14) {
         if (this.state === 'playing') {
-          this.player.triggerDash(
-            this.maze,
-            this.gameMode === 'madness',
-            this.enemyManager.enemies,
-            (en, x, y) => this.onKillGhost(en, x, y),
-            (c, r) => this.onCollectDot(c, r),
-            powerups.fx.magnet > 0,
-            powerups.fx.overdrive > 0
-          );
+          this.executeDash();
         }
       }
     });
@@ -520,15 +588,7 @@ class Game {
       const now = performance.now();
       if (now - lastTouchTime < 280) {
         if (this.state === 'playing') {
-          this.player.triggerDash(
-            this.maze,
-            this.gameMode === 'madness',
-            this.enemyManager.enemies,
-            (en, x, y) => this.onKillGhost(en, x, y),
-            (c, r) => this.onCollectDot(c, r),
-            powerups.fx.magnet > 0,
-            powerups.fx.overdrive > 0
-          );
+          this.executeDash();
         }
       }
       lastTouchTime = now;
@@ -554,7 +614,15 @@ class Game {
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (this.state === 'paused') {
+      if (this.state === 'settings') {
+        if (e.code === 'Escape' || e.code === 'KeyO' || e.code === 'Enter') {
+          this.state = 'menu';
+          sounds.play('click');
+          e.preventDefault();
+          return;
+        }
+      }
+      if (this.state === 'paused' || this.state === 'settings') {
         if (e.code === 'Digit1' || e.code === 'Numpad1') {
           settingsManager.toggleFreezeFrame();
           sounds.play('click');
@@ -765,6 +833,46 @@ class Game {
       particles.flash('#00f0ff', 0.5);
       particles.shake(12, 0.4);
     }
+  }
+
+  private onSmashWall(c: number, r: number) {
+    const wx = c * T + HALF;
+    const wy = r * T + HALF;
+    const lvl = this.maze.getLevelDef();
+    const wallCol = lvl.glowColor || '#ff0055';
+
+    // Wall smash score bonus
+    this.score += 300;
+
+    // Explosive wall debris & sparks
+    particles.emit(wx, wy, 35, wallCol, { speed: 190, size: 4.5, life: 0.65 });
+    particles.emit(wx, wy, 15, '#ffffff', { speed: 230, size: 3, life: 0.4 });
+    particles.shake(7, 0.22);
+    particles.flash(wallCol, 0.2);
+    particles.addPop(wx, wy - 14, 'WALL SMASH ! +300', '#ff007f', 18);
+
+    // Audio crunch
+    sounds.play('kill');
+    sounds.play('nova');
+
+    // Hit-stop / freeze-frame (ralenti)
+    this.hitlag = Math.max(this.hitlag, 0.08);
+
+    // Unlock achievement
+    badges.unlock('wallBreaker');
+  }
+
+  private executeDash() {
+    this.player.triggerDash(
+      this.maze,
+      this.gameMode === 'madness',
+      this.enemyManager.enemies,
+      (e, x, y) => this.onKillGhost(e, x, y),
+      (c, r) => this.onCollectDot(c, r),
+      powerups.fx.magnet > 0,
+      powerups.fx.overdrive > 0,
+      (c, r) => this.onSmashWall(c, r)
+    );
   }
 
   private onKillGhost(e: Ghost, ex: number, ey: number) {
@@ -1577,6 +1685,17 @@ class Game {
       input.isInstructionsRequested = false;
     }
 
+    if (input.isSettingsRequested) {
+      if (this.state === 'menu' || this.state === 'gameover') {
+        this.state = 'settings';
+        sounds.play('click');
+      } else if (this.state === 'settings') {
+        this.state = 'menu';
+        sounds.play('click');
+      }
+      input.isSettingsRequested = false;
+    }
+
     if (input.isRestoreRequested) {
       if (this.state === 'menu') {
         this.showRestoreModal();
@@ -1585,6 +1704,16 @@ class Game {
     }
 
     if (this.state === 'instructions') {
+      if (input.isPauseRequested || input.isStartRequested) {
+        this.state = 'menu';
+        sounds.play('click');
+        input.isPauseRequested = false;
+        input.isStartRequested = false;
+      }
+      return;
+    }
+
+    if (this.state === 'settings') {
       if (input.isPauseRequested || input.isStartRequested) {
         this.state = 'menu';
         sounds.play('click');
@@ -1698,15 +1827,7 @@ class Game {
 
         // Action inputs
         if (input.isDashRequested) {
-          this.player.triggerDash(
-            this.maze,
-            isMadness,
-            this.enemyManager.enemies,
-            (e, x, y) => this.onKillGhost(e, x, y),
-            (c, r) => this.onCollectDot(c, r),
-            powerups.fx.magnet > 0,
-            powerups.fx.overdrive > 0
-          );
+          this.executeDash();
           input.isDashRequested = false;
         }
 
@@ -1997,6 +2118,14 @@ class Game {
 
     if (this.state === 'instructions') {
       this.renderer.drawInstructions(this.time);
+      return;
+    }
+
+    if (this.state === 'settings') {
+      const topClassic = Math.max(badges.hiScore, leaderboard.getTopScore('classic'));
+      const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore('madness'));
+      this.renderer.drawMenu(this.gameMode, this.time, topClassic, topMadness);
+      this.renderer.drawPause(false, 0, 0, this.time, true);
       return;
     }
 

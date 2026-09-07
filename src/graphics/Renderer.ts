@@ -990,7 +990,7 @@ export class Renderer {
     c.fillStyle = '#00f0ff';
     c.shadowColor = '#00f0ff';
     c.shadowBlur = 6;
-    c.fillText(`[I] COMMENT JOUER    •    [C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})`, this.cw / 2, 538);
+    c.fillText(`[I] AIDE  •  [C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})  •  [O] PARAMÈTRES`, this.cw / 2, 538);
     c.fillText(`[B] SUCCÈS (${unlockedBadges}/${totalBadges})   •   [L] SCORES   •   [K] SYNC`, this.cw / 2, 566);
     c.shadowBlur = 0;
   }
@@ -1527,11 +1527,12 @@ export class Renderer {
       }
 
       // Base and odd-numbered upgrades on the left; advanced even-numbered upgrades on the right.
-      const leftSkills = SKILL_TREE.filter(s => s.version === 1 || s.version === 3);
+      const leftSkills = SKILL_TREE.filter(s => s.version === 1 || s.version === 3 || s.version === 5);
       const rightSkills = SKILL_TREE.filter(s => s.version === 2 || s.version === 4);
-      const compactGrid = Math.max(leftSkills.length, rightSkills.length) > 10;
-      const cardH = compactGrid ? 42 : 45;
-      const startY = 88, gapY = compactGrid ? 44 : 49;
+      const maxCol = Math.max(leftSkills.length, rightSkills.length);
+      const compactGrid = maxCol > 10;
+      const cardH = compactGrid ? 39 : 45;
+      const startY = 85, gapY = compactGrid ? 42 : 49;
 
       for (let i = 0; i < leftSkills.length; i++) {
         const s = leftSkills[i];
@@ -1785,15 +1786,15 @@ export class Renderer {
     }
   }
 
-  public drawPause(isMadness: boolean, kills: number, streak: number, time: number = 0) {
-    updatePauseButtonPositions(this.cw);
+  public drawPause(isMadness: boolean, kills: number, streak: number, time: number = 0, isFromMenu: boolean = false) {
+    updatePauseButtonPositions(this.cw, isFromMenu);
     const c = this.ctx;
     // Dark blur backdrop
     c.fillStyle = 'rgba(5, 7, 14, 0.88)';
     c.fillRect(0, 0, this.cw, CH);
 
     // Modal Card (dynamically centered horizontally for both Classic and 16:9 Madness)
-    const cardW = 500, cardH = 435;
+    const cardW = Math.min(500, this.cw - 20), cardH = 435;
     const cardX = Math.floor((this.cw - cardW) / 2), cardY = 90;
     c.save();
     c.fillStyle = 'rgba(10, 15, 28, 0.96)';
@@ -1811,11 +1812,17 @@ export class Renderer {
     c.font = 'bold 22px monospace';
     c.fillStyle = '#00ffff';
     c.textAlign = 'center';
-    c.fillText('PAUSE — PARAMÈTRES VISUELS', this.cw / 2, cardY + 36);
-
-    c.font = '10px monospace';
-    c.fillStyle = '#667799';
-    c.fillText('CLIQUEZ SUR UNE OPTION OU UTILISEZ LES TOUCHES [1] À [5] / [M]', this.cw / 2, cardY + 58);
+    if (isFromMenu) {
+      c.fillText('PARAMÈTRES & ACCESSIBILITÉ', this.cw / 2, cardY + 36);
+      c.font = '10px monospace';
+      c.fillStyle = '#667799';
+      c.fillText('OPTIONS VISUELLES • FLUIDITÉ • PROFIL DU JOUEUR', this.cw / 2, cardY + 58);
+    } else {
+      c.fillText('PAUSE — PARAMÈTRES VISUELS', this.cw / 2, cardY + 36);
+      c.font = '10px monospace';
+      c.fillStyle = '#667799';
+      c.fillText('CLIQUEZ SUR UNE OPTION OU UTILISEZ LES TOUCHES [1] À [5] / [M]', this.cw / 2, cardY + 58);
+    }
 
     const s = settingsManager.settings;
 
@@ -1901,57 +1908,76 @@ export class Renderer {
     c.textAlign = 'center';
     c.fillText('RÉINITIALISER MA PROGRESSION & PROFIL', wipeBtn.x + wipeBtn.w / 2, wipeBtn.y + 21);
 
-    // Resume button
-    const resBtn = PAUSE_BUTTONS[7];
-    const pulse = 1 + Math.sin(time * 6) * 0.03;
-    c.fillStyle = '#0c243a';
-    c.strokeStyle = '#00ffff';
-    c.lineWidth = 2;
-    c.shadowColor = '#00ffff';
-    c.shadowBlur = 12;
-    c.beginPath();
-    c.roundRect(resBtn.x, resBtn.y, resBtn.w, resBtn.h, 8);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-    c.font = `bold ${12 * pulse}px monospace`;
-    c.fillStyle = '#ffffff';
-    c.textAlign = 'center';
-    c.fillText('▶ REPRENDRE [P]', resBtn.x + resBtn.w / 2, resBtn.y + 26);
+    if (isFromMenu) {
+      // Home / Return button (spans full width)
+      const homeBtn = PAUSE_BUTTONS[9];
+      c.fillStyle = '#0c243a';
+      c.strokeStyle = '#00ffff';
+      c.lineWidth = 2;
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 12;
+      c.beginPath();
+      c.roundRect(homeBtn.x, homeBtn.y, homeBtn.w, homeBtn.h, 8);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+      c.font = 'bold 13px monospace';
+      c.fillStyle = '#ffffff';
+      c.textAlign = 'center';
+      c.fillText('◀ RETOUR AU MENU [ECHAP / O]', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
+    } else {
+      // Resume button
+      const resBtn = PAUSE_BUTTONS[7];
+      const pulse = 1 + Math.sin(time * 6) * 0.03;
+      c.fillStyle = '#0c243a';
+      c.strokeStyle = '#00ffff';
+      c.lineWidth = 2;
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 12;
+      c.beginPath();
+      c.roundRect(resBtn.x, resBtn.y, resBtn.w, resBtn.h, 8);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+      c.font = `bold ${12 * pulse}px monospace`;
+      c.fillStyle = '#ffffff';
+      c.textAlign = 'center';
+      c.fillText('▶ REPRENDRE [P]', resBtn.x + resBtn.w / 2, resBtn.y + 26);
 
-    // Restart button
-    const rstBtn = PAUSE_BUTTONS[8];
-    c.fillStyle = '#20180a';
-    c.strokeStyle = '#ffaa00';
-    c.lineWidth = 2;
-    c.shadowColor = '#ffaa00';
-    c.shadowBlur = 10;
-    c.beginPath();
-    c.roundRect(rstBtn.x, rstBtn.y, rstBtn.w, rstBtn.h, 8);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-    c.font = 'bold 12px monospace';
-    c.fillStyle = '#ffaa00';
-    c.textAlign = 'center';
-    c.fillText('REJOUER [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 26);
+      // Restart button
+      const rstBtn = PAUSE_BUTTONS[8];
+      c.fillStyle = '#20180a';
+      c.strokeStyle = '#ffaa00';
+      c.lineWidth = 2;
+      c.shadowColor = '#ffaa00';
+      c.shadowBlur = 10;
+      c.beginPath();
+      c.roundRect(rstBtn.x, rstBtn.y, rstBtn.w, rstBtn.h, 8);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+      c.font = 'bold 12px monospace';
+      c.fillStyle = '#ffaa00';
+      c.textAlign = 'center';
+      c.fillText('REJOUER [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 26);
 
-    // Home button
-    const homeBtn = PAUSE_BUTTONS[9];
-    c.fillStyle = '#1a0a20';
-    c.strokeStyle = '#ff007f';
-    c.lineWidth = 2;
-    c.shadowColor = '#ff007f';
-    c.shadowBlur = 10;
-    c.beginPath();
-    c.roundRect(homeBtn.x, homeBtn.y, homeBtn.w, homeBtn.h, 8);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-    c.font = 'bold 12px monospace';
-    c.fillStyle = '#ff007f';
-    c.textAlign = 'center';
-    c.fillText('ACCUEIL', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
+      // Home button
+      const homeBtn = PAUSE_BUTTONS[9];
+      c.fillStyle = '#1a0a20';
+      c.strokeStyle = '#ff007f';
+      c.lineWidth = 2;
+      c.shadowColor = '#ff007f';
+      c.shadowBlur = 10;
+      c.beginPath();
+      c.roundRect(homeBtn.x, homeBtn.y, homeBtn.w, homeBtn.h, 8);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+      c.font = 'bold 12px monospace';
+      c.fillStyle = '#ff007f';
+      c.textAlign = 'center';
+      c.fillText('ACCUEIL', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
+    }
 
     // Footer stats if in madness
     if (isMadness) {

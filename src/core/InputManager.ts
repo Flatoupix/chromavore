@@ -28,6 +28,7 @@ export class InputManager {
   public isSelectMode2Requested: boolean = false;
   public isLeaderboardRequested: boolean = false;
   public isInstructionsRequested: boolean = false;
+  public isSettingsRequested: boolean = false;
 
   public motionHistory: MotionRecord[] = [];
   public wiggleCd: number = 0;
@@ -112,6 +113,9 @@ export class InputManager {
       }
       if (k === 'i' || e.code === 'KeyI') {
         this.isInstructionsRequested = true;
+      }
+      if (k === 'o' || e.code === 'KeyO') {
+        this.isSettingsRequested = true;
       }
     });
 

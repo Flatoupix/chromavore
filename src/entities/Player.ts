@@ -298,7 +298,8 @@ export class Player {
     onKillGhost: (e: any, x: number, y: number) => void,
     onCollectDot: (c: number, r: number) => void,
     hasForceField: boolean = false,
-    isOverdrive: boolean = false
+    isOverdrive: boolean = false,
+    onSmashWall?: (c: number, r: number) => void
   ): boolean {
     if (!isMadness) return false;
     if (this.dashCd > 0 && !isOverdrive) return false;
@@ -317,6 +318,7 @@ export class Player {
 
     const startPos = this.getPos();
     let dashed = 0;
+    let wallsBroken = 0;
 
     if (this.t < 1) {
       this.fx = this.x;
@@ -324,11 +326,21 @@ export class Player {
       this.t = 1;
     }
 
-    const maxDist = DASH_DIST + Math.min(3, Math.max(0, dashLvl - 1));
+    const maxDist = DASH_DIST + Math.min(4, Math.max(0, dashLvl - 1));
     for (let i = 0; i < maxDist; i++) {
       const nx = this.wrapX(this.x + dx);
       const ny = this.y + dy;
-      if (!maze.isWalkable(nx, ny, false)) break;
+
+      if (!maze.isWalkable(nx, ny, false)) {
+        // Quantum Dash Burst V5 (12,000 kills): punch through and smash up to 3 walls
+        if (dashLvl >= 5 && wallsBroken < 3 && maze.canSmashWall(nx, ny)) {
+          maze.smashWall(nx, ny);
+          wallsBroken++;
+          if (onSmashWall) onSmashWall(nx, ny);
+        } else {
+          break;
+        }
+      }
 
       this.fx = this.x;
       this.fy = this.y;
@@ -355,7 +367,7 @@ export class Player {
       }
 
       const px = nx * T + HALF, py = ny * T + HALF;
-      particles.emit(px, py, 6, isOverdrive ? '#00ffcc' : '#00ffff', { speed: 80, size: 3, life: 0.35 });
+      particles.emit(px, py, 6, isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00ffff'), { speed: 80, size: 3, life: 0.35 });
     }
 
     if (dashed === 0) {
@@ -389,28 +401,39 @@ export class Player {
 
     // Cyber Dash V2 arrival shockwave
     if (dashLvl >= 2) {
-      particles.emit(endPos.x, endPos.y, 30, '#00ffff', { speed: 170, size: 5, life: 0.45 });
-      particles.shake(5, 0.2);
+      const shockCol = dashLvl >= 5 ? '#ff007f' : '#00ffff';
+      particles.emit(endPos.x, endPos.y, dashLvl >= 5 ? 45 : 30, shockCol, { speed: 180, size: 5.5, life: 0.5 });
+      if (dashLvl >= 5) {
+        particles.emit(endPos.x, endPos.y, 20, '#ffd700', { speed: 140, size: 4, life: 0.4 });
+      }
+      particles.shake(dashLvl >= 5 ? 7 : 5, 0.22);
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
           const ep = { x: (e.fx + (e.x - e.fx) * e.t) * T + HALF, y: (e.fy + (e.y - e.fy) * e.t) * T + HALF };
-          if (Math.hypot(ep.x - endPos.x, ep.y - endPos.y) < T * 1.8) {
+          if (Math.hypot(ep.x - endPos.x, ep.y - endPos.y) < T * (dashLvl >= 5 ? 2.4 : 1.8)) {
             onKillGhost(e, ep.x, ep.y);
           }
         }
       }
-      const dashName = dashLvl >= 4 ? 'QUANTUM DASH V4 !' : dashLvl >= 3 ? 'HYPER DASH V3 !' : 'CYBER DASH V2 !';
-      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'CYBER OVERDRIVE !' : dashName, '#00ffff', 16);
+      let dashName = 'CYBER DASH V2 !';
+      if (dashLvl >= 5) {
+        dashName = wallsBroken > 0 ? `QUANTUM BURST (${wallsBroken} MUR${wallsBroken > 1 ? 'S' : ''}) !` : 'QUANTUM DASH BURST V5 !';
+      } else if (dashLvl >= 4) {
+        dashName = 'QUANTUM DASH V4 !';
+      } else if (dashLvl >= 3) {
+        dashName = 'HYPER DASH V3 !';
+      }
+      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'CYBER OVERDRIVE !' : dashName, dashLvl >= 5 ? '#ff007f' : '#00ffff', dashLvl >= 5 ? 18 : 16);
     } else {
       particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'HYPER DASH !' : 'DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
     }
 
-    particles.emit(startPos.x, startPos.y, 16, isOverdrive ? '#00ffcc' : '#00e5ff', { speed: 130, size: 4, life: 0.45 });
+    particles.emit(startPos.x, startPos.y, 16, isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff'), { speed: 130, size: 4, life: 0.45 });
     particles.emit(endPos.x, endPos.y, 20, isOverdrive ? '#00ffcc' : '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
-    particles.shake(isOverdrive ? 3 : 4, 0.15);
-    particles.flash(isOverdrive ? '#00ffcc' : '#00e5ff', 0.22);
+    particles.shake(isOverdrive ? 3 : (dashLvl >= 5 ? 6 : 4), 0.18);
+    particles.flash(isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff'), 0.22);
     sounds.play('dash');
-    this.invuln = Math.max(this.invuln, 0.35);
+    this.invuln = Math.max(this.invuln, dashLvl >= 5 ? 0.5 : 0.35);
     return true;
   }
 

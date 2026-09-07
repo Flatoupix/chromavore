@@ -12,7 +12,7 @@ import { wobbleBanner } from '../graphics/WobbleBanner';
 export interface SkillDef {
   id: string;             // e.g. 'dash_v1' to 'dash_v4'
   baseId: string;         // e.g. 'dash'
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
   name: string;
   icon: string;
   threshold: number;      // ghosts required
@@ -285,6 +285,17 @@ export const SKILL_TREE: SkillDef[] = [
     category: 'item',
     command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Double vague royale aller-retour + recharge instantanée de l\'arsenal (100% Maîtrisé)'
+  },
+  {
+    id: 'dash_v5',
+    baseId: 'dash',
+    version: 5,
+    name: 'QUANTUM DASH BURST V5',
+    icon: 'dash',
+    threshold: 12000,
+    category: 'movement',
+    command: 'ESPACE ou BOUTON DASH',
+    desc: 'Brise-Mur Quantique : défonce et traverse jusqu\'à 3 cases de mur avec onde de choc et freeze-frame'
   }
 ];
 
@@ -321,8 +332,8 @@ class ProgressionManager {
     return newlyUnlocked;
   }
 
-  public getSkillLevel(baseId: string): 0 | 1 | 2 | 3 | 4 {
-    let level: 0 | 1 | 2 | 3 | 4 = 0;
+  public getSkillLevel(baseId: string): 0 | 1 | 2 | 3 | 4 | 5 {
+    let level: 0 | 1 | 2 | 3 | 4 | 5 = 0;
     for (const skill of SKILL_TREE) {
       if (skill.baseId === baseId && this.totalGhosts >= skill.threshold && skill.version > level) {
         level = skill.version;

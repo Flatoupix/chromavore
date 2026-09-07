@@ -1147,6 +1147,27 @@ export class MazeManager {
     return this.getSpawn();
   }
 
+  public canSmashWall(c: number, r: number): boolean {
+    const ic = Math.floor(c);
+    const ir = Math.floor(r);
+    // Outer boundaries must stay solid to prevent escaping the arena
+    if (ir <= 0 || ir >= this.rows - 1 || ic <= 0 || ic >= this.cols - 1) return false;
+    // Ghost house walls must remain protected
+    if (this.isInGhostHouse(ic, ir)) return false;
+    // Must be a wall
+    return !!this.map[ir] && this.map[ir][ic] === WALL;
+  }
+
+  public smashWall(c: number, r: number): boolean {
+    const ic = Math.floor(c);
+    const ir = Math.floor(r);
+    if (!this.canSmashWall(ic, ir)) return false;
+    this.map[ir][ic] = EMPTY;
+    this.renderOffscreen();
+    this.computeGhostReturnDist();
+    return true;
+  }
+
   public renderOffscreen() {
     const lvl = this.getLevelDef();
     const c = this.mc;

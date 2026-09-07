@@ -45,9 +45,11 @@ export const BADGES: Record<string, BadgeDef> = {
   kills8000:    { id: 'kills8000',    name: 'QUANTUM DASH V4',      desc: 'Atteindre 8 000 spectres (Dash de 6 cases)',         icon: 'dash', category: 'kill', killsRequired: 8000 },
   kills9000:    { id: 'kills9000',    name: 'ZÉRO ABSOLU V2',       desc: 'Atteindre 9 000 spectres (Débloque Cryo V2)',       icon: 'cryo', category: 'kill', killsRequired: 9000 },
   kills10000:   { id: 'kills10000',   name: 'ÉCLIPSE SOLAIRE V2',   desc: 'Atteindre 10 000 spectres (Arsenal 100% Maîtrisé)',  icon: 'tsunami', category: 'kill', killsRequired: 10000 },
+  kills12000:   { id: 'kills12000',   name: 'QUANTUM BURST V5',     desc: 'Atteindre 12 000 spectres (Brise-Mur Quantique V5)', icon: 'dash', category: 'kill', killsRequired: 12000 },
 
   // === EXPLOITS DE MAÎTRISE & GAMEPLAY ===
   ghostHunter:  { id: 'ghostHunter',  name: 'CHASSE ROYALE',        desc: 'Dévorer 4 fantômes durant une seule chasse',        icon: 'spectre', category: 'feat' },
+  wallBreaker:  { id: 'wallBreaker',  name: 'BRISE-MURS',           desc: 'Pulvériser votre premier mur au Quantum Dash V5',   icon: 'dash', category: 'feat' },
   combo8:       { id: 'combo8',       name: 'COMBO RUNNER',         desc: 'Atteindre le multiplicateur x8',                    icon: 'lightning', category: 'feat' },
   combo16:      { id: 'combo16',      name: 'COMBO MASTER',         desc: 'Atteindre le multiplicateur x16',                   icon: 'flame', category: 'feat' },
   combo32:      { id: 'combo32',      name: 'DIVINITÉ x32',         desc: 'Déclencher l\'invulnérabilité totale x32',          icon: 'crown', category: 'feat' },
