@@ -465,7 +465,7 @@ class SoundManager {
     }
   }
 
-  private updateHDMusic(dt: number, isPlaying: boolean, is32xGod: boolean, isMadness: boolean) {
+  private updateHDMusic(dt: number, isPlaying: boolean, is32xGod: boolean, isPastilleMadness: boolean) {
     this.initHDMusic();
     if (!this.hdTracks || this.hdLoadFailed) return;
 
@@ -485,18 +485,21 @@ class SoundManager {
     }
 
     this.isHdPlaying = true;
-    const targetTrack: 'normal' | 'madness' | 'god' = is32xGod ? 'god' : (isMadness ? 'madness' : 'normal');
+    const targetTrack: 'normal' | 'madness' | 'god' = is32xGod ? 'god' : (isPastilleMadness ? 'madness' : 'normal');
 
     if (this.currentHdTrack !== targetTrack) {
       if (targetTrack === 'god' && this.hdTracks.god) {
         this.hdTracks.god.currentTime = 0;
+      }
+      if (targetTrack === 'madness' && this.hdTracks.madness) {
+        this.hdTracks.madness.currentTime = 0;
       }
       this.currentHdTrack = targetTrack;
     }
 
     const keys: ('normal' | 'madness' | 'god')[] = ['normal', 'madness', 'god'];
     const maxVol = 0.65;
-    const fadeSpeed = dt * 3.0; // ~0.33s crossfade
+    const fadeSpeed = dt * 4.0; // ~0.16s punchy crossfade
 
     for (const k of keys) {
       const audio = this.hdTracks[k];
@@ -543,19 +546,19 @@ class SoundManager {
     dt: number,
     isPlaying: boolean,
     is32xGod: boolean = false,
-    isMadness: boolean = false,
+    isPastilleMadness: boolean = false,
     isHDUnlocked: boolean = false
   ) {
     if (this.muted || !isPlaying) {
       if (this.isHdPlaying) {
-        this.updateHDMusic(dt, false, is32xGod, isMadness);
+        this.updateHDMusic(dt, false, is32xGod, isPastilleMadness);
       }
       return;
     }
     this.initCtx();
 
     if (isHDUnlocked && !this.hdLoadFailed) {
-      this.updateHDMusic(dt, isPlaying, is32xGod, isMadness);
+      this.updateHDMusic(dt, isPlaying, is32xGod, isPastilleMadness);
       return;
     }
 
@@ -569,9 +572,9 @@ class SoundManager {
     // Step duration:
     // Chrono-Shift: 0.36s (heavy, immersive slow-motion pulse)
     // Normal: 0.125s (120 BPM)
-    // Madness: 0.10s (150 BPM)
+    // Pastille Madness: 0.10s (150 BPM)
     // 32x Invincible God Mode: 0.09s (166 BPM high-energy overdrive)
-    const stepDuration = this.isChronoActive ? 0.36 : (is32xGod ? 0.09 : (isMadness ? 0.10 : 0.125));
+    const stepDuration = this.isChronoActive ? 0.36 : (is32xGod ? 0.09 : (isPastilleMadness ? 0.10 : 0.125));
 
     if (this.bgmTime >= stepDuration) {
       this.bgmTime -= stepDuration;
@@ -599,7 +602,7 @@ class SoundManager {
 
       const bassFreq = is32xGod
         ? godRoots[this.bgmStep % godRoots.length]
-        : (isMadness ? madnessRoots[this.bgmStep % madnessRoots.length] : roots[this.bgmStep % roots.length]);
+        : (isPastilleMadness ? madnessRoots[this.bgmStep % madnessRoots.length] : roots[this.bgmStep % roots.length]);
 
       try {
         // Synthwave Bass with Resonant Lowpass Filter Envelope
@@ -611,11 +614,11 @@ class SoundManager {
         osc.frequency.setValueAtTime(bassFreq, t);
 
         filter.type = 'lowpass';
-        filter.Q.setValueAtTime(is32xGod ? 6.5 : (isMadness ? 6 : 4.5), t);
-        filter.frequency.setValueAtTime(is32xGod ? 1600 : (this.isChronoActive ? 380 : (isMadness ? 1200 : 850)), t);
+        filter.Q.setValueAtTime(is32xGod ? 6.5 : (isPastilleMadness ? 6 : 4.5), t);
+        filter.frequency.setValueAtTime(is32xGod ? 1600 : (this.isChronoActive ? 380 : (isPastilleMadness ? 1200 : 850)), t);
         filter.frequency.exponentialRampToValueAtTime(this.isChronoActive ? 90 : 140, t + stepDuration * 0.85);
 
-        const bassVol = is32xGod ? 0.055 : (isMadness ? 0.05 : 0.045);
+        const bassVol = is32xGod ? 0.055 : (isPastilleMadness ? 0.05 : 0.045);
         g.gain.setValueAtTime(bassVol, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.9);
 
