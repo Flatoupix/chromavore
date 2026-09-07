@@ -764,7 +764,6 @@ class Game {
       sounds.play('powerup');
       particles.flash('#00f0ff', 0.5);
       particles.shake(12, 0.4);
-      particles.addPop(this.renderer.cw / 2, HUD_H + 60, 'ARÈNE 16:9 DÉBLOQUÉE !', '#ffd700', 26);
     }
   }
 
@@ -1922,37 +1921,11 @@ class Game {
       if (timer > 0) effects.push({ label, timer, maxTimer, color, icon });
     };
 
-    if (this.combo.m >= 32) add('INVINCIBLE x32', this.combo.t, COMBO_DECAY, '#ffd700', 'crown');
-    add('INVINCIBILITÉ', this.player.invuln, 2.2, '#00f0ff', 'shield');
-    add('FANTÔMES EFFRAYÉS', powerups.pred.t, powerups.pred.maxT, '#00ffff', 'lightning');
+    // Only active player buffs (Frightened ghosts have radial rings; board drops have ground rings; overdrive & god are in HUD)
     add('FORCE FIELD', powerups.fx.magnet, Math.max(9, powerups.getForceFieldStats(progression.totalGhosts, this.gameMode === 'madness').duration), '#00f0ff', 'magnet');
     add('PHASE', powerups.fx.phase, 4, '#ff00ff', 'phase');
     add('TIMEWARP', powerups.fx.timewarp, 5, '#b080ff', 'chrono');
-    add('DASH INFINI', powerups.fx.overdrive, 10, '#00ffcc', 'overdrive');
     add('BOOST PASTILLE', this.player.superPelletBoostTimer, 3.5, '#ffd700', 'lightning');
-
-    if (powerups.current) {
-      const labels: Record<string, string> = {
-        overdrive: 'DASH INFINI DISP.', nova: 'NOVA DISP.', timewarp: 'TIMEWARP DISP.', phase: 'PHASE DISP.', magnet: 'FORCE FIELD DISP.'
-      };
-      add(labels[powerups.current.type] || 'ITEM DISP.', powerups.current.timer, 12, '#ffcc00', powerups.current.type);
-    }
-    if (powerups.forceFieldItem) {
-      add('FORCE FIELD DISP.', powerups.forceFieldItem.timer, powerups.forceFieldItem.maxTimer, '#00f0ff', 'magnet');
-    }
-    if (superItems.boardDrop) {
-      add(`${superItems.boardDrop.item.name} DISP.`, superItems.boardDrop.timer, superItems.boardDrop.maxTimer, '#ffd700', superItems.boardDrop.item.icon);
-    }
-
-    if (superItems.vortex) add('BLACK HOLE', superItems.vortex.life, superItems.vortex.maxLife, '#bb44ff', 'black_hole');
-    add('HYPER BEAMS', superItems.laserTimer, superItems.laserMaxTimer, '#00ffff', 'laser');
-    add('CRYO SHATTER', superItems.cryoTimer, superItems.cryoMaxTimer, '#aaffff', 'cryo');
-    if (superItems.tsunamiX >= 0) {
-      const arenaWidth = this.maze.cols * T;
-      const maxTimer = (arenaWidth + 60) / (arenaWidth * 1.6);
-      const timer = Math.max(0, (arenaWidth + 60 - superItems.tsunamiX) / (arenaWidth * 1.6));
-      add('LIGHT TSUNAMI', timer, maxTimer, '#ffffff', 'tsunami');
-    }
 
     return effects;
   }
@@ -2024,7 +1997,7 @@ class Game {
         powerups.draw(this.renderer.ctx, this.time);
         superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
       }
-      this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive);
+      this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
       this.player.draw(
         this.renderer.ctx,
         this.time,
@@ -2078,7 +2051,7 @@ class Game {
       superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
     }
 
-    this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive);
+    this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
     this.player.draw(
       this.renderer.ctx,
       this.time,
@@ -2141,7 +2114,6 @@ class Game {
       progression.getSkillLevel('chrono')
     );
     this.renderer.drawEffectTimers(this.getEffectTimers());
-    badges.drawBanner(this.renderer.ctx);
 
     if (this.state === 'waveTrans') {
       this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount, this.gameMode === 'madness');

@@ -78,7 +78,6 @@ export class SuperItemManager {
     sounds.play('powerup');
     particles.flash('#ffd700', 0.25);
     particles.shake(4, 0.15);
-    particles.addPop((this.currentCols * T) / 2, 80, `${item.name} APPARAÎT SUR LE PLATEAU !`, '#ffd700', 19);
   }
 
   private activate(
@@ -393,11 +392,29 @@ export class SuperItemManager {
       c.save();
       c.globalAlpha = warn && Math.sin(time * 14) < 0 ? 0.35 : 1;
 
-      // 1. Ground shadow on maze floor
+      // 1. Ground shadow on maze floor & circular floor countdown ring
       c.fillStyle = 'rgba(0, 0, 0, 0.45)';
       c.beginPath();
-      c.ellipse(x, y + 9, T * 0.38, T * 0.14, 0, 0, PI2);
+      c.ellipse(x, y + 9, T * 0.44, T * 0.16, 0, 0, PI2);
       c.fill();
+
+      const dropRatio = Math.max(0, Math.min(1, this.boardDrop.timer / Math.max(this.boardDrop.maxTimer, 0.01)));
+      c.save();
+      c.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.ellipse(x, y + 9, T * 0.65, T * 0.26, 0, 0, PI2);
+      c.stroke();
+
+      const ringCol = warn ? (Math.sin(time * 16) > 0 ? '#ff0055' : '#ffffff') : color;
+      c.strokeStyle = ringCol;
+      c.shadowColor = ringCol;
+      c.shadowBlur = warn ? 12 : 6;
+      c.lineWidth = 2.0;
+      c.beginPath();
+      c.ellipse(x, y + 9, T * 0.65, T * 0.26, 0, -Math.PI / 2, -Math.PI / 2 + PI2 * dropRatio);
+      c.stroke();
+      c.restore();
 
       // 2. Rotating retro arcade diamond frame
       c.save();

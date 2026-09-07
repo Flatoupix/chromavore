@@ -306,47 +306,60 @@ export class Renderer {
     if (visible.length === 0) return;
 
     const c = this.ctx;
-    const wide = this.cw >= 450;
-    const width = wide ? 154 : 126;
-    const rowH = 20;
-    const x = this.cw - width - 8;
-    const startY = HUD_H + 8;
+    const badgeR = 10;
+    const spacing = 28;
+    const rightMargin = 16;
+    const cy = HUD_H + 15;
 
     c.save();
-    c.textBaseline = 'middle';
     for (let i = 0; i < visible.length; i++) {
       const effect = visible[i];
-      const y = startY + i * (rowH + 4);
+      const cx = this.cw - rightMargin - i * spacing;
       const ratio = Math.max(0, Math.min(1, effect.timer / Math.max(effect.maxTimer, 0.01)));
-      const timeText = `${effect.timer.toFixed(1)}s`;
-      const labelLimit = wide ? 17 : 12;
-      const label = effect.label.length > labelLimit ? `${effect.label.slice(0, labelLimit - 1)}…` : effect.label;
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + PI2 * ratio;
 
-      c.fillStyle = 'rgba(5, 12, 24, 0.88)';
+      // Dark translucent circular backdrop chip
+      c.fillStyle = 'rgba(6, 12, 24, 0.85)';
+      c.beginPath();
+      c.arc(cx, cy, badgeR + 2, 0, PI2);
+      c.fill();
+
+      // Depleting radial progress ring
+      c.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      c.lineWidth = 1.8;
+      c.beginPath();
+      c.arc(cx, cy, badgeR, 0, PI2);
+      c.stroke();
+
       c.strokeStyle = effect.color;
-      c.lineWidth = 1;
       c.shadowColor = effect.color;
       c.shadowBlur = 6;
+      c.lineWidth = 2.0;
       c.beginPath();
-      c.roundRect(x, y, width, rowH, 4);
-      c.fill();
+      c.arc(cx, cy, badgeR, startAngle, endAngle);
       c.stroke();
       c.shadowBlur = 0;
 
-      spriteAtlas.drawIcon(c, effect.icon, x + 10, y + 9, 11);
-      c.textAlign = 'left';
-      c.font = wide ? 'bold 8px monospace' : 'bold 7px monospace';
-      c.fillStyle = '#eafcff';
-      c.fillText(label, x + 19, y + 8);
-      c.textAlign = 'right';
-      c.font = wide ? 'bold 8px monospace' : 'bold 7px monospace';
-      c.fillStyle = effect.color;
-      c.fillText(timeText, x + width - 6, y + 8);
+      // Leading edge spark
+      if (ratio > 0.05) {
+        const sx = cx + Math.cos(endAngle) * badgeR;
+        const sy = cy + Math.sin(endAngle) * badgeR;
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(sx, sy, 1.4, 0, PI2);
+        c.fill();
+      }
 
-      c.fillStyle = 'rgba(255,255,255,0.12)';
-      c.fillRect(x + 3, y + rowH - 4, width - 6, 2);
+      // Crisp pixel-art icon in the center
+      spriteAtlas.drawIcon(c, effect.icon, cx, cy, 13);
+
+      // Micro countdown timer text below chip
+      c.font = 'bold 7px monospace';
+      c.textAlign = 'center';
+      c.textBaseline = 'top';
       c.fillStyle = effect.color;
-      c.fillRect(x + 3, y + rowH - 4, (width - 6) * ratio, 2);
+      c.fillText(`${effect.timer.toFixed(1)}s`, cx, cy + badgeR + 3);
     }
     c.restore();
   }

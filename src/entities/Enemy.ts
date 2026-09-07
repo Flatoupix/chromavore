@@ -365,7 +365,14 @@ export class EnemyManager {
     return c;
   }
 
-  public draw(c: CanvasRenderingContext2D, time: number, predWarn: boolean, isChronoActive: boolean = false) {
+  public draw(
+    c: CanvasRenderingContext2D,
+    time: number,
+    predWarn: boolean,
+    isChronoActive: boolean = false,
+    predTimer: number = 0,
+    predMaxTimer: number = 7.0
+  ) {
     for (const e of this.enemies) {
       if (e.st === 'dead') continue;
       const ep = this.getPos(e);
@@ -462,6 +469,45 @@ export class EnemyManager {
           !!e.isTitan
         );
         c.restore();
+
+        // Radial Countdown Circular Gauge around Frightened Ghosts
+        if (e.st === 'flee' && predTimer > 0) {
+          const ratio = Math.max(0, Math.min(1, predTimer / Math.max(predMaxTimer, 0.01)));
+          const ringR = r * 1.5;
+          const startAngle = -Math.PI / 2;
+          const endAngle = startAngle + PI2 * ratio;
+
+          c.save();
+          // Faint background guide track
+          c.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+          c.lineWidth = 1.8;
+          c.beginPath();
+          c.arc(gx, gy, ringR, 0, PI2);
+          c.stroke();
+
+          // Active depleting arc
+          const ringCol = predWarn ? (Math.sin(time * 16) > 0 ? '#ff0055' : '#ffffff') : '#00f0ff';
+          c.strokeStyle = ringCol;
+          c.shadowColor = ringCol;
+          c.shadowBlur = predWarn ? 12 : 7;
+          c.lineWidth = 2.0;
+          c.beginPath();
+          c.arc(gx, gy, ringR, startAngle, endAngle);
+          c.stroke();
+
+          // Bright glowing spark at leading edge
+          if (ratio > 0.02) {
+            const sparkX = gx + Math.cos(endAngle) * ringR;
+            const sparkY = gy + Math.sin(endAngle) * ringR;
+            c.fillStyle = '#ffffff';
+            c.shadowColor = ringCol;
+            c.shadowBlur = 8;
+            c.beginPath();
+            c.arc(sparkX, sparkY, 1.8, 0, PI2);
+            c.fill();
+          }
+          c.restore();
+        }
 
         // Chrono Stasis / Temporal Refraction Aura
         if (isChronoActive && e.st === 'active') {

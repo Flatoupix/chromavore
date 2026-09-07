@@ -610,16 +610,18 @@ export class Player {
         }
       }
 
-      // Invulnerability shield (Mode Madness only)
-      if (isMadness && this.invuln > 0) {
+      // Invulnerability shield (Classic & Madness)
+      if (this.invuln > 0) {
         c.save();
-        c.strokeStyle = 'rgba(0,255,255,0.85)';
+        const invRatio = Math.max(0, Math.min(1, this.invuln / 2.2));
+        const invCol = Math.sin(time * 16) > 0 ? '#ffffff' : '#00ffff';
+        c.strokeStyle = invCol;
         c.shadowColor = '#00ffff';
-        c.shadowBlur = 16;
-        c.lineWidth = 2;
+        c.shadowBlur = 14;
+        c.lineWidth = 2.0;
         c.setLineDash([4, 3]);
         c.beginPath();
-        c.arc(0, 0, P_RAD + 6, time * 12, time * 12 + PI2);
+        c.arc(0, 0, P_RAD + 6, -Math.PI / 2, -Math.PI / 2 + PI2 * invRatio);
         c.stroke();
         c.restore();
       }

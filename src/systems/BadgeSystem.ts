@@ -65,7 +65,6 @@ export const BADGE_MAX_PAGES = Math.ceil(Object.values(BADGES).length / BADGE_PA
 
 export class BadgeManager {
   public unlocked: Record<string, boolean> = {};
-  public banner: { text: string; icon: string; life: number; ml: number } | null = null;
   public hiScore: number = 0;
   public bestMadnessKills: number = 0;
 
@@ -123,7 +122,6 @@ export class BadgeManager {
       }
     } catch {}
 
-    this.banner = { text: BADGES[id].name, icon: BADGES[id].icon, life: 3.2, ml: 3.2 };
     sounds.play('badge');
     wobbleBanner.show('★ SUCCÈS DÉBLOQUÉ ★', BADGES[id].name, BADGES[id].desc, BADGES[id].icon, '#ffd700', 2.2);
     particles.flash('#ffd700', 0.25);
@@ -152,45 +150,9 @@ export class BadgeManager {
     return false;
   }
 
-  public update(dt: number) {
-    if (this.banner) {
-      this.banner.life -= dt;
-      if (this.banner.life <= 0) this.banner = null;
-    }
-  }
+  public update(_dt: number) {}
 
   public currentCw: number = CW;
-
-  public drawBanner(c: CanvasRenderingContext2D) {
-    if (!this.banner || this.banner.life <= 0) return;
-    const cw = c.canvas.width;
-    this.currentCw = cw;
-    const a = Math.min(this.banner.life / 0.4, 1);
-    const y = HUD_H + 8;
-    c.save();
-    c.globalAlpha = a;
-    const bw = 320, bh = 32, bx = (cw - bw) / 2;
-    c.fillStyle = 'rgba(12,18,34,0.95)';
-    c.strokeStyle = '#ffd700';
-    c.lineWidth = 1.8;
-    c.shadowColor = '#ffd700';
-    c.shadowBlur = 14;
-    c.beginPath();
-    c.roundRect(bx, y, bw, bh, 6);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-
-    spriteAtlas.drawIcon(c, 'trophy', bx + 20, y + bh / 2, 16);
-    spriteAtlas.drawIcon(c, this.banner.icon, bx + 40, y + bh / 2, 16);
-
-    c.font = 'bold 11px monospace';
-    c.fillStyle = '#ffd700';
-    c.textAlign = 'left';
-    c.textBaseline = 'middle';
-    c.fillText('SUCCÈS : ' + this.banner.text, bx + 54, y + bh / 2);
-    c.restore();
-  }
 }
 
 export const badges = new BadgeManager();

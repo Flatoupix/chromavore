@@ -425,6 +425,25 @@ export class PowerupManager {
       const pulse = 1 + Math.sin(time * 5) * 0.2;
       const dis = this.current.timer < 3;
 
+      // Ground circular countdown ring
+      const dropRatio = Math.max(0, Math.min(1, this.current.timer / 12));
+      c.save();
+      c.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.arc(px, py, T * 0.52, 0, PI2);
+      c.stroke();
+
+      const ringCol = dis ? (Math.sin(time * 16) > 0 ? '#ff0055' : '#ffffff') : col;
+      c.strokeStyle = ringCol;
+      c.shadowColor = ringCol;
+      c.shadowBlur = dis ? 10 : 5;
+      c.lineWidth = 1.8;
+      c.beginPath();
+      c.arc(px, py, T * 0.52, -Math.PI / 2, -Math.PI / 2 + PI2 * dropRatio);
+      c.stroke();
+      c.restore();
+
       c.save();
       c.globalAlpha = dis ? (Math.sin(time * 10) > 0 ? 1 : 0.3) : 1;
       c.fillStyle = col;
@@ -443,6 +462,25 @@ export class PowerupManager {
       const col = PC['magnet'] || '#00f0ff';
       const pulse = 1 + Math.sin(time * 5) * 0.2;
       const dis = this.forceFieldItem.timer < 3;
+
+      // Ground circular countdown ring
+      const dropRatio = Math.max(0, Math.min(1, this.forceFieldItem.timer / Math.max(this.forceFieldItem.maxTimer, 0.01)));
+      c.save();
+      c.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.arc(fx, fy, T * 0.52, 0, PI2);
+      c.stroke();
+
+      const ringCol = dis ? (Math.sin(time * 16) > 0 ? '#ff0055' : '#ffffff') : col;
+      c.strokeStyle = ringCol;
+      c.shadowColor = ringCol;
+      c.shadowBlur = dis ? 10 : 5;
+      c.lineWidth = 1.8;
+      c.beginPath();
+      c.arc(fx, fy, T * 0.52, -Math.PI / 2, -Math.PI / 2 + PI2 * dropRatio);
+      c.stroke();
+      c.restore();
 
       c.save();
       c.globalAlpha = dis ? (Math.sin(time * 10) > 0 ? 1 : 0.3) : 1;
