@@ -13,7 +13,7 @@ import { powerups } from './entities/Powerups';
 import { superItems } from './systems/SuperItems';
 import { badges, BADGE_MAX_PAGES } from './systems/BadgeSystem';
 import { TouchDeckManager } from './ui/TouchDeck';
-import { Renderer } from './graphics/Renderer';
+import { Renderer, type EffectTimer } from './graphics/Renderer';
 import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
 import { leaderboard } from './systems/Leaderboard';
 import { progression } from './systems/ProgressionSystem';
@@ -792,7 +792,7 @@ class Game {
 
       // Charge Super-Item Energy Gauge (+8% per ghost kill)
       const unlockedPool = progression.getUnlockedSuperItems();
-      superItems.addEnergy(8.0, unlockedPool);
+      superItems.addEnergy(8.0, unlockedPool, this.maze);
 
       // 14% chance to drop powerup on tile (with guaranteed walkable safety)
       if (Math.random() < 0.14 && !powerups.current) {
@@ -1413,7 +1413,7 @@ class Game {
           sounds.play('near');
           if (this.gameMode === 'madness') {
             const unlockedPool = progression.getUnlockedSuperItems();
-            superItems.addEnergy(4.0, unlockedPool);
+            superItems.addEnergy(4.0, unlockedPool, this.maze);
             const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
             this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_NM_RECHARGE);
           }
@@ -1432,14 +1432,20 @@ class Game {
       const px = c * T + HALF, py = r * T + HALF;
 
       if (isPellet) {
+        const isSuperPellet = progression.getSkillLevel('super_pellet') >= 1;
         const pts = 50 * this.combo.m;
         this.score += pts;
         particles.addPop(px, py - 15, '+' + pts, '#ff5555', 18);
         particles.emit(px, py, 20, C_PELLET, { speed: 100, size: 4, life: 0.6 });
-        powerups.triggerPredator(this.enemyManager.enemies);
+        powerups.triggerPredator(this.enemyManager.enemies, isSuperPellet);
         particles.shake(4, 0.2);
         sounds.play('pellet');
         this.player.addSuperPelletBoost();
+
+        if (isSuperPellet) {
+          particles.addPop(px, py - 38, 'SUPER PASTILLE : RENFORTS EFFRAYÉS !', '#ffd700', 16);
+          particles.flash('#ffd700', 0.18);
+        }
 
         // Les grosses boules (super-pellets) font remonter le timer et progresser le combo !
         this.combo.n += 4;
@@ -1456,7 +1462,7 @@ class Game {
         if (this.gameMode === 'madness') {
           this.madnessTimer = Math.min(45, this.madnessTimer + 3.0);
           const unlockedPool = progression.getUnlockedSuperItems();
-          superItems.addEnergy(12.0, unlockedPool);
+          superItems.addEnergy(12.0, unlockedPool, this.maze);
           const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
         }
@@ -1468,7 +1474,7 @@ class Game {
         if (this.gameMode === 'madness') {
           this.madnessTimer = Math.min(45, this.madnessTimer + 0.04);
           const unlockedPool = progression.getUnlockedSuperItems();
-          superItems.addEnergy(0.7, unlockedPool);
+          superItems.addEnergy(0.7, unlockedPool, this.maze);
           const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
         }
@@ -1558,6 +1564,58 @@ class Game {
       this.combo.t = COMBO_DECAY;
       badges.unlock('combo32');
     }
+  }
+
+  private syncTouchControls() {
+    const dBtn = document.getElementById('dash-btn');
+    const dLbl = document.getElementById('dash-label');
+    const chBtn = document.getElementById('chrono-btn');
+    const chLbl = document.getElementById('chrono-label');
+    const isRunActive = this.state === 'ready' || this.state === 'playing' || this.state === 'paused' || this.state === 'dying';
+    const isMadness = this.gameMode === 'madness';
+    const dashUnlocked = isMadness && progression.getSkillLevel('dash') >= 1;
+    const chronoLevel = progression.getSkillLevel('chrono');
+    const chronoUnlocked = isRunActive && isMadness && chronoLevel >= 1;
+
+    if (dBtn && dLbl) {
+      dBtn.classList.remove('cooling', 'locked');
+
+      if (!isRunActive) {
+        dLbl.textContent = 'JOUER';
+        dLbl.style.color = '#00ffff';
+        dBtn.setAttribute('aria-label', 'Jouer');
+      } else if (!isMadness) {
+        dBtn.classList.add('locked');
+        dLbl.textContent = 'SANS DASH';
+        dLbl.style.color = '#8899aa';
+        dBtn.setAttribute('aria-label', 'Dash indisponible en mode Classique');
+      } else if (!dashUnlocked) {
+        dBtn.classList.add('locked');
+        dLbl.textContent = '10 FRAGS';
+        dLbl.style.color = '#ffaa00';
+        dBtn.setAttribute('aria-label', 'Dash déverrouillé à 10 frags');
+      } else if (powerups.fx.overdrive > 0) {
+        dLbl.textContent = 'NO-CD ' + powerups.fx.overdrive.toFixed(1) + 's';
+        dLbl.style.color = '#00ffcc';
+        dBtn.setAttribute('aria-label', 'Dash sans recharge');
+      } else if (this.player.dashCd > 0) {
+        dBtn.classList.add('cooling');
+        dLbl.textContent = this.player.dashCd.toFixed(1) + 's';
+        dLbl.style.color = '#8899aa';
+        dBtn.setAttribute('aria-label', 'Dash en recharge');
+      } else {
+        dLbl.textContent = 'READY';
+        dLbl.style.color = '#00ffff';
+        dBtn.setAttribute('aria-label', 'Dash prêt');
+      }
+    }
+
+    if (chBtn) {
+      const chWrap = chBtn.parentElement;
+      if (chWrap) chWrap.style.display = chronoUnlocked ? 'flex' : 'none';
+      chBtn.classList.toggle('active-chrono', this.isChronoActive);
+    }
+    if (chLbl) chLbl.innerText = chronoUnlocked ? `${Math.round(this.chronoEnergy)}%` : 'LOCK';
   }
 
   private update(dt: number) {
@@ -1715,6 +1773,7 @@ class Game {
     );
     badges.update(dt);
     particles.update(dt);
+    this.syncTouchControls();
 
     if (this.hitlag > 0) {
       this.hitlag -= dt;
@@ -1754,17 +1813,6 @@ class Game {
           input.isChronoRequested = false;
         }
         sounds.setChronoActive(this.isChronoActive);
-
-        // Update mobile touch deck chrono button & label
-        const chBtn = document.getElementById('chrono-btn');
-        if (chBtn) {
-          const chWrap = chBtn.parentElement;
-          if (chWrap) chWrap.style.display = isChronoUnlocked ? 'flex' : 'none';
-          if (this.isChronoActive) chBtn.classList.add('active-chrono');
-          else chBtn.classList.remove('active-chrono');
-        }
-        const chLbl = document.getElementById('chrono-label');
-        if (chLbl) chLbl.innerText = isChronoUnlocked ? `${Math.round(this.chronoEnergy)}%` : 'LOCK';
 
         const activeChronoScale = chronoLevel === 2 ? CHRONO_TIMESCALE_V2 : CHRONO_TIMESCALE;
         const timeScale = this.isChronoActive ? activeChronoScale : 1.0;
@@ -1926,25 +1974,6 @@ class Game {
           }
         }
 
-        // Sync DOM dash button state
-        const dBtn = document.getElementById('dash-btn');
-        const dLbl = document.getElementById('dash-label');
-        if (dBtn && dLbl) {
-          if (powerups.fx.overdrive > 0) {
-            dBtn.classList.remove('cooling');
-            dLbl.textContent = 'NO-CD ' + powerups.fx.overdrive.toFixed(1) + 's';
-            dLbl.style.color = '#00ffcc';
-          } else if (this.player.dashCd > 0) {
-            dBtn.classList.add('cooling');
-            dLbl.textContent = this.player.dashCd.toFixed(1) + 's';
-            dLbl.style.color = '#8899aa';
-          } else {
-            dBtn.classList.remove('cooling');
-            dLbl.textContent = 'READY';
-            dLbl.style.color = '#00ffff';
-          }
-        }
-
         // Powerups & Void relic (Pass isPowerful state for dynamic Force Field priority)
         const isPlayerPowerful = (this.combo.m >= 4) || (this.madnessStreak >= 8) || (this.player.pelletSpeedBonus >= 1.2) || (powerups.fx.overdrive > 0) || (powerups.pred.on);
         powerups.update(
@@ -1990,7 +2019,9 @@ class Game {
           this.enemyManager.enemies,
           (e, x, y) => this.onKillGhost(e, x, y),
           this.maze,
-          (c, r) => this.onCollectDot(c, r)
+          (c, r) => this.onCollectDot(c, r),
+          (seconds) => { this.madnessTimer = Math.min(45, this.madnessTimer + seconds); },
+          () => { powerups.fx.overdrive = progression.getSkillLevel('overdrive') >= 2 ? 10.0 : 8.0; }
         );
 
         // Combo decay
@@ -2045,6 +2076,47 @@ class Game {
         this.updateBonusStage(dt);
         break;
     }
+  }
+
+  private getEffectTimers(): EffectTimer[] {
+    const effects: EffectTimer[] = [];
+    const add = (label: string, timer: number, maxTimer: number, color: string, icon: string) => {
+      if (timer > 0) effects.push({ label, timer, maxTimer, color, icon });
+    };
+
+    if (this.combo.m >= 32) add('INVINCIBLE x32', this.combo.t, COMBO_DECAY, '#ffd700', 'crown');
+    add('INVINCIBILITÉ', this.player.invuln, 2.2, '#00f0ff', 'shield');
+    add('FANTÔMES EFFRAYÉS', powerups.pred.t, powerups.pred.maxT, '#00ffff', 'lightning');
+    add('FORCE FIELD', powerups.fx.magnet, Math.max(9, powerups.getForceFieldStats(progression.totalGhosts, this.gameMode === 'madness').duration), '#00f0ff', 'magnet');
+    add('PHASE', powerups.fx.phase, 4, '#ff00ff', 'phase');
+    add('TIMEWARP', powerups.fx.timewarp, 5, '#b080ff', 'chrono');
+    add('DASH INFINI', powerups.fx.overdrive, 10, '#00ffcc', 'overdrive');
+    add('BOOST PASTILLE', this.player.superPelletBoostTimer, 3.5, '#ffd700', 'lightning');
+
+    if (powerups.current) {
+      const labels: Record<string, string> = {
+        overdrive: 'DASH INFINI DISP.', nova: 'NOVA DISP.', timewarp: 'TIMEWARP DISP.', phase: 'PHASE DISP.', magnet: 'FORCE FIELD DISP.'
+      };
+      add(labels[powerups.current.type] || 'ITEM DISP.', powerups.current.timer, 12, '#ffcc00', powerups.current.type);
+    }
+    if (powerups.forceFieldItem) {
+      add('FORCE FIELD DISP.', powerups.forceFieldItem.timer, powerups.forceFieldItem.maxTimer, '#00f0ff', 'magnet');
+    }
+    if (superItems.boardDrop) {
+      add(`${superItems.boardDrop.item.name} DISP.`, superItems.boardDrop.timer, superItems.boardDrop.maxTimer, '#ffd700', superItems.boardDrop.item.icon);
+    }
+
+    if (superItems.vortex) add('BLACK HOLE', superItems.vortex.life, superItems.vortex.maxLife, '#bb44ff', 'black_hole');
+    add('HYPER BEAMS', superItems.laserTimer, superItems.laserMaxTimer, '#00ffff', 'laser');
+    add('CRYO SHATTER', superItems.cryoTimer, superItems.cryoMaxTimer, '#aaffff', 'cryo');
+    if (superItems.tsunamiX >= 0) {
+      const arenaWidth = this.maze.cols * T;
+      const maxTimer = (arenaWidth + 60) / (arenaWidth * 1.6);
+      const timer = Math.max(0, (arenaWidth + 60 - superItems.tsunamiX) / (arenaWidth * 1.6));
+      add('LIGHT TSUNAMI', timer, maxTimer, '#ffffff', 'tsunami');
+    }
+
+    return effects;
   }
 
   private render() {
@@ -2112,6 +2184,7 @@ class Game {
       this.renderer.drawDots(this.maze, this.time);
       if (this.gameMode === 'madness') {
         powerups.draw(this.renderer.ctx, this.time);
+        superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
       }
       this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive);
       this.player.draw(
@@ -2142,6 +2215,7 @@ class Game {
         this.isChronoActive,
         progression.getSkillLevel('chrono')
       );
+      this.renderer.drawEffectTimers(this.getEffectTimers());
       this.renderer.drawPause(this.gameMode === 'madness', this.madnessKills, this.madnessStreak, this.time);
       return;
     }
@@ -2228,6 +2302,7 @@ class Game {
       this.isChronoActive,
       progression.getSkillLevel('chrono')
     );
+    this.renderer.drawEffectTimers(this.getEffectTimers());
     badges.drawBanner(this.renderer.ctx);
 
     if (this.state === 'waveTrans') {

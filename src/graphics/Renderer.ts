@@ -16,6 +16,14 @@ import { progression, SKILL_TREE } from '../systems/ProgressionSystem';
 import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from './SpriteAtlas';
 
+export interface EffectTimer {
+  label: string;
+  timer: number;
+  maxTimer: number;
+  color: string;
+  icon: string;
+}
+
 export class Renderer {
   public canvas: HTMLCanvasElement;
   public ctx: CanvasRenderingContext2D;
@@ -293,6 +301,56 @@ export class Renderer {
     }
   }
 
+  public drawEffectTimers(effects: EffectTimer[]) {
+    const visible = effects.filter(effect => effect.timer > 0);
+    if (visible.length === 0) return;
+
+    const c = this.ctx;
+    const wide = this.cw >= 450;
+    const width = wide ? 154 : 126;
+    const rowH = 20;
+    const x = this.cw - width - 8;
+    const startY = HUD_H + 8;
+
+    c.save();
+    c.textBaseline = 'middle';
+    for (let i = 0; i < visible.length; i++) {
+      const effect = visible[i];
+      const y = startY + i * (rowH + 4);
+      const ratio = Math.max(0, Math.min(1, effect.timer / Math.max(effect.maxTimer, 0.01)));
+      const timeText = `${effect.timer.toFixed(1)}s`;
+      const labelLimit = wide ? 17 : 12;
+      const label = effect.label.length > labelLimit ? `${effect.label.slice(0, labelLimit - 1)}…` : effect.label;
+
+      c.fillStyle = 'rgba(5, 12, 24, 0.88)';
+      c.strokeStyle = effect.color;
+      c.lineWidth = 1;
+      c.shadowColor = effect.color;
+      c.shadowBlur = 6;
+      c.beginPath();
+      c.roundRect(x, y, width, rowH, 4);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+
+      spriteAtlas.drawIcon(c, effect.icon, x + 10, y + 9, 11);
+      c.textAlign = 'left';
+      c.font = wide ? 'bold 8px monospace' : 'bold 7px monospace';
+      c.fillStyle = '#eafcff';
+      c.fillText(label, x + 19, y + 8);
+      c.textAlign = 'right';
+      c.font = wide ? 'bold 8px monospace' : 'bold 7px monospace';
+      c.fillStyle = effect.color;
+      c.fillText(timeText, x + width - 6, y + 8);
+
+      c.fillStyle = 'rgba(255,255,255,0.12)';
+      c.fillRect(x + 3, y + rowH - 4, width - 6, 2);
+      c.fillStyle = effect.color;
+      c.fillRect(x + 3, y + rowH - 4, (width - 6) * ratio, 2);
+    }
+    c.restore();
+  }
+
   public drawHUD(
     isMadness: boolean,
     score: number,
@@ -483,6 +541,13 @@ export class Renderer {
         c.fillText('ITEM EN ACTION !', this.cw - rightPad, 18); c.shadowBlur = 0;
         c.font = '8px monospace'; c.fillStyle = '#ffbb00';
         c.fillText('UN SEUL ITEM À LA FOIS', this.cw - rightPad, 34);
+      } else if (superItems.boardDrop) {
+        c.font = isWide ? 'bold 9px monospace' : 'bold 8px monospace';
+        c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 10;
+        c.fillText(`${superItems.boardDrop.item.name} SUR LE PLATEAU`, this.cw - rightPad, 18);
+        c.shadowBlur = 0;
+        c.font = '8px monospace'; c.fillStyle = '#00ffff';
+        c.fillText(`À RAMASSER • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
       } else if (superItems.activeSlot && superItems.activeSlot.ready) {
         const itmPulse = 1 + Math.sin(time * 8) * 0.08;
         const itmText = `${superItems.activeSlot.name} [E]`;
@@ -495,10 +560,11 @@ export class Renderer {
       } else {
         const unlockedItems = progression.getUnlockedSuperItems();
         if (unlockedItems.length === 0) {
-          const killsLeft = Math.max(0, 100 - progression.totalGhosts);
+          const novaRequirement = SKILL_TREE.find(s => s.id === 'nova_v1')?.threshold ?? 150;
+          const killsLeft = Math.max(0, novaRequirement - progression.totalGhosts);
           c.font = isWide ? 'bold 9px monospace' : 'bold 8px monospace';
           c.fillStyle = '#8899aa';
-          const nText = `NOVA : ${progression.totalGhosts}/100`;
+          const nText = `NOVA : ${progression.totalGhosts}/${novaRequirement}`;
           const ntw = c.measureText(nText).width;
           spriteAtlas.drawIcon(c, 'nova', this.cw - rightPad - ntw - 10, 16, 12);
           c.fillText(nText, this.cw - rightPad, 16);
@@ -943,7 +1009,7 @@ export class Renderer {
     c.fillStyle = '#00f0ff';
     c.shadowColor = '#00f0ff';
     c.shadowBlur = 6;
-    c.fillText(`[I] COMMENT JOUER    •    [C] ARSENAL (${unlockedCount}/18)`, this.cw / 2, 538);
+    c.fillText(`[I] COMMENT JOUER    •    [C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})`, this.cw / 2, 538);
     c.fillText(`[B] SUCCÈS (${unlockedBadges}/${totalBadges})   •   [L] SCORES   •   [K] SYNC`, this.cw / 2, 566);
     c.shadowBlur = 0;
   }
@@ -975,27 +1041,28 @@ export class Renderer {
     const cardW = this.cw - 44;
     const cardX = 22;
 
-    // Card 1: CONTRÔLES DE BASE (y: 58, h: 94)
-    this.drawInstructionCard(c, cardX, 58, cardW, 94, '#00f0ff', 'CONTRÔLES DE BASE', [
+    // Card 1: CONTRÔLES DE BASE (y: 58, h: 112)
+    this.drawInstructionCard(c, cardX, 58, cardW, 112, '#00f0ff', 'CONTRÔLES DE BASE', [
       { badge: 'FLÈCHES / ZQSD', desc: 'Virages anticipés fluides et demi-tours immédiats' },
-      { badge: 'ESPACE / DASH', desc: 'Dash Offensif : téléporte de 3 cases + taillade' },
+      { badge: 'ESPACE / DASH', desc: 'Madness • déverrouillé à 10 frags : téléporte et taillade' },
+      { badge: 'SHIFT / CHRONO', desc: 'Madness • déverrouillé à 50 frags : ralentit le monde' },
       { badge: 'P / ÉCHAP', desc: 'Pause du jeu, réglages audio & scanlines CRT' }
     ]);
 
-    // Card 2: KOMBOS DE DÉPLACEMENT SECRETS (y: 162, h: 76)
-    this.drawInstructionCard(c, cardX, 162, cardW, 76, '#ffd700', 'KOMBOS DE DÉPLACEMENT SECRETS', [
+    // Card 2: KOMBOS DE DÉPLACEMENT SECRETS (y: 180, h: 76)
+    this.drawInstructionCard(c, cardX, 180, cardW, 76, '#ffd700', 'KOMBOS DE DÉPLACEMENT SECRETS', [
       { badge: '← → ← →', desc: 'Wiggle EMP : onde radiale qui étourdit et repousse' },
       { badge: '↑ ↓ ↑ ↓', desc: 'Nitro Jet : turbo vitesse + traînée de feu au sol' }
     ]);
 
-    // Card 3: SUPER-ITEMS & ARSENAL (y: 248, h: 76)
-    this.drawInstructionCard(c, cardX, 248, cardW, 76, '#ff007f', 'SUPER-ITEMS & ARSENAL (FRAGS)', [
+    // Card 3: SUPER-ITEMS & ARSENAL (y: 266, h: 76)
+    this.drawInstructionCard(c, cardX, 266, cardW, 76, '#ff007f', 'SUPER-ITEMS & ARSENAL (FRAGS)', [
       { badge: 'E / BOUTON ITEM', desc: 'Déclenche le Super-Item débloqué lors des frags' },
       { badge: 'ARSENAL NÉON', desc: 'Méga Nova, Trou Noir, Lasers 8-Axes, Cryo, Vague...' }
     ]);
 
-    // Card 4: LES 2 MODES DE JEU (y: 334, h: 148)
-    this.drawInstructionCard(c, cardX, 334, cardW, 148, '#a855f7', 'LES 2 MODES DE JEU', [
+    // Card 4: LES 2 MODES DE JEU (y: 352, h: 148)
+    this.drawInstructionCard(c, cardX, 352, cardW, 148, '#a855f7', 'LES 2 MODES DE JEU', [
       {
         badge: 'MADNESS',
         desc: [
@@ -1020,7 +1087,7 @@ export class Renderer {
     const promptPulse = 0.65 + 0.35 * Math.sin(time * 3.5);
     const pillW = 440, pillH = 32;
     const pillX = this.cw / 2 - pillW / 2;
-    const pillY = 502;
+    const pillY = 518;
 
     c.save();
     c.fillStyle = 'rgba(0, 240, 255, 0.08)';
@@ -1414,7 +1481,7 @@ export class Renderer {
     c.font = 'bold 10px monospace';
     c.fillStyle = isSkills ? '#00f0ff' : '#8899aa';
     c.textAlign = 'center';
-    const tab1Text = `[1] ARSENAL (${unlockedSkills}/18)`;
+    const tab1Text = `[1] ARSENAL (${unlockedSkills}/${SKILL_TREE.length})`;
     const t1w = c.measureText(tab1Text).width;
     spriteAtlas.drawIcon(c, 'lightning', this.cw / 2 - tabW / 2 - 8 - t1w / 2 - 10, tabY + 16, 12);
     c.fillText(tab1Text, this.cw / 2 - tabW / 2 - 8 + 6, tabY + 16);
@@ -1478,20 +1545,20 @@ export class Renderer {
         c.fillText(`TOTAL CARRIÈRE : ${progression.totalGhosts.toLocaleString()} FRAGS (ARSENAL MAÎTRISÉ À 100% !)`, this.cw / 2, 70);
       }
 
-      // 2 Columns of 10 skills each:
-      const v1Skills = SKILL_TREE.filter(s => s.version === 1);
-      const v2Skills = SKILL_TREE.filter(s => s.version === 2);
+      // Base and odd-numbered upgrades on the left; advanced even-numbered upgrades on the right.
+      const leftSkills = SKILL_TREE.filter(s => s.version === 1 || s.version === 3);
+      const rightSkills = SKILL_TREE.filter(s => s.version === 2 || s.version === 4);
+      const compactGrid = Math.max(leftSkills.length, rightSkills.length) > 10;
+      const cardH = compactGrid ? 42 : 45;
+      const startY = 88, gapY = compactGrid ? 44 : 49;
 
-      const cardH = 45;
-      const startY = 88, gapY = 49;
-
-      for (let i = 0; i < v1Skills.length; i++) {
-        const s = v1Skills[i];
+      for (let i = 0; i < leftSkills.length; i++) {
+        const s = leftSkills[i];
         const y = startY + i * gapY;
         this.drawSkillCard(c, s, col1X, y, colW, cardH);
       }
-      for (let i = 0; i < v2Skills.length; i++) {
-        const s = v2Skills[i];
+      for (let i = 0; i < rightSkills.length; i++) {
+        const s = rightSkills[i];
         const y = startY + i * gapY;
         this.drawSkillCard(c, s, col2X, y, colW, cardH);
       }
@@ -1641,7 +1708,7 @@ export class Renderer {
     const unlocked = state.unlocked;
     const isNext = state.isNext;
     const hidden = state.hidden;
-    const isV2 = s.version === 2;
+    const isV2 = s.version >= 2;
 
     if (unlocked) {
       c.fillStyle = isV2 ? 'rgba(0, 255, 230, 0.08)' : 'rgba(255, 215, 0, 0.07)';

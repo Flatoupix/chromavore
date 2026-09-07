@@ -43,7 +43,7 @@ export class PowerupManager {
   public forceFieldSpawnTimer: number = 18.0;
 
   public fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
-  public pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false };
+  public pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false, global: false };
 
   public voidRelic: VoidRelic | null = null;
   public voidRelicTimer: number = 14.0;
@@ -61,7 +61,7 @@ export class PowerupManager {
     this.forceFieldItem = null;
     this.forceFieldSpawnTimer = 14.0;
     this.fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
-    this.pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false };
+    this.pred = { on: false, t: 0, maxT: 7.0, k: 0, warn: false, global: false };
     this.voidRelic = null;
     this.voidRelicTimer = 14.0;
     this.vortexPortal = null;
@@ -139,10 +139,7 @@ export class PowerupManager {
         this.pred.t -= dt;
         this.pred.warn = this.pred.t < 2.0;
         if (this.pred.t <= 0) {
-          this.pred.on = false;
-          for (const e of enemies) {
-            if (e.st === 'flee') e.st = 'active';
-          }
+          this.endPredator(enemies);
         }
       }
       return;
@@ -229,10 +226,7 @@ export class PowerupManager {
       this.pred.t -= dt;
       this.pred.warn = this.pred.t < 2.5;
       if (this.pred.t <= 0) {
-        this.pred.on = false;
-        for (const e of enemies) {
-          if (e.st === 'flee') e.st = 'active';
-        }
+        this.endPredator(enemies);
       }
     }
 
@@ -336,16 +330,33 @@ export class PowerupManager {
     }
   }
 
-  public triggerPredator(enemies: any[]) {
+  public triggerPredator(enemies: any[], affectsReinforcements: boolean = false) {
     this.pred.on = true;
     this.pred.maxT = 7.0;
     this.pred.t = 7.0;
     this.pred.k = 0;
     this.pred.warn = false;
+    this.pred.global = affectsReinforcements;
     for (const e of enemies) {
-      if (e.st === 'active') e.st = 'flee';
+      // A basic pellet only marks ghosts already in the current swarm.
+      // Super Pastille extends this effect to every reinforcement spawned during the timer.
+      if (e.st === 'active' || e.st === 'spawn' || e.st === 'return') {
+        e.frightened = true;
+        if (e.st === 'active') e.st = 'flee';
+      }
     }
     sounds.play('pellet');
+  }
+
+  private endPredator(enemies: any[]) {
+    this.pred.on = false;
+    this.pred.t = 0;
+    this.pred.warn = false;
+    this.pred.global = false;
+    for (const e of enemies) {
+      e.frightened = false;
+      if (e.st === 'flee') e.st = 'active';
+    }
   }
 
   private updateVoidRelic(

@@ -24,6 +24,7 @@ export interface Ghost {
   fl: number;
   nm: boolean;
   frozen: boolean;
+  frightened: boolean;
   isTitan?: boolean;
   returnTimer?: number;
 }
@@ -56,7 +57,8 @@ export class EnemyManager {
         delay: i * 1.5,
         fl: 0,
         nm: false,
-        frozen: false
+        frozen: false,
+        frightened: false
       });
     }
   }
@@ -79,9 +81,12 @@ export class EnemyManager {
     const spawns = this.getMadnessSpawnSpots(maze);
     const centerCol = maze ? Math.floor(maze.cols / 2) : 10;
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
+    // The swarm grows throughout a run. Returned ghosts count toward this cap so
+    // the population stays bounded, while higher kill counts keep increasing pressure.
+    const swarmCap = Math.min(96, 16 + Math.floor(madnessKills * 0.4));
 
     for (let i = 0; i < count; i++) {
-      if (this.enemies.length >= 36) break;
+      if (this.enemies.length >= swarmCap) break;
       let pt: { x: number; y: number };
 
       if (isWide) {
@@ -102,7 +107,7 @@ export class EnemyManager {
 
       const tp = types[(Math.random() * types.length) | 0];
       const spd = (E_SPEED + Math.min(2.5, madnessKills * 0.015)) * (tp === 'rusher' ? 1.3 : tp === 'orbiter' ? 1.1 : 1.0);
-      const isFlee = powerups && powerups.pred.on && powerups.pred.t > 0;
+      const isFlee = powerups && powerups.pred.on && powerups.pred.global && powerups.pred.t > 0;
 
       this.enemies.push({
         type: tp,
@@ -118,7 +123,8 @@ export class EnemyManager {
         delay: 0,
         fl: 0,
         nm: false,
-        frozen: false
+        frozen: false,
+        frightened: false
       });
     }
   }
@@ -147,7 +153,7 @@ export class EnemyManager {
       if (e.st === 'spawn') {
         e.delay -= dt;
         if (e.delay <= 0) {
-          e.st = (powerups && powerups.pred.on && powerups.pred.t > 0) ? 'flee' : 'active';
+          e.st = (powerups && powerups.pred.on && powerups.pred.t > 0 && (powerups.pred.global || e.frightened)) ? 'flee' : 'active';
           const centerCol = Math.floor(maze.cols / 2);
           let ex = centerCol, ey = 8;
           if (!maze.isWalkable(ex, ey, true)) {
@@ -232,7 +238,7 @@ export class EnemyManager {
         }
 
         if (e.st === 'return' && (atHome || (e.returnTimer && e.returnTimer >= 3.5))) {
-          e.st = (powerups && powerups.pred.on && powerups.pred.t > 0) ? 'flee' : 'active';
+          e.st = (powerups && powerups.pred.on && powerups.pred.t > 0 && (powerups.pred.global || e.frightened)) ? 'flee' : 'active';
           e.speed = E_SPEED * (e.type === 'rusher' ? 1.25 : e.type === 'orbiter' ? 1.08 : 1.0) * this.speedMultiplier;
           e.isTitan = false;
           e.returnTimer = 0;

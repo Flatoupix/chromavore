@@ -305,7 +305,7 @@ export class Player {
       this.t = 1;
     }
 
-    const maxDist = dashLvl >= 2 ? 4 : DASH_DIST;
+    const maxDist = DASH_DIST + Math.min(3, Math.max(0, dashLvl - 1));
     for (let i = 0; i < maxDist; i++) {
       const nx = this.wrapX(this.x + dx);
       const ny = this.y + dy;
@@ -380,7 +380,8 @@ export class Player {
           }
         }
       }
-      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'CYBER OVERDRIVE !' : 'CYBER DASH V2 !', '#00ffff', 16);
+      const dashName = dashLvl >= 4 ? 'QUANTUM DASH V4 !' : dashLvl >= 3 ? 'HYPER DASH V3 !' : 'CYBER DASH V2 !';
+      particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'CYBER OVERDRIVE !' : dashName, '#00ffff', 16);
     } else {
       particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'HYPER DASH !' : 'DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
     }

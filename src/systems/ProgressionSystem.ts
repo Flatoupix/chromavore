@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  CHROMAVORE — PROGRESSION SYSTEM & EXPONENTIAL SKILLS (V1 & V2)
+//  CHROMAVORE — PROGRESSION SYSTEM & EXPONENTIAL SKILLS (V1 TO V4)
 // ═══════════════════════════════════════════════════════════════
 
 import { profileManager } from './ProfileManager';
@@ -9,9 +9,9 @@ import { CW, ROWS, T } from '../config/constants';
 import { badges } from './BadgeSystem';
 
 export interface SkillDef {
-  id: string;             // e.g. 'dash_v1', 'dash_v2'
+  id: string;             // e.g. 'dash_v1' to 'dash_v4'
   baseId: string;         // e.g. 'dash'
-  version: 1 | 2;
+  version: 1 | 2 | 3 | 4;
   name: string;
   icon: string;
   threshold: number;      // ghosts required
@@ -143,6 +143,17 @@ export const SKILL_TREE: SkillDef[] = [
     desc: 'Portée 4 cases, recharge -25% et déblocage de l\'Arène Widescreen 16:9 !'
   },
   {
+    id: 'super_pellet_v1',
+    baseId: 'super_pellet',
+    version: 1,
+    name: 'SUPER PASTILLE',
+    icon: 'nova',
+    threshold: 1400,
+    category: 'item',
+    command: 'AUTOMATIQUE SUR SUPER PASTILLE',
+    desc: 'Les renforts qui arrivent pendant la peur sont eux aussi effrayés'
+  },
+  {
     id: 'wiggle_v2',
     baseId: 'wiggle',
     version: 2,
@@ -187,6 +198,17 @@ export const SKILL_TREE: SkillDef[] = [
     desc: 'Purge totale + pluie d\'orbes dorées bonus et multiplicateurs instantanés'
   },
   {
+    id: 'dash_v3',
+    baseId: 'dash',
+    version: 3,
+    name: 'HYPER DASH V3',
+    icon: 'dash',
+    threshold: 2800,
+    category: 'movement',
+    command: 'ESPACE ou BOUTON DASH',
+    desc: 'Portée 5 cases : traverse les longues lignes du Swarm d\'un seul éclair'
+  },
+  {
     id: 'overdrive_v2',
     baseId: 'overdrive',
     version: 2,
@@ -218,6 +240,17 @@ export const SKILL_TREE: SkillDef[] = [
     category: 'item',
     command: 'Touche [E] ou Bouton ITEM',
     desc: 'Lasers à 8 directions (cruciformes + 4 diagonales) rasant intégralement la carte'
+  },
+  {
+    id: 'dash_v4',
+    baseId: 'dash',
+    version: 4,
+    name: 'QUANTUM DASH V4',
+    icon: 'dash',
+    threshold: 5000,
+    category: 'movement',
+    command: 'ESPACE ou BOUTON DASH',
+    desc: 'Portée 6 cases : percée maximale à travers les essaims les plus denses'
   },
   {
     id: 'cryo_v2',
@@ -276,13 +309,14 @@ class ProgressionManager {
     return newlyUnlocked;
   }
 
-  public getSkillLevel(baseId: string): 0 | 1 | 2 {
-    const g = this.totalGhosts;
-    const v2 = SKILL_TREE.find(s => s.baseId === baseId && s.version === 2);
-    if (v2 && g >= v2.threshold) return 2;
-    const v1 = SKILL_TREE.find(s => s.baseId === baseId && s.version === 1);
-    if (v1 && g >= v1.threshold) return 1;
-    return 0;
+  public getSkillLevel(baseId: string): 0 | 1 | 2 | 3 | 4 {
+    let level: 0 | 1 | 2 | 3 | 4 = 0;
+    for (const skill of SKILL_TREE) {
+      if (skill.baseId === baseId && this.totalGhosts >= skill.threshold && skill.version > level) {
+        level = skill.version;
+      }
+    }
+    return level;
   }
 
   public isSkillUnlocked(skillId: string): boolean {
