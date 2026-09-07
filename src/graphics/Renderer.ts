@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS } from '../config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -419,7 +419,7 @@ export class Renderer {
 
       // 3. Status / Combo / Predator
       if (combo.m >= 32) {
-        const pProg = Math.max(0, Math.min(1, combo.t / COMBO_DECAY));
+        const pProg = Math.max(0, Math.min(1, combo.t / GOD_MODE_DURATION));
         spriteAtlas.drawIcon(c, 'lightning', 15, 41, 11);
         c.font = 'bold 9px monospace'; c.fillStyle = '#ffd700';
         c.shadowColor = '#ffd700'; c.shadowBlur = 8;
@@ -614,7 +614,7 @@ export class Renderer {
     // Dash / Predator Invincible Gauge
     const dX = 134, dY = 14, dW = 100, dH = 18;
     if (combo.m >= 32) {
-      const pProg = Math.max(0, Math.min(1, combo.t / COMBO_DECAY));
+      const pProg = Math.max(0, Math.min(1, combo.t / GOD_MODE_DURATION));
       const pCol = '#00ffff';
       c.fillStyle = '#0e1828';
       c.strokeStyle = '#ffd700';
@@ -687,12 +687,12 @@ export class Renderer {
       const isGod = combo.m >= 32;
       const sz = 16 + tier * 2;
       c.font = `bold ${sz}px monospace`;
-      const maxT = COMBO_DECAY;
+      const maxT = isGod ? GOD_MODE_DURATION : COMBO_DECAY;
       c.fillStyle = isGod ? '#ffd700' : CC[tier];
       c.shadowColor = isGod ? '#ffd700' : CC[tier];
       c.shadowBlur = isGod ? 12 : 8;
       c.textAlign = 'right';
-      c.fillText(isGod ? 'COMBO x32' : 'x' + combo.m, this.cw - 15, 46);
+      c.fillText(isGod ? `COMBO x32 (${combo.t.toFixed(1)}s)` : 'x' + combo.m, this.cw - 15, 46);
       c.shadowBlur = 0;
 
       // Decay Progress Bar

@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, CLASSIC_COLS, MADNESS_COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, CLASSIC_COLS, MADNESS_COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS, MADNESS_LEVELS, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -1304,10 +1304,16 @@ class Game {
         const tier = getComboTier(this.combo.n);
         this.combo.m = CM[tier];
 
-        // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
-        this.combo.t = COMBO_DECAY;
         if (this.combo.m >= 32) {
-          particles.addPop(px, py - 32, '+0.5s RECHARGE x32 !', '#00ffff', 20);
+          if (oldM < 32) {
+            this.combo.t = GOD_MODE_DURATION;
+          } else {
+            this.combo.t = Math.min(GOD_MODE_DURATION, this.combo.t + 2.0);
+            particles.addPop(px, py - 32, '+2s RECHARGE x32 !', '#00ffff', 20);
+          }
+        } else {
+          // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
+          this.combo.t = COMBO_DECAY;
         }
 
         if (this.gameMode === 'madness') {
@@ -1331,8 +1337,15 @@ class Game {
         const tier = getComboTier(this.combo.n);
         this.combo.m = CM[tier];
 
-        // Normal dot sustains combo timer
-        this.combo.t = COMBO_DECAY;
+        if (this.combo.m >= 32) {
+          if (oldM < 32) {
+            this.combo.t = GOD_MODE_DURATION;
+          }
+          // En Mode Dieu, les dots ne raccourcissent pas le timer de 15s !
+        } else {
+          // Normal dot sustains combo timer (0.5s)
+          this.combo.t = COMBO_DECAY;
+        }
 
         const pts = 10 * this.combo.m;
         this.score += pts;
@@ -1406,9 +1419,9 @@ class Game {
       sounds.play('powerup');
       particles.shake(10, 0.35);
       particles.flash('#ffd700', 0.3);
-      particles.addPop(px, py - 42, 'COMBO x32 !', '#ffd700', 32);
+      particles.addPop(px, py - 42, 'MODE DIEU : 15s D\'INVINCIBILITÉ !', '#ffd700', 32);
       particles.emit(px, py, 40, '#ffd700', { speed: 200, size: 5.5, life: 0.7 });
-      this.combo.t = COMBO_DECAY;
+      this.combo.t = GOD_MODE_DURATION;
       badges.unlock('combo32');
     }
   }
@@ -1876,7 +1889,7 @@ class Game {
             sounds.resetDotStreak();
             if (wasGod) {
               const pp = this.player.getPos();
-              particles.addPop(pp.x, pp.y - 20, 'FIN DU MODE x32', '#8899aa', 14);
+              particles.addPop(pp.x, pp.y - 20, 'FIN DU MODE DIEU (15s)', '#8899aa', 14);
             }
           } else {
             const tier = getComboTier(this.combo.n);

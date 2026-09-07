@@ -2,7 +2,7 @@
 //  CHROMAVORE — PLAYER ENTITY & OFFENSIVE DASH
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_BASE_SPEED, P_MADNESS_SPEED, CC, COMBO_DECAY, getComboTier } from '../config/constants';
+import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_BASE_SPEED, P_MADNESS_SPEED, CC, COMBO_DECAY, GOD_MODE_DURATION, getComboTier } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
@@ -694,7 +694,7 @@ export class Player {
           badgeCol = '#ffd700';
           badgeIcon = 'crown';
           const tVal = combo.m >= 32 ? combo.t : predTimer;
-          const maxVal = combo.m >= 32 ? COMBO_DECAY : (predMaxTimer || 7.0);
+          const maxVal = combo.m >= 32 ? GOD_MODE_DURATION : (predMaxTimer || 7.0);
           badgeText = `x32 • ${tVal.toFixed(1)}s`;
           prog = Math.max(0, Math.min(1, tVal / maxVal));
         } else if (isPredator) {
