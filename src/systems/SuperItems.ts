@@ -12,7 +12,6 @@ export interface SuperItem {
   type: 'nova' | 'vortex' | 'laser' | 'cryo' | 'tsunami' | 'overdrive';
   name: string;
   icon: string;
-  ready: boolean;
 }
 
 export interface SuperItemDrop {
@@ -35,10 +34,8 @@ export interface AbsorbedGhost {
 
 export class SuperItemManager {
   public currentCols: number = COLS;
-  public activeSlot: SuperItem | null = null;
   public boardDrop: SuperItemDrop | null = null;
-  public energy: number = 0;
-  public maxEnergy: number = 100;
+  public spawnTimer: number = 8.0;
   public vortex: { x: number; y: number; life: number; maxLife: number } | null = null;
   public absorbedGhosts: AbsorbedGhost[] = [];
   public laserTimer: number = 0;
@@ -51,27 +48,20 @@ export class SuperItemManager {
     return this.laserTimer > 0 || this.vortex !== null || this.tsunamiX >= 0 || this.cryoTimer > 0;
   }
 
-  public addEnergy(amount: number, unlockedPool: string[], maze?: MazeManager): boolean {
-    if (this.activeSlot || this.boardDrop || this.isRunning()) return false;
-    if (!unlockedPool || unlockedPool.length === 0) return false;
-    this.energy = Math.min(this.maxEnergy, this.energy + amount);
-    if (this.energy >= this.maxEnergy) {
-      this.energy = this.maxEnergy;
-      const meta: Record<string, { name: string; icon: string }> = {
-        nova: { name: 'MEGA NOVA', icon: 'nova' },
-        overdrive: { name: 'DASH INFINI', icon: 'overdrive' },
-        vortex: { name: 'BLACK HOLE', icon: 'black_hole' },
-        laser: { name: 'HYPER BEAMS', icon: 'laser' },
-        cryo: { name: 'CRYO SHATTER', icon: 'cryo' },
-        tsunami: { name: 'LIGHT TSUNAMI', icon: 'tsunami' }
-      };
-      const chosen = unlockedPool[(Math.random() * unlockedPool.length) | 0];
-      const m = meta[chosen] || { name: 'SUPER ITEM', icon: 'nova' };
-      if (!maze) return false;
-      this.spawnOnBoard({ type: chosen as SuperItem['type'], name: m.name, icon: m.icon, ready: false }, maze);
-      return true;
-    }
-    return false;
+  private spawnRandomOnBoard(maze: MazeManager) {
+    const pool = progression.getUnlockedSuperItems();
+    if (pool.length === 0) return;
+    const meta: Record<string, { name: string; icon: string }> = {
+      nova: { name: 'MEGA NOVA', icon: 'nova' },
+      overdrive: { name: 'DASH INFINI', icon: 'overdrive' },
+      vortex: { name: 'BLACK HOLE', icon: 'black_hole' },
+      laser: { name: 'HYPER BEAMS', icon: 'laser' },
+      cryo: { name: 'CRYO SHATTER', icon: 'cryo' },
+      tsunami: { name: 'LIGHT TSUNAMI', icon: 'tsunami' }
+    };
+    const chosen = pool[(Math.random() * pool.length) | 0];
+    const itemMeta = meta[chosen] || { name: 'SUPER ITEM', icon: 'nova' };
+    this.spawnOnBoard({ type: chosen as SuperItem['type'], name: itemMeta.name, icon: itemMeta.icon }, maze);
   }
 
   private spawnOnBoard(item: SuperItem, maze: MazeManager) {
@@ -90,17 +80,14 @@ export class SuperItemManager {
     particles.addPop((this.currentCols * T) / 2, 80, `${item.name} APPARAÎT SUR LE PLATEAU !`, '#ffd700', 19);
   }
 
-  public trigger(
+  private activate(
+    item: SuperItem,
     plPos: { x: number; y: number },
     enemies: any[],
     onKillGhost: (e: any, x: number, y: number) => void,
     addMadnessTime: (sec: number) => void,
-    activateOverdrive?: () => void,
-    immediateItem?: SuperItem
+    activateOverdrive?: () => void
   ): boolean {
-    const item = immediateItem || this.activeSlot;
-    if (!item) return false;
-
     const type = item.type;
     const lvl = progression.getSkillLevel(type);
     this.resetEffects();
@@ -165,10 +152,6 @@ export class SuperItemManager {
       }
     }
 
-    this.activeSlot = null;
-    this.energy = 0;
-    const itmBtn = document.getElementById('item-btn');
-    if (itmBtn) itmBtn.classList.remove('ready');
     return true;
   }
 
@@ -186,6 +169,14 @@ export class SuperItemManager {
     const cols = this.currentCols;
     const cw = cols * T;
 
+    if (!this.boardDrop && !this.isRunning() && maze) {
+      const unlockedPool = progression.getUnlockedSuperItems();
+      if (unlockedPool.length > 0) {
+        this.spawnTimer -= dt;
+        if (this.spawnTimer <= 0) this.spawnRandomOnBoard(maze);
+      }
+    }
+
     if (this.boardDrop && maze) {
       if (!maze.isWalkable(this.boardDrop.x, this.boardDrop.y, false) || maze.isInGhostHouse(this.boardDrop.x, this.boardDrop.y)) {
         const safe = maze.findNearestWalkable(this.boardDrop.x, this.boardDrop.y, false);
@@ -198,13 +189,13 @@ export class SuperItemManager {
       const dropY = this.boardDrop.y * T + HALF;
       if (this.boardDrop.timer <= 0) {
         this.boardDrop = null;
-        this.energy = 0;
+        this.spawnTimer = 6.0 + Math.random() * 5.0;
       } else if (Math.hypot(plPos.x - dropX, plPos.y - dropY) < T * 0.9) {
         const item = this.boardDrop.item;
         this.boardDrop = null;
-        this.energy = 0;
+        this.spawnTimer = 12.0 + Math.random() * 8.0;
         // Super-items activate immediately on contact; there is no inventory reserve.
-        this.trigger(plPos, enemies, onKillGhost, addMadnessTime || (() => {}), activateOverdrive, item);
+        this.activate(item, plPos, enemies, onKillGhost, addMadnessTime || (() => {}), activateOverdrive);
       }
     }
 
@@ -529,11 +520,8 @@ export class SuperItemManager {
 
   public resetAll() {
     this.resetEffects();
-    this.activeSlot = null;
     this.boardDrop = null;
-    this.energy = 0;
-    const itmBtn = document.getElementById('item-btn');
-    if (itmBtn) itmBtn.classList.remove('ready');
+    this.spawnTimer = 8.0;
   }
 }
 

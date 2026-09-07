@@ -790,10 +790,6 @@ class Game {
       badges.saveMadnessKills(this.madnessKills);
       this.madnessTimer = Math.min(45, this.madnessTimer + 0.35);
 
-      // Charge Super-Item Energy Gauge (+8% per ghost kill)
-      const unlockedPool = progression.getUnlockedSuperItems();
-      superItems.addEnergy(8.0, unlockedPool, this.maze);
-
       // 14% chance to drop powerup on tile (with guaranteed walkable safety)
       if (Math.random() < 0.14 && !powerups.current) {
         const mx = Math.max(1, Math.min(this.maze.cols - 2, Math.round(ex / T)));
@@ -1016,149 +1012,6 @@ class Game {
       }
     }
     input.isDashRequested = false;
-
-    // Super-Items support in vortex arena
-    if (input.isItemRequested && superItems.activeSlot && superItems.activeSlot.ready) {
-      const itmType = superItems.activeSlot.type;
-      const lvl = progression.getSkillLevel(itmType);
-      superItems.activeSlot = null;
-      superItems.energy = 0;
-      const itmBtn = document.getElementById('item-btn');
-      if (itmBtn) itmBtn.classList.remove('ready');
-
-      switch (itmType) {
-        case 'nova': {
-          sounds.play('nova');
-          particles.shake(18, 0.5);
-          particles.flash('#ffd700', 0.5);
-          particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 30, lvl >= 2 ? 'SUPERNOVA VORTEX !' : 'MEGA NOVA !', '#ffd700', 26);
-          const purgeCount = Math.min(this.bonusActiveCount, lvl >= 2 ? 140 : 80);
-          for (let s = 0; s < purgeCount; s++) {
-            const g = this.bonusGhosts[s];
-            g.alive = false;
-            killsThisFrame++;
-            this.bonusKills++;
-            const ghostPts = 300 + Math.min(3000, this.bonusKills * 25);
-            this.bonusScore += ghostPts;
-            this.score += ghostPts;
-            frameScore += ghostPts;
-            particles.emit(g.x, g.y, 6, g.color, { speed: 180, size: 4, life: 0.55 });
-          }
-          this.bonusGhosts.splice(0, purgeCount);
-          for (let k = 0; k < purgeCount; k++) {
-            this.bonusGhosts.push({ x: 0, y: 0, vx: 0, vy: 0, speed: 150, orbitFactor: 1, swirlDir: 1, color: '#00ffff', alive: false });
-          }
-          this.bonusActiveCount = Math.max(0, this.bonusActiveCount - purgeCount);
-          break;
-        }
-        case 'overdrive': {
-          sounds.play('powerup');
-          powerups.fx.overdrive = lvl >= 2 ? 10.0 : 8.0;
-          particles.shake(8, 0.25);
-          particles.flash('#00ffcc', 0.4);
-          particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 25, 'DASH INFINI (8s) !', '#00ffcc', 22);
-          break;
-        }
-        case 'vortex': {
-          sounds.play('portal');
-          particles.shake(10, 0.35);
-          particles.flash('#b000ff', 0.4);
-          particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 25, 'SINGULARITÉ COSMIQUE !', '#d946ef', 24);
-          for (let i = 0; i < this.bonusActiveCount; i++) {
-            const g = this.bonusGhosts[i];
-            const dist = Math.hypot(this.bonusPacPos.x - g.x, this.bonusPacPos.y - g.y);
-            if (dist < 260) {
-              g.alive = false;
-              killsThisFrame++;
-              this.bonusKills++;
-              const ghostPts = 250 + Math.min(3000, this.bonusKills * 25);
-              this.bonusScore += ghostPts;
-              this.score += ghostPts;
-              frameScore += ghostPts;
-              particles.emit(g.x, g.y, 8, '#d946ef', { speed: 140, size: 3.5, life: 0.45 });
-              const lastIndex = this.bonusActiveCount - 1;
-              if (i !== lastIndex) {
-                const temp = this.bonusGhosts[i];
-                this.bonusGhosts[i] = this.bonusGhosts[lastIndex];
-                this.bonusGhosts[lastIndex] = temp;
-              }
-              this.bonusActiveCount--;
-              i--;
-            }
-          }
-          break;
-        }
-        case 'laser': {
-          sounds.play('dash');
-          particles.shake(10, 0.3);
-          particles.flash('#00ffff', 0.35);
-          particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 25, lvl >= 2 ? 'OCTO-BEAMS !' : 'HYPER BEAMS !', '#00ffff', 24);
-          for (let i = 0; i < this.bonusActiveCount; i++) {
-            const g = this.bonusGhosts[i];
-            const dx = Math.abs(g.x - this.bonusPacPos.x);
-            const dy = Math.abs(g.y - this.bonusPacPos.y);
-            const hitCross = dx < 36 || dy < 36;
-            const hitDiag = lvl >= 2 && Math.abs(dx - dy) < 40;
-            if (hitCross || hitDiag) {
-              g.alive = false;
-              killsThisFrame++;
-              this.bonusKills++;
-              const ghostPts = 280 + Math.min(3000, this.bonusKills * 25);
-              this.bonusScore += ghostPts;
-              this.score += ghostPts;
-              frameScore += ghostPts;
-              particles.emit(g.x, g.y, 8, '#00f0ff', { speed: 160, size: 4, life: 0.5 });
-              const lastIndex = this.bonusActiveCount - 1;
-              if (i !== lastIndex) {
-                const temp = this.bonusGhosts[i];
-                this.bonusGhosts[i] = this.bonusGhosts[lastIndex];
-                this.bonusGhosts[lastIndex] = temp;
-              }
-              this.bonusActiveCount--;
-              i--;
-            }
-          }
-          break;
-        }
-        case 'cryo': {
-          sounds.play('powerup');
-          particles.shake(8, 0.25);
-          particles.flash('#aaffff', 0.35);
-          particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 25, 'BLIZZARD CRYO (GEL TOTAL) !', '#aaffff', 22);
-          for (let i = 0; i < this.bonusActiveCount; i++) {
-            this.bonusGhosts[i].speed *= 0.15;
-            this.bonusGhosts[i].color = '#aaffff';
-          }
-          break;
-        }
-        case 'tsunami': {
-          sounds.play('wave');
-          this.bonusTimer = Math.min(BONUS_DURATION, this.bonusTimer + (lvl >= 2 ? 4.0 : 3.0));
-          particles.shake(14, 0.45);
-          particles.flash('#ffffff', 0.45);
-          particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 30, 'TSUNAMI DE LUMIÈRE (+3s) !', '#ffffff', 24);
-          const killCount = Math.floor(this.bonusActiveCount * 0.65);
-          for (let s = 0; s < killCount; s++) {
-            const g = this.bonusGhosts[s];
-            g.alive = false;
-            killsThisFrame++;
-            this.bonusKills++;
-            const ghostPts = 320 + Math.min(3000, this.bonusKills * 25);
-            this.bonusScore += ghostPts;
-            this.score += ghostPts;
-            frameScore += ghostPts;
-            particles.emit(g.x, g.y, 6, '#ffffff', { speed: 190, size: 4, life: 0.6 });
-          }
-          this.bonusGhosts.splice(0, killCount);
-          for (let k = 0; k < killCount; k++) {
-            this.bonusGhosts.push({ x: 0, y: 0, vx: 0, vy: 0, speed: 150, orbitFactor: 1, swirlDir: 1, color: '#ffd700', alive: false });
-          }
-          this.bonusActiveCount = Math.max(0, this.bonusActiveCount - killCount);
-          break;
-        }
-      }
-    }
-    input.isItemRequested = false;
 
     // Motion Kombos in vortex arena
     input.checkKombos(
@@ -1412,8 +1265,6 @@ class Game {
           particles.emit(pp.x, pp.y, 4, '#ffff00', { speed: 60, size: 2, life: 0.3 });
           sounds.play('near');
           if (this.gameMode === 'madness') {
-            const unlockedPool = progression.getUnlockedSuperItems();
-            superItems.addEnergy(4.0, unlockedPool, this.maze);
             const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
             this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_NM_RECHARGE);
           }
@@ -1461,8 +1312,6 @@ class Game {
 
         if (this.gameMode === 'madness') {
           this.madnessTimer = Math.min(45, this.madnessTimer + 3.0);
-          const unlockedPool = progression.getUnlockedSuperItems();
-          superItems.addEnergy(12.0, unlockedPool, this.maze);
           const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
         }
@@ -1473,8 +1322,6 @@ class Game {
       } else {
         if (this.gameMode === 'madness') {
           this.madnessTimer = Math.min(45, this.madnessTimer + 0.04);
-          const unlockedPool = progression.getUnlockedSuperItems();
-          superItems.addEnergy(0.7, unlockedPool, this.maze);
           const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
         }
@@ -1844,17 +1691,6 @@ class Game {
             powerups.fx.overdrive > 0
           );
           input.isDashRequested = false;
-        }
-
-        if (input.isItemRequested) {
-          superItems.trigger(
-            this.player.getPos(),
-            this.enemyManager.enemies,
-            (e, x, y) => this.onKillGhost(e, x, y),
-            (s) => { this.madnessTimer = Math.min(45, this.madnessTimer + s); },
-            () => { powerups.fx.overdrive = 8.0; }
-          );
-          input.isItemRequested = false;
         }
 
         // Motion Kombos

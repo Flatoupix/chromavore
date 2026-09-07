@@ -548,15 +548,6 @@ export class Renderer {
         c.shadowBlur = 0;
         c.font = '8px monospace'; c.fillStyle = '#00ffff';
         c.fillText(`À RAMASSER • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
-      } else if (superItems.activeSlot && superItems.activeSlot.ready) {
-        const itmPulse = 1 + Math.sin(time * 8) * 0.08;
-        const itmText = `${superItems.activeSlot.name} [E]`;
-        c.font = `bold ${Math.round(12 * itmPulse)}px monospace`; c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 12;
-        const tw = c.measureText(itmText).width;
-        spriteAtlas.drawIcon(c, superItems.activeSlot.icon, this.cw - rightPad - tw - 12, 18, 14);
-        c.fillText(itmText, this.cw - rightPad, 18); c.shadowBlur = 0;
-        c.font = '8.5px monospace'; c.fillStyle = '#00ffff';
-        c.fillText('PRESS [E] OU TAP ITEM', this.cw - rightPad, 34);
       } else {
         const unlockedItems = progression.getUnlockedSuperItems();
         if (unlockedItems.length === 0) {
@@ -572,38 +563,15 @@ export class Renderer {
           c.fillStyle = '#ff007f';
           c.fillText(`ENCORE ${killsLeft} KILLS`, this.cw - rightPad, 32);
         } else {
-          const energyPct = Math.min(100, Math.max(0, (superItems.energy / superItems.maxEnergy) * 100));
           c.font = isWide ? 'bold 10px monospace' : 'bold 8.5px monospace';
-          c.fillStyle = '#00f0ff';
-          c.shadowColor = '#00f0ff';
+          c.fillStyle = '#ffd700';
+          c.shadowColor = '#ffd700';
           c.shadowBlur = 8;
-          c.fillText(`ARSENAL : ${Math.round(energyPct)}%`, this.cw - rightPad, 15);
+          c.fillText('SUPER-ITEMS SUR LE PLATEAU', this.cw - rightPad, 16);
           c.shadowBlur = 0;
-
-          // Energy Bar
-          const barW = isWide ? 90 : 70, barH = 5;
-          const barX = this.cw - rightPad - barW, barY = 24;
-          c.fillStyle = 'rgba(10, 20, 35, 0.85)';
-          c.strokeStyle = 'rgba(0, 240, 255, 0.6)';
-          c.lineWidth = 1;
-          c.strokeRect(barX, barY, barW, barH);
-          c.fillRect(barX, barY, barW, barH);
-
-          if (energyPct > 0) {
-            const fillW = Math.max(2, (barW - 2) * (energyPct / 100));
-            const grad = c.createLinearGradient(barX, barY, barX + fillW, barY);
-            grad.addColorStop(0, '#00b4d8');
-            grad.addColorStop(1, '#00f0ff');
-            c.fillStyle = grad;
-            c.shadowColor = '#00f0ff';
-            c.shadowBlur = 6;
-            c.fillRect(barX + 1, barY + 1, fillW, barH - 2);
-            c.shadowBlur = 0;
-          }
-
-          c.font = '7.5px monospace';
-          c.fillStyle = '#667788';
-          c.fillText('DOTS +0.7% • FANTÔMES +8%', this.cw - rightPad, 37);
+          c.font = '8px monospace';
+          c.fillStyle = '#00ffff';
+          c.fillText(`PROCHAINE APPARITION : ${Math.max(0, superItems.spawnTimer).toFixed(1)}s`, this.cw - rightPad, 34);
         }
       }
 
@@ -1055,10 +1023,10 @@ export class Renderer {
       { badge: '↑ ↓ ↑ ↓', desc: 'Nitro Jet : turbo vitesse + traînée de feu au sol' }
     ]);
 
-    // Card 3: SUPER-ITEMS & ARSENAL (y: 266, h: 76)
-    this.drawInstructionCard(c, cardX, 266, cardW, 76, '#ff007f', 'SUPER-ITEMS & ARSENAL (FRAGS)', [
-      { badge: 'E / BOUTON ITEM', desc: 'Déclenche le Super-Item débloqué lors des frags' },
-      { badge: 'ARSENAL NÉON', desc: 'Méga Nova, Trou Noir, Lasers 8-Axes, Cryo, Vague...' }
+    // Card 3: SUPER-ITEMS ON THE BOARD (y: 266, h: 76)
+    this.drawInstructionCard(c, cardX, 266, cardW, 76, '#ff007f', 'SUPER-ITEMS SUR LE PLATEAU', [
+      { badge: 'RAMASSAGE AUTO', desc: 'Touchez le Super-Item pour l\'activer immédiatement' },
+      { badge: 'APPARITION', desc: 'Méga Nova, Trou Noir, Lasers 8-Axes, Cryo, Vague...' }
     ]);
 
     // Card 4: LES 2 MODES DE JEU (y: 352, h: 148)

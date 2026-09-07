@@ -73,7 +73,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nova',
     threshold: 150,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Explosion thermo-nucléaire qui purge instantanément tous les fantômes'
   },
   {
@@ -84,7 +84,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'overdrive',
     threshold: 250,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Dash illimité sans aucun temps de recharge pendant 8 secondes'
   },
   {
@@ -95,7 +95,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'black_hole',
     threshold: 400,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Vortex gravitationnel qui attire et désintègre tous les spectres'
   },
   {
@@ -106,7 +106,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'laser',
     threshold: 600,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Canons lasers cruciformes découpant les couloirs horizontaux et verticaux'
   },
   {
@@ -117,7 +117,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'cryo',
     threshold: 800,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Zéro absolu : gèle tous les spectres pour les briser au moindre contact'
   },
   {
@@ -128,7 +128,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'tsunami',
     threshold: 1000,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Vague royale sacrée balayant tout le labyrinthe + bonus de temps de survie'
   },
   {
@@ -194,7 +194,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nova',
     threshold: 2600,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Purge totale + pluie d\'orbes dorées bonus et multiplicateurs instantanés'
   },
   {
@@ -216,7 +216,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'overdrive',
     threshold: 3200,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Dash infini + invulnérabilité totale sans surchauffe pendant toute la durée'
   },
   {
@@ -227,7 +227,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'black_hole',
     threshold: 3900,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Le trou noir aspire également toutes les pastilles et orbes de la zone'
   },
   {
@@ -238,7 +238,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'laser',
     threshold: 4700,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Lasers à 8 directions (cruciformes + 4 diagonales) rasant intégralement la carte'
   },
   {
@@ -260,7 +260,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'cryo',
     threshold: 5600,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Gèle tous les fantômes et les fait exploser en chaîne au bout de 3 secondes'
   },
   {
@@ -271,7 +271,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'tsunami',
     threshold: 6500,
     category: 'item',
-    command: 'Touche [E] ou Bouton ITEM',
+    command: 'AUTOMATIQUE AU RAMASSAGE',
     desc: 'Double vague royale aller-retour + recharge instantanée de l\'arsenal (100% Maîtrisé)'
   }
 ];

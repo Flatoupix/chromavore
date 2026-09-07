@@ -53,8 +53,6 @@ export class TouchDeckManager {
       input.isDashRequested = true;
       input.isStartRequested = true;
     });
-    bindBtn('item-btn', () => { input.isItemRequested = true; });
-
     const chronoBtn = document.getElementById('chrono-btn');
     if (chronoBtn) {
       chronoBtn.addEventListener('pointerdown', (e) => {

@@ -15,7 +15,6 @@ export class InputManager {
   public dir = { x: 0, y: 0 };
   public nextDir = { x: 0, y: 0 };
   public isDashRequested: boolean = false;
-  public isItemRequested: boolean = false;
   public isChronoRequested: boolean = false;
   public isChronoKeyHeld: boolean = false;
   public isPauseRequested: boolean = false;
@@ -82,10 +81,6 @@ export class InputManager {
       // Bullet Time (Chrono-Shift) on Shift
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         this.isChronoKeyHeld = true;
-      }
-      // Super-Items: E, F (KeyQ removed so AZERTY Q=Gauche doesn't waste items!)
-      if (k === 'e' || e.code === 'KeyE' || k === 'f' || e.code === 'KeyF') {
-        this.isItemRequested = true;
       }
       if (e.code === 'KeyP' || e.code === 'Escape') {
         this.isPauseRequested = true;
@@ -209,10 +204,6 @@ export class InputManager {
       if ((gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[2] && gp.buttons[2].pressed)) {
         this.isDashRequested = true;
         this.isStartRequested = true;
-      }
-      // B / Y = Item
-      if ((gp.buttons[1] && gp.buttons[1].pressed) || (gp.buttons[3] && gp.buttons[3].pressed)) {
-        this.isItemRequested = true;
       }
       // Start = Pause
       if (gp.buttons[9] && gp.buttons[9].pressed) {

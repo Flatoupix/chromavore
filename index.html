@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090117">
-<title>CHROMAVORE v3.0.0 // SYNTHWAVE 1984</title>
+<title>CHROMAVORE v3.0.1 // SYNTHWAVE 1984</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='55,5 15,55 45,55 35,95 85,45 55,45' fill='%2300f0ff'/></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -118,24 +118,6 @@ canvas{
 
 .action-btns{display:flex;align-items:center;gap:10px}
 .dash-wrap{display:flex;flex-direction:column;align-items:center;gap:3px}
-#item-btn{
-  width:52px;height:52px;border-radius:50%;background:radial-gradient(circle,#550066 0%,#150028 100%);
-  border:2px solid #ff007f;color:#fff;font-size:10px;font-weight:bold;
-  display:none;flex-direction:column;justify-content:center;align-items:center;
-  box-shadow:0 0 14px rgba(255, 0, 127, 0.4);touch-action:none;outline:none;
-  -webkit-tap-highlight-color:transparent;font-family:monospace;
-  transition:transform 0.08s, box-shadow 0.08s;
-}
-#item-btn.ready{
-  display:flex;
-  animation:itemPulse 0.9s infinite alternate;
-}
-@keyframes itemPulse{
-  0%{box-shadow:0 0 10px #ff007f;border-color:#ff007f}
-  100%{box-shadow:0 0 25px #00f0ff,0 0 12px #ffe600;border-color:#ffffff}
-}
-#item-btn:active{transform:scale(0.92);background:#ff007f;color:#ffffff}
-#item-label{font-size:8px;color:#ffd700;letter-spacing:1px;font-weight:bold}
 
 #chrono-btn{
   width:50px;height:50px;border-radius:50%;background:radial-gradient(circle,#003344 0%,#06111e 100%);
@@ -178,7 +160,6 @@ canvas{
   #joystick-knob{width:36px;height:36px}
   .action-btns{margin-bottom:6px}
   #dash-btn{width:56px;height:56px;background:radial-gradient(circle,rgba(0,77,102,0.9) 0%,rgba(12,22,38,0.9) 100%)}
-  #item-btn{width:48px;height:48px}
 }
 
 /* Ensure touch deck is strictly hidden on desktop */
@@ -374,13 +355,6 @@ canvas{
         <span id="chrono-label">100%</span>
       </div>
       <div class="dash-wrap">
-        <button id="item-btn" aria-label="Item">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 4px #ffd700);"><polygon points="12,2 15,9 22,12 15,15 12,22 9,15 2,12 9,9" fill="#ffd700"/></svg>
-          <span style="font-size:9px">ITEM</span>
-        </button>
-        <span id="item-label"></span>
-      </div>
-      <div class="dash-wrap">
         <button id="dash-btn" aria-label="Dash">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 4px #00f0ff);"><polygon points="13,2 4,14 11,14 9,22 20,10 13,10" fill="#00f0ff"/></svg>
           <span style="font-size:10px">DASH</span>
@@ -390,7 +364,7 @@ canvas{
     </div>
   </div>
 </div>
-<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.0.0</div>
+<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.0.1</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
