@@ -33,138 +33,217 @@ canvas{
   object-fit:contain;flex-shrink:1;
 }
 
-/* Mobile Touch Deck */
-#touch-deck{
-  display:none;
-  width:100%;
-  max-width:520px;
-  height:135px;
-  justify-content:space-between;
-  align-items:center;
-  padding:4px 14px env(safe-area-inset-bottom, 6px);
-  box-sizing:border-box;
-  z-index:20;
-  flex-shrink:0;
+/* Floating Mobile Controls (Option A) */
+#mobile-controls {
+  display: none;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top, 8px) env(safe-area-inset-right, 12px) env(safe-area-inset-bottom, 12px) env(safe-area-inset-left, 12px);
 }
-#touch-deck.active{
-  display:flex;
+#mobile-controls.active {
+  display: flex;
 }
 
-#joystick-zone {
-  position: relative;
-  width: 120px;
-  height: 120px;
+.mobile-top-bar {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
+  width: 100%;
+  pointer-events: none;
 }
-#joystick-base {
-  position: relative;
-  width: 106px;
-  height: 106px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(26, 6, 46, 0.88) 0%, rgba(10, 2, 22, 0.96) 100%);
-  border: 2px solid #00f0ff;
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4), inset 0 0 14px rgba(0, 240, 255, 0.18);
-  display: flex;
-  justify-content: center;
+.m-top-btn {
+  pointer-events: auto;
+  display: inline-flex;
   align-items: center;
-  touch-action: none;
-}
-.j-guide {
-  position: absolute;
+  gap: 6px;
+  background: rgba(10, 15, 28, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  border-radius: 8px;
+  color: #00f0ff;
   font-size: 10px;
-  color: rgba(0, 240, 255, 0.45);
-  font-family: monospace;
   font-weight: bold;
+  padding: 6px 12px;
+  font-family: monospace;
+  touch-action: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+  transition: transform 0.08s, background 0.12s, border-color 0.12s;
+}
+.m-top-btn:active {
+  transform: scale(0.93);
+  background: rgba(255, 0, 127, 0.4);
+  border-color: #ff007f;
+  color: #fff;
+}
+
+.mobile-bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 16px;
+  width: 100%;
   pointer-events: none;
 }
-.j-up { top: 5px; left: 50%; transform: translateX(-50%); }
-.j-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
-.j-left { left: 6px; top: 50%; transform: translateY(-50%); }
-.j-right { right: 6px; top: 50%; transform: translateY(-50%); }
+.m-action-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+}
+.m-btn-title {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  font-weight: bold;
+}
+.m-btn-sub {
+  font-size: 8.5px;
+  font-weight: bold;
+  color: #00f0ff;
+  letter-spacing: 0.5px;
+  font-family: monospace;
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+}
 
-#joystick-knob {
-  width: 44px;
-  height: 44px;
+/* Chrono Action Button */
+#chrono-btn {
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
-  background: radial-gradient(circle, #ff007f 0%, #880044 100%);
-  border: 2px solid #ffffff;
-  box-shadow: 0 0 16px #ff007f, 0 0 6px #00f0ff;
+  background: radial-gradient(circle, rgba(0, 51, 68, 0.85) 0%, rgba(6, 17, 30, 0.92) 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 2px solid #00f0ff;
+  color: #00f0ff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+  touch-action: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: monospace;
+  transition: transform 0.08s, box-shadow 0.08s, background 0.12s;
+}
+#chrono-btn:active, #chrono-btn.active-chrono {
+  transform: scale(0.92);
+  background: #00f0ff;
+  color: #050a14;
+  box-shadow: 0 0 24px #00f0ff, 0 0 12px #ffffff;
+}
+
+/* Single Unified Dash Button */
+#dash-btn {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(74, 0, 56, 0.85) 0%, rgba(20, 2, 32, 0.92) 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 2px solid #ff007f;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 0 18px rgba(255, 0, 127, 0.45);
+  touch-action: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family: monospace;
+  transition: transform 0.08s, box-shadow 0.08s, border-color 0.15s;
+  overflow: hidden;
+}
+#dash-btn:active, #dash-btn.active-press {
+  transform: scale(0.92);
+  background: #00f0ff;
+  color: #080114;
+  box-shadow: 0 0 26px #00f0ff;
+}
+#dash-btn.cooling {
+  border-color: #44223a;
+  box-shadow: none;
+  opacity: 0.65;
+}
+#dash-btn.locked {
+  border-color: #554433;
+  box-shadow: none;
+  opacity: 0.55;
+}
+#dash-btn.overdrive {
+  border-color: #00ffcc;
+  box-shadow: 0 0 25px #00ffcc, inset 0 0 12px #00ffcc;
+  animation: pulse-overdrive 0.6s infinite alternate;
+}
+@keyframes pulse-overdrive {
+  from { transform: scale(1); box-shadow: 0 0 18px #00ffcc; }
+  to { transform: scale(1.06); box-shadow: 0 0 28px #00ffcc, 0 0 12px #ffffff; }
+}
+
+/* Circular Cooldown SVG Gauge */
+.m-cooldown-ring {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
   pointer-events: none;
-  transition: transform 0.08s ease-out;
 }
-#joystick-zone.active #joystick-knob {
-  transition: none;
-  background: radial-gradient(circle, #00f0ff 0%, #ff007f 100%);
-  box-shadow: 0 0 22px #00f0ff, 0 0 12px #ff007f;
+.m-cooldown-ring .ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 3.5;
+}
+.m-cooldown-ring .ring-prog {
+  fill: none;
+  stroke: #00f0ff;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 175.9;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.06s linear;
 }
 
-.util-btns{display:flex;flex-direction:column;gap:8px;align-items:center}
-.ubtn{
-  background:#1a082e;border:1px solid #ff007f;border-radius:8px;color:#00f0ff;
-  font-size:9px;padding:6px 10px;font-weight:bold;touch-action:none;font-family:monospace;
-  outline:none;-webkit-tap-highlight-color:transparent;
-  box-shadow:0 0 8px rgba(255, 0, 127, 0.25);
+.m-btn-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
 }
-.ubtn:active{background:#ff007f;color:#fff;border-color:#00f0ff}
 
-.action-btns{display:flex;align-items:center;gap:10px}
-.dash-wrap{display:flex;flex-direction:column;align-items:center;gap:3px}
-
-#chrono-btn{
-  width:50px;height:50px;border-radius:50%;background:radial-gradient(circle,#003344 0%,#06111e 100%);
-  border:2px solid #00f0ff;color:#00f0ff;font-size:10px;font-weight:bold;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  box-shadow:0 0 12px rgba(0, 240, 255, 0.35);touch-action:none;outline:none;
-  -webkit-tap-highlight-color:transparent;font-family:monospace;
-  transition:transform 0.08s, box-shadow 0.08s, background 0.12s;
-}
-#chrono-btn:active,#chrono-btn.active-chrono{transform:scale(0.92);background:#00f0ff;color:#050a14;box-shadow:0 0 24px #00f0ff, 0 0 12px #ffffff}
-#chrono-label{font-size:8px;color:#00f0ff;letter-spacing:1px;font-weight:bold}
-
-#dash-btn{
-  width:62px;height:62px;border-radius:50%;background:radial-gradient(circle,#5a0044 0%,#1a0028 100%);
-  border:3px solid #00f0ff;color:#fff;font-size:11px;font-weight:bold;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  box-shadow:0 0 16px rgba(0, 240, 255, 0.45);touch-action:none;outline:none;
-  -webkit-tap-highlight-color:transparent;font-family:monospace;
-  transition:transform 0.08s, box-shadow 0.08s;
-}
-#dash-btn:active,#dash-btn.active-press{transform:scale(0.92);background:#00f0ff;color:#080114;box-shadow:0 0 25px #00f0ff}
-#dash-btn.cooling{border-color:#3d1a3a;box-shadow:none;opacity:0.6}
-#dash-btn.locked{border-color:#73533a;box-shadow:none;opacity:0.58}
-#dash-label{font-size:8px;color:#00f0ff;letter-spacing:1px;font-weight:bold}
-
-/* Mobile Landscape Overlay */
+/* Mobile Landscape Overlay adjustments */
 @media (orientation: landscape) and (max-height: 520px) {
-  #touch-deck.active{
-    position:absolute;inset:0;width:100%;max-width:100%;height:100%;
-    pointer-events:none;padding:10px 24px env(safe-area-inset-bottom, 10px);
-    justify-content:space-between;align-items:flex-end;
+  #mobile-controls {
+    padding: env(safe-area-inset-top, 6px) env(safe-area-inset-right, 18px) env(safe-area-inset-bottom, 8px) env(safe-area-inset-left, 18px);
   }
-  #touch-deck #joystick-zone,#touch-deck .action-btns,#touch-deck .util-btns{pointer-events:auto}
-  .util-btns{
-    position:absolute;top:10px;right:18px;flex-direction:row;gap:8px;
+  .m-top-btn {
+    font-size: 9px;
+    padding: 4px 8px;
   }
-  .ubtn{font-size:9px;padding:4px 8px;background:rgba(17,22,36,0.85);backdrop-filter:blur(4px)}
-  #joystick-zone{width:98px;height:98px;margin-bottom:6px}
-  #joystick-base{width:88px;height:88px}
-  #joystick-knob{width:36px;height:36px}
-  .action-btns{margin-bottom:6px}
-  #dash-btn{width:56px;height:56px;background:radial-gradient(circle,rgba(0,77,102,0.9) 0%,rgba(12,22,38,0.9) 100%)}
+  #dash-btn {
+    width: 56px;
+    height: 56px;
+  }
+  #chrono-btn {
+    width: 46px;
+    height: 46px;
+  }
 }
 
-/* Ensure touch deck is strictly hidden on desktop */
+/* Ensure mobile controls are strictly hidden on desktop */
 @media (min-width: 1025px), (hover: hover) and (pointer: fine) and (min-width: 768px) {
-  #touch-deck {
+  #mobile-controls {
     display: none !important;
   }
 }
@@ -332,39 +411,62 @@ canvas{
       ">ANNULER</button>
     </div>
   </div>
-  <div id="touch-deck">
-    <div id="joystick-zone">
-      <div id="joystick-base">
-        <span class="j-guide j-up">▲</span>
-        <span class="j-guide j-down">▼</span>
-        <span class="j-guide j-left">◄</span>
-        <span class="j-guide j-right">►</span>
-        <div id="joystick-knob"></div>
-      </div>
+  <!-- Floating Mobile Controls (Option A) -->
+  <div id="mobile-controls">
+    <!-- Top Bar Controls -->
+    <div class="mobile-top-bar">
+      <button class="mobile-btn m-top-btn" id="btn-pause" aria-label="Pause">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="3" y="2" width="3.5" height="12" rx="1"/>
+          <rect x="9.5" y="2" width="3.5" height="12" rx="1"/>
+        </svg>
+        <span>PAUSE</span>
+      </button>
+      <button class="mobile-btn m-top-btn" id="btn-mute" aria-label="Audio">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M2 5h3l4-4v14l-4-4H2V5zm10 0c1.5 1.5 1.5 4.5 0 6m2-8c2.5 2.5 2.5 7.5 0 10"/>
+        </svg>
+        <span>SON</span>
+      </button>
     </div>
-    <div class="util-btns">
-      <button class="ubtn" id="btn-pause"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>PAUSE</button>
-      <button class="ubtn" id="btn-mute"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M2 5h3l4-4v14l-4-4H2V5zm10 0c1.5 1.5 1.5 4.5 0 6m2-8c2.5 2.5 2.5 7.5 0 10"/></svg>AUDIO</button>
-    </div>
-    <div class="action-btns">
-      <div class="dash-wrap">
-        <button id="chrono-btn" aria-label="Chrono Shift Bullet Time">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 4px #00f0ff);"><circle cx="12" cy="13" r="8" stroke="#00f0ff" stroke-width="2"/><line x1="12" y1="1" x2="12" y2="4" stroke="#00f0ff" stroke-width="2"/><line x1="12" y1="13" x2="12" y2="8" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="13" x2="16" y2="13" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/></svg>
-          <span style="font-size:8px">CHRONO</span>
+
+    <!-- Bottom Action Controls -->
+    <div class="mobile-bottom-actions">
+      <!-- Chrono Button -->
+      <div class="m-action-wrap" id="chrono-wrap">
+        <button class="mobile-btn" id="chrono-btn" aria-label="Chrono Shift Bullet Time">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="13" r="8" stroke="#00f0ff" stroke-width="2"/>
+            <line x1="12" y1="1" x2="12" y2="4" stroke="#00f0ff" stroke-width="2"/>
+            <line x1="12" y1="13" x2="12" y2="8" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="13" x2="16" y2="13" stroke="#00f0ff" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="m-btn-title">CHRONO</span>
         </button>
-        <span id="chrono-label">100%</span>
+        <span class="m-btn-sub" id="chrono-label">100%</span>
       </div>
-      <div class="dash-wrap">
-        <button id="dash-btn" aria-label="Dash">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 4px #00f0ff);"><polygon points="13,2 4,14 11,14 9,22 20,10 13,10" fill="#00f0ff"/></svg>
-          <span style="font-size:10px">DASH</span>
+
+      <!-- Single Unified Dash Button -->
+      <div class="m-action-wrap" id="dash-wrap">
+        <button class="mobile-btn" id="dash-btn" aria-label="Dash">
+          <!-- Circular SVG Cooldown Gauge -->
+          <svg class="m-cooldown-ring" viewBox="0 0 64 64">
+            <circle class="ring-bg" cx="32" cy="32" r="28" />
+            <circle class="ring-prog" id="dash-ring-prog" cx="32" cy="32" r="28" />
+          </svg>
+          <div class="m-btn-content">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <polygon points="13,2 4,14 11,14 9,22 20,10 13,10" fill="#00f0ff"/>
+            </svg>
+            <span class="m-btn-title">DASH</span>
+          </div>
         </button>
-        <span id="dash-label">JOUER</span>
+        <span class="m-btn-sub" id="dash-label">READY</span>
       </div>
     </div>
   </div>
 </div>
-<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.1.2</div>
+<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.3.0</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

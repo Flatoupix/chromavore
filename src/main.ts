@@ -567,14 +567,6 @@ class Game {
         // Do not unpause on misclick outside buttons
         return;
       }
-
-      // Tap on-screen dash button (touch devices only)
-      const btnX = this.renderer.cw - 38, btnY = ROWS * T - 26;
-      if (this.touchDeck.isTouch() && Math.hypot(cx - btnX, cy - btnY) < 24 + 14) {
-        if (this.state === 'playing') {
-          this.executeDash();
-        }
-      }
     });
 
     // Touch swipe steering & double tap dash
@@ -582,7 +574,7 @@ class Game {
     let lastTouchTime = 0;
 
     window.addEventListener('touchstart', (e: TouchEvent) => {
-      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#touch-deck')) return;
+      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('.mobile-btn, #mobile-controls button, #name-modal, #confirm-wipe-modal')) return;
       if (!e.touches[0]) return;
       touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       const now = performance.now();
@@ -595,15 +587,17 @@ class Game {
     }, { passive: true });
 
     window.addEventListener('touchmove', (e: TouchEvent) => {
-      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#touch-deck')) return;
+      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('.mobile-btn, #mobile-controls button, #name-modal, #confirm-wipe-modal')) return;
       if (!touchStart || !e.touches[0]) return;
       const dx = e.touches[0].clientX - touchStart.x;
       const dy = e.touches[0].clientY - touchStart.y;
-      if (Math.abs(dx) > 14 || Math.abs(dy) > 14) {
-        if (Math.abs(dx) > Math.abs(dy)) {
-          input.setNextDir(dx > 0 ? 1 : -1, 0);
-        } else {
-          input.setNextDir(0, dy > 0 ? 1 : -1);
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
+        if (this.state === 'playing') {
+          if (Math.abs(dx) > Math.abs(dy)) {
+            input.setNextDir(dx > 0 ? 1 : -1, 0);
+          } else {
+            input.setNextDir(0, dy > 0 ? 1 : -1);
+          }
         }
         touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }
@@ -1539,14 +1533,19 @@ class Game {
     const dLbl = document.getElementById('dash-label');
     const chBtn = document.getElementById('chrono-btn');
     const chLbl = document.getElementById('chrono-label');
-    const isRunActive = this.state === 'ready' || this.state === 'playing' || this.state === 'paused' || this.state === 'dying';
+    const isRunActive = this.state === 'ready' || this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'bonus';
     const isMadness = this.gameMode === 'madness';
     const dashUnlocked = isMadness && progression.getSkillLevel('dash') >= 1;
     const chronoLevel = progression.getSkillLevel('chrono');
     const chronoUnlocked = isRunActive && isMadness && chronoLevel >= 1;
+    const isOverdrive = powerups.fx.overdrive > 0;
+    const maxCd = isMadness ? DASH_MADNESS_CD : DASH_CD;
+
+    this.touchDeck.setVisible(isRunActive);
+    this.touchDeck.updateDashGauge(this.player.dashCd, maxCd, isOverdrive);
 
     if (dBtn && dLbl) {
-      dBtn.classList.remove('cooling', 'locked');
+      dBtn.classList.remove('cooling', 'locked', 'overdrive');
 
       if (!isRunActive) {
         dLbl.textContent = 'JOUER';
@@ -1562,7 +1561,8 @@ class Game {
         dLbl.textContent = '10 FRAGS';
         dLbl.style.color = '#ffaa00';
         dBtn.setAttribute('aria-label', 'Dash déverrouillé à 10 frags');
-      } else if (powerups.fx.overdrive > 0) {
+      } else if (isOverdrive) {
+        dBtn.classList.add('overdrive');
         dLbl.textContent = 'NO-CD ' + powerups.fx.overdrive.toFixed(1) + 's';
         dLbl.style.color = '#00ffcc';
         dBtn.setAttribute('aria-label', 'Dash sans recharge');
@@ -1578,9 +1578,11 @@ class Game {
       }
     }
 
+    const chWrap = document.getElementById('chrono-wrap');
+    if (chWrap) {
+      chWrap.style.display = chronoUnlocked ? 'flex' : 'none';
+    }
     if (chBtn) {
-      const chWrap = chBtn.parentElement;
-      if (chWrap) chWrap.style.display = chronoUnlocked ? 'flex' : 'none';
       chBtn.classList.toggle('active-chrono', this.isChronoActive);
     }
     if (chLbl) chLbl.innerText = chronoUnlocked ? `${Math.round(this.chronoEnergy)}%` : 'LOCK';
@@ -2238,11 +2240,6 @@ class Game {
     // Danger border vignette (Madness mode low timer)
     if (this.gameMode === 'madness' && this.state === 'playing') {
       this.renderer.drawDangerVignette(this.madnessTimer, this.time);
-    }
-
-    // Touch button on-screen (only on mobile/touch devices, never on desktop)
-    if (this.state === 'playing' && this.touchDeck.isTouch()) {
-      this.renderer.drawTouchDashButton(this.player.dashCd, this.gameMode === 'madness' ? DASH_MADNESS_CD : DASH_CD);
     }
 
     // HUD & Badges

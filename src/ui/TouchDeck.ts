@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  CHROMAVORE — TOUCH DECK & RESPONSIVE CONTROLS
+//  CHROMAVORE — MOBILE CONTROLS & RESPONSIVE FULLSCREEN (OPTION A)
 // ═══════════════════════════════════════════════════════════════
 
 import { CW, CH } from '../config/constants';
@@ -10,18 +10,22 @@ export function isMobileOrTablet(): boolean {
          (window.innerWidth <= 1024 && (('ontouchstart' in window) || navigator.maxTouchPoints > 0));
 }
 
+const RING_CIRCUMFERENCE = 175.9; // 2 * Math.PI * 28
+
 export class TouchDeckManager {
-  private touchDeck: HTMLElement | null = null;
+  private mobileControls: HTMLElement | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private touchActivated: boolean = false;
+  private isControlsVisible: boolean = false;
+  private dashRing: SVGCircleElement | null = null;
 
   constructor() {
-    this.touchDeck = document.getElementById('touch-deck');
+    this.mobileControls = document.getElementById('mobile-controls') || document.getElementById('touch-deck');
     this.canvas = document.getElementById('c') as HTMLCanvasElement;
+    this.dashRing = document.getElementById('dash-ring-prog') as unknown as SVGCircleElement;
     this.touchActivated = isMobileOrTablet();
 
     this.bindButtons();
-    this.bindJoystick();
     this.bindTouchActivation();
     this.bindResize();
   }
@@ -30,11 +34,42 @@ export class TouchDeckManager {
     return this.touchActivated;
   }
 
+  public setVisible(show: boolean) {
+    this.isControlsVisible = show;
+    if (this.mobileControls) {
+      if (show && this.touchActivated) {
+        this.mobileControls.classList.add('active');
+      } else {
+        this.mobileControls.classList.remove('active');
+      }
+    }
+  }
+
+  public updateDashGauge(dashCd: number, maxCd: number, isOverdrive: boolean) {
+    if (!this.dashRing) {
+      this.dashRing = document.getElementById('dash-ring-prog') as unknown as SVGCircleElement;
+    }
+    if (!this.dashRing) return;
+
+    if (isOverdrive || dashCd <= 0) {
+      this.dashRing.style.strokeDashoffset = '0';
+      this.dashRing.style.stroke = isOverdrive ? '#00ffcc' : '#00f0ff';
+    } else {
+      const prog = Math.max(0, Math.min(1, 1 - dashCd / Math.max(0.1, maxCd)));
+      const offset = RING_CIRCUMFERENCE * (1 - prog);
+      this.dashRing.style.strokeDashoffset = offset.toFixed(1);
+      this.dashRing.style.stroke = '#ff007f';
+    }
+  }
+
   private bindTouchActivation() {
     window.addEventListener('touchstart', () => {
       if (!this.touchActivated && isMobileOrTablet()) {
         this.touchActivated = true;
         this.resize();
+        if (this.isControlsVisible) {
+          this.setVisible(true);
+        }
       }
     }, { passive: true, once: true });
   }
@@ -45,6 +80,7 @@ export class TouchDeckManager {
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         onPress();
       });
     };
@@ -53,10 +89,12 @@ export class TouchDeckManager {
       input.isDashRequested = true;
       input.isStartRequested = true;
     });
+
     const chronoBtn = document.getElementById('chrono-btn');
     if (chronoBtn) {
       chronoBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         input.isChronoRequested = true;
         chronoBtn.classList.add('active-chrono');
       });
@@ -74,119 +112,6 @@ export class TouchDeckManager {
     bindBtn('btn-mute', () => { input.isAudioToggleRequested = true; });
   }
 
-  private bindJoystick() {
-    const zone = document.getElementById('joystick-zone');
-    const base = document.getElementById('joystick-base');
-    const knob = document.getElementById('joystick-knob');
-    if (!zone || !base || !knob) return;
-
-    let activePointerId: number | null = null;
-    let baseRect: DOMRect | null = null;
-    let centerX = 0, centerY = 0;
-    let currentDir = { x: 0, y: 0 };
-
-    const guides = {
-      up: base.querySelector('.j-up') as HTMLElement | null,
-      down: base.querySelector('.j-down') as HTMLElement | null,
-      left: base.querySelector('.j-left') as HTMLElement | null,
-      right: base.querySelector('.j-right') as HTMLElement | null,
-    };
-
-    const clearGuides = () => {
-      Object.values(guides).forEach(g => {
-        if (g) {
-          g.style.color = 'rgba(0, 240, 255, 0.45)';
-          g.style.textShadow = 'none';
-        }
-      });
-    };
-
-    const highlightGuide = (dirX: number, dirY: number) => {
-      clearGuides();
-      let activeGuide: HTMLElement | null = null;
-      if (dirY === -1) activeGuide = guides.up;
-      else if (dirY === 1) activeGuide = guides.down;
-      else if (dirX === -1) activeGuide = guides.left;
-      else if (dirX === 1) activeGuide = guides.right;
-
-      if (activeGuide) {
-        activeGuide.style.color = '#ffd700';
-        activeGuide.style.textShadow = '0 0 8px #ffd700';
-      }
-    };
-
-    const resetKnob = () => {
-      activePointerId = null;
-      zone.classList.remove('active');
-      knob.style.transform = 'translate(-50%, -50%)';
-      currentDir = { x: 0, y: 0 };
-      clearGuides();
-    };
-
-    const maxR = 34;
-    const deadzone = 8;
-
-    const handlePointer = (clientX: number, clientY: number) => {
-      if (!baseRect) baseRect = base.getBoundingClientRect();
-      const dx = clientX - centerX;
-      const dy = clientY - centerY;
-      const dist = Math.hypot(dx, dy);
-
-      // Clamp knob travel
-      const clampedDist = Math.min(dist, maxR);
-      const angle = Math.atan2(dy, dx);
-      const kx = Math.cos(angle) * clampedDist;
-      const ky = Math.sin(angle) * clampedDist;
-      knob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
-
-      // Direction detection
-      if (dist >= deadzone) {
-        let dirX = 0, dirY = 0;
-        if (Math.abs(dx) > Math.abs(dy)) {
-          dirX = dx > 0 ? 1 : -1;
-        } else {
-          dirY = dy > 0 ? 1 : -1;
-        }
-
-        if (dirX !== currentDir.x || dirY !== currentDir.y) {
-          currentDir = { x: dirX, y: dirY };
-          input.setNextDir(dirX, dirY);
-          highlightGuide(dirX, dirY);
-        }
-      }
-    };
-
-    zone.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      activePointerId = e.pointerId;
-      try { zone.setPointerCapture(e.pointerId); } catch {}
-      zone.classList.add('active');
-      baseRect = base.getBoundingClientRect();
-      centerX = baseRect.left + baseRect.width / 2;
-      centerY = baseRect.top + baseRect.height / 2;
-      handlePointer(e.clientX, e.clientY);
-    });
-
-    zone.addEventListener('pointermove', (e) => {
-      if (e.pointerId !== activePointerId) return;
-      e.preventDefault();
-      handlePointer(e.clientX, e.clientY);
-    });
-
-    zone.addEventListener('pointerup', (e) => {
-      if (e.pointerId !== activePointerId) return;
-      e.preventDefault();
-      try { zone.releasePointerCapture(e.pointerId); } catch {}
-      resetKnob();
-    });
-
-    zone.addEventListener('pointercancel', (e) => {
-      if (e.pointerId !== activePointerId) return;
-      try { zone.releasePointerCapture(e.pointerId); } catch {}
-      resetKnob();
-    });
-  }
-
   private bindResize() {
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 100));
@@ -201,21 +126,13 @@ export class TouchDeckManager {
     if (!this.canvas) return;
 
     const isLandscape = this.isMobileLandscape();
-    if (this.touchDeck) {
-      if (this.touchActivated) {
-        this.touchDeck.classList.add('active');
-      } else {
-        this.touchDeck.classList.remove('active');
-      }
-    }
 
-    const isDeckOn = this.touchDeck && this.touchDeck.classList.contains('active');
-    const deckH = (isDeckOn && !isLandscape) ? (this.touchDeck.offsetHeight || 135) : 0;
-    const padW = isLandscape ? 130 : 16;
-    const padH = isLandscape ? 8 : 12;
+    // In Option A, mobile controls are an overlay: 0px vertical penalty!
+    const padW = isLandscape ? 32 : 12;
+    const padH = 12;
 
     const availW = Math.max(200, window.innerWidth - padW);
-    const availH = Math.max(160, window.innerHeight - deckH - padH);
+    const availH = Math.max(160, window.innerHeight - padH);
     const curCw = this.canvas.width || CW;
     const curCh = this.canvas.height || CH;
     const s = Math.min(availW / curCw, availH / curCh, 2.5);

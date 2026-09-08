@@ -2073,36 +2073,6 @@ export class Renderer {
     // Replaced by draw32xVignette
   }
 
-  public drawTouchDashButton(dashCd: number, maxCd: number) {
-    const c = this.ctx;
-    const isReady = dashCd <= 0;
-    const btnX = this.cw - 38;
-    const btnY = ROWS * T - 26;
-    const btnR = 24;
-    c.save();
-    c.globalAlpha = isReady ? 0.8 : 0.35;
-    c.fillStyle = isReady ? '#003444' : '#111622';
-    c.strokeStyle = isReady ? '#00ffff' : '#445566';
-    c.lineWidth = 2;
-    c.shadowColor = isReady ? '#00ffff' : 'transparent';
-    c.shadowBlur = isReady ? 10 : 0;
-    c.beginPath();
-    c.arc(btnX, btnY, btnR, 0, PI2);
-    c.fill(); c.stroke();
-    if (!isReady) {
-      c.strokeStyle = '#00ffff'; c.lineWidth = 3;
-      c.beginPath();
-      c.arc(btnX, btnY, btnR, -Math.PI / 2, -Math.PI / 2 + (1 - dashCd / maxCd) * PI2);
-      c.stroke();
-    }
-    c.shadowBlur = 0;
-    c.font = 'bold 8.5px monospace';
-    c.fillStyle = isReady ? '#ffffff' : '#8899aa';
-    c.textAlign = 'center'; c.textBaseline = 'middle';
-    spriteAtlas.drawIcon(c, 'dash', btnX, btnY - 5, 12);
-    c.fillText('DASH', btnX, btnY + 7);
-    c.restore();
-  }
 
   public drawBonusStage(
     playerPos: { x: number; y: number },
