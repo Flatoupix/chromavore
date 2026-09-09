@@ -106,7 +106,7 @@ export function getComboTier(n: number): number {
 }
 
 // Game physics
-export const P_SPEED = 5.0;
+export const P_SPEED = 6.0;
 export const P_MADNESS_BASE_SPEED = 10.2;
 export const P_MADNESS_SPEED = 14.5;
 export const P_RAD = T * 0.38;

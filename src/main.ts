@@ -1409,10 +1409,8 @@ class Game {
         if (this.combo.m >= 32) {
           if (oldM < 32) {
             this.combo.t = GOD_MODE_DURATION;
-          } else {
-            this.combo.t = Math.min(GOD_MODE_DURATION, this.combo.t + 2.0);
-            particles.addPop(px, py - 32, '+2s RECHARGE x32 !', '#00ffff', 20);
           }
+          // En Mode Dieu, ramasser des boules (grosses ou petites) n'incrémente plus le timer de 15s
         } else {
           // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
           this.combo.t = COMBO_DECAY;
