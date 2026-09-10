@@ -749,7 +749,7 @@ export class Renderer {
 
     // Grille perspective Synthwave — masquée au tier 0, atténuée ensuite
     if (tier >= 1) {
-      const horizonY = 105;
+      const horizonY = 245;
       c.save();
       const gridAlpha = tier === 1 ? 0.04 : tier === 2 ? 0.08 : 0.14;
       const gridColor = tier <= 2 ? `rgba(180,180,200,${gridAlpha})` : `rgba(255,0,128,${gridAlpha})`;
@@ -774,7 +774,7 @@ export class Renderer {
     }
 
     // Soleil Outrun — gris au tier 0–1, coloré ensuite
-    const sunX = this.cw / 2, sunY = 105, sunR = 38;
+    const sunX = this.cw / 2, sunY = 245, sunR = 48;
     c.save();
     if (tier <= 1) {
       const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
@@ -807,7 +807,7 @@ export class Renderer {
     c.restore();
 
     // Titre CHROMAVORE — monochrome → néon selon le tier
-    const ty = 52, p = 1 + Math.sin(time * 2) * 0.03;
+    const ty = 105, p = 1 + Math.sin(time * 2) * 0.03;
     c.save();
     c.font = `bold ${38 * p}px monospace`;
     c.textAlign = 'center';
@@ -838,27 +838,27 @@ export class Renderer {
     // Version Tag
     c.font = 'bold 9px monospace';
     c.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    c.fillText(GAME_VERSION, this.cw / 2, ty + 17);
+    c.fillText(GAME_VERSION, this.cw / 2, ty + 22);
     c.restore();
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
 
-    // Hero & Dots Preview — Chromavore toujours (plus de mode classic)
+    // Hero & Dots Preview — Chromavore sur l'horizon du soleil
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
     c.save();
-    c.translate(this.cw / 2 - 34, 148);
+    c.translate(this.cw / 2 - 34, 240);
     Player.drawChromavore(c, 13, time, ma, false, false, 1, true, this.chromaTier);
     c.restore();
     for (let i = 0; i < 4; i++) {
       const dotC = CHROMA_DOT[this.chromaTier] || C_DOT;
       c.fillStyle = dotC; c.shadowColor = dotC; c.shadowBlur = 8;
-      c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 148, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
+      c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 240, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // --- CARTE ÉPURÉE : LET'S HUNT ---
-    const madW = 320, madH = 60;
+    // --- CARTE ÉPURÉE : LET'S HUNT (Centrée verticalement) ---
+    const madW = 340, madH = 68;
     const madX = this.cw / 2 - madW / 2;
-    const madY = 185;
+    const madY = 310;
 
     c.save();
     const cardBg = this.chromaTier === 0
@@ -878,13 +878,13 @@ export class Renderer {
     c.stroke();
     c.shadowBlur = 0;
 
-    // Header : LET'S HUNT (centré, sobre, direct)
+    // Header : LET'S HUNT
     c.textAlign = 'center';
     c.font = 'bold 16px monospace';
     c.fillStyle = '#ffffff';
     c.shadowColor = cardBorder;
     c.shadowBlur = this.getChromaBlur(10);
-    c.fillText("LET'S HUNT", this.cw / 2, madY + 25);
+    c.fillText("LET'S HUNT", this.cw / 2, madY + 27);
     c.shadowBlur = 0;
 
     // Prompt à l'intérieur de la carte avec pulsation
@@ -893,7 +893,7 @@ export class Renderer {
     c.fillStyle = this.chromaTier === 0 ? `rgba(210, 210, 210, ${playPulse})` : `rgba(255, 255, 255, ${playPulse})`;
     c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
     c.shadowBlur = this.getChromaBlur(8 * playPulse);
-    c.fillText('▶ APPUYER SUR ESPACE POUR JOUER ◀', this.cw / 2, madY + 46);
+    c.fillText('▶ APPUYER SUR ESPACE POUR JOUER ◀', this.cw / 2, madY + 50);
     c.shadowBlur = 0;
     c.restore();
 
@@ -909,7 +909,7 @@ export class Renderer {
     c.font = 'bold 11px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#777777' : '#e0f4ff';
     c.textAlign = 'center';
-    c.fillText(`JOUEUR : ${profileManager.profile.pseudo}   •   CODE ID : ${profileManager.profile.syncCode}`, this.cw / 2, 450);
+    c.fillText(`JOUEUR : ${profileManager.profile.pseudo}   •   CODE ID : ${profileManager.profile.syncCode}`, this.cw / 2, 480);
 
     // Liens de navigation débloqués progressivement
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
@@ -948,7 +948,7 @@ export class Renderer {
 
     if (availableLinks.length <= 4) {
       // 1 seule ligne centrée
-      const rowY = 525;
+      const rowY = 545;
       const totalWidth = availableLinks.reduce((sum, l) => sum + c.measureText(l.label).width, 0) + (availableLinks.length - 1) * 28;
       let curX = this.cw / 2 - totalWidth / 2;
       for (let i = 0; i < availableLinks.length; i++) {
@@ -984,8 +984,8 @@ export class Renderer {
         }
       };
 
-      renderRow(row1, 514);
-      renderRow(row2, 542);
+      renderRow(row1, 532);
+      renderRow(row2, 560);
     }
     c.shadowBlur = 0;
   }

@@ -342,17 +342,17 @@ class Game {
           }
         }
 
-        // Copy sync code if tapping player line (y: ~450)
-        if (cy >= 435 && cy <= 465) {
+        // Copy sync code if tapping player line (y: ~480)
+        if (cy >= 465 && cy <= 495) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(curCw / 2, 450, 'CODE ID COPIÉ !', '#00ffff', 14);
+          particles.addPop(curCw / 2, 480, 'CODE ID COPIÉ !', '#00ffff', 14);
           sounds.play('click');
           return;
         }
 
-        const madW = 320, madH = 60;
+        const madW = 340, madH = 68;
         const madX = curCw / 2 - madW / 2;
-        const madY = 226;
+        const madY = 310;
 
         // Click on the single LET'S HUNT card
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
@@ -362,7 +362,7 @@ class Game {
         }
 
         // Tap title / banner to start
-        if (cy > 40 && cy < 180) {
+        if (cy > 60 && cy < 160) {
           this.startGame(this.gameMode);
           sounds.play('start');
           return;
