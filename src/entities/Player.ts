@@ -623,6 +623,45 @@ export class Player {
         c.restore();
       }
 
+      // Dash Ring (Mode Madness only — hidden in Tier 0, appears when unlocked from Tier 1+)
+      const dashLvl = progression.getSkillLevel('dash');
+      if (isMadness && chromaTier > 0 && dashLvl >= 1) {
+        const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
+        const maxCd = DASH_MADNESS_CD * cdMult;
+        const ringCol = dashLvl >= 5 ? '#ff007f' : (dashLvl >= 2 ? '#00ffcc' : '#ffd700');
+        const glowCol = dashLvl >= 5 ? '#ff007f' : (dashLvl >= 2 ? '#00f0ff' : '#ffd700');
+
+        if (this.dashCd > 0) {
+          const ringAngle = Math.max(0, Math.min(1, 1 - this.dashCd / maxCd)) * PI2;
+          c.save();
+          // Background track
+          c.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          c.lineWidth = 1.6;
+          c.beginPath();
+          c.arc(0, 0, P_RAD + 4, 0, PI2);
+          c.stroke();
+          // Active recharge progress
+          c.strokeStyle = ringCol;
+          c.lineWidth = 2.2;
+          c.beginPath();
+          c.arc(0, 0, P_RAD + 4, -Math.PI / 2, -Math.PI / 2 + ringAngle);
+          c.stroke();
+          c.restore();
+        } else {
+          // Dash ready pulse
+          const pulse = 0.4 + 0.3 * Math.sin(time * 8);
+          c.save();
+          c.strokeStyle = ringCol;
+          c.shadowColor = glowCol;
+          c.shadowBlur = 6 + 4 * pulse;
+          c.lineWidth = 1.8;
+          c.beginPath();
+          c.arc(0, 0, P_RAD + 4, 0, PI2);
+          c.stroke();
+          c.restore();
+        }
+      }
+
       // Invulnerability shield (Classic & Madness)
       if (this.invuln > 0) {
         c.save();

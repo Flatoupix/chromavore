@@ -28,7 +28,7 @@ export const SKILL_TREE: SkillDef[] = [
     version: 1,
     name: 'DASH OFFENSIF',
     icon: 'dash',
-    threshold: 35,
+    threshold: 10,
     category: 'movement',
     command: 'ESPACE ou BOUTON DASH',
     desc: 'Téléportation offensive de 3 cases à travers les fantômes avec taillade'
