@@ -704,7 +704,11 @@ class Game {
     // Always start at Level 1
     const isMadness = this.gameMode === 'madness';
     const isWidescreen = isMadness && this.isWidescreenUnlocked();
+    const currentTier = getChromaTier(progression.totalGhosts);
+    this.renderer.chromaTier = currentTier;
     this.maze.build(0, isMadness, isWidescreen);
+    // Re-rasteriser avec le tier correct (build() appelle renderOffscreen() sans tier)
+    this.maze.renderOffscreen(currentTier);
     this.player.reset(isMadness, this.maze, this.loopSpeedMultiplier);
 
     if (this.gameMode === 'madness') {
@@ -730,6 +734,7 @@ class Game {
     const isWidescreen = isMadness && this.isWidescreenUnlocked();
     const list = this.getCurrentLevelList();
     this.maze.build(lvlIndex, isMadness, isWidescreen);
+    this.maze.renderOffscreen(this.renderer.chromaTier);
     this.renderer.updateCanvasSize(this.maze.cols, this.maze.rows);
     this.touchDeck.resize();
 
@@ -2057,7 +2062,12 @@ class Game {
 
   private render() {
     // Chroma Awakening — mise à jour du tier à chaque frame
-    this.renderer.chromaTier = getChromaTier(progression.totalGhosts);
+    const newTier = getChromaTier(progression.totalGhosts);
+    if (newTier !== this.renderer.chromaTier) {
+      this.renderer.chromaTier = newTier;
+      // Re-rasteriser le labyrinthe avec les nouvelles couleurs de murs
+      this.maze.renderOffscreen(newTier);
+    }
     this.renderer.clear(this.maze.currentLevel, this.time, this.gameMode === 'madness');
 
     if (this.state === 'bonus') {

@@ -2,7 +2,7 @@
 //  CHROMAVORE — ENEMY GHOSTS & AI LOGIC
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, ROWS, CW, EC, PI, PI2, E_SPEED } from '../config/constants';
+import { T, HALF, COLS, ROWS, CW, EC, PI, PI2, E_SPEED, DOOR, GHOST } from '../config/constants';
 import { MazeManager } from '../levels/levels';
 import { superItems } from '../systems/SuperItems';
 import { progression } from '../systems/ProgressionSystem';
@@ -100,10 +100,12 @@ export class EnemyManager {
         const ptCandidate = { x: chosenNest.x + jx, y: chosenNest.y + jy };
         pt = maze ? (maze.isWalkable(ptCandidate.x, ptCandidate.y, true) ? ptCandidate : chosenNest) : ptCandidate;
       } else {
-        // In 4:3 (early game / classic): strictly 100% Central Ghost House (no lateral wings!)
-        const centralExit = maze && maze.isWalkable(centerCol, 8, true)
-          ? { x: centerCol, y: 8 }
-          : (maze ? maze.findNearestWalkable(centerCol, 8, true) : { x: centerCol, y: 8 });
+        // En 4:3 : spawn à y=7 (couloir ouvert AU-DESSUS de la ghost house)
+        // y=8 = embrasure entourée de murs sur 3 côtés → bloque le fantôme
+        const spawnY = 7;
+        const centralExit = maze && maze.isWalkable(centerCol, spawnY, true)
+          ? { x: centerCol, y: spawnY }
+          : (maze ? maze.findNearestWalkable(centerCol, spawnY, true) : { x: centerCol, y: spawnY });
         pt = centralExit;
       }
 
@@ -159,21 +161,17 @@ export class EnemyManager {
         if (e.delay <= 0) {
           e.st = (powerups && powerups.pred.on && powerups.pred.t > 0 && (powerups.pred.global || e.frightened)) ? 'flee' : 'active';
           const centerCol = Math.floor(maze.cols / 2);
-          let ex = centerCol, ey = 8;
+          const spawnY = maze.cols > 21 ? 8 : 7;
+          let ex = centerCol, ey = spawnY;
           if (!maze.isWalkable(ex, ey, true)) {
-            for (let dy = -2; dy <= 2 && !maze.isWalkable(ex, ey, true); dy++) {
-              for (let dx = -3; dx <= 3; dx++) {
-                if (maze.isWalkable(centerCol + dx, 8 + dy, true)) {
-                  ex = centerCol + dx;
-                  ey = 8 + dy;
-                  break;
-                }
-              }
-            }
+            const safe = maze.findNearestWalkable(centerCol, spawnY, true);
+            ex = safe.x; ey = safe.y;
           }
           e.x = ex; e.y = ey;
           e.fx = ex; e.fy = ey;
           e.t = 1;
+          e.dx = Math.random() < 0.5 ? -1 : 1;
+          e.dy = 0;
         }
         continue;
       }
@@ -208,19 +206,20 @@ export class EnemyManager {
           e.t = 1;
         }
 
-        // Active ghost inside ghost house safety: eject outside the door
-        if (e.st === 'active' && e.x >= 9 && e.x <= 11 && e.y >= 9 && e.y <= 11) {
-          const exitPt = maze.isWalkable(10, 8, true) ? { x: 10, y: 8 } : maze.findNearestWalkable(10, 8, true);
+        // Active or fleeing ghost inside ghost house safety: eject outside into open row 7 corridor
+        if ((e.st === 'active' || e.st === 'flee') && maze.isInGhostHouse(e.x, e.y)) {
+          const centerCol = Math.floor(maze.cols / 2);
+          const exitPt = maze.isWalkable(centerCol, 7, true) ? { x: centerCol, y: 7 } : maze.findNearestWalkable(centerCol, 7, true);
           e.x = e.fx = exitPt.x;
           e.y = e.fy = exitPt.y;
           e.t = 1;
-          e.dy = -1;
-          e.dx = 0;
+          e.dy = 0;
+          e.dx = Math.random() < 0.5 ? -1 : 1;
         }
 
         // Returned to ghost house or nearest nest, or timeout (max 3.5s): revive immediately!
         let atHome = false;
-        let exitPt = { x: 10, y: 8 };
+        let exitPt = { x: 10, y: 7 };
 
         if (maze.cols > 21) {
           const spawns = this.getMadnessSpawnSpots(maze);
@@ -236,9 +235,10 @@ export class EnemyManager {
             exitPt = dLeft < dRight ? spawns.left : spawns.right;
           }
         } else {
-          atHome = (e.x >= 9 && e.x <= 11 && e.y >= 8 && e.y <= 11) ||
+          const centerCol = Math.floor(maze.cols / 2);
+          atHome = maze.isInGhostHouse(e.x, e.y) ||
                    (maze.ghostReturnDist && maze.ghostReturnDist[e.y] && maze.ghostReturnDist[e.y][e.x] === 0);
-          exitPt = maze.isWalkable(10, 8, true) ? { x: 10, y: 8 } : maze.findNearestWalkable(10, 8, true);
+          exitPt = maze.isWalkable(centerCol, 7, true) ? { x: centerCol, y: 7 } : maze.findNearestWalkable(centerCol, 7, true);
         }
 
         if (e.st === 'return' && (atHome || (e.returnTimer && e.returnTimer >= 3.5))) {
@@ -249,8 +249,8 @@ export class EnemyManager {
           e.x = e.fx = exitPt.x;
           e.y = e.fy = exitPt.y;
           e.t = 1;
-          e.dy = -1;
-          e.dx = 0;
+          e.dy = 0;
+          e.dx = Math.random() < 0.5 ? -1 : 1;
         }
 
         this.decideNextStep(e, maze, plPos);
@@ -261,11 +261,19 @@ export class EnemyManager {
   private decideNextStep(e: Ghost, maze: MazeManager, plPos: { x: number; y: number }) {
     const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
     const valid = dirs.filter(d => {
+      const nx = this.wrapX(e.x + d.x);
+      const ny = e.y + d.y;
       // Prevent immediate 180 reverse unless trapped
       if (d.x === -e.dx && d.y === -e.dy && dirs.some(o => (o.x !== d.x || o.y !== d.y) && maze.isWalkable(this.wrapX(e.x + o.x), e.y + o.y, true))) {
         return false;
       }
-      return maze.isWalkable(this.wrapX(e.x + d.x), e.y + d.y, true);
+      // Never allow active or fleeing ghosts to re-enter the ghost house or cross doors!
+      if (e.st !== 'return') {
+        if (maze.isInGhostHouse(nx, ny) || maze.map[ny]?.[nx] === DOOR || maze.map[ny]?.[nx] === GHOST) {
+          return false;
+        }
+      }
+      return maze.isWalkable(nx, ny, true);
     });
 
     if (valid.length === 0) {

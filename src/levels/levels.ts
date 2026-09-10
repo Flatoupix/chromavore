@@ -2,7 +2,7 @@
 //  CHROMAVORE — LEVEL MAPS & MAZE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
-import { T, COLS, ROWS, CLASSIC_COLS, MADNESS_COLS, HUD_H, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL } from '../config/constants';
+import { T, COLS, ROWS, CLASSIC_COLS, MADNESS_COLS, HUD_H, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL, ChromaTier, CHROMA_WALL, CHROMA_GLOW, CHROMA_BG } from '../config/constants';
 
 export interface LevelDef {
   name: string;
@@ -956,6 +956,7 @@ export class MazeManager {
   public isMadness: boolean = false;
   public isWidescreen: boolean = false;
   public ghostReturnDist: number[][] = [];
+  public currentTier: ChromaTier = 0;
   public mOff: HTMLCanvasElement;
   public mc: CanvasRenderingContext2D;
 
@@ -999,7 +1000,8 @@ export class MazeManager {
     return false;
   }
 
-  public build(lvlIndex: number, isMadness: boolean = false, isWidescreen: boolean = false) {
+  public build(lvlIndex: number, isMadness: boolean = false, isWidescreen: boolean = false, chromaTier?: ChromaTier) {
+    if (chromaTier !== undefined) this.currentTier = chromaTier;
     this.isMadness = isMadness;
     this.isWidescreen = isMadness && isWidescreen;
     this.cols = (isMadness && isWidescreen) ? MADNESS_COLS : CLASSIC_COLS;
@@ -1029,10 +1031,13 @@ export class MazeManager {
           this.map[r][mirCol] = val === TUNNEL ? TUNNEL : val === DOOR ? DOOR : val;
         }
       }
+      const centerCol = Math.floor(this.cols / 2);
       for (let c = 0; c < this.cols; c++) {
         const v = this.map[r][c];
         if (v === DOT || v === PELLET) {
-          if (this.isInGhostHouse(c, r)) {
+          // Supprimer les 3 dots quasi-inaccessibles devant l'embouchure de la ghost house (row 8, cols centerCol±1 en 4:3)
+          const isFrontOfHouse = !this.isWidescreen && r === 8 && Math.abs(c - centerCol) <= 1;
+          if (this.isInGhostHouse(c, r) || isFrontOfHouse) {
             this.dotMap[r][c] = 0;
             this.map[r][c] = EMPTY;
           } else {
@@ -1168,41 +1173,54 @@ export class MazeManager {
     return true;
   }
 
-  public renderOffscreen() {
+  public renderOffscreen(chromaTier?: ChromaTier) {
+    if (chromaTier !== undefined) this.currentTier = chromaTier;
+    const tier = this.currentTier;
     const lvl = this.getLevelDef();
     const c = this.mc;
     const w = this.cols * T;
     const h = this.rows * T;
     c.clearRect(0, 0, w, h);
-    c.fillStyle = lvl.bg;
+
+    // Fond : couleur chromatique selon le tier
+    const bgColor = tier <= 4 ? CHROMA_BG[tier] : lvl.bg;
+    c.fillStyle = bgColor;
     c.fillRect(0, 0, w, h);
 
-    // Retro wireframe grid
-    c.strokeStyle = 'rgba(255, 0, 128, 0.05)';
-    c.lineWidth = 1;
-    for (let x = 0; x < w; x += T) {
-      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
-    }
-    for (let y = 0; y < h; y += T) {
-      c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+    // Grille wireframe : désactivée au tier 0 (trop stylisée), atténuée aux tiers 1–2
+    if (tier >= 1) {
+      const gridAlpha = tier <= 2 ? 0.02 : 0.05;
+      c.strokeStyle = `rgba(255, 0, 128, ${gridAlpha})`;
+      c.lineWidth = 1;
+      for (let x = 0; x < w; x += T) {
+        c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
+      }
+      for (let y = 0; y < h; y += T) {
+        c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+      }
     }
 
-    // Walls with glowing dual contour
+    // Couleurs de murs selon le tier
+    const wallFill  = tier <= 4 ? CHROMA_WALL[tier] : lvl.wallColor;
+    const wallGlow  = tier <= 4 ? CHROMA_GLOW[tier] : lvl.glowColor;
+    const wallBlur  = tier === 0 ? 0 : tier === 1 ? 2 : tier <= 3 ? 5 : 10;
+    const doorColor = tier === 0 ? 'rgba(120,120,120,0.5)' : tier <= 2 ? 'rgba(80,100,140,0.5)' : 'rgba(255, 0, 128, 0.5)';
+
     c.save();
-    c.shadowColor = lvl.glowColor;
-    c.shadowBlur = 12;
+    c.shadowColor = wallGlow;
+    c.shadowBlur = wallBlur;
     c.lineWidth = 1.5;
     for (let r = 0; r < this.rows; r++) {
       for (let col = 0; col < this.cols; col++) {
         if (this.map[r][col] === WALL) {
           const x = col * T, y = r * T;
-          c.fillStyle = lvl.wallColor;
+          c.fillStyle = wallFill;
           c.fillRect(x + 1, y + 1, T - 2, T - 2);
-          c.strokeStyle = lvl.glowColor;
+          c.strokeStyle = wallGlow;
           c.strokeRect(x + 1.5, y + 1.5, T - 3, T - 3);
         } else if (this.map[r][col] === DOOR) {
           const x = col * T, y = r * T;
-          c.fillStyle = 'rgba(255, 0, 128, 0.5)';
+          c.fillStyle = doorColor;
           c.fillRect(x, y + T / 2 - 2, T, 4);
         }
       }

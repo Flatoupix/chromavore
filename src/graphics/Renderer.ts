@@ -29,8 +29,24 @@ export class Renderer {
   public ctx: CanvasRenderingContext2D;
   public cw: number = CW;
   public ch: number = CH;
-  public chromaTier: ChromaTier = 5; // Chroma Awakening — mis à jour par main.ts chaque frame
+  public chromaTier: ChromaTier = 0; // Chroma Awakening — mis à jour par main.ts chaque frame
   private ghostStamps: Map<string, HTMLCanvasElement[]> = new Map();
+
+  /** Retourne une couleur adaptée au tier chromatique (monochrome/grayscale au tier 0, progressive ensuite) */
+  public getChromaAccent(baseColor: string, fallbackGray: string = '#888888'): string {
+    if (this.chromaTier === 0) return fallbackGray;
+    if (this.chromaTier === 1) return '#8899aa';
+    if (this.chromaTier === 2) return '#66aacc';
+    return baseColor;
+  }
+
+  /** Retourne un niveau de flou / ombre selon le tier chromatique (aucun glow au tier 0) */
+  public getChromaBlur(baseBlur: number = 10): number {
+    if (this.chromaTier === 0) return 0;
+    if (this.chromaTier === 1) return Math.min(2, Math.floor(baseBlur * 0.25));
+    if (this.chromaTier === 2) return Math.min(5, Math.floor(baseBlur * 0.5));
+    return baseBlur;
+  }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -723,84 +739,111 @@ export class Renderer {
 
   public drawMenu(gameMode: string, time: number, hi: number, bestMadnessKills: number) {
     const c = this.ctx;
-    c.fillStyle = '#080114';
+    const tier = this.chromaTier;
+
+    // Fond selon le tier
+    c.fillStyle = tier === 0 ? '#050505' : tier === 1 ? '#060610' : '#080114';
     c.fillRect(0, 0, this.cw, CH);
     c.textAlign = 'center';
 
-    // Perspective Synthwave Grid on horizon
-    const horizonY = 195;
-    c.save();
-    c.strokeStyle = 'rgba(255, 0, 128, 0.14)';
-    c.lineWidth = 1.2;
+    // Grille perspective Synthwave — masquée au tier 0, atténuée ensuite
+    if (tier >= 1) {
+      const horizonY = 195;
+      c.save();
+      const gridAlpha = tier === 1 ? 0.04 : tier === 2 ? 0.08 : 0.14;
+      const gridColor = tier <= 2 ? `rgba(180,180,200,${gridAlpha})` : `rgba(255,0,128,${gridAlpha})`;
+      c.strokeStyle = gridColor;
+      c.lineWidth = 1.2;
 
-    // Horizontal perspective lines
-    for (let i = 1; i <= 12; i++) {
-      const lineY = horizonY + Math.pow(i / 12, 2.2) * (CH - horizonY);
-      c.beginPath();
-      c.moveTo(0, lineY);
-      c.lineTo(this.cw, lineY);
-      c.stroke();
+      for (let i = 1; i <= 12; i++) {
+        const lineY = horizonY + Math.pow(i / 12, 2.2) * (CH - horizonY);
+        c.beginPath();
+        c.moveTo(0, lineY);
+        c.lineTo(this.cw, lineY);
+        c.stroke();
+      }
+      const vpX = this.cw / 2;
+      for (let x = -this.cw * 0.5; x <= this.cw * 1.5; x += 40) {
+        c.beginPath();
+        c.moveTo(vpX, horizonY);
+        c.lineTo(x, CH);
+        c.stroke();
+      }
+      c.restore();
     }
 
-    // Converging vertical perspective grid lines
-    const vpX = this.cw / 2;
-    for (let x = -this.cw * 0.5; x <= this.cw * 1.5; x += 40) {
-      c.beginPath();
-      c.moveTo(vpX, horizonY);
-      c.lineTo(x, CH);
-      c.stroke();
-    }
-
-    // 80s Outrun Striped Sunset Sun (positioned compactly on the horizon)
+    // Soleil Outrun — gris au tier 0–1, coloré ensuite
     const sunX = this.cw / 2, sunY = 175, sunR = 40;
-    const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
-    sunGrad.addColorStop(0, '#ffee00');
-    sunGrad.addColorStop(0.45, '#ff4400');
-    sunGrad.addColorStop(1, '#ff007f');
-
     c.save();
+    if (tier <= 1) {
+      const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
+      sunGrad.addColorStop(0, tier === 0 ? '#555555' : '#888899');
+      sunGrad.addColorStop(1, tier === 0 ? '#222222' : '#444455');
+      c.fillStyle = sunGrad;
+      c.shadowBlur = 0;
+    } else {
+      const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
+      sunGrad.addColorStop(0, '#ffee00');
+      sunGrad.addColorStop(0.45, '#ff4400');
+      sunGrad.addColorStop(1, '#ff007f');
+      c.fillStyle = sunGrad;
+      c.shadowColor = '#ff007f';
+      c.shadowBlur = tier <= 3 ? 8 : 20;
+    }
     c.beginPath();
     c.arc(sunX, sunY, sunR, 0, Math.PI, true);
     c.closePath();
-    c.fillStyle = sunGrad;
-    c.shadowColor = '#ff007f';
-    c.shadowBlur = 20;
     c.fill();
     c.shadowBlur = 0;
 
-    // Horizontal slice gaps through the sun
-    c.fillStyle = '#080114';
+    const bgSlice = tier === 0 ? '#050505' : tier === 1 ? '#060610' : '#080114';
+    c.fillStyle = bgSlice;
     for (let s = 1; s <= 5; s++) {
       const sliceY = sunY - sunR * 0.7 + s * 8;
       const sliceH = 1 + s * 0.7;
       c.fillRect(sunX - sunR - 4, sliceY, (sunR + 4) * 2, sliceH);
     }
     c.restore();
-    c.restore();
 
-    // Title: 80s Chrome & Sunset Gradient
+    // Titre CHROMAVORE — monochrome → néon selon le tier
     const ty = 66, p = 1 + Math.sin(time * 2) * 0.03;
     c.save();
     c.font = `bold ${38 * p}px monospace`;
     c.textAlign = 'center';
 
-    c.shadowColor = '#ff007f';
-    c.shadowBlur = 24;
+    if (tier === 0) {
+      c.fillStyle = '#cccccc';
+      c.shadowBlur = 0;
+      c.fillText('CHROMAVORE', this.cw / 2, ty);
+    } else if (tier <= 2) {
+      c.fillStyle = tier === 1 ? '#aaaacc' : '#ddeeff';
+      c.shadowColor = tier === 1 ? '#446688' : '#6688aa';
+      c.shadowBlur = tier * 6;
+      c.fillText('CHROMAVORE', this.cw / 2, ty);
+      c.shadowBlur = 0;
+    } else {
+      c.shadowColor = '#ff007f';
+      c.shadowBlur = 24;
+      const titleGrad = c.createLinearGradient(this.cw / 2, ty - 24, this.cw / 2, ty + 10);
+      titleGrad.addColorStop(0, '#ffffff');
+      titleGrad.addColorStop(0.35, '#00f0ff');
+      titleGrad.addColorStop(0.65, '#ff00aa');
+      titleGrad.addColorStop(1, '#ffd700');
+      c.fillStyle = titleGrad;
+      c.fillText('CHROMAVORE', this.cw / 2, ty);
+      c.shadowBlur = 0;
+    }
 
-    const titleGrad = c.createLinearGradient(this.cw / 2, ty - 24, this.cw / 2, ty + 10);
-    titleGrad.addColorStop(0, '#ffffff');
-    titleGrad.addColorStop(0.35, '#00f0ff');
-    titleGrad.addColorStop(0.65, '#ff00aa');
-    titleGrad.addColorStop(1, '#ffd700');
-    c.fillStyle = titleGrad;
-    c.fillText('CHROMAVORE', this.cw / 2, ty);
-    c.shadowBlur = 0;
-
-    // Subtitle
+    // Sous-titre — gris au tier 0, progressif ensuite
     c.font = 'bold 10px monospace';
-    c.fillStyle = '#00f0ff';
-    c.shadowColor = '#00f0ff';
-    c.shadowBlur = 8;
+    if (tier === 0) {
+      c.fillStyle = '#555555';
+      c.shadowBlur = 0;
+    } else {
+      c.fillStyle = tier <= 2 ? '#6688aa' : '#00f0ff';
+      c.shadowColor = tier <= 2 ? '#446688' : '#00f0ff';
+      c.shadowBlur = tier <= 2 ? 3 : 8;
+    }
     c.fillText('RETRO SYNTHWAVE EDITION • OUTRUN THE SHADOWS', this.cw / 2, ty + 22);
     c.shadowBlur = 0;
 
@@ -833,11 +876,17 @@ export class Renderer {
     const madY = 224;
 
     c.save();
-    c.fillStyle = 'rgba(255, 0, 127, 0.22)';
-    c.strokeStyle = '#ff007f';
+    const cardBg = this.chromaTier === 0
+      ? 'rgba(255, 255, 255, 0.04)'
+      : (this.chromaTier <= 2 ? 'rgba(80, 140, 200, 0.12)' : 'rgba(255, 0, 127, 0.22)');
+    const cardBorder = this.chromaTier === 0
+      ? '#555555'
+      : (this.chromaTier <= 2 ? '#5588aa' : '#ff007f');
+    c.fillStyle = cardBg;
+    c.strokeStyle = cardBorder;
     c.lineWidth = 2.5;
-    c.shadowColor = '#ff007f';
-    c.shadowBlur = 16;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : cardBorder;
+    c.shadowBlur = this.getChromaBlur(16);
     c.beginPath();
     c.roundRect(madX, madY, madW, madH, 8);
     c.fill();
@@ -848,8 +897,8 @@ export class Renderer {
     c.textAlign = 'left';
     c.font = 'bold 13px monospace';
     c.fillStyle = '#ffffff';
-    c.shadowColor = '#ff007f';
-    c.shadowBlur = 10;
+    c.shadowColor = cardBorder;
+    c.shadowBlur = this.getChromaBlur(10);
     c.fillText(isWidescreen ? 'LET\'S HUNT (16:9)' : 'LET\'S HUNT (4:3)', madX + 16, madY + 22);
     c.shadowBlur = 0;
 
@@ -857,20 +906,20 @@ export class Renderer {
     c.textAlign = 'right';
     c.font = 'bold 10px monospace';
     if (isWidescreen) {
-      c.fillStyle = '#ffd700';
-      c.shadowColor = '#ffd700';
-      c.shadowBlur = 8;
+      c.fillStyle = this.getChromaAccent('#ffd700', '#cccccc');
+      c.shadowColor = c.fillStyle;
+      c.shadowBlur = this.getChromaBlur(8);
       c.fillText('16:9 DÉBLOQUÉ', madX + madW - 16, madY + 22);
       c.shadowBlur = 0;
     } else {
-      c.fillStyle = '#00ffff';
+      c.fillStyle = this.getChromaAccent('#00ffff', '#888888');
       c.fillText(`4:3 ACTIF • ${careerKills}/${MADNESS_UNLOCK_KILLS} FRAGS`, madX + madW - 16, madY + 22);
     }
 
     // Subtitle
     c.textAlign = 'left';
     c.font = '9.5px monospace';
-    c.fillStyle = '#ff99cc';
+    c.fillStyle = this.chromaTier === 0 ? '#777777' : (this.chromaTier <= 2 ? '#99aabb' : '#ff99cc');
     if (isWidescreen) {
       c.fillText('Grand Écran 16:9 • Dash • Kombos • Swarm • Force Field', madX + 16, madY + 40);
     } else {
@@ -887,20 +936,20 @@ export class Renderer {
 
       const pct = Math.min(1, Math.max(0, careerKills / MADNESS_UNLOCK_KILLS));
       if (pct > 0) {
-        c.fillStyle = '#ff007f';
-        c.shadowColor = '#ff007f';
-        c.shadowBlur = 6;
+        c.fillStyle = this.chromaTier === 0 ? '#888888' : (this.chromaTier <= 2 ? '#00f0ff' : '#ff007f');
+        c.shadowColor = c.fillStyle;
+        c.shadowBlur = this.getChromaBlur(6);
         c.beginPath();
         c.roundRect(barX, barY, barW * pct, barH, 3);
         c.fill();
         c.shadowBlur = 0;
       }
       c.font = '8.5px monospace';
-      c.fillStyle = '#996677';
+      c.fillStyle = this.chromaTier === 0 ? '#555555' : '#996677';
       c.fillText(`Objectif 16:9 (Cyber Dash V2) : encore ${Math.max(0, MADNESS_UNLOCK_KILLS - careerKills)} spectres`, madX + 16, madY + 62);
     } else {
       c.font = '8.5px monospace';
-      c.fillStyle = '#ffd700';
+      c.fillStyle = this.getChromaAccent('#ffd700', '#888888');
       c.fillText('Arène Widescreen 39 colonnes active', madX + 16, madY + 58);
     }
     c.restore();
@@ -909,17 +958,17 @@ export class Renderer {
     const playPulse = 0.55 + 0.45 * Math.sin(time * 3.5);
     c.textAlign = 'center';
     c.font = 'bold 13.5px monospace';
-    c.fillStyle = `rgba(255, 255, 255, ${playPulse})`;
-    c.shadowColor = '#ff007f';
-    c.shadowBlur = 12 * playPulse;
+    c.fillStyle = this.chromaTier === 0 ? `rgba(220, 220, 220, ${playPulse})` : `rgba(255, 255, 255, ${playPulse})`;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
+    c.shadowBlur = this.getChromaBlur(12 * playPulse);
     c.fillText('▶ PRESS SPACE POUR CHASSER ◀', this.cw / 2, 316);
     c.shadowBlur = 0;
 
     // Records
     c.font = 'bold 11.5px monospace';
-    c.fillStyle = '#ffd700';
-    c.shadowColor = '#ffd700';
-    c.shadowBlur = 6;
+    c.fillStyle = this.getChromaAccent('#ffd700', '#888888');
+    c.shadowColor = c.fillStyle;
+    c.shadowBlur = this.getChromaBlur(6);
     c.fillText('RECORD : ' + bestMadnessKills + ' FANTÔMES PURGÉS', this.cw / 2, 350);
     c.shadowBlur = 0;
 
@@ -935,7 +984,7 @@ export class Renderer {
     // Player Profile & Sync ID Card
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
     c.font = 'bold 11px monospace';
-    c.fillStyle = '#e0f4ff';
+    c.fillStyle = this.chromaTier === 0 ? '#777777' : '#e0f4ff';
     c.fillText(`PILOTE : ${profileManager.profile.pseudo}   •   CODE ID : ${profileManager.profile.syncCode}`, this.cw / 2, 470);
 
     // Navigation Links (Airy, centered, 2 clean rows that never touch borders)
@@ -943,9 +992,9 @@ export class Renderer {
     const totalBadges = badges.getTotalCount();
 
     c.font = 'bold 11px monospace';
-    c.fillStyle = '#00f0ff';
-    c.shadowColor = '#00f0ff';
-    c.shadowBlur = 6;
+    c.fillStyle = this.getChromaAccent('#00f0ff', '#777777');
+    c.shadowColor = c.fillStyle;
+    c.shadowBlur = this.getChromaBlur(6);
     c.fillText(`[I] AIDE  •  [C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})  •  [O] PARAMÈTRES`, this.cw / 2, 538);
     c.fillText(`[B] SUCCÈS (${unlockedBadges}/${totalBadges})   •   [L] SCORES   •   [K] SYNC`, this.cw / 2, 566);
     c.shadowBlur = 0;
@@ -953,26 +1002,41 @@ export class Renderer {
 
   public drawInstructions(time: number) {
     const c = this.ctx;
-    c.fillStyle = '#06010f';
+    c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
     c.fillRect(0, 0, this.cw, CH);
 
-    // Background synthwave grid
-    c.strokeStyle = 'rgba(0, 240, 255, 0.07)';
-    c.lineWidth = 1;
-    for (let x = 0; x < this.cw; x += 30) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke(); }
-    for (let y = 0; y < CH; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(this.cw, y); c.stroke(); }
+    // Background synthwave grid (désactivé au tier 0)
+    if (this.chromaTier >= 1) {
+      c.strokeStyle = this.chromaTier <= 2 ? 'rgba(100, 150, 220, 0.04)' : 'rgba(0, 240, 255, 0.07)';
+      c.lineWidth = 1;
+      for (let x = 0; x < this.cw; x += 30) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke(); }
+      for (let y = 0; y < CH; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(this.cw, y); c.stroke(); }
+    }
 
     // Header Title
-    const titleGrad = c.createLinearGradient(this.cw / 2, 16, this.cw / 2, 48);
-    titleGrad.addColorStop(0, '#ffffff');
-    titleGrad.addColorStop(0.5, '#00f0ff');
-    titleGrad.addColorStop(1, '#ff007f');
-    c.font = 'bold 22px monospace'; c.textAlign = 'center'; c.fillStyle = titleGrad;
-    c.shadowColor = '#00f0ff'; c.shadowBlur = 16;
+    c.save();
+    c.textAlign = 'center';
+    if (this.chromaTier === 0) {
+      c.font = 'bold 22px monospace';
+      c.fillStyle = '#ffffff';
+      c.shadowBlur = 0;
+    } else {
+      const titleGrad = c.createLinearGradient(this.cw / 2, 16, this.cw / 2, 48);
+      titleGrad.addColorStop(0, '#ffffff');
+      titleGrad.addColorStop(0.5, '#00f0ff');
+      titleGrad.addColorStop(1, '#ff007f');
+      c.font = 'bold 22px monospace';
+      c.fillStyle = titleGrad;
+      c.shadowColor = '#00f0ff';
+      c.shadowBlur = 16;
+    }
     c.fillText('GUIDE & INSTRUCTIONS', this.cw / 2, 32);
     c.shadowBlur = 0;
+    c.restore();
 
-    c.font = 'bold 9.5px monospace'; c.fillStyle = '#8899bb';
+    c.font = 'bold 9.5px monospace';
+    c.fillStyle = this.chromaTier === 0 ? '#666666' : '#8899bb';
+    c.textAlign = 'center';
     c.fillText('TOUT CE QU\'IL FAUT SAVOIR POUR DOMINER LE LABYRINTHE', this.cw / 2, 47);
 
     const cardW = this.cw - 44;
@@ -981,8 +1045,8 @@ export class Renderer {
     // Card 1: CONTRÔLES DE BASE (y: 58, h: 112)
     this.drawInstructionCard(c, cardX, 58, cardW, 112, '#00f0ff', 'CONTRÔLES DE BASE', [
       { badge: 'FLÈCHES / ZQSD', desc: 'Virages anticipés fluides et demi-tours immédiats' },
-      { badge: 'ESPACE / DASH', desc: 'Madness • déverrouillé à 10 frags : téléporte et taillade' },
-      { badge: 'SHIFT / CHRONO', desc: 'Madness • déverrouillé à 50 frags : ralentit le monde' },
+      { badge: 'ESPACE / DASH', desc: 'Déverrouillé à 10 frags : téléporte et taillade' },
+      { badge: 'SHIFT / CHRONO', desc: 'Déverrouillé à 50 frags : ralentit le monde' },
       { badge: 'P / ÉCHAP', desc: 'Pause du jeu, réglages audio & scanlines CRT' }
     ]);
 
@@ -998,24 +1062,24 @@ export class Renderer {
       { badge: 'APPARITION', desc: 'Méga Nova, Trou Noir, Lasers 8-Axes, Cryo, Vague...' }
     ]);
 
-    // Card 4: LES 2 MODES DE JEU (y: 352, h: 148)
-    this.drawInstructionCard(c, cardX, 352, cardW, 148, '#a855f7', 'LES 2 MODES DE JEU', [
+    // Card 4: CHROMAVORE & ÉVEIL CHROMATIQUE (y: 352, h: 148)
+    this.drawInstructionCard(c, cardX, 352, cardW, 148, '#a855f7', 'CHROMAVORE & ÉVEIL CHROMATIQUE', [
       {
-        badge: 'MADNESS',
+        badge: 'ÉVEIL CHROMATIQUE',
         desc: [
-          'Mode principal ! 10 arènes dynamiques & chrono Overdrive.',
-          'Swarm infini : mangez toutes les orbes pour avancer !'
+          'Le monde commence en monochrome absolu.',
+          'Dévorez les spectres pour réveiller couleurs et compétences !'
         ]
       },
       {
-        badge: 'CLASSIQUE',
+        badge: 'LET\'S HUNT',
         desc: [
-          'L\'arcade rétro détente traditionnelle avec 4 fantômes.',
-          'Mangez les 204 orbes à votre rythme sans chrono.'
+          'Arènes dynamiques & chrono Overdrive.',
+          'Dévorez toutes les orbes et purgez les fantômes pour vaincre.'
         ]
       },
       {
-        badge: 'BOUCLE',
+        badge: 'BOUCLE COSMIQUE',
         desc: 'Terminez le Niveau 10 pour boucler (+10% vitesse/tour).'
       }
     ]);
@@ -1027,11 +1091,12 @@ export class Renderer {
     const pillY = 518;
 
     c.save();
-    c.fillStyle = 'rgba(0, 240, 255, 0.08)';
-    c.strokeStyle = `rgba(0, 240, 255, ${promptPulse})`;
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 240, 255, 0.08)';
+    const pStroke = this.chromaTier === 0 ? `rgba(120, 120, 120, ${promptPulse})` : `rgba(0, 240, 255, ${promptPulse})`;
+    c.strokeStyle = pStroke;
     c.lineWidth = 1.2;
-    c.shadowColor = '#00f0ff';
-    c.shadowBlur = 10 * promptPulse;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00f0ff';
+    c.shadowBlur = this.getChromaBlur(10 * promptPulse);
     c.beginPath();
     c.roundRect(pillX, pillY, pillW, pillH, 16);
     c.fill();
@@ -1039,7 +1104,7 @@ export class Renderer {
     c.shadowBlur = 0;
 
     c.font = 'bold 11.5px monospace';
-    c.fillStyle = `rgba(255, 255, 255, ${promptPulse})`;
+    c.fillStyle = this.chromaTier === 0 ? `rgba(220, 220, 220, ${promptPulse})` : `rgba(255, 255, 255, ${promptPulse})`;
     c.textAlign = 'center';
     c.fillText('▶ PRESS [ESPACE], [I] OU CLIQUEZ POUR RETOURNER ◀', this.cw / 2, pillY + 20);
     c.restore();
@@ -1082,12 +1147,13 @@ export class Renderer {
     accent: string, title: string,
     items: { badge: string; desc: string | string[]; badgeW?: number }[]
   ) {
+    const effectiveAccent = this.getChromaAccent(accent, '#777777');
     c.save();
-    c.fillStyle = 'rgba(12, 16, 28, 0.88)';
-    c.strokeStyle = accent;
+    c.fillStyle = this.chromaTier === 0 ? '#0d0d0d' : 'rgba(12, 16, 28, 0.88)';
+    c.strokeStyle = effectiveAccent;
     c.lineWidth = 1.2;
-    c.shadowColor = accent;
-    c.shadowBlur = 8;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : effectiveAccent;
+    c.shadowBlur = this.getChromaBlur(8);
     c.beginPath();
     c.roundRect(x, y, w, h, 8);
     c.fill();
@@ -1096,7 +1162,7 @@ export class Renderer {
 
     // Header badge
     c.font = 'bold 11.5px monospace';
-    c.fillStyle = accent;
+    c.fillStyle = effectiveAccent;
     c.textAlign = 'left';
     c.fillText(title, x + 14, y + 18);
 
@@ -1118,7 +1184,7 @@ export class Renderer {
       // Draw Key Badge Pill
       if (item.badge) {
         c.fillStyle = 'rgba(255, 255, 255, 0.05)';
-        c.strokeStyle = accent;
+        c.strokeStyle = effectiveAccent;
         c.lineWidth = 0.9;
         c.beginPath();
         c.roundRect(x + 14, ly - 10, badgeW, 15, 3);
@@ -1126,14 +1192,14 @@ export class Renderer {
         c.stroke();
 
         c.font = 'bold 9px monospace';
-        c.fillStyle = accent;
+        c.fillStyle = effectiveAccent;
         c.textAlign = 'center';
         c.fillText(item.badge, x + 14 + badgeW / 2, ly + 1);
       }
 
       // Format description (single or multi-string, auto-wrapped)
       c.font = '10px monospace';
-      c.fillStyle = '#b8c8d8';
+      c.fillStyle = this.chromaTier === 0 ? '#aaaaaa' : '#b8c8d8';
       c.textAlign = 'left';
 
       const descArray = Array.isArray(item.desc) ? item.desc : [item.desc];
@@ -1156,27 +1222,50 @@ export class Renderer {
 
   public drawGameOver(isMadness: boolean, score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number, loopCount: number = 0) {
     const c = this.ctx;
-    c.fillStyle = 'rgba(5,5,10,0.85)'; c.fillRect(0, 0, this.cw, CH);
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(0,0,0,0.92)' : 'rgba(5,5,10,0.85)';
+    c.fillRect(0, 0, this.cw, CH);
     const cy = CH * 0.30;
-    c.font = 'bold 36px monospace'; c.fillStyle = '#ff3344'; c.shadowColor = '#ff3344'; c.shadowBlur = 20;
-    c.textAlign = 'center'; c.fillText(isMadness ? 'FRENZY OVER' : 'GAME OVER', this.cw / 2, cy); c.shadowBlur = 0;
+
+    const overCol = this.getChromaAccent('#ff3344', '#ffffff');
+    c.font = 'bold 36px monospace';
+    c.fillStyle = overCol;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : overCol;
+    c.shadowBlur = this.getChromaBlur(20);
+    c.textAlign = 'center';
+    c.fillText(isMadness ? 'FRENZY OVER' : 'GAME OVER', this.cw / 2, cy);
+    c.shadowBlur = 0;
 
     if (isMadness) {
-      c.font = 'bold 22px monospace'; c.fillStyle = '#ffd700'; c.fillText('FANTÔMES PURGÉS : ' + madnessKills, this.cw / 2, cy + 48);
-      c.font = 'bold 16px monospace'; c.fillStyle = '#ff5533'; c.fillText('MAX STREAK : x' + madnessStreak, this.cw / 2, cy + 78);
-      c.font = '14px monospace'; c.fillStyle = '#888'; c.fillText('RECORD KILLS : ' + bestMadnessKills, this.cw / 2, cy + 106);
+      c.font = 'bold 22px monospace';
+      c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
+      c.fillText('FANTÔMES PURGÉS : ' + madnessKills, this.cw / 2, cy + 48);
+      c.font = 'bold 16px monospace';
+      c.fillStyle = this.getChromaAccent('#ff5533', '#cccccc');
+      c.fillText('MAX STREAK : x' + madnessStreak, this.cw / 2, cy + 78);
+      c.font = '14px monospace';
+      c.fillStyle = '#888';
+      c.fillText('RECORD KILLS : ' + bestMadnessKills, this.cw / 2, cy + 106);
     } else {
-      c.font = 'bold 20px monospace'; c.fillStyle = '#ffd700'; c.fillText('SCORE : ' + score, this.cw / 2, cy + 48);
+      c.font = 'bold 20px monospace';
+      c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
+      c.fillText('SCORE : ' + score, this.cw / 2, cy + 48);
       if (loopCount > 0) {
-        c.font = 'bold 13px monospace'; c.fillStyle = '#00ffcc'; c.fillText(`BOUCLE ATTEINTE : ${loopCount + 1} (+${loopCount * 10}% VIT)`, this.cw / 2, cy + 74);
+        c.font = 'bold 13px monospace';
+        c.fillStyle = this.getChromaAccent('#00ffcc', '#aaaaaa');
+        c.fillText(`BOUCLE ATTEINTE : ${loopCount + 1} (+${loopCount * 10}% VIT)`, this.cw / 2, cy + 74);
       }
       if (hi) {
-        c.font = 'bold 16px monospace'; c.fillStyle = '#ff44ff'; c.shadowColor = '#ff44ff'; c.shadowBlur = 10;
-        if (Math.sin(time * 6) > 0) c.fillText('NOUVEAU RECORD !', this.cw / 2, cy + (loopCount > 0 ? 98 : 76)); c.shadowBlur = 0;
+        c.font = 'bold 16px monospace';
+        c.fillStyle = this.getChromaAccent('#ff44ff', '#ffffff');
+        c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff44ff';
+        c.shadowBlur = this.getChromaBlur(10);
+        if (Math.sin(time * 6) > 0) c.fillText('NOUVEAU RECORD !', this.cw / 2, cy + (loopCount > 0 ? 98 : 76));
+        c.shadowBlur = 0;
       }
     }
 
-    c.fillStyle = '#ffd700'; c.font = '12px monospace';
+    c.fillStyle = this.getChromaAccent('#ffd700', '#888888');
+    c.font = '12px monospace';
     const bTxt = 'Badges & Succès : ' + badgesUnlocked + '/' + badges.getTotalCount() + ' Débloqués';
     const btw = c.measureText(bTxt).width;
     spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 - btw / 2 - 12, cy + 130, 14);
@@ -1186,8 +1275,8 @@ export class Renderer {
     const nxt = progression.getNextUnlock();
     const barW = 320, barH = 10;
     const barX = this.cw / 2 - barW / 2, barY = cy + 158;
-    c.fillStyle = 'rgba(15, 20, 35, 0.85)';
-    c.strokeStyle = '#00ffff';
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.9)' : 'rgba(15, 20, 35, 0.85)';
+    c.strokeStyle = this.getChromaAccent('#00ffff', '#555555');
     c.lineWidth = 1.5;
     c.beginPath();
     c.roundRect(barX, barY, barW, barH, 4);
@@ -1195,9 +1284,10 @@ export class Renderer {
     c.stroke();
 
     const fillW = Math.max(0, Math.min(barW, barW * nxt.progress));
-    c.fillStyle = '#00ffcc';
-    c.shadowColor = '#00ffcc';
-    c.shadowBlur = 8;
+    const fillCol = this.getChromaAccent('#00ffcc', '#888888');
+    c.fillStyle = fillCol;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : fillCol;
+    c.shadowBlur = this.getChromaBlur(8);
     c.beginPath();
     c.roundRect(barX, barY, fillW, barH, 4);
     c.fill();
@@ -1211,12 +1301,15 @@ export class Renderer {
       c.fillText(`CARRIÈRE MAXIMALE : ${progression.totalGhosts} FRAGS (TOUT DÉBLOQUÉ)`, this.cw / 2, barY - 6);
     }
 
-    c.font = '13px monospace'; c.fillStyle = '#aaa';
+    c.font = '13px monospace';
+    c.fillStyle = '#aaa';
     if (Math.sin(time * 3) > 0) c.fillText('PRESS SPACE TO REPLAY', this.cw / 2, cy + 195);
 
     // Leaderboard link
-    c.font = 'bold 11px monospace'; c.fillStyle = '#ff007f';
-    c.shadowColor = '#ff007f'; c.shadowBlur = 8;
+    c.font = 'bold 11px monospace';
+    c.fillStyle = this.getChromaAccent('#ff007f', '#777777');
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
+    c.shadowBlur = this.getChromaBlur(8);
     if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] CLASSEMENT  |  [ C ] ARSENAL & SKILLS', this.cw / 2, cy + 220);
     c.shadowBlur = 0;
 
@@ -1235,41 +1328,59 @@ export class Renderer {
     playerDate: string = ''
   ) {
     const c = this.ctx;
-    c.fillStyle = '#06010f';
+    c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
     c.fillRect(0, 0, this.cw, CH);
 
-    // Background grid
-    c.strokeStyle = 'rgba(255, 0, 127, 0.08)';
-    c.lineWidth = 1;
-    for (let x = 0; x < this.cw; x += 30) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke(); }
-    for (let y = 0; y < CH; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(this.cw, y); c.stroke(); }
+    // Background grid (désactivé au tier 0)
+    if (this.chromaTier >= 1) {
+      c.strokeStyle = this.chromaTier <= 2 ? 'rgba(100, 150, 220, 0.04)' : 'rgba(255, 0, 127, 0.08)';
+      c.lineWidth = 1;
+      for (let x = 0; x < this.cw; x += 30) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, CH); c.stroke(); }
+      for (let y = 0; y < CH; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(this.cw, y); c.stroke(); }
+    }
 
     // Title
-    const titleGrad = c.createLinearGradient(this.cw / 2, 20, this.cw / 2, 60);
-    titleGrad.addColorStop(0, '#ffffff');
-    titleGrad.addColorStop(0.5, '#00f0ff');
-    titleGrad.addColorStop(1, '#ff007f');
-    c.font = 'bold 22px monospace'; c.textAlign = 'center'; c.fillStyle = titleGrad;
-    c.shadowColor = '#00f0ff'; c.shadowBlur = 16;
+    c.save();
+    c.textAlign = 'center';
+    if (this.chromaTier === 0) {
+      c.font = 'bold 22px monospace';
+      c.fillStyle = '#ffffff';
+      c.shadowBlur = 0;
+    } else {
+      const titleGrad = c.createLinearGradient(this.cw / 2, 20, this.cw / 2, 60);
+      titleGrad.addColorStop(0, '#ffffff');
+      titleGrad.addColorStop(0.5, '#00f0ff');
+      titleGrad.addColorStop(1, '#ff007f');
+      c.font = 'bold 22px monospace';
+      c.fillStyle = titleGrad;
+      c.shadowColor = '#00f0ff';
+      c.shadowBlur = 16;
+    }
     spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 - 100, 42, 18);
-    c.fillText('LEADERBOARD', this.cw / 2 + 10, 42); c.shadowBlur = 0;
+    c.fillText('LEADERBOARD', this.cw / 2 + 10, 42);
+    c.shadowBlur = 0;
+    c.restore();
 
     // Mode tab
-    const modeLabel = mode === 'madness' ? 'MADNESS — KILLS' : 'CLASSIQUE — SCORE';
-    c.font = 'bold 11px monospace'; c.fillStyle = mode === 'madness' ? '#ff007f' : '#00f0ff';
+    const modeLabel = 'LET\'S HUNT — CLASSEMENT FRAGS';
+    c.font = 'bold 11px monospace';
+    c.fillStyle = this.chromaTier === 0 ? '#888888' : (mode === 'madness' ? '#ff007f' : '#00f0ff');
     c.fillText(modeLabel, this.cw / 2, 62);
 
     // Column headers
     const startY = 86;
-    c.font = 'bold 9px monospace'; c.fillStyle = '#445566'; c.textAlign = 'center';
+    c.font = 'bold 9px monospace';
+    c.fillStyle = this.chromaTier === 0 ? '#555555' : '#445566';
+    c.textAlign = 'center';
     c.fillText('#', 34, startY);
     c.textAlign = 'left';
     c.fillText('PSEUDO', 64, startY);
     c.textAlign = 'right';
-    c.fillText(mode === 'madness' ? 'KILLS & SCORE' : 'SCORE', this.cw - 28, startY);
+    c.fillText('KILLS & SCORE', this.cw - 28, startY);
 
     // Separator
-    c.strokeStyle = '#1a2840'; c.lineWidth = 1;
+    c.strokeStyle = this.chromaTier === 0 ? '#222222' : '#1a2840';
+    c.lineWidth = 1;
     c.beginPath(); c.moveTo(20, startY + 6); c.lineTo(this.cw - 20, startY + 6); c.stroke();
 
     // Entries
@@ -1284,9 +1395,10 @@ export class Renderer {
       // Row highlight
       if (isPlayer) {
         const pulse = 0.14 + Math.sin(time * 5) * 0.06;
-        c.fillStyle = `rgba(255, 0, 127, ${pulse})`;
+        c.fillStyle = this.chromaTier === 0 ? `rgba(255, 255, 255, ${pulse})` : `rgba(255, 0, 127, ${pulse})`;
         c.fillRect(18, y - 14, this.cw - 36, rowH - 2);
-        c.strokeStyle = '#ff007f'; c.lineWidth = 1.5;
+        c.strokeStyle = this.getChromaAccent('#ff007f', '#777777');
+        c.lineWidth = 1.5;
         c.strokeRect(18, y - 14, this.cw - 36, rowH - 2);
       } else if (i % 2 === 0) {
         c.fillStyle = 'rgba(255,255,255,0.025)';
@@ -1298,82 +1410,84 @@ export class Renderer {
       if (rank === 1) {
         spriteAtlas.drawIcon(c, 'crown', 24, y, 14);
         c.font = 'bold 12px monospace';
-        c.fillStyle = '#ffd700';
-        c.shadowColor = '#ffd700';
-        c.shadowBlur = 10;
+        c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
+        c.shadowColor = c.fillStyle;
+        c.shadowBlur = this.getChromaBlur(10);
         c.fillText('1', 38, y);
         c.shadowBlur = 0;
       } else if (rank === 2) {
         c.font = 'bold 12px monospace';
-        c.fillStyle = '#e2e8f0';
-        c.shadowColor = '#e2e8f0';
-        c.shadowBlur = 8;
+        c.fillStyle = this.getChromaAccent('#e2e8f0', '#cccccc');
+        c.shadowColor = c.fillStyle;
+        c.shadowBlur = this.getChromaBlur(8);
         c.fillText('2', 34, y);
         c.shadowBlur = 0;
       } else if (rank === 3) {
         c.font = 'bold 12px monospace';
-        c.fillStyle = '#ff9944';
-        c.shadowColor = '#ff9944';
-        c.shadowBlur = 8;
+        c.fillStyle = this.getChromaAccent('#ff9944', '#aaaaaa');
+        c.shadowColor = c.fillStyle;
+        c.shadowBlur = this.getChromaBlur(8);
         c.fillText('3', 34, y);
         c.shadowBlur = 0;
       } else {
         c.font = 'bold 11px monospace';
-        c.fillStyle = isPlayer ? '#ffd700' : '#556677';
+        c.fillStyle = isPlayer ? this.getChromaAccent('#ffd700', '#ffffff') : (this.chromaTier === 0 ? '#666666' : '#556677');
         c.fillText(rank + '.', 34, y);
       }
 
       // Pseudo
       c.textAlign = 'left';
       c.font = isPlayer ? 'bold 12px monospace' : '11px monospace';
-      c.fillStyle = isPlayer ? '#ffd700' : (rank <= 3 ? '#ffffff' : '#aabbcc');
-      if (isPlayer) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
+      c.fillStyle = isPlayer ? this.getChromaAccent('#ffd700', '#ffffff') : (rank <= 3 ? '#ffffff' : (this.chromaTier === 0 ? '#aaaaaa' : '#aabbcc'));
+      if (isPlayer) {
+        c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
+        c.shadowBlur = this.getChromaBlur(8);
+      }
       c.fillText(e.pseudo.toUpperCase().slice(0, 12), 64, y - 2);
       c.shadowBlur = 0;
 
       // Date under pseudo
-      c.font = '8px monospace'; c.fillStyle = '#445566';
+      c.font = '8px monospace';
+      c.fillStyle = this.chromaTier === 0 ? '#555555' : '#445566';
       c.fillText(e.date ? e.date.slice(0, 10) : '', 64, y + 11);
 
       // Score and Kills on right
       c.textAlign = 'right';
-      if (mode === 'madness') {
-        // Line 1: Kills
-        c.font = 'bold 12px monospace';
-        c.fillStyle = rank === 1 ? '#ffd700' : (isPlayer ? '#ff007f' : '#00f0ff');
-        if (rank === 1) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
-        c.fillText(`${e.kills ?? 0} KILLS`, this.cw - 28, y - 2);
-        c.shadowBlur = 0;
-
-        // Line 2: Score underneath Kills
-        c.font = 'bold 9px monospace';
-        c.fillStyle = isPlayer ? '#ffd700' : '#ffaa00';
-        c.fillText(`${(e.score || 0).toLocaleString()} PTS`, this.cw - 28, y + 11);
-      } else {
-        // Classic: Score
-        c.font = 'bold 12px monospace';
-        c.fillStyle = rank === 1 ? '#ffd700' : (isPlayer ? '#ff007f' : '#00f0ff');
-        if (rank === 1) { c.shadowColor = '#ffd700'; c.shadowBlur = 8; }
-        c.fillText(e.score.toString().padStart(7, '0'), this.cw - 28, y);
-        c.shadowBlur = 0;
+      c.font = 'bold 12px monospace';
+      c.fillStyle = rank === 1 ? this.getChromaAccent('#ffd700', '#ffffff') : (isPlayer ? this.getChromaAccent('#ff007f', '#ffffff') : this.getChromaAccent('#00f0ff', '#cccccc'));
+      if (rank === 1) {
+        c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
+        c.shadowBlur = this.getChromaBlur(8);
       }
+      c.fillText(`${e.kills ?? 0} KILLS`, this.cw - 28, y - 2);
+      c.shadowBlur = 0;
+
+      // Line 2: Score underneath Kills
+      c.font = 'bold 9px monospace';
+      c.fillStyle = isPlayer ? this.getChromaAccent('#ffd700', '#aaaaaa') : this.getChromaAccent('#ffaa00', '#888888');
+      c.fillText(`${(e.score || 0).toLocaleString()} PTS`, this.cw - 28, y + 11);
     }
 
     if (entries.length === 0) {
-      c.font = '13px monospace'; c.fillStyle = '#445566'; c.textAlign = 'center';
+      c.font = '13px monospace';
+      c.fillStyle = this.chromaTier === 0 ? '#666666' : '#445566';
+      c.textAlign = 'center';
       c.fillText('Aucun score enregistré...', this.cw / 2, CH * 0.5);
-      c.font = '11px monospace'; c.fillStyle = '#334455';
+      c.font = '11px monospace';
+      c.fillStyle = this.chromaTier === 0 ? '#444444' : '#334455';
       c.fillText('Jouez une partie et entrez votre pseudo !', this.cw / 2, CH * 0.5 + 24);
     }
 
     // Footer
-    c.font = 'bold 10px monospace'; c.fillStyle = '#334466'; c.textAlign = 'center';
-    c.fillText('[ ESPACE / ECHAP ] RETOUR  •  [ 1 ] CLASSIQUE  •  [ 2 ] MADNESS', this.cw / 2, CH - 14);
+    c.font = 'bold 10px monospace';
+    c.fillStyle = this.chromaTier === 0 ? '#555555' : '#334466';
+    c.textAlign = 'center';
+    c.fillText('[ ESPACE / ECHAP ] RETOUR AU MENU', this.cw / 2, CH - 14);
   }
 
   public drawCodex(time: number, tab: 'skills' | 'badges' = 'skills', page: number = 0) {
     const c = this.ctx;
-    c.fillStyle = '#06010f';
+    c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
     c.fillRect(0, 0, this.cw, CH);
 
     const isSkills = tab === 'skills';
@@ -1385,13 +1499,18 @@ export class Renderer {
     c.save();
     c.textAlign = 'center';
     c.font = 'bold 18px monospace';
-    const grad = c.createLinearGradient(0, 15, 0, 45);
-    grad.addColorStop(0, '#00ffff');
-    grad.addColorStop(0.5, '#ff00aa');
-    grad.addColorStop(1, '#ffd700');
-    c.fillStyle = grad;
-    c.shadowColor = isSkills ? '#00ffff' : '#ffd700';
-    c.shadowBlur = 10;
+    if (this.chromaTier === 0) {
+      c.fillStyle = '#ffffff';
+      c.shadowBlur = 0;
+    } else {
+      const grad = c.createLinearGradient(0, 15, 0, 45);
+      grad.addColorStop(0, '#00ffff');
+      grad.addColorStop(0.5, '#ff00aa');
+      grad.addColorStop(1, '#ffd700');
+      c.fillStyle = grad;
+      c.shadowColor = isSkills ? '#00ffff' : '#ffd700';
+      c.shadowBlur = 10;
+    }
     const titleText = isSkills ? 'ARSENAL & ARBRE DES COMPÉTENCES' : 'SUCCÈS & TROPHÉES DE CARRIÈRE';
     const tIcon = isSkills ? 'lightning' : 'trophy';
     const tw = c.measureText(titleText).width;
@@ -1405,18 +1524,24 @@ export class Renderer {
     const tabW = 200, tabH = 24, tabY = 36;
 
     // Tab 1: Skills
-    c.fillStyle = isSkills ? 'rgba(0, 240, 255, 0.22)' : 'rgba(15, 20, 35, 0.7)';
-    c.strokeStyle = isSkills ? '#00f0ff' : '#223348';
+    c.fillStyle = isSkills
+      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 240, 255, 0.22)')
+      : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.7)' : 'rgba(15, 20, 35, 0.7)');
+    c.strokeStyle = isSkills
+      ? this.getChromaAccent('#00f0ff', '#777777')
+      : (this.chromaTier === 0 ? '#333333' : '#223348');
     c.lineWidth = isSkills ? 1.8 : 1;
-    c.shadowColor = isSkills ? '#00f0ff' : 'transparent';
-    c.shadowBlur = isSkills ? 8 : 0;
+    c.shadowColor = isSkills ? this.getChromaAccent('#00f0ff', 'transparent') : 'transparent';
+    c.shadowBlur = isSkills ? this.getChromaBlur(8) : 0;
     c.beginPath();
     c.roundRect(this.cw / 2 - tabW - 8, tabY, tabW, tabH, 5);
     c.fill();
     c.stroke();
     c.shadowBlur = 0;
     c.font = 'bold 10px monospace';
-    c.fillStyle = isSkills ? '#00f0ff' : '#8899aa';
+    c.fillStyle = isSkills
+      ? this.getChromaAccent('#00f0ff', '#ffffff')
+      : (this.chromaTier === 0 ? '#666666' : '#8899aa');
     c.textAlign = 'center';
     const tab1Text = `[1] ARSENAL (${unlockedSkills}/${SKILL_TREE.length})`;
     const t1w = c.measureText(tab1Text).width;
@@ -1425,18 +1550,24 @@ export class Renderer {
 
     // Tab 2: Badges
     const isBadges = tab === 'badges';
-    c.fillStyle = isBadges ? 'rgba(255, 215, 0, 0.22)' : 'rgba(15, 20, 35, 0.7)';
-    c.strokeStyle = isBadges ? '#ffd700' : '#223348';
+    c.fillStyle = isBadges
+      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 215, 0, 0.22)')
+      : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.7)' : 'rgba(15, 20, 35, 0.7)');
+    c.strokeStyle = isBadges
+      ? this.getChromaAccent('#ffd700', '#777777')
+      : (this.chromaTier === 0 ? '#333333' : '#223348');
     c.lineWidth = isBadges ? 1.8 : 1;
-    c.shadowColor = isBadges ? '#ffd700' : 'transparent';
-    c.shadowBlur = isBadges ? 8 : 0;
+    c.shadowColor = isBadges ? this.getChromaAccent('#ffd700', 'transparent') : 'transparent';
+    c.shadowBlur = isBadges ? this.getChromaBlur(8) : 0;
     c.beginPath();
     c.roundRect(this.cw / 2 + 8, tabY, tabW, tabH, 5);
     c.fill();
     c.stroke();
     c.shadowBlur = 0;
     c.font = 'bold 10px monospace';
-    c.fillStyle = isBadges ? '#ffd700' : '#8899aa';
+    c.fillStyle = isBadges
+      ? this.getChromaAccent('#ffd700', '#ffffff')
+      : (this.chromaTier === 0 ? '#666666' : '#8899aa');
     const tab2Text = `[2] SUCCÈS (${unlockedBadges}/${totalBadges})`;
     const t2w = c.measureText(tab2Text).width;
     spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 + tabW / 2 + 8 - t2w / 2 - 10, tabY + 16, 12);
@@ -1456,8 +1587,8 @@ export class Renderer {
       const nxt = progression.getNextUnlock();
       const barW = Math.min(totalGridW, isWide ? 620 : 460), barH = 8;
       const barX = this.cw / 2 - barW / 2, barY = 76;
-      c.fillStyle = 'rgba(15, 20, 35, 0.9)';
-      c.strokeStyle = '#00ffff';
+      c.fillStyle = this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.9)' : 'rgba(15, 20, 35, 0.9)';
+      c.strokeStyle = this.getChromaAccent('#00ffff', '#555555');
       c.lineWidth = 1;
       c.beginPath();
       c.roundRect(barX, barY, barW, barH, 4);
@@ -1465,9 +1596,10 @@ export class Renderer {
       c.stroke();
 
       const fillW = Math.max(0, Math.min(barW, barW * nxt.progress));
-      c.fillStyle = '#00ffcc';
-      c.shadowColor = '#00ffcc';
-      c.shadowBlur = 8;
+      const fillCol = this.getChromaAccent('#00ffcc', '#888888');
+      c.fillStyle = fillCol;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : fillCol;
+      c.shadowBlur = this.getChromaBlur(8);
       c.beginPath();
       c.roundRect(barX, barY, fillW, barH, 4);
       c.fill();
@@ -1503,10 +1635,10 @@ export class Renderer {
 
       // Footer
       c.font = 'bold 10.5px monospace';
-      c.fillStyle = '#00ffff';
+      c.fillStyle = this.getChromaAccent('#00ffff', '#777777');
       c.textAlign = 'center';
-      c.shadowColor = '#00ffff';
-      c.shadowBlur = 6;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00ffff';
+      c.shadowBlur = this.getChromaBlur(6);
       c.fillText('[1] ARSENAL  •  [2] SUCCÈS  •  [TAB] BASCULER  •  [ECHAP / C] RETOUR', this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     } else {
@@ -1521,8 +1653,8 @@ export class Renderer {
       const ratio = unlockedBadges / allBadges.length;
       const barW = Math.min(totalGridW, isWide ? 620 : 460), barH = 8;
       const barX = this.cw / 2 - barW / 2, barY = 76;
-      c.fillStyle = 'rgba(15, 20, 35, 0.9)';
-      c.strokeStyle = '#ffd700';
+      c.fillStyle = this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.9)' : 'rgba(15, 20, 35, 0.9)';
+      c.strokeStyle = this.getChromaAccent('#ffd700', '#555555');
       c.lineWidth = 1;
       c.beginPath();
       c.roundRect(barX, barY, barW, barH, 4);
@@ -1530,9 +1662,10 @@ export class Renderer {
       c.stroke();
 
       const fillW = Math.max(0, Math.min(barW, barW * ratio));
-      c.fillStyle = '#ffd700';
-      c.shadowColor = '#ffd700';
-      c.shadowBlur = 8;
+      const fillCol = this.getChromaAccent('#ffd700', '#888888');
+      c.fillStyle = fillCol;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : fillCol;
+      c.shadowBlur = this.getChromaBlur(8);
       c.beginPath();
       c.roundRect(barX, barY, fillW, barH, 4);
       c.fill();
@@ -1559,10 +1692,10 @@ export class Renderer {
 
       // Footer
       c.font = 'bold 10.5px monospace';
-      c.fillStyle = '#ffd700';
+      c.fillStyle = this.getChromaAccent('#ffd700', '#777777');
       c.textAlign = 'center';
-      c.shadowColor = '#ffd700';
-      c.shadowBlur = 6;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
+      c.shadowBlur = this.getChromaBlur(6);
       c.fillText(`[1] ARSENAL  •  [2] SUCCÈS  •  [PAGE ${curPage + 1}/${maxPages} • FLÈCHES ← / →]  •  [ECHAP / B] RETOUR`, this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     }
@@ -1572,12 +1705,16 @@ export class Renderer {
     const unlocked = badges.isUnlocked(b.id);
     c.save();
 
-    c.fillStyle = unlocked ? 'rgba(255, 215, 0, 0.09)' : 'rgba(15, 20, 35, 0.7)';
-    c.strokeStyle = unlocked ? '#ffd700' : '#223348';
+    c.fillStyle = unlocked
+      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 215, 0, 0.09)')
+      : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.65)' : 'rgba(15, 20, 35, 0.7)');
+    c.strokeStyle = unlocked
+      ? this.getChromaAccent('#ffd700', '#777777')
+      : (this.chromaTier === 0 ? '#333333' : '#223348');
     c.lineWidth = unlocked ? 1.5 : 1;
-    if (unlocked) {
+    if (unlocked && this.chromaTier >= 1) {
       c.shadowColor = '#ffd700';
-      c.shadowBlur = 8;
+      c.shadowBlur = this.getChromaBlur(8);
     }
     c.beginPath();
     c.roundRect(x, y, w, h, 6);
@@ -1590,7 +1727,9 @@ export class Renderer {
 
     // Name
     c.font = 'bold 10px monospace';
-    c.fillStyle = unlocked ? '#ffd700' : '#8899aa';
+    c.fillStyle = unlocked
+      ? this.getChromaAccent('#ffd700', '#ffffff')
+      : (this.chromaTier === 0 ? '#777777' : '#8899aa');
     c.textAlign = 'left';
     c.fillText(b.name, x + 30, y + 17);
 
@@ -1598,13 +1737,13 @@ export class Renderer {
     c.textAlign = 'right';
     c.font = 'bold 8.5px monospace';
     if (unlocked) {
-      c.fillStyle = '#00ffcc';
+      c.fillStyle = this.getChromaAccent('#00ffcc', '#cccccc');
       const statusText = 'OBTENU';
       const tw = c.measureText(statusText).width;
       spriteAtlas.drawIcon(c, 'check', x + w - 8 - tw - 8, y + 17, 10);
       c.fillText(statusText, x + w - 8, y + 17);
     } else {
-      c.fillStyle = '#667788';
+      c.fillStyle = this.chromaTier === 0 ? '#555555' : '#667788';
       const reqText = b.killsRequired ? `${b.killsRequired.toLocaleString()} FRAGS` : 'DÉFI';
       const tw = c.measureText(reqText).width;
       spriteAtlas.drawIcon(c, 'lock', x + w - 8 - tw - 8, y + 17, 10);
@@ -1614,7 +1753,9 @@ export class Renderer {
     // Description
     c.textAlign = 'left';
     c.font = '8.5px monospace';
-    c.fillStyle = unlocked ? '#dddddd' : '#556677';
+    c.fillStyle = unlocked
+      ? (this.chromaTier === 0 ? '#cccccc' : '#dddddd')
+      : (this.chromaTier === 0 ? '#666666' : '#556677');
     const maxBadgeChars = Math.floor((w - 16) / 5.5);
     const badgeDesc = b.desc.length > maxBadgeChars ? b.desc.slice(0, maxBadgeChars - 1) + '…' : b.desc;
     c.fillText(badgeDesc, x + 8, y + 36);
@@ -1625,15 +1766,15 @@ export class Renderer {
       const pbW = w - 16, pbH = 4, pbX = x + 8, pbY = y + 46;
       c.fillStyle = 'rgba(255, 255, 255, 0.08)';
       c.fillRect(pbX, pbY, pbW, pbH);
-      c.fillStyle = '#00ffff';
+      c.fillStyle = this.getChromaAccent('#00ffff', '#888888');
       c.fillRect(pbX, pbY, pbW * pRatio, pbH);
       c.font = '7.5px monospace';
-      c.fillStyle = '#00ffff';
+      c.fillStyle = this.getChromaAccent('#00ffff', '#888888');
       c.textAlign = 'right';
       c.fillText(`${progression.totalGhosts.toLocaleString()} / ${b.killsRequired.toLocaleString()} FRAGS`, pbX + pbW, pbY + 11);
     } else if (unlocked) {
       c.font = '7.5px monospace';
-      c.fillStyle = '#ffaa00';
+      c.fillStyle = this.getChromaAccent('#ffaa00', '#aaaaaa');
       spriteAtlas.drawIcon(c, 'trophy', x + 14, y + 54, 10);
       c.fillText('Trophée enregistré au profil cloud', x + 24, y + 54);
     }
@@ -1645,24 +1786,25 @@ export class Renderer {
     const state = progression.getSkillState(s.id);
     const unlocked = state.unlocked;
     const isNext = state.isNext;
-    const hidden = state.hidden;
     const isV2 = s.version >= 2;
 
     if (unlocked) {
-      c.fillStyle = isV2 ? 'rgba(0, 255, 230, 0.08)' : 'rgba(255, 215, 0, 0.07)';
-      c.strokeStyle = isV2 ? '#00e5ff' : '#ffd700';
+      c.fillStyle = this.chromaTier === 0
+        ? 'rgba(255, 255, 255, 0.06)'
+        : (isV2 ? 'rgba(0, 255, 230, 0.08)' : 'rgba(255, 215, 0, 0.07)');
+      c.strokeStyle = this.getChromaAccent(isV2 ? '#00e5ff' : '#ffd700', '#777777');
       c.lineWidth = 1.5;
-      c.shadowColor = isV2 ? '#00e5ff' : '#ffd700';
-      c.shadowBlur = 6;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : (isV2 ? '#00e5ff' : '#ffd700');
+      c.shadowBlur = this.getChromaBlur(6);
     } else if (isNext) {
-      c.fillStyle = 'rgba(255, 170, 0, 0.08)';
-      c.strokeStyle = '#ffaa00';
+      c.fillStyle = this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 170, 0, 0.08)';
+      c.strokeStyle = this.getChromaAccent('#ffaa00', '#555555');
       c.lineWidth = 1.4;
-      c.shadowColor = '#ffaa00';
-      c.shadowBlur = 5;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffaa00';
+      c.shadowBlur = this.getChromaBlur(5);
     } else {
-      c.fillStyle = 'rgba(10, 14, 24, 0.65)';
-      c.strokeStyle = '#1e2838';
+      c.fillStyle = this.chromaTier === 0 ? 'rgba(15, 15, 15, 0.65)' : 'rgba(10, 14, 24, 0.65)';
+      c.strokeStyle = this.chromaTier === 0 ? '#2a2a2a' : '#1e2838';
       c.lineWidth = 1;
       c.shadowBlur = 0;
     }
@@ -1678,16 +1820,16 @@ export class Renderer {
     c.font = 'bold 11px monospace';
 
     if (unlocked) {
-      c.fillStyle = isV2 ? '#00ffff' : '#ffd700';
+      c.fillStyle = this.getChromaAccent(isV2 ? '#00ffff' : '#ffd700', '#ffffff');
       spriteAtlas.drawIcon(c, s.icon, x + 16, y + 14, 14);
       c.fillText(`[V${s.version}] ${s.name}`, x + 28, y + 14);
     } else if (isNext) {
-      c.fillStyle = '#ffcc00';
+      c.fillStyle = this.getChromaAccent('#ffcc00', '#cccccc');
       spriteAtlas.drawIcon(c, s.icon, x + 16, y + 14, 14);
       c.fillText(`[V${s.version}] ${s.name}`, x + 28, y + 14);
     } else {
       // Hidden / classified: name is hidden!
-      c.fillStyle = '#4a5a70';
+      c.fillStyle = this.chromaTier === 0 ? '#444444' : '#4a5a70';
       spriteAtlas.drawIcon(c, 'lock', x + 16, y + 14, 12);
       c.fillText(`[V${s.version}] ??? [CLASSIFIÉ]`, x + 28, y + 14);
     }
@@ -1696,16 +1838,16 @@ export class Renderer {
     c.textAlign = 'right';
     c.font = 'bold 10px monospace';
     if (unlocked) {
-      c.fillStyle = '#00ffaa';
+      c.fillStyle = this.getChromaAccent('#00ffaa', '#cccccc');
       const statusText = 'ACTIF';
       const tw = c.measureText(statusText).width;
       spriteAtlas.drawIcon(c, 'check', x + w - 8 - tw - 8, y + 14, 10);
       c.fillText(statusText, x + w - 8, y + 14);
     } else if (isNext) {
-      c.fillStyle = '#ffd700';
+      c.fillStyle = this.getChromaAccent('#ffd700', '#aaaaaa');
       c.fillText(`OBJ: ${s.threshold.toLocaleString()} FRAGS`, x + w - 8, y + 14);
     } else {
-      c.fillStyle = '#6a7888';
+      c.fillStyle = this.chromaTier === 0 ? '#444444' : '#6a7888';
       const reqText = `${s.threshold.toLocaleString()} FRAGS`;
       const tw = c.measureText(reqText).width;
       spriteAtlas.drawIcon(c, 'lock', x + w - 8 - tw - 8, y + 14, 10);
@@ -1719,10 +1861,10 @@ export class Renderer {
       c.fillStyle = '#ffffff';
       c.fillText(s.command, x + 8, y + 26);
     } else if (isNext) {
-      c.fillStyle = '#ffdd88';
+      c.fillStyle = this.chromaTier === 0 ? '#cccccc' : '#ffdd88';
       c.fillText(s.command, x + 8, y + 26);
     } else {
-      c.fillStyle = '#334455';
+      c.fillStyle = this.chromaTier === 0 ? '#333333' : '#334455';
       c.fillText('COMMANDE CHIFFRÉE', x + 8, y + 26);
     }
 
@@ -1731,13 +1873,13 @@ export class Renderer {
     const maxChars = Math.floor((w - 16) / 5.5);
     const descText = s.desc.length > maxChars ? s.desc.slice(0, maxChars - 1) + '…' : s.desc;
     if (unlocked) {
-      c.fillStyle = isV2 ? '#aaffff' : '#ddd';
+      c.fillStyle = this.chromaTier === 0 ? '#aaaaaa' : (isV2 ? '#aaffff' : '#ddd');
       c.fillText(descText, x + 8, y + 37);
     } else if (isNext) {
-      c.fillStyle = '#eeddcc';
+      c.fillStyle = this.chromaTier === 0 ? '#888888' : '#eeddcc';
       c.fillText(descText, x + 8, y + 37);
     } else {
-      c.fillStyle = '#2a3848';
+      c.fillStyle = this.chromaTier === 0 ? '#222222' : '#2a3848';
       c.fillText('Atteignez le palier précédent pour décoder.', x + 8, y + 37);
     }
   }
@@ -1746,18 +1888,19 @@ export class Renderer {
     updatePauseButtonPositions(this.cw, isFromMenu);
     const c = this.ctx;
     // Dark blur backdrop
-    c.fillStyle = 'rgba(5, 7, 14, 0.88)';
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(0, 0, 0, 0.92)' : 'rgba(5, 7, 14, 0.88)';
     c.fillRect(0, 0, this.cw, CH);
 
     // Modal Card (dynamically centered horizontally for both Classic and 16:9 Madness)
     const cardW = Math.min(500, this.cw - 20), cardH = 435;
     const cardX = Math.floor((this.cw - cardW) / 2), cardY = 90;
     c.save();
-    c.fillStyle = 'rgba(10, 15, 28, 0.96)';
-    c.strokeStyle = '#00d4ff';
+    c.fillStyle = this.chromaTier === 0 ? '#0e0e0e' : 'rgba(10, 15, 28, 0.96)';
+    const cardStroke = this.getChromaAccent('#00d4ff', '#555555');
+    c.strokeStyle = cardStroke;
     c.lineWidth = 2;
-    c.shadowColor = '#00d4ff';
-    c.shadowBlur = 18;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : cardStroke;
+    c.shadowBlur = this.getChromaBlur(18);
     c.beginPath();
     c.roundRect(cardX, cardY, cardW, cardH, 12);
     c.fill();
@@ -1766,17 +1909,17 @@ export class Renderer {
 
     // Header Title
     c.font = 'bold 22px monospace';
-    c.fillStyle = '#00ffff';
+    c.fillStyle = this.getChromaAccent('#00ffff', '#ffffff');
     c.textAlign = 'center';
     if (isFromMenu) {
       c.fillText('PARAMÈTRES & ACCESSIBILITÉ', this.cw / 2, cardY + 36);
       c.font = '10px monospace';
-      c.fillStyle = '#667799';
+      c.fillStyle = this.chromaTier === 0 ? '#666666' : '#667799';
       c.fillText('OPTIONS VISUELLES • FLUIDITÉ • PROFIL DU JOUEUR', this.cw / 2, cardY + 58);
     } else {
       c.fillText('PAUSE — PARAMÈTRES VISUELS', this.cw / 2, cardY + 36);
       c.font = '10px monospace';
-      c.fillStyle = '#667799';
+      c.fillStyle = this.chromaTier === 0 ? '#666666' : '#667799';
       c.fillText('CLIQUEZ SUR UNE OPTION OU UTILISEZ LES TOUCHES [1] À [5] / [M]', this.cw / 2, cardY + 58);
     }
 
@@ -1829,8 +1972,12 @@ export class Renderer {
 
     for (const it of items) {
       const b = it.btn;
-      c.fillStyle = it.active ? 'rgba(0, 212, 255, 0.12)' : 'rgba(20, 26, 40, 0.6)';
-      c.strokeStyle = it.active ? '#00d4ff' : '#334460';
+      c.fillStyle = it.active
+        ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 212, 255, 0.12)')
+        : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.6)' : 'rgba(20, 26, 40, 0.6)');
+      c.strokeStyle = it.active
+        ? this.getChromaAccent('#00d4ff', '#777777')
+        : (this.chromaTier === 0 ? '#333333' : '#334460');
       c.lineWidth = it.active ? 1.5 : 1;
       c.beginPath();
       c.roundRect(b.x, b.y, b.w, b.h, 6);
@@ -1840,38 +1987,41 @@ export class Renderer {
       // Key & Label
       c.textAlign = 'left';
       c.font = 'bold 11px monospace';
-      c.fillStyle = it.active ? '#ffffff' : '#8899aa';
+      c.fillStyle = it.active ? '#ffffff' : (this.chromaTier === 0 ? '#777777' : '#8899aa');
       c.fillText(`${it.key} ${it.label}`, b.x + 14, b.y + 22);
 
       // State pill
       c.textAlign = 'right';
       c.font = 'bold 11px monospace';
-      c.fillStyle = it.active ? '#00ffff' : '#ff4466';
+      c.fillStyle = it.active
+        ? this.getChromaAccent('#00ffff', '#cccccc')
+        : (this.chromaTier === 0 ? '#555555' : '#ff4466');
       c.fillText(it.state, b.x + b.w - 14, b.y + 22);
     }
 
     // Wipe Data button
     const wipeBtn = PAUSE_BUTTONS[6];
-    c.fillStyle = 'rgba(255, 0, 85, 0.12)';
-    c.strokeStyle = '#ff0055';
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 0, 85, 0.12)';
+    c.strokeStyle = this.getChromaAccent('#ff0055', '#555555');
     c.lineWidth = 1.5;
     c.beginPath();
     c.roundRect(wipeBtn.x, wipeBtn.y, wipeBtn.w, wipeBtn.h, 6);
     c.fill();
     c.stroke();
     c.font = 'bold 11px monospace';
-    c.fillStyle = '#ff0055';
+    c.fillStyle = this.getChromaAccent('#ff0055', '#888888');
     c.textAlign = 'center';
     c.fillText('RÉINITIALISER MA PROGRESSION & PROFIL', wipeBtn.x + wipeBtn.w / 2, wipeBtn.y + 21);
 
     if (isFromMenu) {
       // Home / Return button (spans full width)
       const homeBtn = PAUSE_BUTTONS[9];
-      c.fillStyle = '#0c243a';
-      c.strokeStyle = '#00ffff';
+      const hBorder = this.getChromaAccent('#00ffff', '#666666');
+      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#0c243a';
+      c.strokeStyle = hBorder;
       c.lineWidth = 2;
-      c.shadowColor = '#00ffff';
-      c.shadowBlur = 12;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : hBorder;
+      c.shadowBlur = this.getChromaBlur(12);
       c.beginPath();
       c.roundRect(homeBtn.x, homeBtn.y, homeBtn.w, homeBtn.h, 8);
       c.fill();
@@ -1885,11 +2035,12 @@ export class Renderer {
       // Resume button
       const resBtn = PAUSE_BUTTONS[7];
       const pulse = 1 + Math.sin(time * 6) * 0.03;
-      c.fillStyle = '#0c243a';
-      c.strokeStyle = '#00ffff';
+      const resBorder = this.getChromaAccent('#00ffff', '#666666');
+      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#0c243a';
+      c.strokeStyle = resBorder;
       c.lineWidth = 2;
-      c.shadowColor = '#00ffff';
-      c.shadowBlur = 12;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : resBorder;
+      c.shadowBlur = this.getChromaBlur(12);
       c.beginPath();
       c.roundRect(resBtn.x, resBtn.y, resBtn.w, resBtn.h, 8);
       c.fill();
@@ -1902,35 +2053,37 @@ export class Renderer {
 
       // Restart button
       const rstBtn = PAUSE_BUTTONS[8];
-      c.fillStyle = '#20180a';
-      c.strokeStyle = '#ffaa00';
+      const rstBorder = this.getChromaAccent('#ffaa00', '#555555');
+      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#20180a';
+      c.strokeStyle = rstBorder;
       c.lineWidth = 2;
-      c.shadowColor = '#ffaa00';
-      c.shadowBlur = 10;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : rstBorder;
+      c.shadowBlur = this.getChromaBlur(10);
       c.beginPath();
       c.roundRect(rstBtn.x, rstBtn.y, rstBtn.w, rstBtn.h, 8);
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
       c.font = 'bold 12px monospace';
-      c.fillStyle = '#ffaa00';
+      c.fillStyle = this.getChromaAccent('#ffaa00', '#aaaaaa');
       c.textAlign = 'center';
       c.fillText('REJOUER [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 26);
 
       // Home button
       const homeBtn = PAUSE_BUTTONS[9];
-      c.fillStyle = '#1a0a20';
-      c.strokeStyle = '#ff007f';
+      const homeBorder = this.getChromaAccent('#ff007f', '#555555');
+      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#1a0a20';
+      c.strokeStyle = homeBorder;
       c.lineWidth = 2;
-      c.shadowColor = '#ff007f';
-      c.shadowBlur = 10;
+      c.shadowColor = this.chromaTier === 0 ? 'transparent' : homeBorder;
+      c.shadowBlur = this.getChromaBlur(10);
       c.beginPath();
       c.roundRect(homeBtn.x, homeBtn.y, homeBtn.w, homeBtn.h, 8);
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
       c.font = 'bold 12px monospace';
-      c.fillStyle = '#ff007f';
+      c.fillStyle = this.getChromaAccent('#ff007f', '#aaaaaa');
       c.textAlign = 'center';
       c.fillText('ACCUEIL', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
     }
@@ -1938,8 +2091,8 @@ export class Renderer {
     // Footer stats if in madness
     if (isMadness) {
       c.font = '10px monospace';
-      c.fillStyle = '#ffd700';
-      c.fillText(`MODE MADNESS • Kills : ${kills} • Streak : x${streak}`, this.cw / 2, cardY + cardH - 12);
+      c.fillStyle = this.getChromaAccent('#ffd700', '#666666');
+      c.fillText(`MODE CHROMAVORE • Kills : ${kills} • Streak : x${streak}`, this.cw / 2, cardY + cardH - 12);
     }
 
     c.font = '8.5px monospace';
