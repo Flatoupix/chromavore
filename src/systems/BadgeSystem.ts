@@ -47,6 +47,13 @@ export const BADGES: Record<string, BadgeDef> = {
   kills10000:   { id: 'kills10000',   name: 'ÉCLIPSE SOLAIRE V2',   desc: 'Atteindre 10 000 spectres (Arsenal 100% Maîtrisé)',  icon: 'tsunami', category: 'kill', killsRequired: 10000 },
   kills12000:   { id: 'kills12000',   name: 'QUANTUM BURST V5',     desc: 'Atteindre 12 000 spectres (Brise-Mur Quantique V5)', icon: 'dash', category: 'kill', killsRequired: 12000 },
 
+  // === CHROMA AWAKENING — Paliers de progression visuelle ===
+  chroma_spark: { id: 'chroma_spark', name: 'CHROMA SPARK',  desc: '10 spectres — La première lueur de couleur',        icon: 'lightning', category: 'kill', killsRequired: 10   },
+  chroma_pulse: { id: 'chroma_pulse', name: 'CHROMA PULSE',  desc: '50 spectres — Le monde commence à respirer',        icon: 'flame',     category: 'kill', killsRequired: 50   },
+  chroma_surge: { id: 'chroma_surge', name: 'CHROMA SURGE',  desc: '200 spectres — Les néons s\'éveillent',             icon: 'rocket',    category: 'kill', killsRequired: 200  },
+  chroma_flow:  { id: 'chroma_flow',  name: 'CHROMA FLOW',   desc: '600 spectres — Le flux chromatique prend vie',      icon: 'vortex',    category: 'kill', killsRequired: 600  },
+  chroma_full:  { id: 'chroma_full',  name: 'FULL CHROMA',   desc: '1 600 spectres — Tu es le Chromavore',              icon: 'crown',     category: 'kill', killsRequired: 1600 },
+
   // === EXPLOITS DE MAÎTRISE & GAMEPLAY ===
   ghostHunter:  { id: 'ghostHunter',  name: 'CHASSE ROYALE',        desc: 'Dévorer 4 fantômes durant une seule chasse',        icon: 'spectre', category: 'feat' },
   wallBreaker:  { id: 'wallBreaker',  name: 'BRISE-MURS',           desc: 'Pulvériser votre premier mur au Quantum Dash V5',   icon: 'dash', category: 'feat' },

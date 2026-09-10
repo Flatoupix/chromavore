@@ -5,7 +5,7 @@
 import { profileManager } from './ProfileManager';
 import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
-import { CW, ROWS, T } from '../config/constants';
+import { CW, ROWS, T, getChromaTier, CHROMA_FLASH } from '../config/constants';
 import { badges } from './BadgeSystem';
 import { wobbleBanner } from '../graphics/WobbleBanner';
 
@@ -329,7 +329,22 @@ class ProgressionManager {
         particles.shake(6, 0.2);
       }
     }
+    // Chroma Awakening — détection de franchissement de tier visuel
+    const prevTier = getChromaTier(prev);
+    const nextTier = getChromaTier(next);
+    if (nextTier > prevTier) {
+      // Flash chromatique distinct (couleur du nouveau tier) en plus du flash skills
+      const flashColor = CHROMA_FLASH[nextTier] || '#00f0ff';
+      particles.flash(flashColor, 0.6);
+      particles.shake(12, 0.5);
+      // Les badges chroma_* sont déclenchés automatiquement par checkKillBadges()
+    }
+
     return newlyUnlocked;
+  }
+
+  public getChromaTierForKills(kills: number) {
+    return getChromaTier(kills);
   }
 
   public getSkillLevel(baseId: string): 0 | 1 | 2 | 3 | 4 | 5 {

@@ -498,7 +498,7 @@ class SoundManager {
     }
 
     const keys: ('normal' | 'madness' | 'god')[] = ['normal', 'madness', 'god'];
-    const maxVol = 0.65;
+    const maxVol = 0.46; // -3 dB vs 0.65 (0.65 × 10^(-3/20) ≈ 0.46) — laisse les SFX Web Audio passer au-dessus
     const fadeSpeed = dt * 4.0; // ~0.16s punchy crossfade
 
     for (const k of keys) {

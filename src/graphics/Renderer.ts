@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS } from '../config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -29,6 +29,7 @@ export class Renderer {
   public ctx: CanvasRenderingContext2D;
   public cw: number = CW;
   public ch: number = CH;
+  public chromaTier: ChromaTier = 5; // Chroma Awakening — mis à jour par main.ts chaque frame
   private ghostStamps: Map<string, HTMLCanvasElement[]> = new Map();
 
   constructor(canvas: HTMLCanvasElement) {
@@ -103,18 +104,23 @@ export class Renderer {
     const list = isMadness ? MADNESS_LEVELS : LEVELS;
     const lvl = list[lvlIndex % list.length];
     const c = this.ctx;
+    const tier = this.chromaTier;
     c.clearRect(0, 0, this.cw, CH);
 
-    // Deep Outrun Dusk Gradient
+    // Fond : monochrome noir au tier 0, néon progressif ensuite
+    const bgTop = tier === 0 ? '#000000' : (tier === 1 ? '#050510' : '#090117');
+    const bgMid = tier <= 1 ? CHROMA_BG[tier] : lvl.bg;
+    const bgBot = tier <= 1 ? '#000000' : '#1d002e';
+
     const bgGrad = c.createLinearGradient(0, 0, 0, CH);
-    bgGrad.addColorStop(0, '#090117');
-    bgGrad.addColorStop(0.5, lvl.bg);
-    bgGrad.addColorStop(1, '#1d002e');
+    bgGrad.addColorStop(0, bgTop);
+    bgGrad.addColorStop(0.5, bgMid);
+    bgGrad.addColorStop(1, bgBot);
     c.fillStyle = bgGrad;
     c.fillRect(0, 0, this.cw, CH);
 
-    // Synthwave Wireframe Grid in background
-    if (settingsManager.settings.synthwaveGrid) {
+    // Grille synthwave : désactivée au tier 0 (trop stylisée pour le début)
+    if (tier >= 1 && settingsManager.settings.synthwaveGrid) {
       c.save();
       c.strokeStyle = 'rgba(255, 0, 128, 0.06)';
       c.lineWidth = 1;
@@ -129,24 +135,29 @@ export class Renderer {
     }
   }
 
+
   public drawDots(maze: MazeManager, time: number) {
     const lvl = maze.getLevelDef();
     const c = this.ctx;
+    const tier = this.chromaTier;
+    // Couleurs progressives : monochrome au début, néon complet au tier 5
+    const dotCol    = tier <= 4 ? CHROMA_DOT[tier]    : lvl.dotColor;
+    const pelletCol = tier <= 4 ? CHROMA_PELLET[tier] : lvl.pelletColor;
     for (let r = 0; r < ROWS; r++) {
       for (let col = 0; col < maze.cols; col++) {
         const d = maze.dotMap[r][col];
         if (!d) continue;
         const px = col * T + HALF, py = r * T + HALF;
         if (d === 2) {
-          c.fillStyle = lvl.dotColor;
+          c.fillStyle = dotCol;
           c.beginPath();
           c.arc(px, py, 2.5, 0, PI2);
           c.fill();
         } else if (d === 3) {
           const p = 1 + Math.sin(time * 4) * 0.3;
-          c.fillStyle = lvl.pelletColor;
-          c.shadowColor = lvl.pelletColor;
-          c.shadowBlur = 12;
+          c.fillStyle = pelletCol;
+          c.shadowColor = pelletCol;
+          c.shadowBlur = tier <= 1 ? 4 : 12;
           c.beginPath();
           c.arc(px, py, 5 * p, 0, PI2);
           c.fill();
@@ -801,59 +812,48 @@ export class Renderer {
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
 
-    // Hero & Dots Preview (sitting cleanly along horizon)
+    // Hero & Dots Preview — Chromavore toujours (plus de mode classic)
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
-    if (gameMode === 'madness') {
-      c.save();
-      c.translate(this.cw / 2 - 34, 186);
-      Player.drawChromavore(c, 13, time, ma, false, false, 1, true);
-      c.restore();
-    } else {
-      c.fillStyle = C_PLAYER;
-      c.shadowColor = '#ff007f';
-      c.shadowBlur = 14;
-      c.beginPath(); c.arc(this.cw / 2 - 34, 186, 14, ma, PI2 - ma); c.lineTo(this.cw / 2 - 34, 186); c.fill(); c.shadowBlur = 0;
-    }
+    c.save();
+    c.translate(this.cw / 2 - 34, 186);
+    Player.drawChromavore(c, 13, time, ma, false, false, 1, true, this.chromaTier);
+    c.restore();
     for (let i = 0; i < 4; i++) {
-      c.fillStyle = C_DOT; c.shadowColor = C_DOT; c.shadowBlur = 8;
+      const dotC = CHROMA_DOT[this.chromaTier] || C_DOT;
+      c.fillStyle = dotC; c.shadowColor = dotC; c.shadowBlur = 8;
       c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 186, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // Vertical Mode Selection Cards
+    // --- CARTE UNIQUE : LET'S HUNT ---
     const careerKills = profileManager.profile.careerGhosts;
     const isWidescreen = careerKills >= MADNESS_UNLOCK_KILLS;
-    const isMad = gameMode === 'madness';
-    const isCl = gameMode === 'classic';
 
-    // --- CARD 1: MODE MADNESS ---
     const madW = 380, madH = 68;
     const madX = this.cw / 2 - madW / 2;
     const madY = 224;
 
     c.save();
-    c.fillStyle = isMad ? 'rgba(255, 0, 127, 0.22)' : 'rgba(18, 10, 22, 0.6)';
-    c.strokeStyle = isMad ? '#ff007f' : '#441828';
-    c.lineWidth = isMad ? 2.5 : 1;
-    c.shadowColor = isMad ? '#ff007f' : 'transparent';
-    c.shadowBlur = isMad ? 16 : 0;
+    c.fillStyle = 'rgba(255, 0, 127, 0.22)';
+    c.strokeStyle = '#ff007f';
+    c.lineWidth = 2.5;
+    c.shadowColor = '#ff007f';
+    c.shadowBlur = 16;
     c.beginPath();
     c.roundRect(madX, madY, madW, madH, 8);
     c.fill();
     c.stroke();
     c.shadowBlur = 0;
 
-    // Header inside Madness Card
+    // Header
     c.textAlign = 'left';
     c.font = 'bold 13px monospace';
-    c.fillStyle = isMad ? '#ffffff' : '#cc7799';
-    if (isMad) {
-      c.shadowColor = '#ff007f';
-      c.shadowBlur = 10;
-    }
-    c.fillText(isWidescreen ? '[1] MODE MADNESS (16:9)' : '[1] MODE MADNESS (4:3)', madX + 16, madY + 22);
+    c.fillStyle = '#ffffff';
+    c.shadowColor = '#ff007f';
+    c.shadowBlur = 10;
+    c.fillText(isWidescreen ? 'LET\'S HUNT (16:9)' : 'LET\'S HUNT (4:3)', madX + 16, madY + 22);
     c.shadowBlur = 0;
 
-    // Badge: Status of Widescreen 16:9
+    // Badge widescreen
     c.textAlign = 'right';
     c.font = 'bold 10px monospace';
     if (isWidescreen) {
@@ -863,21 +863,21 @@ export class Renderer {
       c.fillText('16:9 DÉBLOQUÉ', madX + madW - 16, madY + 22);
       c.shadowBlur = 0;
     } else {
-      c.fillStyle = isMad ? '#00ffff' : '#885577';
+      c.fillStyle = '#00ffff';
       c.fillText(`4:3 ACTIF • ${careerKills}/${MADNESS_UNLOCK_KILLS} FRAGS`, madX + madW - 16, madY + 22);
     }
 
-    // Subtitle inside Madness Card
+    // Subtitle
     c.textAlign = 'left';
     c.font = '9.5px monospace';
-    c.fillStyle = isMad ? '#ff99cc' : '#885566';
+    c.fillStyle = '#ff99cc';
     if (isWidescreen) {
       c.fillText('Grand Écran 16:9 • Dash • Kombos • Swarm • Force Field', madX + 16, madY + 40);
     } else {
       c.fillText('Format 4:3 Rétro • Dash • Kombos • Swarm • Force Field', madX + 16, madY + 40);
     }
 
-    // Progress bar towards 16:9 inside card
+    // Progress bar vers 16:9
     if (!isWidescreen) {
       const barX = madX + 16, barY = madY + 48, barW = madW - 32, barH = 6;
       c.fillStyle = 'rgba(255, 255, 255, 0.08)';
@@ -905,55 +905,14 @@ export class Renderer {
     }
     c.restore();
 
-    // --- CARD 2: MODE CLASSIQUE RÉTRO ---
-    const clW = 380, clH = 46;
-    const clX = this.cw / 2 - clW / 2;
-    const clY = 302;
-
-    c.save();
-    c.fillStyle = isCl ? 'rgba(0, 240, 255, 0.18)' : 'rgba(10, 16, 26, 0.6)';
-    c.strokeStyle = isCl ? '#00f0ff' : '#1e2c3e';
-    c.lineWidth = isCl ? 2 : 1;
-    c.shadowColor = isCl ? '#00f0ff' : 'transparent';
-    c.shadowBlur = isCl ? 14 : 0;
-    c.beginPath();
-    c.roundRect(clX, clY, clW, clH, 8);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-
-    // Header
-    c.textAlign = 'left';
-    c.font = isCl ? 'bold 12.5px monospace' : '12px monospace';
-    c.fillStyle = isCl ? '#00f0ff' : '#667788';
-    if (isCl) {
-      c.shadowColor = '#00f0ff';
-      c.shadowBlur = 8;
-    }
-    c.fillText('[2] MODE CLASSIQUE (ARCADE PUR)', clX + 16, clY + 20);
-    c.shadowBlur = 0;
-
-    // Tag Sans Objets
-    c.textAlign = 'right';
-    c.font = 'bold 9.5px monospace';
-    c.fillStyle = isCl ? '#ffd700' : '#556677';
-    c.fillText('SANS OBJET', clX + clW - 16, clY + 20);
-
-    // Subtitle
-    c.textAlign = 'left';
-    c.font = '9.5px monospace';
-    c.fillStyle = isCl ? '#88ccff' : '#556677';
-    c.fillText('Format 4:3 • 4 Fantômes • Zéro Item • Gameplay Pac-Man Pur', clX + 16, clY + 36);
-    c.restore();
-
-    // Start prompt (Always visible, smooth neon breath)
+    // Start prompt
     const playPulse = 0.55 + 0.45 * Math.sin(time * 3.5);
     c.textAlign = 'center';
     c.font = 'bold 13.5px monospace';
     c.fillStyle = `rgba(255, 255, 255, ${playPulse})`;
-    c.shadowColor = isMad ? '#ff007f' : '#00f0ff';
+    c.shadowColor = '#ff007f';
     c.shadowBlur = 12 * playPulse;
-    c.fillText('▶ PRESS SPACE OU CLIQUEZ POUR JOUER ◀', this.cw / 2, 368);
+    c.fillText('▶ PRESS SPACE POUR CHASSER ◀', this.cw / 2, 316);
     c.shadowBlur = 0;
 
     // Records
@@ -961,11 +920,7 @@ export class Renderer {
     c.fillStyle = '#ffd700';
     c.shadowColor = '#ffd700';
     c.shadowBlur = 6;
-    if (isMad) {
-      c.fillText('RECORD DU SWARM : ' + bestMadnessKills + ' FANTÔMES PURGÉS', this.cw / 2, 415);
-    } else {
-      c.fillText('RECORD CLASSIQUE : ' + hi + ' PTS', this.cw / 2, 415);
-    }
+    c.fillText('RECORD : ' + bestMadnessKills + ' FANTÔMES PURGÉS', this.cw / 2, 350);
     c.shadowBlur = 0;
 
     // CRT Scanlines
@@ -975,6 +930,7 @@ export class Renderer {
       for (let y = 0; y < CH; y += 3) c.fillRect(0, y, this.cw, 1);
       c.restore();
     }
+
 
     // Player Profile & Sync ID Card
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;

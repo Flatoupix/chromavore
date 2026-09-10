@@ -130,6 +130,31 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.3.0';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.4.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.3.0';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.4.0';
+
+// ─────────────────────────────────────────────────────────────────
+//  CHROMA AWAKENING — Visual Progression Tiers (career ghost kills)
+//  Fantômes : toujours en couleur (source de lumière du monde)
+//  Environnement + Chromavore : progressent du monochrome au néon
+// ─────────────────────────────────────────────────────────────────
+export const CHROMA_TIERS = [0, 10, 50, 200, 600, 1600] as const;
+export type ChromaTier = 0 | 1 | 2 | 3 | 4 | 5;
+
+export function getChromaTier(careerGhosts: number): ChromaTier {
+  let tier: ChromaTier = 0;
+  for (let i = 0; i < CHROMA_TIERS.length; i++) {
+    if (careerGhosts >= CHROMA_TIERS[i]) tier = i as ChromaTier;
+  }
+  return tier;
+}
+
+// Tier 0 = blanc pur / noir  →  Tier 5 = plein néon synthwave (actuel)
+export const CHROMA_WALL   = ['#e8e8e8', '#c0c8d8', '#2a2a3a', '#1a0830', '#1e0535', '#240838'] as const;
+export const CHROMA_DOT    = ['#ffffff', '#d0d8ee', '#88aacc', '#22aacc', '#00ddee', '#00f0ff'] as const;
+export const CHROMA_PELLET = ['#dddddd', '#ccddff', '#99aaff', '#ffcc33', '#ffdd00', '#ffd700'] as const;
+export const CHROMA_BG     = ['#000000', '#050510', '#07080f', '#090117', '#090117', '#090117'] as const;
+export const CHROMA_GLOW   = ['#aaaaaa', '#4466aa', '#2255bb', '#0077cc', '#00bbff', '#ff007f'] as const;
+// Couleur du flash de transition de tier
+export const CHROMA_FLASH  = ['#cccccc', '#88aacc', '#00aacc', '#00ccdd', '#00eeff', '#ff007f'] as const;

@@ -2,7 +2,7 @@
 //  CHROMAVORE — PLAYER ENTITY & OFFENSIVE DASH
 // ═══════════════════════════════════════════════════════════════
 
-import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_BASE_SPEED, P_MADNESS_SPEED, CC, COMBO_DECAY, GOD_MODE_DURATION, getComboTier } from '../config/constants';
+import { T, HALF, COLS, ROWS, CW, P_RAD, C_PLAYER, PI, PI2, DASH_DIST, DASH_CD, DASH_MADNESS_CD, P_SPEED, P_MADNESS_BASE_SPEED, P_MADNESS_SPEED, CC, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, ChromaTier } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
@@ -452,7 +452,8 @@ export class Player {
     predTimer: number = 0,
     predMaxTimer: number = 7.0,
     combo: { m: number; t: number; n: number } = { m: 1, t: 0, n: 0 },
-    isChronoActive: boolean = false
+    isChronoActive: boolean = false,
+    chromaTier: ChromaTier = 5
   ) {
     const pp = this.getPos();
 
@@ -543,15 +544,12 @@ export class Player {
           isGodMode,
           isPredator,
           combo.m,
-          true
+          true,
+          chromaTier
         );
       } else {
-        // Pure Classic Retro Pac-Man
-        c.fillStyle = C_PLAYER;
-        c.beginPath();
-        c.arc(0, 0, P_RAD, this.ma, PI2 - this.ma);
-        c.lineTo(0, 0);
-        c.fill();
+        // Fallback classique (ne devrait plus être appelé)
+        this.drawChromavoreEntity(c, P_RAD, time, this.ma, isGodMode, isPredator, combo.m, false, chromaTier);
       }
 
       // Electric plasma sparks (Predator or God mode)
@@ -870,9 +868,10 @@ export class Player {
     isGodMode: boolean = false,
     isPredator: boolean = false,
     comboMultiplier: number = 1,
-    isMadness: boolean = true
+    isMadness: boolean = true,
+    chromaTier: ChromaTier = 5
   ) {
-    Player.drawChromavore(c, rad, time, mouthAnim, isGodMode, isPredator, comboMultiplier, isMadness);
+    Player.drawChromavore(c, rad, time, mouthAnim, isGodMode, isPredator, comboMultiplier, isMadness, chromaTier);
   }
 
   public static drawChromavore(
@@ -883,8 +882,160 @@ export class Player {
     isGodMode: boolean = false,
     isPredator: boolean = false,
     comboMultiplier: number = 1,
-    isMadness: boolean = true
+    isMadness: boolean = true,
+    chromaTier: ChromaTier = 5
   ) {
+    // ─── TIER 0 : Cercle gris simple (nouveau joueur dans les ténèbres) ───
+    if (chromaTier === 0) {
+      const jawSpread = 0.24 + Math.abs(Math.sin(mouthAnim)) * 0.58;
+      c.save();
+      c.fillStyle = '#bbbbbb';
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.arc(0, 0, rad, jawSpread, PI2 - jawSpread);
+      c.closePath();
+      c.fill();
+      c.restore();
+      return;
+    }
+
+    // ─── TIER 1 : Corps ovale bleuté, ébauche de carapace ───
+    if (chromaTier === 1) {
+      const jawSpread = 0.24 + Math.abs(Math.sin(mouthAnim)) * 0.55;
+      c.save();
+      // Corps
+      c.fillStyle = '#8899bb';
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.arc(0, 0, rad, jawSpread, PI2 - jawSpread);
+      c.closePath();
+      c.fill();
+      // Ébauche de carapace (trait fin)
+      c.strokeStyle = '#aabbcc';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.moveTo(rad * 0.45, -rad * 0.75);
+      c.quadraticCurveTo(-rad * 0.2, -rad * 0.95, -rad * 0.75, -rad * 0.45);
+      c.lineTo(-rad * 0.75, rad * 0.45);
+      c.quadraticCurveTo(-rad * 0.2, rad * 0.95, rad * 0.45, rad * 0.75);
+      c.stroke();
+      c.restore();
+      return;
+    }
+
+    // ─── TIER 2 : Carapace pleine cyan, propulseurs statiques ───
+    if (chromaTier === 2) {
+      const jawSpread = 0.24 + Math.abs(Math.sin(mouthAnim)) * 0.58;
+      c.save();
+      // Propulseurs statiques (pas d'animation)
+      c.fillStyle = '#22aacc';
+      c.beginPath();
+      c.moveTo(-rad * 0.65, -rad * 0.35);
+      c.lineTo(-rad * 0.65 - rad * 0.35, -rad * 0.22);
+      c.lineTo(-rad * 0.65, -rad * 0.08);
+      c.closePath();
+      c.fill();
+      c.beginPath();
+      c.moveTo(-rad * 0.65, rad * 0.08);
+      c.lineTo(-rad * 0.65 - rad * 0.35, rad * 0.22);
+      c.lineTo(-rad * 0.65, rad * 0.35);
+      c.closePath();
+      c.fill();
+      // Carapace
+      c.fillStyle = '#08151a';
+      c.strokeStyle = '#22aacc';
+      c.lineWidth = 1.4;
+      c.beginPath();
+      c.moveTo(rad * 0.45, -rad * 0.75);
+      c.quadraticCurveTo(-rad * 0.2, -rad * 0.95, -rad * 0.75, -rad * 0.45);
+      c.lineTo(-rad * 0.75, rad * 0.45);
+      c.quadraticCurveTo(-rad * 0.2, rad * 0.95, rad * 0.45, rad * 0.75);
+      c.lineTo(rad * 0.2, 0);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      // Gueule simple
+      c.fillStyle = '#22aacc';
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.arc(0, 0, rad, jawSpread, PI2 - jawSpread);
+      c.closePath();
+      c.fill();
+      c.restore();
+      return;
+    }
+
+    // ─── TIER 3 : Propulseurs animés, mandibules basiques, glow léger ───
+    if (chromaTier === 3) {
+      const thrusterLength = (rad * 0.38) + Math.sin(time * 28) * (rad * 0.15);
+      c.save();
+      c.fillStyle = '#00ccdd';
+      c.shadowColor = '#00aacc';
+      c.shadowBlur = 5;
+      c.beginPath();
+      c.moveTo(-rad * 0.65, -rad * 0.35);
+      c.lineTo(-rad * 0.65 - thrusterLength, -rad * 0.22);
+      c.lineTo(-rad * 0.65, -rad * 0.08);
+      c.closePath();
+      c.fill();
+      c.beginPath();
+      c.moveTo(-rad * 0.65, rad * 0.08);
+      c.lineTo(-rad * 0.65 - thrusterLength, rad * 0.22);
+      c.lineTo(-rad * 0.65, rad * 0.35);
+      c.closePath();
+      c.fill();
+      c.shadowBlur = 0;
+      // Carapace
+      c.fillStyle = '#080d1a';
+      c.strokeStyle = '#00ccdd';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      c.moveTo(rad * 0.45, -rad * 0.75);
+      c.quadraticCurveTo(-rad * 0.2, -rad * 0.95, -rad * 0.75, -rad * 0.45);
+      c.lineTo(-rad * 0.75, rad * 0.45);
+      c.quadraticCurveTo(-rad * 0.2, rad * 0.95, rad * 0.45, rad * 0.75);
+      c.lineTo(rad * 0.2, 0);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      // Mandibules basiques
+      const jawSpread3 = 0.24 + Math.abs(Math.sin(mouthAnim)) * 0.58;
+      const jawTipX3 = rad * 1.15;
+      const ujY3 = -Math.sin(jawSpread3) * (rad * 0.9);
+      const ljY3 = Math.sin(jawSpread3) * (rad * 0.9);
+      c.fillStyle = '#00ccdd';
+      c.beginPath();
+      c.moveTo(rad * 0.3, -rad * 0.6);
+      c.quadraticCurveTo(rad * 0.75, ujY3, jawTipX3, ujY3);
+      c.lineTo(rad * 0.2, -rad * 0.1);
+      c.closePath();
+      c.fill();
+      c.beginPath();
+      c.moveTo(rad * 0.3, rad * 0.6);
+      c.quadraticCurveTo(rad * 0.75, ljY3, jawTipX3, ljY3);
+      c.lineTo(rad * 0.2, rad * 0.1);
+      c.closePath();
+      c.fill();
+      // Noyau central
+      c.fillStyle = '#00ddee';
+      c.shadowColor = '#00ccdd';
+      c.shadowBlur = 6;
+      c.beginPath();
+      c.arc(-rad * 0.1, 0, rad * 0.32, 0, PI2);
+      c.fill();
+      c.restore();
+      return;
+    }
+
+    // ─── TIER 4 : Quasi-complet, shadowBlur modéré ───
+    if (chromaTier === 4) {
+      // Identique au tier 5 mais shadowBlur plafonné à 8
+      // On tombe en tier 5 directement pour éviter la duplication — on réduit juste le glow
+      // via une redéfinition locale (la différence est subtile, tier 5 prend le relais naturellement)
+    }
+
+    // ─── TIER 5 (et 4 en fallback) : Rendu complet actuel ───
+
     // Dynamic Chroma palette
     let coreColor = '#00f0ff';
     let carapaceColor = '#100326';
@@ -918,12 +1069,15 @@ export class Player {
       carapaceColor = '#051515';
     }
 
+    // Glow légèrement réduit au tier 4
+    const glowFactor = chromaTier === 4 ? 0.65 : 1.0;
+
     // 1. Dual Rear Ion Thrusters (Flickering propulsion flamelets at -X)
     const thrusterLength = (rad * 0.42) + Math.sin(time * 32) * (rad * 0.22);
     c.save();
     c.fillStyle = coreColor;
     c.shadowColor = accentGlow;
-    c.shadowBlur = 8;
+    c.shadowBlur = 8 * glowFactor;
     // Upper thruster
     c.beginPath();
     c.moveTo(-rad * 0.65, -rad * 0.35);
@@ -946,7 +1100,7 @@ export class Player {
     c.strokeStyle = accentGlow;
     c.lineWidth = 1.6;
     c.shadowColor = accentGlow;
-    c.shadowBlur = 10;
+    c.shadowBlur = 10 * glowFactor;
 
     c.beginPath();
     c.moveTo(rad * 0.45, -rad * 0.75);
@@ -970,7 +1124,7 @@ export class Player {
     c.strokeStyle = '#ffffff';
     c.lineWidth = 1.2;
     c.shadowColor = accentGlow;
-    c.shadowBlur = 12;
+    c.shadowBlur = 12 * glowFactor;
 
     // Upper Plasma Mandible
     c.beginPath();
@@ -1004,7 +1158,7 @@ export class Player {
     const corePulse = 1 + Math.sin(time * 14) * 0.15;
     c.save();
     c.shadowColor = accentGlow;
-    c.shadowBlur = 16;
+    c.shadowBlur = 16 * glowFactor;
     c.fillStyle = coreColor;
     c.beginPath();
     c.arc(-rad * 0.1, 0, rad * 0.38 * corePulse, 0, PI2);
@@ -1021,7 +1175,7 @@ export class Player {
     c.save();
     c.fillStyle = eyeColor;
     c.shadowColor = eyeColor;
-    c.shadowBlur = 10;
+    c.shadowBlur = 10 * glowFactor;
     c.beginPath();
     c.moveTo(rad * 0.1, -rad * 0.38);
     c.lineTo(rad * 0.45, -rad * 0.22);

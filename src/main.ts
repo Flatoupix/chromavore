@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, CLASSIC_COLS, MADNESS_COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, CLASSIC_COLS, MADNESS_COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, LEVELS, MADNESS_LEVELS, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -358,27 +358,10 @@ class Game {
         const clX = curCw / 2 - clW / 2;
         const clY = 302;
 
-        // Click on Madness Card [1]
+        // Click on the single LET'S HUNT card
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
-          if (this.gameMode === 'madness') {
-            this.startGame('madness');
-            sounds.play('start');
-          } else {
-            this.setGameMode('madness');
-            sounds.play('click');
-          }
-          return;
-        }
-
-        // Click on Classic Card [2]
-        if (cx >= clX && cx <= clX + clW && cy >= clY && cy <= clY + clH) {
-          if (this.gameMode === 'classic') {
-            this.startGame('classic');
-            sounds.play('start');
-          } else {
-            this.setGameMode('classic');
-            sounds.play('click');
-          }
+          this.startGame('madness');
+          sounds.play('start');
           return;
         }
 
@@ -726,11 +709,13 @@ class Game {
 
     if (this.gameMode === 'madness') {
       this.enemyManager.enemies = [];
-      this.enemyManager.spawnMadness(8, 0, this.maze);
+      // Spawn progressif : 2 fantômes pour un nouveau joueur → 8 pour un vétéran (tous les 50 kills)
+      const initialSpawn = Math.min(8, 2 + Math.floor(progression.totalGhosts / 50));
+      this.enemyManager.spawnMadness(initialSpawn, 0, this.maze);
       this.state = 'ready';
       this.readyT = 1.5;
       sounds.play('powerup');
-      particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« MADNESS SWARM »', '#ffd700', 22);
+      particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« LET\'S HUNT »', '#ffd700', 22);
     } else {
       this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier, this.maze);
       this.state = 'ready';
@@ -1820,7 +1805,7 @@ class Game {
           }
           this.madnessSpawnTimer -= dt * timeScale;
           if (this.madnessSpawnTimer <= 0) {
-            this.madnessSpawnTimer = Math.max(0.18, 0.75 - this.madnessKills * 0.004);
+            this.madnessSpawnTimer = Math.max(0.22, 1.2 - this.madnessKills * 0.006);
             this.enemyManager.spawnMadness(1 + (this.madnessKills > 50 ? 1 : 0), this.madnessKills, this.maze);
           }
         }
@@ -2071,6 +2056,8 @@ class Game {
   }
 
   private render() {
+    // Chroma Awakening — mise à jour du tier à chaque frame
+    this.renderer.chromaTier = getChromaTier(progression.totalGhosts);
     this.renderer.clear(this.maze.currentLevel, this.time, this.gameMode === 'madness');
 
     if (this.state === 'bonus') {
@@ -2209,7 +2196,8 @@ class Game {
       powerups.pred.t,
       powerups.pred.maxT,
       this.combo,
-      this.isChronoActive
+      this.isChronoActive,
+      this.renderer.chromaTier
     );
 
     // Overlays

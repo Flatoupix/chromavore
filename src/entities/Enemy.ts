@@ -43,6 +43,8 @@ export class EnemyManager {
     for (let i = 0; i < count; i++) {
       const tp = types[i % types.length];
       const spawnX = [centerCol - 1, centerCol, centerCol + 1, centerCol][i % 4];
+      // Direction initiale latérale (dx:1) — évite le blocage contre les murs au-dessus de la ghost house
+      const initDx = (i % 2 === 0) ? 1 : -1;
       this.enemies.push({
         type: tp,
         x: spawnX,
@@ -50,8 +52,8 @@ export class EnemyManager {
         fx: spawnX,
         fy: 10,
         t: 1,
-        dx: 0,
-        dy: -1,
+        dx: initDx,
+        dy: 0,
         st: 'spawn',
         speed: E_SPEED * (tp === 'rusher' ? 1.25 : tp === 'orbiter' ? 1.08 : 1.0) * this.speedMultiplier,
         delay: i * 1.5,
@@ -108,6 +110,8 @@ export class EnemyManager {
       const tp = types[(Math.random() * types.length) | 0];
       const spd = (E_SPEED + Math.min(2.5, madnessKills * 0.015)) * (tp === 'rusher' ? 1.3 : tp === 'orbiter' ? 1.1 : 1.0);
       const isFlee = powerups && powerups.pred.on && powerups.pred.global && powerups.pred.t > 0;
+      // Direction initiale latérale alternée — évite le blocage sur les murs au-dessus de la ghost house
+      const initDx = (this.enemies.length % 2 === 0) ? 1 : -1;
 
       this.enemies.push({
         type: tp,
@@ -116,8 +120,8 @@ export class EnemyManager {
         fx: pt.x,
         fy: pt.y,
         t: 1,
-        dx: 0,
-        dy: -1,
+        dx: initDx,
+        dy: 0,
         st: isFlee ? 'flee' : 'active',
         speed: spd,
         delay: 0,
@@ -269,6 +273,15 @@ export class EnemyManager {
       const rev = { x: -e.dx, y: -e.dy };
       if (maze.isWalkable(this.wrapX(e.x + rev.x), e.y + rev.y, true)) {
         valid.push(rev);
+      }
+    }
+    if (valid.length === 0) {
+      // Fallback absolu : ignorer l'anti-180°, chercher n'importe quelle direction walkable
+      for (const d of dirs) {
+        if (maze.isWalkable(this.wrapX(e.x + d.x), e.y + d.y, true)) {
+          valid.push(d);
+          break;
+        }
       }
     }
     if (valid.length === 0) {
