@@ -92,9 +92,8 @@ export class EnemyManager {
     const spawns = this.getMadnessSpawnSpots(maze);
     const centerCol = maze ? Math.floor(maze.cols / 2) : 10;
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
-    // The swarm grows throughout a run. Returned ghosts count toward this cap so
-    // the population stays bounded, while higher kill counts keep increasing pressure.
-    const swarmCap = Math.min(96, 16 + Math.floor(madnessKills * 0.4));
+    // Swarm cap grows with in-session kills. Starts small (6) so early game is manageable.
+    const swarmCap = Math.min(96, 6 + Math.floor(madnessKills * 0.5));
 
     for (let i = 0; i < count; i++) {
       if (this.enemies.length >= swarmCap) break;

@@ -761,8 +761,10 @@ class Game {
           e.t = 1;
         }
       }
-      if (this.enemyManager.enemies.length < 8) {
-        this.enemyManager.spawnMadness(8 - this.enemyManager.enemies.length, this.madnessKills, this.maze);
+      // Refill up to a kill-scaled minimum (not a hard 8) so early warps stay manageable
+      const warpMinGhosts = Math.min(8, 2 + Math.floor(this.madnessKills / 10));
+      if (this.enemyManager.enemies.filter(e => e.st !== 'dead').length < warpMinGhosts) {
+        this.enemyManager.spawnMadness(warpMinGhosts - this.enemyManager.enemies.length, this.madnessKills, this.maze);
       }
       this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
     } else {
@@ -1806,8 +1808,9 @@ class Game {
           }
           this.madnessSpawnTimer -= dt * timeScale;
           if (this.madnessSpawnTimer <= 0) {
-            this.madnessSpawnTimer = Math.max(0.22, 1.2 - this.madnessKills * 0.006);
-            this.enemyManager.spawnMadness(1 + (this.madnessKills > 50 ? 1 : 0), this.madnessKills, this.maze);
+          // Spawn rate: starts at 2.5s for a new player, speeds up to 0.22s at high kill counts
+          this.madnessSpawnTimer = Math.max(0.22, 2.5 - this.madnessKills * 0.012);
+          this.enemyManager.spawnMadness(1 + (this.madnessKills > 80 ? 1 : 0), this.madnessKills, this.maze);
           }
         }
 
