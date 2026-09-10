@@ -749,7 +749,7 @@ export class Renderer {
 
     // Grille perspective Synthwave — masquée au tier 0, atténuée ensuite
     if (tier >= 1) {
-      const horizonY = 195;
+      const horizonY = 105;
       c.save();
       const gridAlpha = tier === 1 ? 0.04 : tier === 2 ? 0.08 : 0.14;
       const gridColor = tier <= 2 ? `rgba(180,180,200,${gridAlpha})` : `rgba(255,0,128,${gridAlpha})`;
@@ -774,7 +774,7 @@ export class Renderer {
     }
 
     // Soleil Outrun — gris au tier 0–1, coloré ensuite
-    const sunX = this.cw / 2, sunY = 175, sunR = 40;
+    const sunX = this.cw / 2, sunY = 105, sunR = 38;
     c.save();
     if (tier <= 1) {
       const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
@@ -807,7 +807,7 @@ export class Renderer {
     c.restore();
 
     // Titre CHROMAVORE — monochrome → néon selon le tier
-    const ty = 66, p = 1 + Math.sin(time * 2) * 0.03;
+    const ty = 52, p = 1 + Math.sin(time * 2) * 0.03;
     c.save();
     c.font = `bold ${38 * p}px monospace`;
     c.textAlign = 'center';
@@ -838,7 +838,7 @@ export class Renderer {
     // Version Tag
     c.font = 'bold 9px monospace';
     c.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    c.fillText(GAME_VERSION, this.cw / 2, ty + 22);
+    c.fillText(GAME_VERSION, this.cw / 2, ty + 17);
     c.restore();
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
@@ -846,19 +846,19 @@ export class Renderer {
     // Hero & Dots Preview — Chromavore toujours (plus de mode classic)
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
     c.save();
-    c.translate(this.cw / 2 - 34, 160);
+    c.translate(this.cw / 2 - 34, 148);
     Player.drawChromavore(c, 13, time, ma, false, false, 1, true, this.chromaTier);
     c.restore();
     for (let i = 0; i < 4; i++) {
       const dotC = CHROMA_DOT[this.chromaTier] || C_DOT;
       c.fillStyle = dotC; c.shadowColor = dotC; c.shadowBlur = 8;
-      c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 160, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
+      c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 148, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
     // --- CARTE ÉPURÉE : LET'S HUNT ---
     const madW = 320, madH = 60;
     const madX = this.cw / 2 - madW / 2;
-    const madY = 200;
+    const madY = 185;
 
     c.save();
     const cardBg = this.chromaTier === 0

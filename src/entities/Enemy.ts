@@ -34,13 +34,21 @@ export class EnemyManager {
   public currentCols: number = COLS;
   public speedMultiplier: number = 1.0;
 
-  public spawnClassic(count: number = 4, speedMult: number = 1.0, maze?: MazeManager) {
+  // wave: current wave number (1-indexed). Governs how many ghosts appear and how fast they exit.
+  public spawnClassic(count: number = 4, speedMult: number = 1.0, maze?: MazeManager, wave: number = 1) {
     if (maze) this.currentCols = maze.cols;
     const centerCol = maze ? Math.floor(maze.cols / 2) : Math.floor(this.currentCols / 2);
     this.speedMultiplier = speedMult;
     this.enemies = [];
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
-    for (let i = 0; i < count; i++) {
+
+    // Early-game scaling: fewer ghosts + longer delays on first waves
+    // wave 1 → 2 ghosts, wave 2 → 3, wave 3+ → full count (capped at param)
+    const effectiveCount = Math.min(count, wave === 1 ? 2 : wave === 2 ? 3 : count);
+    // Delay between exits: 2.4s on wave 1 (very gentle), 2.0s on wave 2, 1.5s normal
+    const exitDelay = wave === 1 ? 2.4 : wave === 2 ? 2.0 : 1.5;
+
+    for (let i = 0; i < effectiveCount; i++) {
       const tp = types[i % types.length];
       const spawnX = [centerCol - 1, centerCol, centerCol + 1, centerCol][i % 4];
       // Direction initiale latérale (dx:1) — évite le blocage contre les murs au-dessus de la ghost house
@@ -56,7 +64,7 @@ export class EnemyManager {
         dy: 0,
         st: 'spawn',
         speed: E_SPEED * (tp === 'rusher' ? 1.25 : tp === 'orbiter' ? 1.08 : 1.0) * this.speedMultiplier,
-        delay: i * 1.5,
+        delay: i * exitDelay,
         fl: 0,
         nm: false,
         frozen: false,
@@ -66,6 +74,7 @@ export class EnemyManager {
   }
 
   public spawnToggle: number = 0;
+
 
   public getMadnessSpawnSpots(maze?: MazeManager): { left: { x: number; y: number }; right: { x: number; y: number } } {
     const cols = maze ? maze.cols : 39;

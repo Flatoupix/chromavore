@@ -717,7 +717,7 @@ class Game {
       sounds.play('powerup');
       particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« LET\'S HUNT »', '#ffd700', 22);
     } else {
-      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier, this.maze);
+      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier, this.maze, this.wave);
       this.state = 'ready';
       this.readyT = 2.0;
       sounds.play('start');
@@ -766,7 +766,7 @@ class Game {
       }
       this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
     } else {
-      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier, this.maze);
+      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier, this.maze, this.wave);
     }
 
     // Wall safety: relocate any active powerup or relic trapped in new layout or inside ghost house
@@ -2019,7 +2019,7 @@ class Game {
               this.player.invuln = 2.0;
               particles.addPop(CW / 2, HUD_H + 32, 'BOUCLIER ACTIF (2s)', '#00ffff', 14);
             } else {
-              this.enemyManager.spawnClassic(4, spdMult, this.maze);
+              this.enemyManager.spawnClassic(4, spdMult, this.maze, this.wave);
               this.state = 'ready';
               this.readyT = 1.5;
             }

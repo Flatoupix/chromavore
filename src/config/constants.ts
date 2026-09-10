@@ -80,8 +80,8 @@ export const BONUS_FORCE_FIELD_MAX_RAD = 115; // Massive singularity radius at c
 export const BONUS_ARENA_W = 860;
 export const BONUS_ARENA_H = 920;
 
-// Combo settings: Clear progression with distinct x4, x8, x16, and extended 95-dot x16 gauntlet to reach x32 (180 dots)
-export const CT = [0, 8, 22, 48, 85, 180];
+// Combo settings: Clear progression with distinct x4, x8, x16, and x32 God Mode at 120 dots (was 180)
+export const CT = [0, 8, 22, 48, 85, 120];
 export const CM = [1, 2, 4, 8, 16, 32];
 export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff00aa', '#00ffff'];
 export const COMBO_DECAY = 0.5; // Strictly 0.5s between pellets (gap without pellets resets combo)
@@ -130,9 +130,9 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.4.1';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.5.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.4.1';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.5.0';
 
 // ─────────────────────────────────────────────────────────────────
 //  CHROMA AWAKENING — Visual Progression Tiers (career ghost kills)
