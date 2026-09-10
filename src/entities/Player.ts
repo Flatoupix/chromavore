@@ -531,8 +531,8 @@ export class Player {
         c.shadowColor = '#00ffff';
         c.shadowBlur = 18;
       } else {
-        c.shadowColor = isMadness ? '#ffd700' : '#00ffff';
-        c.shadowBlur = 12;
+        c.shadowColor = chromaTier === 0 ? 'transparent' : (isMadness ? '#ffd700' : '#00ffff');
+        c.shadowBlur = chromaTier === 0 ? 0 : 12;
       }
 
       if (isMadness) {
@@ -621,32 +621,6 @@ export class Player {
         c.arc(0, 0, P_RAD * 1.7, time * 4, time * 4 + PI2);
         c.stroke();
         c.restore();
-      }
-
-      // Dash Ring (Mode Madness only)
-      if (isMadness) {
-        const maxCd = DASH_MADNESS_CD;
-        if (this.dashCd > 0) {
-          const ringAngle = (1 - this.dashCd / maxCd) * PI2;
-          c.save();
-          c.strokeStyle = 'rgba(255,180,0,0.75)';
-          c.lineWidth = 2.5;
-          c.beginPath();
-          c.arc(0, 0, P_RAD + 4, -Math.PI / 2, -Math.PI / 2 + ringAngle);
-          c.stroke();
-          c.restore();
-        } else {
-          const pulse = 0.3 + Math.sin(time * 8) * 0.2;
-          c.save();
-          c.strokeStyle = '#ffd700';
-          c.shadowColor = '#ffd700';
-          c.shadowBlur = 8;
-          c.lineWidth = 1.8;
-          c.beginPath();
-          c.arc(0, 0, P_RAD + 4, 0, PI2);
-          c.stroke();
-          c.restore();
-        }
       }
 
       // Invulnerability shield (Classic & Madness)
