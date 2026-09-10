@@ -306,57 +306,53 @@ class Game {
       }
 
       if (this.state === 'menu') {
-        // Navigation links click at bottom:
-        // Row 1 (y: ~538): [I] AIDE | [C] ARSENAL | [O] PARAMÈTRES
-        if (cy >= 522 && cy <= 552) {
-          if (cx < curCw * 0.33) {
-            this.state = 'instructions';
-            sounds.play('click');
-            return;
-          } else if (cx < curCw * 0.66) {
-            this.state = 'codex';
-            this.codexTab = 'skills';
-            sounds.play('click');
-            return;
-          } else {
-            this.state = 'settings';
-            sounds.play('click');
-            return;
+        // Dynamic navigation links click at bottom:
+        if (this.renderer?.menuLinks) {
+          for (const link of this.renderer.menuLinks) {
+            if (Math.abs(cy - link.y) < 16 && Math.abs(cx - link.x) < link.w / 2 + 10) {
+              if (link.id === 'help') {
+                this.state = 'instructions';
+                sounds.play('click');
+                return;
+              } else if (link.id === 'arsenal') {
+                this.state = 'codex';
+                this.codexTab = 'skills';
+                sounds.play('click');
+                return;
+              } else if (link.id === 'settings') {
+                this.state = 'settings';
+                sounds.play('click');
+                return;
+              } else if (link.id === 'badges') {
+                this.state = 'codex';
+                this.codexTab = 'badges';
+                sounds.play('click');
+                return;
+              } else if (link.id === 'scores') {
+                this.state = 'leaderboard';
+                this.leaderboardMode = this.gameMode;
+                leaderboard.syncRemote();
+                sounds.play('click');
+                return;
+              } else if (link.id === 'sync') {
+                this.showRestoreModal();
+                return;
+              }
+            }
           }
         }
-        // Row 2 (y: ~566): [B] SUCCÈS | [L] SCORES | [K] SYNC
-        if (cy > 552 && cy <= 585) {
-          if (cx < curCw * 0.38) {
-            this.state = 'codex';
-            this.codexTab = 'badges';
-            sounds.play('click');
-            return;
-          } else if (cx < curCw * 0.68) {
-            this.state = 'leaderboard';
-            this.leaderboardMode = this.gameMode;
-            leaderboard.syncRemote();
-            sounds.play('click');
-            return;
-          } else {
-            this.showRestoreModal();
-            return;
-          }
-        }
-        // Copy sync code if tapping player line (y: 470)
-        if (cy >= 455 && cy <= 485) {
+
+        // Copy sync code if tapping player line (y: ~450)
+        if (cy >= 435 && cy <= 465) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(curCw / 2, 470, 'CODE ID COPIÉ !', '#00ffff', 14);
+          particles.addPop(curCw / 2, 450, 'CODE ID COPIÉ !', '#00ffff', 14);
           sounds.play('click');
           return;
         }
 
-        const madW = 380, madH = 68;
+        const madW = 320, madH = 60;
         const madX = curCw / 2 - madW / 2;
-        const madY = 224;
-
-        const clW = 380, clH = 46;
-        const clX = curCw / 2 - clW / 2;
-        const clY = 302;
+        const madY = 226;
 
         // Click on the single LET'S HUNT card
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {

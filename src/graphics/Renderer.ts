@@ -30,6 +30,7 @@ export class Renderer {
   public cw: number = CW;
   public ch: number = CH;
   public chromaTier: ChromaTier = 0; // Chroma Awakening — mis à jour par main.ts chaque frame
+  public menuLinks: { id: string; label: string; x: number; y: number; w: number }[] = [];
   private ghostStamps: Map<string, HTMLCanvasElement[]> = new Map();
 
   /** Retourne une couleur adaptée au tier chromatique (monochrome/grayscale au tier 0, progressive ensuite) */
@@ -834,23 +835,10 @@ export class Renderer {
       c.shadowBlur = 0;
     }
 
-    // Sous-titre — gris au tier 0, progressif ensuite
-    c.font = 'bold 10px monospace';
-    if (tier === 0) {
-      c.fillStyle = '#555555';
-      c.shadowBlur = 0;
-    } else {
-      c.fillStyle = tier <= 2 ? '#6688aa' : '#00f0ff';
-      c.shadowColor = tier <= 2 ? '#446688' : '#00f0ff';
-      c.shadowBlur = tier <= 2 ? 3 : 8;
-    }
-    c.fillText('RETRO SYNTHWAVE EDITION • OUTRUN THE SHADOWS', this.cw / 2, ty + 22);
-    c.shadowBlur = 0;
-
     // Version Tag
     c.font = 'bold 9px monospace';
-    c.fillStyle = 'rgba(255, 255, 255, 0.55)';
-    c.fillText(GAME_VERSION, this.cw / 2, ty + 36);
+    c.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    c.fillText(GAME_VERSION, this.cw / 2, ty + 22);
     c.restore();
     c.textAlign = 'center';
     c.textBaseline = 'alphabetic';
@@ -858,22 +846,19 @@ export class Renderer {
     // Hero & Dots Preview — Chromavore toujours (plus de mode classic)
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
     c.save();
-    c.translate(this.cw / 2 - 34, 186);
+    c.translate(this.cw / 2 - 34, 160);
     Player.drawChromavore(c, 13, time, ma, false, false, 1, true, this.chromaTier);
     c.restore();
     for (let i = 0; i < 4; i++) {
       const dotC = CHROMA_DOT[this.chromaTier] || C_DOT;
       c.fillStyle = dotC; c.shadowColor = dotC; c.shadowBlur = 8;
-      c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 186, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
+      c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 160, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // --- CARTE UNIQUE : LET'S HUNT ---
-    const careerKills = profileManager.profile.careerGhosts;
-    const isWidescreen = careerKills >= MADNESS_UNLOCK_KILLS;
-
-    const madW = 380, madH = 68;
+    // --- CARTE ÉPURÉE : LET'S HUNT ---
+    const madW = 320, madH = 60;
     const madX = this.cw / 2 - madW / 2;
-    const madY = 224;
+    const madY = 200;
 
     c.save();
     const cardBg = this.chromaTier === 0
@@ -884,93 +869,33 @@ export class Renderer {
       : (this.chromaTier <= 2 ? '#5588aa' : '#ff007f');
     c.fillStyle = cardBg;
     c.strokeStyle = cardBorder;
-    c.lineWidth = 2.5;
+    c.lineWidth = 2;
     c.shadowColor = this.chromaTier === 0 ? 'transparent' : cardBorder;
-    c.shadowBlur = this.getChromaBlur(16);
+    c.shadowBlur = this.getChromaBlur(14);
     c.beginPath();
     c.roundRect(madX, madY, madW, madH, 8);
     c.fill();
     c.stroke();
     c.shadowBlur = 0;
 
-    // Header
-    c.textAlign = 'left';
-    c.font = 'bold 13px monospace';
+    // Header : LET'S HUNT (centré, sobre, direct)
+    c.textAlign = 'center';
+    c.font = 'bold 16px monospace';
     c.fillStyle = '#ffffff';
     c.shadowColor = cardBorder;
     c.shadowBlur = this.getChromaBlur(10);
-    c.fillText(isWidescreen ? 'LET\'S HUNT (16:9)' : 'LET\'S HUNT (4:3)', madX + 16, madY + 22);
+    c.fillText("LET'S HUNT", this.cw / 2, madY + 25);
     c.shadowBlur = 0;
 
-    // Badge widescreen
-    c.textAlign = 'right';
-    c.font = 'bold 10px monospace';
-    if (isWidescreen) {
-      c.fillStyle = this.getChromaAccent('#ffd700', '#cccccc');
-      c.shadowColor = c.fillStyle;
-      c.shadowBlur = this.getChromaBlur(8);
-      c.fillText('16:9 DÉBLOQUÉ', madX + madW - 16, madY + 22);
-      c.shadowBlur = 0;
-    } else {
-      c.fillStyle = this.getChromaAccent('#00ffff', '#888888');
-      c.fillText(`4:3 ACTIF • ${careerKills}/${MADNESS_UNLOCK_KILLS} FRAGS`, madX + madW - 16, madY + 22);
-    }
-
-    // Subtitle
-    c.textAlign = 'left';
-    c.font = '9.5px monospace';
-    c.fillStyle = this.chromaTier === 0 ? '#777777' : (this.chromaTier <= 2 ? '#99aabb' : '#ff99cc');
-    if (isWidescreen) {
-      c.fillText('Grand Écran 16:9 • Dash • Kombos • Swarm • Force Field', madX + 16, madY + 40);
-    } else {
-      c.fillText('Format 4:3 Rétro • Dash • Kombos • Swarm • Force Field', madX + 16, madY + 40);
-    }
-
-    // Progress bar vers 16:9
-    if (!isWidescreen) {
-      const barX = madX + 16, barY = madY + 48, barW = madW - 32, barH = 6;
-      c.fillStyle = 'rgba(255, 255, 255, 0.08)';
-      c.beginPath();
-      c.roundRect(barX, barY, barW, barH, 3);
-      c.fill();
-
-      const pct = Math.min(1, Math.max(0, careerKills / MADNESS_UNLOCK_KILLS));
-      if (pct > 0) {
-        c.fillStyle = this.chromaTier === 0 ? '#888888' : (this.chromaTier <= 2 ? '#00f0ff' : '#ff007f');
-        c.shadowColor = c.fillStyle;
-        c.shadowBlur = this.getChromaBlur(6);
-        c.beginPath();
-        c.roundRect(barX, barY, barW * pct, barH, 3);
-        c.fill();
-        c.shadowBlur = 0;
-      }
-      c.font = '8.5px monospace';
-      c.fillStyle = this.chromaTier === 0 ? '#555555' : '#996677';
-      c.fillText(`Objectif 16:9 (Cyber Dash V2) : encore ${Math.max(0, MADNESS_UNLOCK_KILLS - careerKills)} spectres`, madX + 16, madY + 62);
-    } else {
-      c.font = '8.5px monospace';
-      c.fillStyle = this.getChromaAccent('#ffd700', '#888888');
-      c.fillText('Arène Widescreen 39 colonnes active', madX + 16, madY + 58);
-    }
-    c.restore();
-
-    // Start prompt
+    // Prompt à l'intérieur de la carte avec pulsation
     const playPulse = 0.55 + 0.45 * Math.sin(time * 3.5);
-    c.textAlign = 'center';
-    c.font = 'bold 13.5px monospace';
-    c.fillStyle = this.chromaTier === 0 ? `rgba(220, 220, 220, ${playPulse})` : `rgba(255, 255, 255, ${playPulse})`;
+    c.font = 'bold 11px monospace';
+    c.fillStyle = this.chromaTier === 0 ? `rgba(210, 210, 210, ${playPulse})` : `rgba(255, 255, 255, ${playPulse})`;
     c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
-    c.shadowBlur = this.getChromaBlur(12 * playPulse);
-    c.fillText('▶ PRESS SPACE POUR CHASSER ◀', this.cw / 2, 316);
+    c.shadowBlur = this.getChromaBlur(8 * playPulse);
+    c.fillText('▶ APPUYER SUR ESPACE POUR JOUER ◀', this.cw / 2, madY + 46);
     c.shadowBlur = 0;
-
-    // Records
-    c.font = 'bold 11.5px monospace';
-    c.fillStyle = this.getChromaAccent('#ffd700', '#888888');
-    c.shadowColor = c.fillStyle;
-    c.shadowBlur = this.getChromaBlur(6);
-    c.fillText('RECORD : ' + bestMadnessKills + ' FANTÔMES PURGÉS', this.cw / 2, 350);
-    c.shadowBlur = 0;
+    c.restore();
 
     // CRT Scanlines
     if (settingsManager.settings.crtScanlines) {
@@ -980,23 +905,88 @@ export class Renderer {
       c.restore();
     }
 
-
-    // Player Profile & Sync ID Card
-    const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
+    // Player Profile & Sync ID Card (JOUEUR au lieu de PILOTE)
     c.font = 'bold 11px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#777777' : '#e0f4ff';
-    c.fillText(`PILOTE : ${profileManager.profile.pseudo}   •   CODE ID : ${profileManager.profile.syncCode}`, this.cw / 2, 470);
+    c.textAlign = 'center';
+    c.fillText(`JOUEUR : ${profileManager.profile.pseudo}   •   CODE ID : ${profileManager.profile.syncCode}`, this.cw / 2, 450);
 
-    // Navigation Links (Airy, centered, 2 clean rows that never touch borders)
+    // Liens de navigation débloqués progressivement
+    const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
     const unlockedBadges = badges.getUnlockedCount();
     const totalBadges = badges.getTotalCount();
 
+    interface MenuLinkItem {
+      id: string;
+      label: string;
+    }
+
+    const availableLinks: MenuLinkItem[] = [
+      { id: 'help', label: '[I] AIDE' },
+    ];
+
+    // ARSENAL n'apparaît que si au moins un skill ou frag est acquis
+    if (unlockedCount > 0 || progression.totalGhosts > 0) {
+      availableLinks.push({ id: 'arsenal', label: `[C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})` });
+    }
+
+    availableLinks.push({ id: 'settings', label: '[O] PARAMÈTRES' });
+
+    // SUCCÈS n'apparaît que si au moins un succès est débloqué
+    if (unlockedBadges > 0) {
+      availableLinks.push({ id: 'badges', label: `[B] SUCCÈS (${unlockedBadges}/${totalBadges})` });
+    }
+
+    availableLinks.push({ id: 'scores', label: '[L] SCORES' });
+    availableLinks.push({ id: 'sync', label: '[K] SYNC' });
+
+    this.menuLinks = [];
     c.font = 'bold 11px monospace';
     c.fillStyle = this.getChromaAccent('#00f0ff', '#777777');
     c.shadowColor = c.fillStyle;
     c.shadowBlur = this.getChromaBlur(6);
-    c.fillText(`[I] AIDE  •  [C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})  •  [O] PARAMÈTRES`, this.cw / 2, 538);
-    c.fillText(`[B] SUCCÈS (${unlockedBadges}/${totalBadges})   •   [L] SCORES   •   [K] SYNC`, this.cw / 2, 566);
+
+    if (availableLinks.length <= 4) {
+      // 1 seule ligne centrée
+      const rowY = 525;
+      const totalWidth = availableLinks.reduce((sum, l) => sum + c.measureText(l.label).width, 0) + (availableLinks.length - 1) * 28;
+      let curX = this.cw / 2 - totalWidth / 2;
+      for (let i = 0; i < availableLinks.length; i++) {
+        const item = availableLinks[i];
+        const w = c.measureText(item.label).width;
+        c.fillText(item.label, curX + w / 2, rowY);
+        this.menuLinks.push({ id: item.id, label: item.label, x: curX + w / 2, y: rowY, w });
+        curX += w;
+        if (i < availableLinks.length - 1) {
+          c.fillText('•', curX + 14, rowY);
+          curX += 28;
+        }
+      }
+    } else {
+      // 2 lignes centrées
+      const half = Math.ceil(availableLinks.length / 2);
+      const row1 = availableLinks.slice(0, half);
+      const row2 = availableLinks.slice(half);
+
+      const renderRow = (rowItems: MenuLinkItem[], rowY: number) => {
+        const totalW = rowItems.reduce((sum, l) => sum + c.measureText(l.label).width, 0) + (rowItems.length - 1) * 24;
+        let curX = this.cw / 2 - totalW / 2;
+        for (let i = 0; i < rowItems.length; i++) {
+          const item = rowItems[i];
+          const w = c.measureText(item.label).width;
+          c.fillText(item.label, curX + w / 2, rowY);
+          this.menuLinks.push({ id: item.id, label: item.label, x: curX + w / 2, y: rowY, w });
+          curX += w;
+          if (i < rowItems.length - 1) {
+            c.fillText('•', curX + 12, rowY);
+            curX += 24;
+          }
+        }
+      };
+
+      renderRow(row1, 514);
+      renderRow(row2, 542);
+    }
     c.shadowBlur = 0;
   }
 
