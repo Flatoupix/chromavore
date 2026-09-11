@@ -139,7 +139,7 @@ export class PowerupManager {
         this.pred.t -= dt;
         this.pred.warn = this.pred.t < 2.0;
         if (this.pred.t <= 0) {
-          this.endPredator(enemies);
+          this.clearPredator(enemies);
         }
       }
       return;
@@ -220,7 +220,7 @@ export class PowerupManager {
       this.pred.t -= dt;
       this.pred.warn = this.pred.t < 2.5;
       if (this.pred.t <= 0) {
-        this.endPredator(enemies);
+        this.clearPredator(enemies);
       }
     }
 
@@ -342,7 +342,8 @@ export class PowerupManager {
     sounds.play('pellet');
   }
 
-  private endPredator(enemies: any[]) {
+  /** End frightened mode cleanly, including ghosts that were already fleeing. */
+  public clearPredator(enemies: any[]) {
     this.pred.on = false;
     this.pred.t = 0;
     this.pred.warn = false;

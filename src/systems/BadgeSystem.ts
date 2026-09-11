@@ -21,7 +21,7 @@ export interface BadgeDef {
 export const BADGES: Record<string, BadgeDef> = {
   // === PALIERS DE DÉVORATION (Alignés rigoureusement avec chaque palier de compétence) ===
   firstBlood:   { id: 'firstBlood',   name: 'PREMIER SANG',         desc: 'Dévorer 1 spectre dans votre carrière',              icon: 'skull', category: 'kill', killsRequired: 1 },
-  kills35:      { id: 'kills35',      name: 'DASH OFFENSIF',        desc: 'Atteindre 35 spectres (Débloque Dash V1)',           icon: 'dash', category: 'kill', killsRequired: 35 },
+  kills35:      { id: 'kills35',      name: 'DASH OFFENSIF',        desc: 'Atteindre 10 spectres (Débloque Dash V1)',           icon: 'dash', category: 'kill', killsRequired: 10 },
   kills75:      { id: 'kills75',      name: 'MÉGA NOVA',            desc: 'Atteindre 75 spectres (Débloque Mega Nova V1)',    icon: 'nova', category: 'kill', killsRequired: 75 },
   kills120:     { id: 'kills120',     name: 'ONDE WIGGLE',          desc: 'Atteindre 120 spectres (Débloque Wiggle EMP V1)',    icon: 'wiggle', category: 'kill', killsRequired: 120 },
   kills180:     { id: 'kills180',     name: 'CHRONO SHIFT',         desc: 'Atteindre 180 spectres (Débloque TimeShift V1)',     icon: 'chrono', category: 'kill', killsRequired: 180 },
@@ -98,6 +98,8 @@ export class BadgeManager {
     if (profileManager.profile.badges) {
       this.unlocked = { ...this.unlocked, ...profileManager.profile.badges };
     }
+    this.hiScore = Math.max(this.hiScore, profileManager.profile.hiScore || 0);
+    this.bestMadnessKills = Math.max(this.bestMadnessKills, profileManager.profile.bestMadnessKills || 0);
     this.checkKillBadges(profileManager.profile.careerGhosts);
   }
 
@@ -141,9 +143,11 @@ export class BadgeManager {
   public saveScore(score: number): boolean {
     if (score > this.hiScore) {
       this.hiScore = score;
+      profileManager.profile.hiScore = Math.max(profileManager.profile.hiScore || 0, score);
       try {
         localStorage.setItem('chv_hi', this.hiScore.toString());
       } catch {}
+      profileManager.saveProfile();
       return true;
     }
     return false;
@@ -152,9 +156,11 @@ export class BadgeManager {
   public saveMadnessKills(kills: number): boolean {
     if (kills > this.bestMadnessKills) {
       this.bestMadnessKills = kills;
+      profileManager.profile.bestMadnessKills = Math.max(profileManager.profile.bestMadnessKills || 0, kills);
       try {
         localStorage.setItem('chv_madness_hi', this.bestMadnessKills.toString());
       } catch {}
+      profileManager.saveProfile();
       return true;
     }
     return false;

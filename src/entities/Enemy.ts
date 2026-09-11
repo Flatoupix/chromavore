@@ -86,6 +86,19 @@ export class EnemyManager {
     return { left: lPt, right: rPt };
   }
 
+  /**
+   * Returning ghosts are travelling back to a nest and must not reserve a
+   * slot in the live swarm. Counting the full object pool here made a big
+   * Nova temporarily stop every new spawn, precisely when the game should
+   * refill the pressure.
+   */
+  public getMadnessThreatCount(): number {
+    return this.enemies.reduce(
+      (count, ghost) => count + (ghost.st === 'active' || ghost.st === 'flee' || ghost.st === 'spawn' ? 1 : 0),
+      0
+    );
+  }
+
   public spawnMadness(count: number, madnessKills: number, maze?: MazeManager) {
     if (maze) this.currentCols = maze.cols;
     const isWide = maze ? (maze.cols > 21) : (this.currentCols > 21);
@@ -94,9 +107,10 @@ export class EnemyManager {
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
     // Swarm cap grows with in-session kills. Starts small (6) so early game is manageable.
     const swarmCap = Math.min(96, 6 + Math.floor(madnessKills * 0.5));
+    let threatCount = this.getMadnessThreatCount();
 
     for (let i = 0; i < count; i++) {
-      if (this.enemies.length >= swarmCap) break;
+      if (threatCount >= swarmCap) break;
       let pt: { x: number; y: number };
 
       if (isWide) {
@@ -121,9 +135,8 @@ export class EnemyManager {
       const spd = (E_SPEED + Math.min(2.5, madnessKills * 0.015)) * (tp === 'rusher' ? 1.3 : tp === 'orbiter' ? 1.1 : 1.0);
       const isFlee = powerups && powerups.pred.on && powerups.pred.global && powerups.pred.t > 0;
       // Direction initiale latérale alternée — évite le blocage sur les murs au-dessus de la ghost house
-      const initDx = (this.enemies.length % 2 === 0) ? 1 : -1;
-
-      this.enemies.push({
+      const initDx = (threatCount % 2 === 0) ? 1 : -1;
+      const ghost: Ghost = {
         type: tp,
         x: pt.x,
         y: pt.y,
@@ -138,8 +151,18 @@ export class EnemyManager {
         fl: 0,
         nm: false,
         frozen: false,
-        frightened: false
-      });
+        frightened: isFlee,
+        isTitan: false,
+        returnTimer: 0
+      };
+
+      // Reuse ghosts that completed their return trip. This keeps the object
+      // pool bounded while allowing the swarm to refill at the intended rate.
+      const reserveGhost = this.enemies.find(enemy => enemy.st === 'dead');
+      if (reserveGhost) Object.assign(reserveGhost, ghost);
+      else this.enemies.push(ghost);
+
+      threatCount++;
     }
   }
 
@@ -225,7 +248,9 @@ export class EnemyManager {
           e.dx = Math.random() < 0.5 ? -1 : 1;
         }
 
-        // Returned to ghost house or nearest nest, or timeout (max 3.5s): revive immediately!
+        // Returned to ghost house or nearest nest, or timeout (max 3.5s):
+        // move the ghost to the reserve pool. The spawn director decides when
+        // it re-enters, so return trips never suppress new pressure.
         let atHome = false;
         let exitPt = { x: 10, y: 7 };
 
@@ -250,15 +275,17 @@ export class EnemyManager {
         }
 
         if (e.st === 'return' && (atHome || (e.returnTimer && e.returnTimer >= 3.5))) {
-          e.st = (powerups && powerups.pred.on && powerups.pred.t > 0 && (powerups.pred.global || e.frightened)) ? 'flee' : 'active';
-          e.speed = E_SPEED * (e.type === 'rusher' ? 1.25 : e.type === 'orbiter' ? 1.08 : 1.0) * this.speedMultiplier;
+          e.st = 'dead';
           e.isTitan = false;
           e.returnTimer = 0;
+          e.frozen = false;
+          e.frightened = false;
           e.x = e.fx = exitPt.x;
           e.y = e.fy = exitPt.y;
           e.t = 1;
+          e.dx = 0;
           e.dy = 0;
-          e.dx = Math.random() < 0.5 ? -1 : 1;
+          continue;
         }
 
         this.decideNextStep(e, maze, plPos);

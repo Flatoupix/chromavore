@@ -518,9 +518,10 @@ export class Renderer {
       c.textAlign = 'center';
       c.font = isWide ? 'bold 8px monospace' : 'bold 7px monospace';
       if (chronoLevel === 0) {
+        const chronoRequirement = SKILL_TREE.find(skill => skill.id === 'chrono_v1')?.threshold ?? 180;
         c.fillStyle = '#556677';
         spriteAtlas.drawIcon(c, 'lock', chCenter - (isWide ? 34 : 24), 13, 10);
-        c.fillText(isWide ? 'CHRONO : 50 FRAGS' : '50 FRAGS', chCenter + 6, 13);
+        c.fillText(isWide ? `CHRONO : ${chronoRequirement} FRAGS` : `${chronoRequirement} FRAGS`, chCenter + 6, 13);
         c.strokeStyle = 'rgba(255, 255, 255, 0.1)';
         c.lineWidth = 1;
         c.strokeRect(chX, chY, chW, chH);

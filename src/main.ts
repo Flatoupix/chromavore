@@ -859,6 +859,10 @@ class Game {
 
   private onKillGhost(e: Ghost, ex: number, ey: number) {
     e.st = 'return';
+    // A frozen ghost that has been shattered must be allowed to travel back
+    // to its nest; otherwise it remains stuck in the return state forever.
+    e.frozen = false;
+    e.frightened = false;
     e.fl = 0.15;
     powerups.pred.k++;
     badges.unlock('firstBlood');
@@ -937,7 +941,7 @@ class Game {
     particles.flash('#ff0000', 0.5);
     sounds.play('death');
 
-    powerups.pred.on = false;
+    powerups.clearPredator(this.enemyManager.enemies);
     powerups.fx.phase = 0;
     powerups.fx.timewarp = 0;
     powerups.fx.magnet = 0;
