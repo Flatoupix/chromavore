@@ -24,8 +24,6 @@ export class InputManager {
   public isCodexRequested: boolean = false;
   public isBadgesRequested: boolean = false;
   public isRestoreRequested: boolean = false;
-  public isSelectMode1Requested: boolean = false;
-  public isSelectMode2Requested: boolean = false;
   public isLeaderboardRequested: boolean = false;
   public isInstructionsRequested: boolean = false;
   public isSettingsRequested: boolean = false;
@@ -88,12 +86,6 @@ export class InputManager {
       }
       if (k === 'm' || e.code === 'KeyM') {
         this.isAudioToggleRequested = true;
-      }
-      if (e.code === 'Digit1' || e.code === 'Numpad1') {
-        this.isSelectMode1Requested = true;
-      }
-      if (e.code === 'Digit2' || e.code === 'Numpad2') {
-        this.isSelectMode2Requested = true;
       }
       if (k === 'l' || e.code === 'KeyL') {
         this.isLeaderboardRequested = true;

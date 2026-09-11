@@ -7,7 +7,6 @@ import { FIREBASE_CONFIG } from '../config/firebase';
 export interface LeaderboardEntry {
   pseudo: string;
   score: number;
-  mode: 'classic' | 'madness';
   kills?: number;
   streak?: number;
   date: string;
@@ -42,18 +41,14 @@ class LeaderboardManager {
     const map = new Map<string, LeaderboardEntry>();
     for (const e of this.entries) {
       if (!e || !e.pseudo) continue;
-      // Filter out invalid zero scores/kills
-      if (e.mode === 'madness' && (e.kills ?? 0) <= 0) continue;
-      if (e.mode === 'classic' && e.score <= 0) continue;
+      if ((e.kills ?? 0) <= 0) continue;
 
-      const key = `${e.mode}_${e.pseudo.trim().toUpperCase()}`;
+      const key = e.pseudo.trim().toUpperCase();
       const existing = map.get(key);
       if (!existing) {
         map.set(key, e);
       } else {
-        const isBetter = e.mode === 'madness'
-          ? (e.kills ?? 0) > (existing.kills ?? 0) || ((e.kills ?? 0) === (existing.kills ?? 0) && e.score > existing.score)
-          : e.score > existing.score;
+        const isBetter = (e.kills ?? 0) > (existing.kills ?? 0) || ((e.kills ?? 0) === (existing.kills ?? 0) && e.score > existing.score);
         if (isBetter) map.set(key, e);
       }
     }
@@ -67,47 +62,38 @@ class LeaderboardManager {
     } catch {}
   }
 
-  public getEntries(mode?: 'classic' | 'madness'): LeaderboardEntry[] {
-    const list = mode ? this.entries.filter(e => e.mode === mode) : this.entries;
-    return list
+  public getEntries(): LeaderboardEntry[] {
+    return this.entries
       .slice()
       .sort((a, b) => {
-        if (a.mode === 'madness' && b.mode === 'madness') {
-          if ((b.kills ?? 0) !== (a.kills ?? 0)) return (b.kills ?? 0) - (a.kills ?? 0);
-          return b.score - a.score;
-        }
+        if ((b.kills ?? 0) !== (a.kills ?? 0)) return (b.kills ?? 0) - (a.kills ?? 0);
         return b.score - a.score;
       })
       .slice(0, MAX_ENTRIES);
   }
 
-  public getTopScore(mode: 'classic' | 'madness'): number {
-    const list = this.getEntries(mode);
+  public getTopScore(): number {
+    const list = this.getEntries();
     if (!list.length) return 0;
-    if (mode === 'madness') return list[0].kills ?? 0;
-    return list[0].score;
+    return list[0].kills ?? 0;
   }
 
-  public getBestEntry(mode: 'classic' | 'madness', pseudo: string): LeaderboardEntry | undefined {
-    return this.entries.find(e => e.mode === mode && e.pseudo.toUpperCase() === pseudo.trim().toUpperCase());
+  public getBestEntry(pseudo: string): LeaderboardEntry | undefined {
+    return this.entries.find(e => e.pseudo.toUpperCase() === pseudo.trim().toUpperCase());
   }
 
   public addEntry(entry: LeaderboardEntry): number {
-    // Validate entry: don't record 0 kills in madness or 0 score in classic
-    if (entry.mode === 'madness' && (entry.kills ?? 0) <= 0) return 0;
-    if (entry.mode === 'classic' && entry.score <= 0) return 0;
+    if ((entry.kills ?? 0) <= 0) return 0;
 
     const pseudoKey = entry.pseudo.trim().toUpperCase();
     const existingIndex = this.entries.findIndex(
-      e => e.mode === entry.mode && e.pseudo.toUpperCase() === pseudoKey
+      e => e.pseudo.toUpperCase() === pseudoKey
     );
 
     let recordedEntry = entry;
     if (existingIndex >= 0) {
       const existing = this.entries[existingIndex];
-      const isBetter = entry.mode === 'madness'
-        ? (entry.kills ?? 0) > (existing.kills ?? 0) || ((entry.kills ?? 0) === (existing.kills ?? 0) && entry.score > existing.score)
-        : entry.score > existing.score;
+      const isBetter = (entry.kills ?? 0) > (existing.kills ?? 0) || ((entry.kills ?? 0) === (existing.kills ?? 0) && entry.score > existing.score);
 
       if (isBetter) {
         this.entries[existingIndex] = entry;
@@ -122,7 +108,7 @@ class LeaderboardManager {
     this.save();
     this.pushRemote(recordedEntry);
 
-    return this.getEntries(entry.mode).findIndex(
+    return this.getEntries().findIndex(
       e => e.pseudo.toUpperCase() === pseudoKey
     ) + 1;
   }
@@ -140,31 +126,24 @@ class LeaderboardManager {
         const data = await res.json();
         if (data) {
           const remoteList: LeaderboardEntry[] = [];
-          for (const mode of ['classic', 'madness'] as const) {
-            if (data[mode]) {
-              for (const [_, item] of Object.entries(data[mode] as Record<string, any>)) {
-                if (item && item.pseudo && typeof item.score === 'number') {
-                  remoteList.push({
-                    pseudo: item.pseudo.slice(0, 12).toUpperCase(),
-                    score: item.score,
-                    mode,
-                    kills: item.kills,
-                    streak: item.streak,
-                    date: item.date || new Date().toISOString()
-                  });
-                }
-              }
+          const source = data.madness || data;
+          for (const item of Object.values(source as Record<string, any>)) {
+            if (item && item.pseudo && typeof item.score === 'number' && (item.kills ?? 0) > 0) {
+              remoteList.push({
+                pseudo: item.pseudo.slice(0, 12).toUpperCase(),
+                score: item.score,
+                kills: item.kills,
+                streak: item.streak,
+                date: item.date || new Date().toISOString()
+              });
             }
           }
-
           // Merge remote with local
           for (const r of remoteList) {
-            const idx = this.entries.findIndex(e => e.mode === r.mode && e.pseudo.toUpperCase() === r.pseudo.toUpperCase());
+            const idx = this.entries.findIndex(e => e.pseudo.toUpperCase() === r.pseudo.toUpperCase());
             if (idx >= 0) {
               const ex = this.entries[idx];
-              const rBetter = r.mode === 'madness'
-                ? (r.kills ?? 0) > (ex.kills ?? 0) || ((r.kills ?? 0) === (ex.kills ?? 0) && r.score > ex.score)
-                : r.score > ex.score;
+              const rBetter = (r.kills ?? 0) > (ex.kills ?? 0) || ((r.kills ?? 0) === (ex.kills ?? 0) && r.score > ex.score);
               if (rBetter) {
                 this.entries[idx] = r;
               } else {
@@ -178,7 +157,7 @@ class LeaderboardManager {
 
           // Push any local entries not yet on remote
           for (const e of this.entries) {
-            const onRemote = remoteList.some(r => r.mode === e.mode && r.pseudo.toUpperCase() === e.pseudo.toUpperCase());
+            const onRemote = remoteList.some(r => r.pseudo.toUpperCase() === e.pseudo.toUpperCase());
             if (!onRemote) {
               this.pushRemote(e);
             }
@@ -201,7 +180,7 @@ class LeaderboardManager {
 
     const safeKey = encodeURIComponent(entry.pseudo.trim().toUpperCase().replace(/[.#$\[\]\/]/g, '_'));
     try {
-      await fetch(`${dbUrl}/leaderboard/${entry.mode}/${safeKey}.json`, {
+      await fetch(`${dbUrl}/leaderboard/madness/${safeKey}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry)

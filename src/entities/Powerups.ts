@@ -68,7 +68,7 @@ export class PowerupManager {
     this.vortexPortalTimer = 85.0 + Math.random() * 35.0;
   }
 
-  public getForceFieldStats(careerKills: number, isMadness: boolean): { cooldown: number; duration: number } {
+  public getForceFieldStats(careerKills: number): { cooldown: number; duration: number } {
     let baseCooldown: number;
     let duration: number;
 
@@ -117,7 +117,6 @@ export class PowerupManager {
 
   public update(
     dt: number,
-    isMadness: boolean,
     maze: MazeManager,
     plPos: { x: number; y: number },
     enemies: any[],
@@ -127,24 +126,6 @@ export class PowerupManager {
     onEnterBonusStage?: () => void,
     isPowerful: boolean = false
   ) {
-    // ═════════════════════════════════════════════════════════════
-    // MODE CLASSIQUE : STRICTEMENT AUCUN OBJET / POWERUP (PAC-MAN PUR)
-    // ═════════════════════════════════════════════════════════════
-    if (!isMadness) {
-      if (this.current || this.forceFieldItem || this.voidRelic || this.vortexPortal) {
-        this.reset();
-      }
-      // Only predator (energizer frightened ghosts) timer runs in classic if active
-      if (this.pred.on) {
-        this.pred.t -= dt;
-        this.pred.warn = this.pred.t < 2.0;
-        if (this.pred.t <= 0) {
-          this.clearPredator(enemies);
-        }
-      }
-      return;
-    }
-
     const careerKills = profileManager.profile.careerGhosts;
 
     // ─────────────────────────────────────────────────────────────
@@ -175,7 +156,7 @@ export class PowerupManager {
     if (!this.forceFieldItem) {
       // If player doesn't currently have active magnet, progress cooldown to spawn next Force Field
       if (this.fx.magnet <= 0) {
-        const stats = this.getForceFieldStats(careerKills, isMadness);
+        const stats = this.getForceFieldStats(careerKills);
         const speedScale = isPowerful ? 1.4 : 1.0;
         this.forceFieldSpawnTimer -= dt * speedScale;
         if (this.forceFieldSpawnTimer <= 0) {
@@ -196,7 +177,7 @@ export class PowerupManager {
       } else {
         const fx = this.forceFieldItem.x * T + HALF, fy = this.forceFieldItem.y * T + HALF;
         if (Math.hypot(plPos.x - fx, plPos.y - fy) < T * 0.95) {
-          const stats = this.getForceFieldStats(careerKills, isMadness);
+          const stats = this.getForceFieldStats(careerKills);
           this.fx.magnet = stats.duration;
           this.forceFieldItem = null;
           this.forceFieldSpawnTimer = stats.cooldown + Math.random() * 2.0;
@@ -224,12 +205,9 @@ export class PowerupManager {
       }
     }
 
-    // Void Relic in Madness Mode
-    if (isMadness) {
-      this.updateVoidRelic(dt, maze, plPos, enemies, onTitanTransform, onVoidIntercepted);
-    }
+    this.updateVoidRelic(dt, maze, plPos, enemies, onTitanTransform, onVoidIntercepted);
 
-    // Vortex Bonus Portal (both Classic and Madness)
+    // Vortex Bonus Portal
     this.updateVortexPortal(dt, maze, plPos, onEnterBonusStage);
   }
 
@@ -278,7 +256,7 @@ export class PowerupManager {
     }
   }
 
-  public spawnActionItem(isMadness: boolean, maze: MazeManager) {
+  public spawnActionItem(maze: MazeManager) {
     const types = ['overdrive', 'nova', 'timewarp', 'phase'];
     const tp = types[(Math.random() * types.length) | 0];
     let pt = maze.getRandomWalkable(false);
@@ -287,7 +265,7 @@ export class PowerupManager {
       pt = maze.getRandomWalkable(false);
       attempts++;
     }
-    this.current = { x: pt.x, y: pt.y, type: tp, timer: isMadness ? 12 : 10 };
+    this.current = { x: pt.x, y: pt.y, type: tp, timer: 12 };
   }
 
   public spawnForceField(maze: MazeManager, duration: number) {
@@ -303,8 +281,8 @@ export class PowerupManager {
     particles.emit(pt.x * T + HALF, pt.y * T + HALF, 24, '#00f0ff', { speed: 85, size: 4, life: 0.55 });
   }
 
-  public spawn(isMadness: boolean, maze: MazeManager, isPowerful: boolean = false) {
-    this.spawnActionItem(isMadness, maze);
+  public spawn(maze: MazeManager, isPowerful: boolean = false) {
+    this.spawnActionItem(maze);
   }
 
   public collect(pu: PowerupItem, onNovaCollect: (px: number, py: number) => void) {

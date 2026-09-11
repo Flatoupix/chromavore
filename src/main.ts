@@ -2,9 +2,9 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, CLASSIC_COLS, MADNESS_COLS, HALF, DASH_CD, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
-import { MazeManager, LEVELS, MADNESS_LEVELS, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
+import { MazeManager, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
 import { input } from './core/InputManager';
 import { Player } from './entities/Player';
@@ -30,10 +30,8 @@ class Game {
 
   // Game state
   public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' = 'menu';
-  public leaderboardMode: 'classic' | 'madness' = 'classic';
   public playerRank: number = 0;
   public playerDate: string = '';
-  public gameMode: 'classic' | 'madness' = 'classic';
 
   // Bonus Level Hyper-Swarm specific
   // Bonus Level Hyper-Swarm specific (500+ entity object-pooled architecture)
@@ -84,7 +82,6 @@ class Game {
   public pendingScore: number = 0;
   public pendingKills: number = 0;
   public pendingStreak: number = 0;
-  public pendingMode: 'classic' | 'madness' = 'classic';
 
   constructor() {
     this.canvas = document.getElementById('c') as HTMLCanvasElement;
@@ -97,8 +94,7 @@ class Game {
     this.setupNameModal();
     this.setupProfileModals();
     badges.syncWithProfile();
-    this.gameMode = 'madness';
-    this.setGameMode(this.gameMode);
+    this.configureArena();
     const vOverlay = document.getElementById('chv-version-overlay');
     if (vOverlay) vOverlay.textContent = GAME_VERSION;
     this.bindInputs();
@@ -120,13 +116,11 @@ class Game {
       this.playerRank = leaderboard.addEntry({
         pseudo,
         score: this.pendingScore,
-        mode: this.pendingMode,
         kills: this.pendingKills,
         streak: this.pendingStreak,
         date
       });
       modal.style.display = 'none';
-      this.leaderboardMode = this.pendingMode;
       this.state = 'leaderboard';
       sounds.play('click');
     };
@@ -234,7 +228,7 @@ class Game {
     if (wipeModal) wipeModal.style.display = 'flex';
   }
 
-  private showNameModal(val: number, mode: string) {
+  private showNameModal(val: number) {
     const modal = document.getElementById('name-modal');
     const titleEl = document.getElementById('name-modal-title');
     const scoreEl = document.getElementById('name-modal-score');
@@ -242,9 +236,7 @@ class Game {
     if (!modal || !titleEl || !scoreEl || !inputEl) return;
 
     titleEl.textContent = 'NOUVEAU RECORD !';
-    scoreEl.textContent = mode === 'madness'
-      ? `${this.pendingKills} FANTÔMES PURGÉS (STREAK x${this.pendingStreak})`
-      : `SCORE : ${this.pendingScore.toLocaleString()} PTS`;
+    scoreEl.textContent = `${this.pendingKills} FANTÔMES PURGÉS (STREAK x${this.pendingStreak})`;
 
     const lastPseudo = localStorage.getItem('chv_last_pseudo') || '';
     inputEl.value = lastPseudo;
@@ -260,7 +252,6 @@ class Game {
     this.pendingScore = this.score;
     this.pendingKills = this.madnessKills;
     this.pendingStreak = this.madnessStreak;
-    this.pendingMode = this.gameMode;
 
     badges.saveScore(this.score);
     badges.saveMadnessKills(this.madnessKills);
@@ -268,14 +259,13 @@ class Game {
 
     // Auto-save immediately if pseudo already known so record is NEVER lost
     const savedPseudo = (localStorage.getItem('chv_last_pseudo') || '').trim();
-    const qualifies = this.pendingMode === 'madness' ? this.pendingKills > 0 : this.pendingScore > 0;
+    const qualifies = this.pendingKills > 0;
 
     if (savedPseudo && qualifies) {
       this.playerDate = new Date().toISOString();
       this.playerRank = leaderboard.addEntry({
         pseudo: savedPseudo,
         score: this.pendingScore,
-        mode: this.pendingMode,
         kills: this.pendingKills,
         streak: this.pendingStreak,
         date: this.playerDate
@@ -284,7 +274,7 @@ class Game {
 
     if (qualifies) {
       setTimeout(() => {
-        this.showNameModal(this.pendingMode === 'madness' ? this.pendingKills : this.pendingScore, this.pendingMode);
+        this.showNameModal(this.pendingKills);
       }, 400);
     }
   }
@@ -330,7 +320,6 @@ class Game {
                 return;
               } else if (link.id === 'scores') {
                 this.state = 'leaderboard';
-                this.leaderboardMode = this.gameMode;
                 leaderboard.syncRemote();
                 sounds.play('click');
                 return;
@@ -356,14 +345,14 @@ class Game {
 
         // Click on the single LET'S HUNT card
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
-          this.startGame('madness');
+          this.startGame();
           sounds.play('start');
           return;
         }
 
         // Tap title / banner to start
         if (cy > 60 && cy < 160) {
-          this.startGame(this.gameMode);
+          this.startGame();
           sounds.play('start');
           return;
         }
@@ -406,21 +395,9 @@ class Game {
         const madX = curCw / 2 - madW / 2;
         const madY = 390;
 
-        const clW = 380, clH = 40;
-        const clX = curCw / 2 - clW / 2;
-        const clY = 444;
-
-        // Restart Current Mode
+        // Restart run
         if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
-          this.startGame(this.gameMode);
-          sounds.play('start');
-          return;
-        }
-
-        // Switch to the other mode
-        if (cx >= clX && cx <= clX + clW && cy >= clY && cy <= clY + clH) {
-          const otherMode = this.gameMode === 'madness' ? 'classic' : 'madness';
-          this.startGame(otherMode);
+          this.startGame();
           sounds.play('start');
           return;
         }
@@ -434,7 +411,6 @@ class Game {
             return;
           } else {
             this.state = 'leaderboard';
-            this.leaderboardMode = this.gameMode;
             leaderboard.syncRemote();
             sounds.play('click');
             return;
@@ -447,11 +423,6 @@ class Game {
       }
 
       if (this.state === 'leaderboard') {
-        if (cy <= 75) {
-          this.leaderboardMode = this.leaderboardMode === 'classic' ? 'madness' : 'classic';
-          sounds.play('click');
-          return;
-        }
         this.state = 'menu';
         sounds.play('click');
         return;
@@ -532,7 +503,7 @@ class Game {
                 sounds.play('click');
                 return;
               case 'restart':
-                this.startGame(this.gameMode);
+                this.startGame();
                 sounds.play('start');
                 return;
               case 'home':
@@ -651,25 +622,19 @@ class Game {
     return profileManager.profile.careerGhosts >= MADNESS_UNLOCK_KILLS;
   }
 
-  public isMadnessUnlocked(): boolean {
-    return true;
-  }
-
   public getCurrentLevelList() {
-    if (this.gameMode !== 'madness') return LEVELS;
     return this.isWidescreenUnlocked() ? MADNESS_LEVELS_16_9 : MADNESS_LEVELS_4_3;
   }
 
-  public setGameMode(mode: 'classic' | 'madness') {
-    this.gameMode = mode;
-    const isWidescreen = mode === 'madness' && this.isWidescreenUnlocked();
-    this.maze.cols = isWidescreen ? MADNESS_COLS : CLASSIC_COLS;
+  public configureArena() {
+    const isWidescreen = this.isWidescreenUnlocked();
+    this.maze.cols = isWidescreen ? MADNESS_COLS : BASE_COLS;
     this.renderer.updateCanvasSize(this.maze.cols, this.maze.rows);
     this.touchDeck.resize();
   }
 
-  public startGame(mode: 'classic' | 'madness') {
-    this.setGameMode(mode);
+  public startGame() {
+    this.configureArena();
     this.score = 0;
     this.dScore = 0;
     this.lives = 3;
@@ -698,38 +663,28 @@ class Game {
     particles.clearAll();
 
     // Always start at Level 1
-    const isMadness = this.gameMode === 'madness';
-    const isWidescreen = isMadness && this.isWidescreenUnlocked();
+    const isWidescreen = this.isWidescreenUnlocked();
     const currentTier = getChromaTier(progression.totalGhosts);
     this.renderer.chromaTier = currentTier;
-    this.maze.build(0, isMadness, isWidescreen);
+    this.maze.build(0, isWidescreen);
     // Re-rasteriser avec le tier correct (build() appelle renderOffscreen() sans tier)
     this.maze.renderOffscreen(currentTier);
-    this.player.reset(isMadness, this.maze, this.loopSpeedMultiplier);
-
-    if (this.gameMode === 'madness') {
-      this.enemyManager.enemies = [];
-      // Spawn progressif : 2 fantômes pour un nouveau joueur → 8 pour un vétéran (tous les 50 kills)
-      const initialSpawn = Math.min(8, 2 + Math.floor(progression.totalGhosts / 50));
-      this.enemyManager.spawnMadness(initialSpawn, 0, this.maze);
-      this.state = 'ready';
-      this.readyT = 1.5;
-      sounds.play('powerup');
-      particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« LET\'S HUNT »', '#ffd700', 22);
-    } else {
-      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier, this.maze, this.wave);
-      this.state = 'ready';
-      this.readyT = 2.0;
-      sounds.play('start');
-    }
+    this.player.reset(this.maze, this.loopSpeedMultiplier);
+    this.enemyManager.enemies = [];
+    // Spawn progressif : 2 fantômes pour un nouveau joueur → 8 pour un vétéran (tous les 50 kills)
+    const initialSpawn = Math.min(8, 2 + Math.floor(progression.totalGhosts / 50));
+    this.enemyManager.spawnMadness(initialSpawn, 0, this.maze);
+    this.state = 'ready';
+    this.readyT = 1.5;
+    sounds.play('powerup');
+    particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« LET\'S HUNT »', '#ffd700', 22);
   }
 
   private warpToLevel(lvlIndex: number) {
     sounds.resetDotStreak();
-    const isMadness = this.gameMode === 'madness';
-    const isWidescreen = isMadness && this.isWidescreenUnlocked();
+    const isWidescreen = this.isWidescreenUnlocked();
     const list = this.getCurrentLevelList();
-    this.maze.build(lvlIndex, isMadness, isWidescreen);
+    this.maze.build(lvlIndex, isWidescreen);
     this.maze.renderOffscreen(this.renderer.chromaTier);
     this.renderer.updateCanvasSize(this.maze.cols, this.maze.rows);
     this.touchDeck.resize();
@@ -748,28 +703,23 @@ class Game {
 
     // Grant 1.8s invulnerability on level warp to avoid instant collision
     this.player.invuln = Math.max(this.player.invuln, 1.8);
-    this.player.speed = (isMadness && this.maze.cols > 21 ? P_MADNESS_SPEED : P_SPEED) * this.loopSpeedMultiplier;
+    this.player.speed = (this.maze.cols > 21 ? P_MADNESS_SPEED : P_SPEED) * this.loopSpeedMultiplier;
 
-    // Ghost management
-    if (isMadness) {
-      // Relocate any ghosts trapped in new layout
-      for (const e of this.enemyManager.enemies) {
-        if (e.st !== 'dead' && !this.maze.isWalkable(e.x, e.y, true)) {
-          const safe = this.maze.findNearestWalkable(e.x, e.y, true);
-          e.x = e.fx = safe.x;
-          e.y = e.fy = safe.y;
-          e.t = 1;
-        }
+    // Relocate any ghosts trapped in new layout
+    for (const e of this.enemyManager.enemies) {
+      if (e.st !== 'dead' && !this.maze.isWalkable(e.x, e.y, true)) {
+        const safe = this.maze.findNearestWalkable(e.x, e.y, true);
+        e.x = e.fx = safe.x;
+        e.y = e.fy = safe.y;
+        e.t = 1;
       }
-      // Refill up to a kill-scaled minimum (not a hard 8) so early warps stay manageable
-      const warpMinGhosts = Math.min(8, 2 + Math.floor(this.madnessKills / 10));
-      if (this.enemyManager.enemies.filter(e => e.st !== 'dead').length < warpMinGhosts) {
-        this.enemyManager.spawnMadness(warpMinGhosts - this.enemyManager.enemies.length, this.madnessKills, this.maze);
-      }
-      this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
-    } else {
-      this.enemyManager.spawnClassic(4, this.loopSpeedMultiplier, this.maze, this.wave);
     }
+    // Refill up to a kill-scaled minimum (not a hard 8) so early warps stay manageable
+    const warpMinGhosts = Math.min(8, 2 + Math.floor(this.madnessKills / 10));
+    if (this.enemyManager.enemies.filter(e => e.st !== 'dead').length < warpMinGhosts) {
+      this.enemyManager.spawnMadness(warpMinGhosts - this.enemyManager.enemies.length, this.madnessKills, this.maze);
+    }
+    this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
 
     // Wall safety: relocate any active powerup or relic trapped in new layout or inside ghost house
     if (powerups.current && (!this.maze.isWalkable(powerups.current.x, powerups.current.y, false) || this.maze.isInGhostHouse(powerups.current.x, powerups.current.y))) {
@@ -847,7 +797,6 @@ class Game {
   private executeDash() {
     this.player.triggerDash(
       this.maze,
-      this.gameMode === 'madness',
       this.enemyManager.enemies,
       (e, x, y) => this.onKillGhost(e, x, y),
       (c, r) => this.onCollectDot(c, r),
@@ -873,33 +822,27 @@ class Game {
     progression.addGhostKills(1);
     this.checkArenaUnlock(prevCareer);
 
-    if (this.gameMode === 'madness') {
-      this.madnessKills++;
-      this.madnessStreak++;
-      this.checkRampageMilestone(this.madnessStreak);
+    this.madnessKills++;
+    this.madnessStreak++;
+    this.checkRampageMilestone(this.madnessStreak);
 
-      if (this.madnessKills >= 50) badges.unlock('madness50');
-      if (this.madnessKills >= 100) badges.unlock('madness100');
+    if (this.madnessKills >= 50) badges.unlock('madness50');
+    if (this.madnessKills >= 100) badges.unlock('madness100');
 
-      badges.saveMadnessKills(this.madnessKills);
-      this.madnessTimer = Math.min(45, this.madnessTimer + 0.35);
+    badges.saveMadnessKills(this.madnessKills);
+    this.madnessTimer = Math.min(45, this.madnessTimer + 0.35);
 
-      // 14% chance to drop powerup on tile (with guaranteed walkable safety)
-      if (Math.random() < 0.14 && !powerups.current) {
-        const mx = Math.max(1, Math.min(this.maze.cols - 2, Math.round(ex / T)));
-        const my = Math.max(1, Math.min(ROWS - 2, Math.round(ey / T)));
-        const safe = this.maze.findNearestWalkable(mx, my, false);
-        powerups.current = { x: safe.x, y: safe.y, type: Math.random() < 0.4 ? 'overdrive' : (Math.random() < 0.65 ? 'magnet' : 'nova'), timer: 8 };
-      }
-
-      const pts = 250 * Math.min(this.madnessStreak, 32);
-      this.score += pts;
-      particles.addPop(ex, ey - 15, '+' + pts, '#ffd700', 16);
-    } else {
-      const pts = 200 * Math.min(Math.pow(2, powerups.pred.k - 1), 8);
-      this.score += pts;
-      particles.addPop(ex, ey - 15, '+' + pts, '#00ffff', 18);
+    // 14% chance to drop powerup on tile (with guaranteed walkable safety)
+    if (Math.random() < 0.14 && !powerups.current) {
+      const mx = Math.max(1, Math.min(this.maze.cols - 2, Math.round(ex / T)));
+      const my = Math.max(1, Math.min(ROWS - 2, Math.round(ey / T)));
+      const safe = this.maze.findNearestWalkable(mx, my, false);
+      powerups.current = { x: safe.x, y: safe.y, type: Math.random() < 0.4 ? 'overdrive' : (Math.random() < 0.65 ? 'magnet' : 'nova'), timer: 8 };
     }
+
+    const pts = 250 * Math.min(this.madnessStreak, 32);
+    this.score += pts;
+    particles.addPop(ex, ey - 15, '+' + pts, '#ffd700', 16);
 
     particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
     particles.shake(3, 0.12);
@@ -930,10 +873,8 @@ class Game {
     this.state = 'dying';
     this.deathT = 1.5;
     this.lives--;
-    if (this.gameMode === 'madness') {
-      this.madnessTimer = Math.max(0, this.madnessTimer - 4.0);
-      this.madnessStreak = 0;
-    }
+    this.madnessTimer = Math.max(0, this.madnessTimer - 4.0);
+    this.madnessStreak = 0;
     const pp = this.player.getPos();
     particles.emit(pp.x, pp.y, 40, '#ffffff', { speed: 160, size: 5, life: 0.85, gravity: 80 });
     particles.emit(pp.x, pp.y, 30, '#00b4ff', { speed: 130, size: 4, life: 0.65 });
@@ -1284,9 +1225,7 @@ class Game {
         const prevCareer = profileManager.profile.careerGhosts;
         progression.addGhostKills(careerBonusKills);
         this.checkArenaUnlock(prevCareer);
-        if (this.gameMode === 'madness') {
-          this.madnessKills += careerBonusKills;
-        }
+        this.madnessKills += careerBonusKills;
         particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 70, `+${careerBonusKills} KILLS CARRIÈRE (100:1)`, '#ffd700', 20);
       }
 
@@ -1358,10 +1297,8 @@ class Game {
           particles.addPop(pp.x, pp.y - 20, 'CLOSE !', '#ffff00', 14);
           particles.emit(pp.x, pp.y, 4, '#ffff00', { speed: 60, size: 2, life: 0.3 });
           sounds.play('near');
-          if (this.gameMode === 'madness') {
-            const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
-            this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_NM_RECHARGE);
-          }
+          const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
+          this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_NM_RECHARGE);
         }
       } else {
         e.nm = false;
@@ -1408,21 +1345,17 @@ class Game {
           this.combo.t = COMBO_DECAY;
         }
 
-        if (this.gameMode === 'madness') {
-          this.madnessTimer = Math.min(45, this.madnessTimer + 3.0);
-          const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
-          this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
-        }
+        this.madnessTimer = Math.min(45, this.madnessTimer + 3.0);
+        const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
+        this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
         if (this.combo.m > oldM && this.combo.m > 1) {
           this.triggerComboStep(tier, px, py);
         }
       } else {
-        if (this.gameMode === 'madness') {
-          this.madnessTimer = Math.min(45, this.madnessTimer + 0.04);
-          const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
-          this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
-        }
+        this.madnessTimer = Math.min(45, this.madnessTimer + 0.04);
+        const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
+        this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
         this.player.addDotSpeed(this.combo.m);
         this.combo.n++;
         const oldM = this.combo.m;
@@ -1456,7 +1389,6 @@ class Game {
 
       if (this.maze.remainingDots <= 0 && this.state === 'playing') {
         const completedLvl = this.maze.currentLevel;
-        const isMadness = this.gameMode === 'madness';
         const list = this.getCurrentLevelList();
 
         const bonus = 2000 + (this.wave - 1) * 500;
@@ -1524,12 +1456,11 @@ class Game {
     const chBtn = document.getElementById('chrono-btn');
     const chLbl = document.getElementById('chrono-label');
     const isRunActive = this.state === 'ready' || this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'bonus';
-    const isMadness = this.gameMode === 'madness';
-    const dashUnlocked = isMadness && progression.getSkillLevel('dash') >= 1;
+    const dashUnlocked = progression.getSkillLevel('dash') >= 1;
     const chronoLevel = progression.getSkillLevel('chrono');
-    const chronoUnlocked = isRunActive && isMadness && chronoLevel >= 1;
+    const chronoUnlocked = isRunActive && chronoLevel >= 1;
     const isOverdrive = powerups.fx.overdrive > 0;
-    const maxCd = isMadness ? DASH_MADNESS_CD : DASH_CD;
+    const maxCd = DASH_MADNESS_CD;
 
     this.touchDeck.setVisible(isRunActive);
     this.touchDeck.updateDashGauge(this.player.dashCd, maxCd, isOverdrive);
@@ -1541,11 +1472,6 @@ class Game {
         dLbl.textContent = 'JOUER';
         dLbl.style.color = '#00ffff';
         dBtn.setAttribute('aria-label', 'Jouer');
-      } else if (!isMadness) {
-        dBtn.classList.add('locked');
-        dLbl.textContent = 'SANS DASH';
-        dLbl.style.color = '#8899aa';
-        dBtn.setAttribute('aria-label', 'Dash indisponible en mode Classique');
       } else if (!dashUnlocked) {
         dBtn.classList.add('locked');
         dLbl.textContent = '10 FRAGS';
@@ -1593,20 +1519,9 @@ class Game {
       sounds.toggleMute();
       input.isAudioToggleRequested = false;
     }
-    if (input.isSelectMode1Requested && this.state === 'menu') {
-      this.setGameMode('madness');
-      sounds.play('nova');
-      input.isSelectMode1Requested = false;
-    }
-    if (input.isSelectMode2Requested && this.state === 'menu') {
-      this.setGameMode('classic');
-      sounds.play('click');
-      input.isSelectMode2Requested = false;
-    }
     if (input.isLeaderboardRequested) {
       if (this.state === 'menu' || this.state === 'gameover') {
         this.state = 'leaderboard';
-        this.leaderboardMode = this.gameMode;
         leaderboard.syncRemote();
         sounds.play('click');
       } else if (this.state === 'leaderboard') {
@@ -1617,16 +1532,6 @@ class Game {
     }
 
     if (this.state === 'leaderboard') {
-      if (input.isSelectMode1Requested) {
-        this.leaderboardMode = 'madness';
-        sounds.play('click');
-        input.isSelectMode1Requested = false;
-      }
-      if (input.isSelectMode2Requested) {
-        this.leaderboardMode = 'classic';
-        sounds.play('click');
-        input.isSelectMode2Requested = false;
-      }
       if (input.isPauseRequested || input.isStartRequested) {
         this.state = 'menu';
         sounds.play('click');
@@ -1727,7 +1632,7 @@ class Game {
 
     if (input.isRestartRequested) {
       if (this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'ready') {
-        this.startGame(this.gameMode);
+        this.startGame();
         sounds.play('start');
       }
       input.isRestartRequested = false;
@@ -1740,7 +1645,7 @@ class Game {
     }
     if (input.isStartRequested) {
       if (this.state === 'menu' || this.state === 'gameover') {
-        this.startGame(this.gameMode);
+        this.startGame();
         input.isStartRequested = false;
       }
     }
@@ -1770,11 +1675,9 @@ class Game {
         break;
 
       case 'playing': {
-        const isMadness = this.gameMode === 'madness';
-
-        // Bullet Time (Chrono-Shift) - only in Madness Mode when unlocked (>= 50 frags)
+        // Bullet Time (Chrono-Shift), unlocked at 180 frags
         const chronoLevel = progression.getSkillLevel('chrono');
-        const isChronoUnlocked = isMadness && chronoLevel >= 1;
+        const isChronoUnlocked = chronoLevel >= 1;
         const maxChronoEnergy = chronoLevel === 2 ? 150 : CHRONO_MAX;
         const chronoPassive = chronoLevel === 2 ? CHRONO_PASSIVE_RECHARGE * 1.5 : CHRONO_PASSIVE_RECHARGE;
 
@@ -1800,20 +1703,18 @@ class Game {
         const activeChronoScale = chronoLevel === 2 ? CHRONO_TIMESCALE_V2 : CHRONO_TIMESCALE;
         const timeScale = this.isChronoActive ? activeChronoScale : 1.0;
 
-        // Madness Swarm timer
-        if (isMadness) {
-          this.madnessTimer -= dt * timeScale;
-          if (this.madnessTimer <= 0) {
-            this.madnessTimer = 0;
-            this.triggerGameOver();
-            return;
-          }
-          this.madnessSpawnTimer -= dt * timeScale;
-          if (this.madnessSpawnTimer <= 0) {
+        // Swarm timer
+        this.madnessTimer -= dt * timeScale;
+        if (this.madnessTimer <= 0) {
+          this.madnessTimer = 0;
+          this.triggerGameOver();
+          return;
+        }
+        this.madnessSpawnTimer -= dt * timeScale;
+        if (this.madnessSpawnTimer <= 0) {
           // Spawn rate: starts at 2.5s for a new player, speeds up to 0.22s at high kill counts
           this.madnessSpawnTimer = Math.max(0.22, 2.5 - this.madnessKills * 0.012);
           this.enemyManager.spawnMadness(1 + (this.madnessKills > 80 ? 1 : 0), this.madnessKills, this.maze);
-          }
         }
 
         // Action inputs
@@ -1823,8 +1724,7 @@ class Game {
         }
 
         // Motion Kombos
-        if (isMadness) {
-          input.checkKombos(
+        input.checkKombos(
             (lvl: number) => {
               // Wiggle EMP blast
               const pp = this.player.getPos();
@@ -1862,8 +1762,7 @@ class Game {
               const pp = this.player.getPos();
               particles.addPop(pp.x, pp.y - 26, isV2 ? 'PLASMA BURNER V2 !' : 'NITRO FLAME JET !', isV2 ? '#00ffff' : '#ff7700', 20);
             }
-          );
-        }
+        );
 
         input.updateCooldowns(dt, this.player.getPos());
 
@@ -1888,7 +1787,6 @@ class Game {
         this.player.update(
           dt,
           this.maze,
-          isMadness,
           input.nitroActive > 0,
           input.nextDir,
           (c, r) => this.onCollectDot(c, r),
@@ -1898,8 +1796,8 @@ class Game {
         );
         this.enemyManager.update(dt * timeScale, this.maze, this.player.getPos(), powerups.fx.timewarp);
 
-        // Force Field suction (Dots & Frightened Ghosts) - ONLY in Mode Madness, scaled in 16:9 (T * 3.4 vs T * 2.2)
-        if (isMadness && powerups.fx.magnet > 0) {
+        // Force Field suction (Dots & Frightened Ghosts), scaled in 16:9 (T * 3.4 vs T * 2.2)
+        if (powerups.fx.magnet > 0) {
           const isWide = this.maze.cols > 21;
           const baseR = isWide ? T * 3.4 : T * 2.2;
           const comboBoost = this.combo.m >= 32 ? 1.25 : (this.combo.m >= 16 ? 1.15 : (this.combo.m >= 8 ? 1.08 : 1.0));
@@ -1943,7 +1841,6 @@ class Game {
         const isPlayerPowerful = (this.combo.m >= 4) || (this.madnessStreak >= 8) || (this.player.pelletSpeedBonus >= 1.2) || (powerups.fx.overdrive > 0) || (powerups.pred.on);
         powerups.update(
           dt * chronoScale,
-          isMadness,
           this.maze,
           this.player.getPos(),
           this.enemyManager.enemies,
@@ -2016,18 +1913,12 @@ class Game {
       case 'dying':
         this.deathT -= dt;
         if (this.deathT <= 0) {
-          if (this.lives > 0 && (this.gameMode !== 'madness' || this.madnessTimer > 0)) {
+          if (this.lives > 0 && this.madnessTimer > 0) {
             const spdMult = this.loopSpeedMultiplier;
-            this.player.reset(this.gameMode === 'madness', this.maze, spdMult);
-            if (this.gameMode === 'madness') {
-              this.state = 'playing';
-              this.player.invuln = 2.0;
-              particles.addPop(CW / 2, HUD_H + 32, 'BOUCLIER ACTIF (2s)', '#00ffff', 14);
-            } else {
-              this.enemyManager.spawnClassic(4, spdMult, this.maze, this.wave);
-              this.state = 'ready';
-              this.readyT = 1.5;
-            }
+            this.player.reset(this.maze, spdMult);
+            this.state = 'playing';
+            this.player.invuln = 2.0;
+            particles.addPop(CW / 2, HUD_H + 32, 'BOUCLIER ACTIF (2s)', '#00ffff', 14);
           } else {
             this.triggerGameOver();
           }
@@ -2051,7 +1942,7 @@ class Game {
     };
 
     // Only active player buffs (Frightened ghosts have radial rings; board drops have ground rings; overdrive & god are in HUD)
-    add('FORCE FIELD', powerups.fx.magnet, Math.max(9, powerups.getForceFieldStats(progression.totalGhosts, this.gameMode === 'madness').duration), '#00f0ff', 'magnet');
+    add('FORCE FIELD', powerups.fx.magnet, Math.max(9, powerups.getForceFieldStats(progression.totalGhosts).duration), '#00f0ff', 'magnet');
     add('PHASE', powerups.fx.phase, 4, '#ff00ff', 'phase');
     add('TIMEWARP', powerups.fx.timewarp, 5, '#b080ff', 'chrono');
     if (this.maze.cols > 21) {
@@ -2069,7 +1960,7 @@ class Game {
       // Re-rasteriser le labyrinthe avec les nouvelles couleurs de murs
       this.maze.renderOffscreen(newTier);
     }
-    this.renderer.clear(this.maze.currentLevel, this.time, this.gameMode === 'madness');
+    this.renderer.clear(this.maze.currentLevel, this.time, true);
 
     if (this.state === 'bonus') {
       const curRad = Math.min(BONUS_FORCE_FIELD_MAX_RAD, BONUS_FORCE_FIELD_BASE_RAD + Math.sqrt(this.bonusKills) * 3.8);
@@ -2097,15 +1988,14 @@ class Game {
     }
 
     if (this.state === 'menu') {
-      const topClassic = Math.max(badges.hiScore, leaderboard.getTopScore('classic'));
-      const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore('madness'));
-      this.renderer.drawMenu(this.gameMode, this.time, topClassic, topMadness);
+      const topKills = Math.max(badges.bestMadnessKills, leaderboard.getTopScore());
+      this.renderer.drawMenu(this.time, topKills);
       return;
     }
 
     if (this.state === 'leaderboard') {
-      const entries = leaderboard.getEntries(this.leaderboardMode);
-      this.renderer.drawLeaderboard(entries, this.leaderboardMode, this.time, this.playerRank, this.playerDate);
+      const entries = leaderboard.getEntries();
+      this.renderer.drawLeaderboard(entries, this.time, this.playerRank, this.playerDate);
       return;
     }
 
@@ -2120,9 +2010,8 @@ class Game {
     }
 
     if (this.state === 'settings') {
-      const topClassic = Math.max(badges.hiScore, leaderboard.getTopScore('classic'));
-      const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore('madness'));
-      this.renderer.drawMenu(this.gameMode, this.time, topClassic, topMadness);
+      const topKills = Math.max(badges.bestMadnessKills, leaderboard.getTopScore());
+      this.renderer.drawMenu(this.time, topKills);
       this.renderer.drawPause(false, 0, 0, this.time, true);
       return;
     }
@@ -2139,15 +2028,12 @@ class Game {
       }
 
       this.renderer.drawDots(this.maze, this.time);
-      if (this.gameMode === 'madness') {
-        powerups.draw(this.renderer.ctx, this.time);
-        superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
-      }
+      powerups.draw(this.renderer.ctx, this.time);
+      superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
       this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
       this.player.draw(
         this.renderer.ctx,
         this.time,
-        this.gameMode === 'madness',
         is32xGod,
         powerups.pred.on,
         powerups.pred.t,
@@ -2158,7 +2044,6 @@ class Game {
       this.renderer.ctx.restore();
 
       this.renderer.drawHUD(
-        this.gameMode === 'madness',
         this.score, this.dScore, this.lives,
         this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
         superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
@@ -2173,7 +2058,7 @@ class Game {
         progression.getSkillLevel('chrono')
       );
       this.renderer.drawEffectTimers(this.getEffectTimers());
-      this.renderer.drawPause(this.gameMode === 'madness', this.madnessKills, this.madnessStreak, this.time);
+      this.renderer.drawPause(true, this.madnessKills, this.madnessStreak, this.time);
       return;
     }
 
@@ -2189,19 +2074,16 @@ class Game {
     }
 
     this.renderer.drawDots(this.maze, this.time);
-    this.renderer.drawDualSpawnMarkers(this.time, this.gameMode === 'madness');
-    if (this.gameMode === 'madness') {
-      powerups.draw(this.renderer.ctx, this.time);
-      this.renderer.drawNitroTrail(input.nitroTrail);
-      // Super-Item visuals (Lasers, Vortex, Tsunami)
-      superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
-    }
+    this.renderer.drawDualSpawnMarkers(this.time, true);
+    powerups.draw(this.renderer.ctx, this.time);
+    this.renderer.drawNitroTrail(input.nitroTrail);
+    // Super-Item visuals (Lasers, Vortex, Tsunami)
+    superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
 
     this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
     this.player.draw(
       this.renderer.ctx,
       this.time,
-      this.gameMode === 'madness',
       is32xGod,
       powerups.pred.on,
       powerups.pred.t,
@@ -2234,14 +2116,13 @@ class Game {
 
     this.renderer.ctx.restore();
 
-    // Danger border vignette (Madness mode low timer)
-    if (this.gameMode === 'madness' && this.state === 'playing') {
+    // Danger border vignette (low timer)
+    if (this.state === 'playing') {
       this.renderer.drawDangerVignette(this.madnessTimer, this.time);
     }
 
     // HUD & Badges
     this.renderer.drawHUD(
-      this.gameMode === 'madness',
       this.score, this.dScore, this.lives,
       this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
       superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
@@ -2258,15 +2139,14 @@ class Game {
     this.renderer.drawEffectTimers(this.getEffectTimers());
 
     if (this.state === 'waveTrans') {
-      this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount, this.gameMode === 'madness');
+      this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount, true);
     }
 
     if (this.state === 'gameover') {
       const isNewHi = this.pendingScore >= badges.hiScore && this.pendingScore > 0;
       const bCount = Object.keys(badges.unlocked).length;
-      const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore('madness'));
+      const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore());
       this.renderer.drawGameOver(
-        this.pendingMode === 'madness',
         this.pendingScore, isNewHi, this.pendingKills, this.pendingStreak, topMadness, bCount, this.time,
         this.loopCount
       );

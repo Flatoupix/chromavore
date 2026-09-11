@@ -920,7 +920,7 @@ export class SpriteAtlas {
     return c;
   }
 
-  // 19. Cyber Spectre  : Classic 8-bit ghost silhouette with pixel eyes
+  // 19. Cyber Spectre  : 8-bit ghost silhouette with pixel eyes
   private createSpectreIcon(): HTMLCanvasElement {
     const s = 32;
     const c = document.createElement('canvas');

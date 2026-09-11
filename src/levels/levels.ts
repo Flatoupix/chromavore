@@ -2,7 +2,7 @@
 //  CHROMAVORE — LEVEL MAPS & MAZE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
-import { T, COLS, ROWS, CLASSIC_COLS, MADNESS_COLS, HUD_H, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL, ChromaTier, CHROMA_WALL, CHROMA_GLOW, CHROMA_BG } from '../config/constants';
+import { T, COLS, ROWS, BASE_COLS, MADNESS_COLS, HUD_H, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL, ChromaTier, CHROMA_WALL, CHROMA_GLOW, CHROMA_BG } from '../config/constants';
 
 export interface LevelDef {
   name: string;
@@ -946,14 +946,13 @@ export const MADNESS_LEVELS_16_9: LevelDef[] = [
 export const MADNESS_LEVELS = MADNESS_LEVELS_4_3;
 
 export class MazeManager {
-  public cols: number = CLASSIC_COLS;
+  public cols: number = BASE_COLS;
   public rows: number = ROWS;
   public map: number[][] = [];
   public dotMap: number[][] = [];
   public totalDots: number = 0;
   public remainingDots: number = 0;
   public currentLevel: number = 0;
-  public isMadness: boolean = false;
   public isWidescreen: boolean = false;
   public ghostReturnDist: number[][] = [];
   public currentTier: ChromaTier = 0;
@@ -965,14 +964,13 @@ export class MazeManager {
 
   constructor() {
     this.mOff = document.createElement('canvas');
-    this.mOff.width = CLASSIC_COLS * T;
+    this.mOff.width = BASE_COLS * T;
     this.mOff.height = ROWS * T;
     this.mc = this.mOff.getContext('2d')!;
     this.build(0);
   }
 
   public getLevelDef(): LevelDef {
-    if (!this.isMadness) return LEVELS[this.currentLevel % LEVELS.length];
     return this.isWidescreen
       ? MADNESS_LEVELS_16_9[this.currentLevel % MADNESS_LEVELS_16_9.length]
       : MADNESS_LEVELS_4_3[this.currentLevel % MADNESS_LEVELS_4_3.length];
@@ -1000,21 +998,18 @@ export class MazeManager {
     return false;
   }
 
-  public build(lvlIndex: number, isMadness: boolean = false, isWidescreen: boolean = false, chromaTier?: ChromaTier) {
+  public build(lvlIndex: number, isWidescreen: boolean = false, chromaTier?: ChromaTier) {
     if (chromaTier !== undefined) this.currentTier = chromaTier;
-    this.isMadness = isMadness;
-    this.isWidescreen = isMadness && isWidescreen;
-    this.cols = (isMadness && isWidescreen) ? MADNESS_COLS : CLASSIC_COLS;
+    this.isWidescreen = isWidescreen;
+    this.cols = isWidescreen ? MADNESS_COLS : BASE_COLS;
     this.mOff.width = this.cols * T;
     this.mOff.height = this.rows * T;
 
-    const list = !isMadness
-      ? LEVELS
-      : (isWidescreen ? MADNESS_LEVELS_16_9 : MADNESS_LEVELS_4_3);
+    const list = isWidescreen ? MADNESS_LEVELS_16_9 : MADNESS_LEVELS_4_3;
     this.currentLevel = lvlIndex % list.length;
     const def = list[this.currentLevel];
     const half = def.layout;
-    const halfWidth = (isMadness && isWidescreen) ? 20 : 11;
+    const halfWidth = isWidescreen ? 20 : 11;
     this.map = [];
     this.dotMap = [];
     this.totalDots = 0;

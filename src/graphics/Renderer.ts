@@ -393,7 +393,6 @@ export class Renderer {
   }
 
   public drawHUD(
-    isMadness: boolean,
     score: number,
     dScore: number,
     lives: number,
@@ -418,6 +417,7 @@ export class Renderer {
     isChronoActive: boolean = false,
     chronoLevel: number = 1
   ) {
+    const isMadness = true;
     const c = this.ctx;
     c.fillStyle = '#0a0a12';
     c.fillRect(0, 0, this.cw, HUD_H);
@@ -617,11 +617,11 @@ export class Renderer {
         }
       }
 
-      // Lives in Madness: mini Chromavores
+      // Lives: mini Chromavores
       for (let i = 0; i < lives; i++) {
         c.save();
         c.translate(this.cw - 16 - i * 18, 51);
-        Player.drawChromavore(c, 5.5, time, 0.2, false, false, 1, true);
+        Player.drawChromavore(c, 5.5, time, 0.2, false, false, 1);
         c.restore();
       }
 
@@ -632,7 +632,7 @@ export class Renderer {
       return;
     }
 
-    // Classic HUD
+    // Compact HUD fallback
     c.font = 'bold 12px monospace'; c.fillStyle = '#8899bb'; c.textAlign = 'left'; c.textBaseline = 'middle';
     c.fillText('SCORE', 12, 16);
     c.font = 'bold 22px monospace'; c.fillStyle = '#ffd700';
@@ -739,7 +739,7 @@ export class Renderer {
     c.fillText('[M]', this.cw - 18, HUD_H - 6);
   }
 
-  public drawMenu(gameMode: string, time: number, hi: number, bestMadnessKills: number) {
+  public drawMenu(time: number, bestMadnessKills: number) {
     const c = this.ctx;
     const tier = this.chromaTier;
 
@@ -848,7 +848,7 @@ export class Renderer {
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
     c.save();
     c.translate(this.cw / 2 - 34, 240);
-    Player.drawChromavore(c, 13, time, ma, false, false, 1, true, this.chromaTier);
+    Player.drawChromavore(c, 13, time, ma, false, false, 1, this.chromaTier);
     c.restore();
     for (let i = 0; i < 4; i++) {
       const dotC = CHROMA_DOT[this.chromaTier] || C_DOT;
@@ -1211,7 +1211,8 @@ export class Renderer {
     c.restore();
   }
 
-  public drawGameOver(isMadness: boolean, score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number, loopCount: number = 0) {
+  public drawGameOver(score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number, loopCount: number = 0) {
+    const isMadness = true;
     const c = this.ctx;
     c.fillStyle = this.chromaTier === 0 ? 'rgba(0,0,0,0.92)' : 'rgba(5,5,10,0.85)';
     c.fillRect(0, 0, this.cw, CH);
@@ -1313,7 +1314,6 @@ export class Renderer {
 
   public drawLeaderboard(
     entries: import('../systems/Leaderboard').LeaderboardEntry[],
-    mode: 'classic' | 'madness',
     time: number,
     playerRank: number = 0,
     playerDate: string = ''
@@ -1355,7 +1355,7 @@ export class Renderer {
     // Mode tab
     const modeLabel = 'LET\'S HUNT — CLASSEMENT FRAGS';
     c.font = 'bold 11px monospace';
-    c.fillStyle = this.chromaTier === 0 ? '#888888' : (mode === 'madness' ? '#ff007f' : '#00f0ff');
+    c.fillStyle = this.chromaTier === 0 ? '#888888' : '#ff007f';
     c.fillText(modeLabel, this.cw / 2, 62);
 
     // Column headers
@@ -1564,7 +1564,7 @@ export class Renderer {
     spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 + tabW / 2 + 8 - t2w / 2 - 10, tabY + 16, 12);
     c.fillText(tab2Text, this.cw / 2 + tabW / 2 + 8 + 6, tabY + 16);
 
-    // Dynamically center 2 columns of cards across any screen width (Classic 588px or Madness 1092px)
+    // Dynamically center 2 columns of cards across any arena width
     const isWide = this.cw >= 750;
     const colW = isWide ? Math.min(460, Math.floor((this.cw - 80) / 2)) : 265;
     const gapX = isWide ? 24 : 10;
@@ -1882,7 +1882,7 @@ export class Renderer {
     c.fillStyle = this.chromaTier === 0 ? 'rgba(0, 0, 0, 0.92)' : 'rgba(5, 7, 14, 0.88)';
     c.fillRect(0, 0, this.cw, CH);
 
-    // Modal Card (dynamically centered horizontally for both Classic and 16:9 Madness)
+    // Modal Card (dynamically centered horizontally for every arena width)
     const cardW = Math.min(500, this.cw - 20), cardH = 435;
     const cardX = Math.floor((this.cw - cardW) / 2), cardY = 90;
     c.save();

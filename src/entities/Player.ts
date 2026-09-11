@@ -57,8 +57,8 @@ export class Player {
     this.pelletSpeedBonus = Math.min(3.5, this.pelletSpeedBonus + 1.2);
   }
 
-  public reset(isMadness: boolean, maze?: MazeManager, speedMult: number = 1.0) {
-    let sx = isMadness ? 19 : 10, sy = 16;
+  public reset(maze?: MazeManager, speedMult: number = 1.0) {
+    let sx = 10, sy = 16;
     if (maze) {
       this.currentCols = maze.cols;
       const sp = maze.getSpawn();
@@ -87,8 +87,8 @@ export class Player {
       this.speed = P_SPEED * speedMult;
     } else {
       const progressionBoost = 4.3;
-      const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
-      this.speed = (isMadness ? madnessCalculatedSpeed : P_SPEED) * speedMult;
+      const calculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
+      this.speed = calculatedSpeed * speedMult;
     }
     this.invuln = 2.0;
     this.dashCd = 0;
@@ -166,7 +166,6 @@ export class Player {
   public update(
     dt: number,
     maze: MazeManager,
-    isMadness: boolean,
     isNitro: boolean,
     inputDir: { x: number; y: number },
     onCollectDot: (c: number, r: number) => void,
@@ -293,7 +292,6 @@ export class Player {
 
   public triggerDash(
     maze: MazeManager,
-    isMadness: boolean,
     enemies: any[],
     onKillGhost: (e: any, x: number, y: number) => void,
     onCollectDot: (c: number, r: number) => void,
@@ -301,7 +299,6 @@ export class Player {
     isOverdrive: boolean = false,
     onSmashWall?: (c: number, r: number) => void
   ): boolean {
-    if (!isMadness) return false;
     if (this.dashCd > 0 && !isOverdrive) return false;
 
     const dashLvl = progression.getSkillLevel('dash');
@@ -377,7 +374,7 @@ export class Player {
 
     const endPos = this.getPos();
     const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
-    this.dashCd = isOverdrive ? 0 : (isMadness ? DASH_MADNESS_CD * cdMult : DASH_CD * cdMult);
+    this.dashCd = isOverdrive ? 0 : DASH_MADNESS_CD * cdMult;
 
     if (dx !== 0) { this.st = 1.9; this.sq = 0.52; }
     else { this.st = 0.52; this.sq = 1.9; }
@@ -446,7 +443,6 @@ export class Player {
   public draw(
     c: CanvasRenderingContext2D,
     time: number,
-    isMadness: boolean,
     isGodMode: boolean = false,
     isPredator: boolean = false,
     predTimer: number = 0,
@@ -505,7 +501,7 @@ export class Player {
       c.globalAlpha = t * (isPredator || isGodMode ? 0.45 : 0.25);
       c.fillStyle = isPredator
         ? (i % 2 === 0 ? '#00ffff' : '#ff007f')
-        : (isGodMode ? '#00ffff' : (isMadness ? '#ffd700' : '#00ffff'));
+        : (isGodMode ? '#00ffff' : '#ffd700');
       c.beginPath();
       c.arc(tp.x, tp.y, P_RAD * t * (isPredator ? 0.85 : 0.6), 0, PI2);
       c.fill();
@@ -531,26 +527,11 @@ export class Player {
         c.shadowColor = '#00ffff';
         c.shadowBlur = 18;
       } else {
-        c.shadowColor = chromaTier === 0 ? 'transparent' : (isMadness ? '#ffd700' : '#00ffff');
+        c.shadowColor = chromaTier === 0 ? 'transparent' : '#ffd700';
         c.shadowBlur = chromaTier === 0 ? 0 : 12;
       }
 
-      if (isMadness) {
-        this.drawChromavoreEntity(
-          c,
-          P_RAD,
-          time,
-          this.ma,
-          isGodMode,
-          isPredator,
-          combo.m,
-          true,
-          chromaTier
-        );
-      } else {
-        // Fallback classique (ne devrait plus être appelé)
-        this.drawChromavoreEntity(c, P_RAD, time, this.ma, isGodMode, isPredator, combo.m, false, chromaTier);
-      }
+      this.drawChromavoreEntity(c, P_RAD, time, this.ma, isGodMode, isPredator, combo.m, chromaTier);
 
       // Electric plasma sparks (Predator or God mode)
       if (isPredator || isGodMode) {
@@ -623,9 +604,9 @@ export class Player {
         c.restore();
       }
 
-      // Dash Ring (Mode Madness only — hidden in Tier 0, appears when unlocked from Tier 1+)
+      // Dash Ring — hidden in Tier 0, appears when unlocked from Tier 1+
       const dashLvl = progression.getSkillLevel('dash');
-      if (isMadness && chromaTier > 0 && dashLvl >= 1) {
+      if (chromaTier > 0 && dashLvl >= 1) {
         const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
         const maxCd = DASH_MADNESS_CD * cdMult;
         const ringCol = dashLvl >= 5 ? '#ff007f' : (dashLvl >= 2 ? '#00ffcc' : '#ffd700');
@@ -662,7 +643,7 @@ export class Player {
         }
       }
 
-      // Invulnerability shield (Classic & Madness)
+      // Invulnerability shield
       if (this.invuln > 0) {
         c.save();
         const invRatio = Math.max(0, Math.min(1, this.invuln / 2.2));
@@ -881,10 +862,9 @@ export class Player {
     isGodMode: boolean = false,
     isPredator: boolean = false,
     comboMultiplier: number = 1,
-    isMadness: boolean = true,
     chromaTier: ChromaTier = 5
   ) {
-    Player.drawChromavore(c, rad, time, mouthAnim, isGodMode, isPredator, comboMultiplier, isMadness, chromaTier);
+    Player.drawChromavore(c, rad, time, mouthAnim, isGodMode, isPredator, comboMultiplier, chromaTier);
   }
 
   public static drawChromavore(
@@ -895,7 +875,6 @@ export class Player {
     isGodMode: boolean = false,
     isPredator: boolean = false,
     comboMultiplier: number = 1,
-    isMadness: boolean = true,
     chromaTier: ChromaTier = 5
   ) {
     // ─── TIER 0 : Cercle gris simple (nouveau joueur dans les ténèbres) ───
@@ -1070,16 +1049,11 @@ export class Player {
       accentGlow = '#ffd700';
       eyeColor = '#ffffff';
       carapaceColor = '#1f1602';
-    } else if (isMadness) {
+    } else {
       coreColor = '#00f0ff';
       accentGlow = '#00f0ff';
       eyeColor = '#ffffff';
       carapaceColor = '#08021a';
-    } else {
-      coreColor = '#00ffcc';
-      accentGlow = '#00f0ff';
-      eyeColor = '#ffffff';
-      carapaceColor = '#051515';
     }
 
     // Glow légèrement réduit au tier 4
@@ -1228,8 +1202,7 @@ export class Player {
       time * 18,
       false,
       true,
-      32,
-      true
+      32
     );
 
     c.restore();
