@@ -36,7 +36,7 @@ export interface VortexPortal {
 export class PowerupManager {
   // Channel 1: Action Items (Nova, Overdrive, Timewarp, Phase)
   public current: PowerupItem | null = null;
-  public spawnTimer: number = 12;
+  public spawnTimer: number = 16;
 
   // Channel 2: Force Field System (Independent channel!)
   public forceFieldItem: ForceFieldDrop | null = null;
@@ -57,7 +57,7 @@ export class PowerupManager {
 
   public reset() {
     this.current = null;
-    this.spawnTimer = 12;
+    this.spawnTimer = 16;
     this.forceFieldItem = null;
     this.forceFieldSpawnTimer = 14.0;
     this.fx = { phase: 0, timewarp: 0, magnet: 0, overdrive: 0 };
@@ -141,12 +141,22 @@ export class PowerupManager {
       this.current.timer -= dt;
       if (this.current.timer <= 0) {
         this.current = null;
+        this.spawnTimer = 12.0 + Math.random() * 6.0;
       } else {
         const px = this.current.x * T + HALF, py = this.current.y * T + HALF;
         if (Math.hypot(plPos.x - px, plPos.y - py) < T * 0.9) {
           this.collect(this.current, onNovaCollect);
           this.current = null;
+          this.spawnTimer = 15.0 + Math.random() * 6.0;
         }
+      }
+    } else {
+      // Safety drop: even an unlucky run gets a board item. A current item
+      // always blocks the timer, so this never creates an inventory or stack.
+      this.spawnTimer -= dt * (isPowerful ? 1.15 : 1.0);
+      if (this.spawnTimer <= 0) {
+        this.spawnActionItem(maze);
+        this.spawnTimer = 18.0 + Math.random() * 7.0;
       }
     }
 

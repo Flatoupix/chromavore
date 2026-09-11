@@ -29,6 +29,12 @@ export interface Ghost {
   returnTimer?: number;
 }
 
+export interface SwarmProfile {
+  cap: number;
+  interval: number;
+  burst: number;
+}
+
 export class EnemyManager {
   public enemies: Ghost[] = [];
   public currentCols: number = COLS;
@@ -60,14 +66,25 @@ export class EnemyManager {
     );
   }
 
+  public getSwarmProfile(madnessKills: number): SwarmProfile {
+    if (madnessKills >= 2500) return { cap: 96, interval: 0.22, burst: 4 };
+    if (madnessKills >= 1200) return { cap: 76, interval: 0.34, burst: 3 };
+    if (madnessKills >= 600) return { cap: 58, interval: 0.50, burst: 3 };
+    if (madnessKills >= 300) return { cap: 40, interval: 0.68, burst: 2 };
+    if (madnessKills >= 150) return { cap: 28, interval: 0.88, burst: 2 };
+    if (madnessKills >= 75) return { cap: 18, interval: 1.18, burst: 2 };
+    if (madnessKills >= 30) return { cap: 12, interval: 1.55, burst: 1 };
+    if (madnessKills >= 10) return { cap: 8, interval: 2.00, burst: 1 };
+    return { cap: 5, interval: 2.40, burst: 1 };
+  }
+
   public spawnMadness(count: number, madnessKills: number, maze?: MazeManager) {
     if (maze) this.currentCols = maze.cols;
     const isWide = maze ? (maze.cols > 21) : (this.currentCols > 21);
     const spawns = this.getMadnessSpawnSpots(maze);
     const centerCol = maze ? Math.floor(maze.cols / 2) : 10;
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
-    // Swarm cap grows with in-session kills. Starts small (6) so early game is manageable.
-    const swarmCap = Math.min(96, 6 + Math.floor(madnessKills * 0.5));
+    const swarmCap = this.getSwarmProfile(madnessKills).cap;
     let threatCount = this.getMadnessThreatCount();
 
     for (let i = 0; i < count; i++) {

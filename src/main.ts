@@ -825,6 +825,7 @@ class Game {
     this.madnessKills++;
     this.madnessStreak++;
     this.checkRampageMilestone(this.madnessStreak);
+    this.checkSwarmMilestone(this.madnessKills);
 
     if (this.madnessKills >= 50) badges.unlock('madness50');
     if (this.madnessKills >= 100) badges.unlock('madness100');
@@ -838,6 +839,7 @@ class Game {
       const my = Math.max(1, Math.min(ROWS - 2, Math.round(ey / T)));
       const safe = this.maze.findNearestWalkable(mx, my, false);
       powerups.current = { x: safe.x, y: safe.y, type: Math.random() < 0.4 ? 'overdrive' : (Math.random() < 0.65 ? 'magnet' : 'nova'), timer: 8 };
+      powerups.spawnTimer = 16.0 + Math.random() * 6.0;
     }
 
     const pts = 250 * Math.min(this.madnessStreak, 32);
@@ -867,6 +869,15 @@ class Game {
       particles.flash('#ffd700', 0.3);
       particles.addPop(CW / 2, HUD_H + 45, milestones[streak], '#ffd700', 20);
     }
+  }
+
+  private checkSwarmMilestone(kills: number) {
+    const milestones = [10, 30, 75, 150, 300, 600, 1200, 2500];
+    if (!milestones.includes(kills)) return;
+    const profile = this.enemyManager.getSwarmProfile(kills);
+    const pp = this.player.getPos();
+    particles.addPop(pp.x, pp.y - 42, `ESSAIM ↑ • ${profile.cap} SPECTRES MAX`, '#ff5533', 15);
+    particles.flash('#ff5533', 0.15);
   }
 
   private playerDie() {
@@ -1712,9 +1723,9 @@ class Game {
         }
         this.madnessSpawnTimer -= dt * timeScale;
         if (this.madnessSpawnTimer <= 0) {
-          // Spawn rate: starts at 2.5s for a new player, speeds up to 0.22s at high kill counts
-          this.madnessSpawnTimer = Math.max(0.22, 2.5 - this.madnessKills * 0.012);
-          this.enemyManager.spawnMadness(1 + (this.madnessKills > 80 ? 1 : 0), this.madnessKills, this.maze);
+          const swarm = this.enemyManager.getSwarmProfile(this.madnessKills);
+          this.madnessSpawnTimer = swarm.interval;
+          this.enemyManager.spawnMadness(swarm.burst, this.madnessKills, this.maze);
         }
 
         // Action inputs
