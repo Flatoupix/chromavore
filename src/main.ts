@@ -1745,14 +1745,12 @@ class Game {
       }
     }
 
-    const is32xGod = this.combo.m >= 32 || this.state === 'bonus';
+    const isInvincible = this.combo.m >= 32 || this.state === 'bonus';
     const isHDUnlocked = progression.totalGhosts >= HD_AUDIO_UNLOCK_KILLS;
-    const isPastilleMadness = powerups.pred.on && powerups.pred.t > 0;
     sounds.updateBGM(
       dt,
       this.state === 'playing' || this.state === 'bonus',
-      is32xGod,
-      isPastilleMadness,
+      isInvincible,
       isHDUnlocked
     );
     badges.update(dt);
