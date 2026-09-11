@@ -305,7 +305,8 @@ export class Player {
     if (dashLvl === 0) {
       const pp = this.getPos();
       const thresh = progression.SKILL_TREE.find(s => s.id === 'dash_v1')?.threshold || 10;
-      particles.addPop(pp.x, pp.y - 20, `DASH DÉBLOQUÉ À ${thresh} SPECTRES`, '#ffaa00', 13);
+      const career = progression.totalGhosts;
+      particles.addPop(pp.x, pp.y - 20, `DASH : ${career}/${thresh} FRAGS`, '#ffaa00', 13);
       return false;
     }
 

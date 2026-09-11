@@ -44,9 +44,20 @@ export class SuperItemManager {
   public cryoTimer: number = 0;
   public cryoMaxTimer: number = 0;
   public tsunamiX: number = -1;
+  public tsunamiTimer: number = 0;
+  public tsunamiMaxTimer: number = 0;
 
   public isRunning(): boolean {
     return this.laserTimer > 0 || this.vortex !== null || this.tsunamiX >= 0 || this.cryoTimer > 0;
+  }
+
+  public getActiveEffects(): { label: string; timer: number; maxTimer: number; color: string; icon: string }[] {
+    const effects: { label: string; timer: number; maxTimer: number; color: string; icon: string }[] = [];
+    if (this.laserTimer > 0) effects.push({ label: 'HYPER BEAMS', timer: this.laserTimer, maxTimer: this.laserMaxTimer, color: '#00ffff', icon: 'laser' });
+    if (this.vortex) effects.push({ label: 'BLACK HOLE', timer: this.vortex.life, maxTimer: this.vortex.maxLife, color: '#bb44ff', icon: 'black_hole' });
+    if (this.cryoTimer > 0) effects.push({ label: 'CRYO', timer: this.cryoTimer, maxTimer: this.cryoMaxTimer, color: '#aaffff', icon: 'cryo' });
+    if (this.tsunamiTimer > 0) effects.push({ label: 'TSUNAMI', timer: this.tsunamiTimer, maxTimer: this.tsunamiMaxTimer, color: '#ffffff', icon: 'tsunami' });
+    return effects;
   }
 
   private spawnRandomOnBoard(maze: MazeManager) {
@@ -136,6 +147,8 @@ export class SuperItemManager {
       case 'tsunami': {
         sounds.play('wave');
         this.tsunamiX = 0;
+        this.tsunamiMaxTimer = ((this.currentCols * T) + 60) / ((this.currentCols * T) * 1.6);
+        this.tsunamiTimer = this.tsunamiMaxTimer;
         addMadnessTime(lvl >= 2 ? 14.0 : 8.0);
         particles.shake(9, 0.35);
         particles.flash('#ffffff', 0.35);
@@ -364,6 +377,7 @@ export class SuperItemManager {
 
     if (this.tsunamiX >= 0) {
       this.tsunamiX += cw * dt * 1.6;
+      this.tsunamiTimer = Math.max(0, this.tsunamiTimer - dt);
       particles.emit(this.tsunamiX, Math.random() * ROWS * T, 5, '#ffffff', { speed: 100, size: 4, life: 0.3 });
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
@@ -373,7 +387,10 @@ export class SuperItemManager {
           }
         }
       }
-      if (this.tsunamiX > cw + 60) this.tsunamiX = -1;
+      if (this.tsunamiX > cw + 60) {
+        this.tsunamiX = -1;
+        this.tsunamiTimer = 0;
+      }
     }
   }
 
@@ -564,6 +581,8 @@ export class SuperItemManager {
     this.cryoTimer = 0;
     this.cryoMaxTimer = 0;
     this.tsunamiX = -1;
+    this.tsunamiTimer = 0;
+    this.tsunamiMaxTimer = 0;
   }
 
   public resetAll() {

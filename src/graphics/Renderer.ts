@@ -392,6 +392,25 @@ export class Renderer {
     c.restore();
   }
 
+  public drawOnboardingHint(careerKills: number, time: number) {
+    let hint = '';
+    if (careerKills < 1) hint = 'OBJECTIF : MANGE UNE SUPER PASTILLE';
+    else if (careerKills < 10) hint = `FANTÔMES EFFRAYÉS = FRAGS • DASH ${careerKills}/10`;
+    else if (careerKills < 75) hint = 'DASH : ESPACE • PROCHAIN SUPER-ITEM À 75 FRAGS';
+    if (!hint) return;
+
+    const c = this.ctx;
+    const alpha = 0.7 + Math.sin(time * 3) * 0.2;
+    c.save();
+    c.font = 'bold 10px monospace';
+    c.textAlign = 'center';
+    c.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+    c.shadowColor = '#ffd700';
+    c.shadowBlur = 8;
+    c.fillText(hint, this.cw / 2, HUD_H + 19);
+    c.restore();
+  }
+
   public drawHUD(
     score: number,
     dScore: number,
@@ -474,8 +493,11 @@ export class Renderer {
         c.font = 'bold 9px monospace'; c.fillStyle = '#ff00ff';
         c.fillText('COMBO x' + combo.m, 10, 41);
       } else {
-        c.font = '8px monospace'; c.fillStyle = '#556677';
-        c.fillText('REC: ' + bestMadnessKills, 10, 41);
+        const dashThreshold = SKILL_TREE.find(s => s.id === 'dash_v1')?.threshold ?? 10;
+        const dashLevel = progression.getSkillLevel('dash');
+        c.font = 'bold 8px monospace';
+        c.fillStyle = dashLevel > 0 ? '#00ffff' : '#ffaa00';
+        c.fillText(dashLevel > 0 ? 'DASH [ESPACE]' : `DASH ${progression.totalGhosts}/${dashThreshold}`, 10, 41);
       }
 
       // 4. Timer in Center
@@ -1037,7 +1059,7 @@ export class Renderer {
     this.drawInstructionCard(c, cardX, 58, cardW, 112, '#00f0ff', 'CONTRÔLES DE BASE', [
       { badge: 'FLÈCHES / ZQSD', desc: 'Virages anticipés fluides et demi-tours immédiats' },
       { badge: 'ESPACE / DASH', desc: 'Déverrouillé à 10 frags : téléporte et taillade' },
-      { badge: 'SHIFT / CHRONO', desc: 'Déverrouillé à 50 frags : ralentit le monde' },
+      { badge: 'SHIFT / CHRONO', desc: 'Déverrouillé à 180 frags : ralentit le monde' },
       { badge: 'P / ÉCHAP', desc: 'Pause du jeu, réglages audio & scanlines CRT' }
     ]);
 

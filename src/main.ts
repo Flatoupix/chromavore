@@ -1941,10 +1941,16 @@ class Game {
       if (timer > 0) effects.push({ label, timer, maxTimer, color, icon });
     };
 
-    // Only active player buffs (Frightened ghosts have radial rings; board drops have ground rings; overdrive & god are in HUD)
+    // Every active effect gets an explicit countdown; icons stay compact over the board.
+    add('BOUCLIER', this.player.invuln, 2.2, '#ffffff', 'phase');
+    add('FANTÔMES EFFRAYÉS', powerups.pred.t, powerups.pred.maxT, '#00ffff', 'lightning');
     add('FORCE FIELD', powerups.fx.magnet, Math.max(9, powerups.getForceFieldStats(progression.totalGhosts).duration), '#00f0ff', 'magnet');
     add('PHASE', powerups.fx.phase, 4, '#ff00ff', 'phase');
     add('TIMEWARP', powerups.fx.timewarp, 5, '#b080ff', 'chrono');
+    add('DASH INFINI', powerups.fx.overdrive, progression.getSkillLevel('overdrive') >= 2 ? 10 : 8, '#00ffcc', 'overdrive');
+    for (const effect of superItems.getActiveEffects()) {
+      add(effect.label, effect.timer, effect.maxTimer, effect.color, effect.icon);
+    }
     if (this.maze.cols > 21) {
       add('BOOST PASTILLE', this.player.superPelletBoostTimer, 3.5, '#ffd700', 'lightning');
     }
@@ -2058,6 +2064,7 @@ class Game {
         progression.getSkillLevel('chrono')
       );
       this.renderer.drawEffectTimers(this.getEffectTimers());
+      this.renderer.drawOnboardingHint(progression.totalGhosts, this.time);
       this.renderer.drawPause(true, this.madnessKills, this.madnessStreak, this.time);
       return;
     }
@@ -2137,6 +2144,7 @@ class Game {
       progression.getSkillLevel('chrono')
     );
     this.renderer.drawEffectTimers(this.getEffectTimers());
+    this.renderer.drawOnboardingHint(progression.totalGhosts, this.time);
 
     if (this.state === 'waveTrans') {
       this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount, true);
