@@ -573,8 +573,8 @@ class SoundManager {
     // Step duration:
     // Chrono-Shift: 0.36s (heavy, immersive slow-motion pulse)
     // Normal: 0.125s (120 BPM) — reste allumé en permanence
-    // Invincible: 0.10s (150 BPM) — bascule sur le rythme Madness
-    const stepDuration = this.isChronoActive ? 0.36 : (isInvincible ? 0.10 : 0.125);
+    // Invincible / God Mode (Web Audio): 0.09s (166 BPM high-energy overdrive)
+    const stepDuration = this.isChronoActive ? 0.36 : (isInvincible ? 0.09 : 0.125);
 
     if (this.bgmTime >= stepDuration) {
       this.bgmTime -= stepDuration;
@@ -589,13 +589,14 @@ class SoundManager {
         41.2, 41.2, 82.4, 41.2, 41.2, 41.2, 82.4, 41.2  // Em
       ];
 
-      const madnessRoots = [
-        65.4, 65.4, 130.8, 65.4, 73.4, 73.4, 146.8, 73.4,
-        82.4, 82.4, 164.8, 82.4, 65.4, 65.4, 130.8, 65.4
+      // Web Audio Overdrive Synthwave piece for 32x God / Invincible mode
+      const godRoots = [
+        110, 220, 110, 220, 130.8, 261.6, 130.8, 261.6,
+        146.8, 293.6, 146.8, 293.6, 164.8, 329.6, 164.8, 329.6
       ];
 
       const bassFreq = isInvincible
-        ? madnessRoots[this.bgmStep % madnessRoots.length]
+        ? godRoots[this.bgmStep % godRoots.length]
         : roots[this.bgmStep % roots.length];
 
       try {
@@ -608,11 +609,11 @@ class SoundManager {
         osc.frequency.setValueAtTime(bassFreq, t);
 
         filter.type = 'lowpass';
-        filter.Q.setValueAtTime(isInvincible ? 6 : 4.5, t);
-        filter.frequency.setValueAtTime(isInvincible ? 1200 : (this.isChronoActive ? 380 : 850), t);
+        filter.Q.setValueAtTime(isInvincible ? 6.5 : 4.5, t);
+        filter.frequency.setValueAtTime(isInvincible ? 1600 : (this.isChronoActive ? 380 : 850), t);
         filter.frequency.exponentialRampToValueAtTime(this.isChronoActive ? 90 : 140, t + stepDuration * 0.85);
 
-        const bassVol = isInvincible ? 0.05 : 0.045;
+        const bassVol = isInvincible ? 0.055 : 0.045;
         g.gain.setValueAtTime(bassVol, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.9);
 
@@ -624,12 +625,14 @@ class SoundManager {
         osc.stop(t + stepDuration * 0.9);
 
         // Melodic Arpeggio Synth Lead
+        // Invincible: Soaring bright triumphant arpeggio every 2 steps
+        // Normal: Classic synthwave arpeggio every 4 steps
         const isArpStep = isInvincible ? (this.bgmStep % 2 === 0) : (this.bgmStep % 4 === 0);
 
         if (isArpStep) {
           const normalScale = [440, 523.25, 659.25, 783.99, 880, 1046.5];
-          const madnessScale = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
-          const scale = isInvincible ? madnessScale : normalScale;
+          const godScale = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
+          const scale = isInvincible ? godScale : normalScale;
           const arpFreq = scale[(this.bgmStep / (isInvincible ? 1 : 2)) % scale.length];
 
           const arpOsc = this.actx.createOscillator();
@@ -637,7 +640,7 @@ class SoundManager {
           arpOsc.type = isInvincible ? 'triangle' : 'sine';
           arpOsc.frequency.setValueAtTime(arpFreq, t);
 
-          const arpVol = isInvincible ? 0.03 : 0.02;
+          const arpVol = isInvincible ? 0.035 : 0.02;
           arpG.gain.setValueAtTime(arpVol, t);
           arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * (isInvincible ? 1.2 : 1.5));
 
