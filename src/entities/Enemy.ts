@@ -67,52 +67,57 @@ export class EnemyManager {
   }
 
   public getSwarmProfile(madnessKills: number, levelIndex: number = 0): SwarmProfile {
-    const effectivePower = madnessKills + levelIndex * 12;
-    if (effectivePower >= 350) return { cap: 96, interval: 0.22, burst: 4 };
-    if (effectivePower >= 200) return { cap: 76, interval: 0.32, burst: 3 };
-    if (effectivePower >= 120) return { cap: 58, interval: 0.45, burst: 3 };
-    if (effectivePower >= 70)  return { cap: 40, interval: 0.65, burst: 2 };
-    if (effectivePower >= 40)  return { cap: 28, interval: 0.90, burst: 2 };
-    if (effectivePower >= 20)  return { cap: 18, interval: 1.20, burst: 2 };
-    if (effectivePower >= 10)  return { cap: 12, interval: 1.50, burst: 1 };
-    return { cap: 8, interval: 1.80, burst: 1 };
+    const effectivePower = madnessKills + levelIndex * 15;
+    if (effectivePower >= 250) return { cap: 96, interval: 0.22, burst: 4 };
+    if (effectivePower >= 150) return { cap: 76, interval: 0.30, burst: 3 };
+    if (effectivePower >= 80)  return { cap: 58, interval: 0.40, burst: 3 };
+    if (effectivePower >= 45)  return { cap: 40, interval: 0.55, burst: 2 };
+    if (effectivePower >= 25)  return { cap: 28, interval: 0.75, burst: 2 };
+    if (effectivePower >= 12)  return { cap: 20, interval: 0.95, burst: 2 };
+    if (effectivePower >= 5)   return { cap: 14, interval: 1.20, burst: 2 };
+    return { cap: 10, interval: 1.50, burst: 1 };
   }
 
   public spawnMadness(count: number, madnessKills: number, maze?: MazeManager, levelIndex: number = 0) {
     if (maze) this.currentCols = maze.cols;
     const isWide = maze ? (maze.cols > 21) : (this.currentCols > 21);
     const spawns = this.getMadnessSpawnSpots(maze);
-    const centerCol = maze ? Math.floor(maze.cols / 2) : 10;
+    const centerCol = maze ? Math.floor(maze.cols / 2) : (isWide ? 19 : 10);
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
     const swarmCap = this.getSwarmProfile(madnessKills, levelIndex).cap;
     let threatCount = this.getMadnessThreatCount();
+
+    // Central spawn at row 8: open corridor directly in front of ghost house door across all 4:3 and 16:9 maps
+    const spawnY = 8;
+    const centralExit = maze && maze.isWalkable(centerCol, spawnY, true)
+      ? { x: centerCol, y: spawnY }
+      : (maze ? maze.findNearestWalkable(centerCol, spawnY, true) : { x: centerCol, y: spawnY });
 
     for (let i = 0; i < count; i++) {
       if (threatCount >= swarmCap) break;
       let pt: { x: number; y: number };
 
       if (isWide) {
-        // In 16:9 widescreen: Alternate between Left Wing Nest and Right Wing Nest
-        const isLeft = (this.spawnToggle++ % 2 === 0);
-        const chosenNest = isLeft ? spawns.left : spawns.right;
-        const jx = Math.floor(Math.random() * 3) - 1;
-        const jy = Math.floor(Math.random() * 3) - 1;
-        const ptCandidate = { x: chosenNest.x + jx, y: chosenNest.y + jy };
-        pt = maze ? (maze.isWalkable(ptCandidate.x, ptCandidate.y, true) ? ptCandidate : chosenNest) : ptCandidate;
+        // In 16:9 widescreen: Cycle between Central House Exit, Left Wing Nest and Right Wing Nest
+        const mod = this.spawnToggle++ % 3;
+        if (mod === 0) {
+          pt = centralExit;
+        } else {
+          const chosenNest = mod === 1 ? spawns.left : spawns.right;
+          const jx = Math.floor(Math.random() * 3) - 1;
+          const jy = Math.floor(Math.random() * 3) - 1;
+          const ptCandidate = { x: chosenNest.x + jx, y: chosenNest.y + jy };
+          pt = maze ? (maze.isWalkable(ptCandidate.x, ptCandidate.y, true) ? ptCandidate : chosenNest) : ptCandidate;
+        }
       } else {
-        // En 4:3 : spawn à y=7 (couloir ouvert AU-DESSUS de la ghost house)
-        // y=8 = embrasure entourée de murs sur 3 côtés → bloque le fantôme
-        const spawnY = 7;
-        const centralExit = maze && maze.isWalkable(centerCol, spawnY, true)
-          ? { x: centerCol, y: spawnY }
-          : (maze ? maze.findNearestWalkable(centerCol, spawnY, true) : { x: centerCol, y: spawnY });
+        // En 4:3 : spawn direct à y=8 (couloir ouvert devant la porte de la ghost house)
         pt = centralExit;
       }
 
       const tp = types[(Math.random() * types.length) | 0];
       const spd = (E_SPEED + Math.min(2.5, madnessKills * 0.015)) * (tp === 'rusher' ? 1.3 : tp === 'orbiter' ? 1.1 : 1.0);
       const isFlee = powerups && powerups.pred.on && powerups.pred.global && powerups.pred.t > 0;
-      // Direction initiale latérale alternée — évite le blocage sur les murs au-dessus de la ghost house
+      // Direction initiale latérale alternée — s'élance immédiatement dans l'artère horizontale
       const initDx = (threatCount % 2 === 0) ? 1 : -1;
       const ghost: Ghost = {
         type: tp,
@@ -159,18 +164,22 @@ export class EnemyManager {
     return { x: px, y: py };
   }
 
-  public update(dt: number, maze: MazeManager, plPos: { x: number; y: number }, timewarp: number) {
+  public update(dt: number, maze: MazeManager, plPos: { x: number; y: number }, timewarp: number = 0) {
     this.currentCols = maze.cols;
     for (const e of this.enemies) {
       if (e.st === 'dead') continue;
-      if (e.fl > 0) e.fl -= dt;
+
+      if (e.fl > 0) {
+        e.fl -= dt;
+        if (e.fl < 0) e.fl = 0;
+      }
 
       if (e.st === 'spawn') {
         e.delay -= dt;
         if (e.delay <= 0) {
           e.st = (powerups && powerups.pred.on && powerups.pred.t > 0 && (powerups.pred.global || e.frightened)) ? 'flee' : 'active';
           const centerCol = Math.floor(maze.cols / 2);
-          const spawnY = maze.cols > 21 ? 8 : 7;
+          const spawnY = 8;
           let ex = centerCol, ey = spawnY;
           if (!maze.isWalkable(ex, ey, true)) {
             const safe = maze.findNearestWalkable(centerCol, spawnY, true);
@@ -215,10 +224,10 @@ export class EnemyManager {
           e.t = 1;
         }
 
-        // Active or fleeing ghost inside ghost house safety: eject outside into open row 7 corridor
+        // Active or fleeing ghost inside ghost house safety: eject outside into open row 8 corridor
         if ((e.st === 'active' || e.st === 'flee') && maze.isInGhostHouse(e.x, e.y)) {
           const centerCol = Math.floor(maze.cols / 2);
-          const exitPt = maze.isWalkable(centerCol, 7, true) ? { x: centerCol, y: 7 } : maze.findNearestWalkable(centerCol, 7, true);
+          const exitPt = maze.isWalkable(centerCol, 8, true) ? { x: centerCol, y: 8 } : maze.findNearestWalkable(centerCol, 8, true);
           e.x = e.fx = exitPt.x;
           e.y = e.fy = exitPt.y;
           e.t = 1;
@@ -229,14 +238,22 @@ export class EnemyManager {
         // Returned to ghost house or nearest nest, or timeout (max 3.5s):
         // move the ghost to the reserve pool. The spawn director decides when
         // it re-enters, so return trips never suppress new pressure.
+        const centerCol = Math.floor(maze.cols / 2);
+        const centralExitPt = maze.isWalkable(centerCol, 8, true) ? { x: centerCol, y: 8 } : maze.findNearestWalkable(centerCol, 8, true);
         let atHome = false;
-        let exitPt = { x: 10, y: 7 };
+        let exitPt = centralExitPt;
 
         if (maze.cols > 21) {
           const spawns = this.getMadnessSpawnSpots(maze);
           const dLeft = Math.hypot(e.x - spawns.left.x, e.y - spawns.left.y);
           const dRight = Math.hypot(e.x - spawns.right.x, e.y - spawns.right.y);
-          if (dLeft < 2.2) {
+          const isCentralHouse = maze.isInGhostHouse(e.x, e.y) ||
+            (maze.ghostReturnDist && maze.ghostReturnDist[e.y] && maze.ghostReturnDist[e.y][e.x] === 0);
+
+          if (isCentralHouse) {
+            atHome = true;
+            exitPt = centralExitPt;
+          } else if (dLeft < 2.2) {
             atHome = true;
             exitPt = spawns.left;
           } else if (dRight < 2.2) {
@@ -246,10 +263,9 @@ export class EnemyManager {
             exitPt = dLeft < dRight ? spawns.left : spawns.right;
           }
         } else {
-          const centerCol = Math.floor(maze.cols / 2);
           atHome = maze.isInGhostHouse(e.x, e.y) ||
                    (maze.ghostReturnDist && maze.ghostReturnDist[e.y] && maze.ghostReturnDist[e.y][e.x] === 0);
-          exitPt = maze.isWalkable(centerCol, 7, true) ? { x: centerCol, y: 7 } : maze.findNearestWalkable(centerCol, 7, true);
+          exitPt = centralExitPt;
         }
 
         if (e.st === 'return' && (atHome || (e.returnTimer && e.returnTimer >= 3.5))) {

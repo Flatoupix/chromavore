@@ -671,8 +671,8 @@ class Game {
     this.maze.renderOffscreen(currentTier);
     this.player.reset(this.maze, this.loopSpeedMultiplier);
     this.enemyManager.enemies = [];
-    // Spawn progressif : 2 fantômes pour un nouveau joueur → 8 pour un vétéran (tous les 50 kills)
-    const initialSpawn = Math.min(8, 2 + Math.floor(progression.totalGhosts / 50));
+    // Spawn progressif : 4 fantômes pour un nouveau joueur → 10 pour un vétéran (tous les 50 kills)
+    const initialSpawn = Math.min(10, 4 + Math.floor(progression.totalGhosts / 50));
     this.enemyManager.spawnMadness(initialSpawn, 0, this.maze);
     this.state = 'ready';
     this.readyT = 1.5;
@@ -716,13 +716,13 @@ class Game {
     }
     // Refill up to a level- and kill-scaled target so swarm pressure naturally builds up as levels advance
     const livingGhosts = this.enemyManager.enemies.filter(e => e.st !== 'dead').length;
-    const careerBonus = Math.min(4, Math.floor(progression.totalGhosts / 60));
-    const levelBase = 4 + lvlIndex * 2 + (this.loopCount * 3);
-    const killBonus = Math.floor(this.madnessKills / 8);
+    const careerBonus = Math.min(6, Math.floor(progression.totalGhosts / 50));
+    const levelBase = 6 + lvlIndex * 3 + (this.loopCount * 4);
+    const killBonus = Math.floor(this.madnessKills / 6);
     const swarmProfile = this.enemyManager.getSwarmProfile(this.madnessKills, lvlIndex);
     const targetSwarm = Math.min(
       swarmProfile.cap,
-      Math.max(6, levelBase + careerBonus + killBonus)
+      Math.max(8 + lvlIndex * 2, levelBase + careerBonus + killBonus)
     );
     if (livingGhosts < targetSwarm) {
       this.enemyManager.spawnMadness(targetSwarm - livingGhosts, this.madnessKills, this.maze, lvlIndex);
