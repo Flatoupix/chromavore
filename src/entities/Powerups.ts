@@ -191,7 +191,7 @@ export class PowerupManager {
           this.fx.magnet = stats.duration;
           this.forceFieldItem = null;
           this.forceFieldSpawnTimer = stats.cooldown + Math.random() * 2.0;
-          particles.addPop(fx, fy - 15, 'FORCE FIELD ACTIVÉ !', '#00ffff', 18);
+          particles.addPop(fx, fy - 15, 'FORCE FIELD ACTIVE!', '#00ffff', 18);
           particles.emit(fx, fy, 25, '#00f0ff', { speed: 120, size: 4.5, life: 0.6 });
           particles.shake(4, 0.2);
           particles.flash('#00f0ff', 0.25);
@@ -240,7 +240,7 @@ export class PowerupManager {
         this.vortexPortal = { x: pt.x, y: pt.y, timer: 14.0, maxTimer: 14.0 };
         sounds.play('portal');
         particles.shake(4, 0.25);
-        particles.addPop(CW / 2, 70, 'PORTAIL VORTEX APPARU !', '#d946ef', 18);
+        particles.addPop(CW / 2, 70, 'VORTEX PORTAL OPENED!', '#d946ef', 18);
       }
     } else {
       if (!maze.isWalkable(this.vortexPortal.x, this.vortexPortal.y, false) || maze.isInGhostHouse(this.vortexPortal.x, this.vortexPortal.y)) {
@@ -287,7 +287,7 @@ export class PowerupManager {
     }
     this.forceFieldItem = { x: pt.x, y: pt.y, timer: 14.0, maxTimer: 14.0 };
     sounds.play('powerup');
-    particles.addPop(pt.x * T + HALF, pt.y * T - 14, 'FORCE FIELD DÉTECTÉ !', '#00ffff', 18);
+    particles.addPop(pt.x * T + HALF, pt.y * T - 14, 'FORCE FIELD DETECTED!', '#00ffff', 18);
     particles.emit(pt.x * T + HALF, pt.y * T + HALF, 24, '#00f0ff', { speed: 85, size: 4, life: 0.55 });
   }
 

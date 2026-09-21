@@ -394,9 +394,9 @@ export class Renderer {
 
   public drawOnboardingHint(careerKills: number, time: number) {
     let hint = '';
-    if (careerKills < 1) hint = 'OBJECTIF : MANGE UNE SUPER PASTILLE';
-    else if (careerKills < 10) hint = `FANTÔMES EFFRAYÉS = FRAGS • DASH ${careerKills}/10`;
-    else if (careerKills < 75) hint = 'DASH : ESPACE • PROCHAIN SUPER-ITEM À 75 FRAGS';
+    if (careerKills < 1) hint = 'OBJECTIVE: DEVOUR A POWER PELLET';
+    else if (careerKills < 10) hint = `FRIGHTENED GHOSTS = KILLS • DASH ${careerKills}/10`;
+    else if (careerKills < 75) hint = 'DASH: SPACEBAR • NEXT SUPER-ITEM AT 75 KILLS';
     if (!hint) return;
 
     const c = this.ctx;
@@ -479,7 +479,7 @@ export class Renderer {
         spriteAtlas.drawIcon(c, 'lightning', 15, 41, 11);
         c.font = 'bold 8.5px monospace'; c.fillStyle = '#00ffff';
         c.shadowColor = '#00ffff'; c.shadowBlur = 8;
-        c.fillText(isWide ? `PROIE EFFRAYÉE (${predTimer.toFixed(1)}s)` : `EFFRAYÉ ${predTimer.toFixed(1)}s`, 24, 41);
+        c.fillText(isWide ? `SCARED PREY (${predTimer.toFixed(1)}s)` : `SCARED ${predTimer.toFixed(1)}s`, 24, 41);
         c.shadowBlur = 0;
         c.fillStyle = '#222'; c.fillRect(10, 46, isWide ? 85 : 62, 3);
         c.fillStyle = '#00ffff'; c.fillRect(10, 46, (isWide ? 85 : 62) * pProg, 3);
@@ -497,7 +497,7 @@ export class Renderer {
         const dashLevel = progression.getSkillLevel('dash');
         c.font = 'bold 8px monospace';
         c.fillStyle = dashLevel > 0 ? '#00ffff' : '#ffaa00';
-        c.fillText(dashLevel > 0 ? 'DASH [ESPACE]' : `DASH ${progression.totalGhosts}/${dashThreshold}`, 10, 41);
+        c.fillText(dashLevel > 0 ? 'DASH [SPACE]' : `DASH ${progression.totalGhosts}/${dashThreshold}`, 10, 41);
       }
 
       // 4. Timer in Center
@@ -511,7 +511,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.fillText(
         loopCount > 0
-          ? (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} • B.${loopCount + 1} (+${loopCount * 10}%)` : `L.${currentLevel + 1} B.${loopCount + 1}`)
+          ? (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} • LOOP ${loopCount + 1} (+${loopCount * 10}%)` : `L.${currentLevel + 1} LOOP ${loopCount + 1}`)
           : (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} : ${mDef.name}` : `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length}`),
         tmX,
         13
@@ -543,7 +543,7 @@ export class Renderer {
         const chronoRequirement = SKILL_TREE.find(skill => skill.id === 'chrono_v1')?.threshold ?? 180;
         c.fillStyle = '#556677';
         spriteAtlas.drawIcon(c, 'lock', chCenter - (isWide ? 34 : 24), 13, 10);
-        c.fillText(isWide ? `CHRONO : ${chronoRequirement} FRAGS` : `${chronoRequirement} FRAGS`, chCenter + 6, 13);
+        c.fillText(isWide ? `CHRONO: ${chronoRequirement} KILLS` : `${chronoRequirement} KILLS`, chCenter + 6, 13);
         c.strokeStyle = 'rgba(255, 255, 255, 0.1)';
         c.lineWidth = 1;
         c.strokeRect(chX, chY, chW, chH);
@@ -602,16 +602,16 @@ export class Renderer {
       const rightPad = isWide ? 14 : 10;
       if (superItems.isRunning()) {
         c.font = 'bold 10px monospace'; c.fillStyle = '#00ffff'; c.shadowColor = '#00ffff'; c.shadowBlur = 10;
-        c.fillText('ITEM EN ACTION !', this.cw - rightPad, 18); c.shadowBlur = 0;
+        c.fillText('ITEM ACTIVE!', this.cw - rightPad, 18); c.shadowBlur = 0;
         c.font = '8px monospace'; c.fillStyle = '#ffbb00';
-        c.fillText('UN SEUL ITEM À LA FOIS', this.cw - rightPad, 34);
+        c.fillText('ONE ITEM AT A TIME', this.cw - rightPad, 34);
       } else if (superItems.boardDrop) {
         c.font = isWide ? 'bold 9px monospace' : 'bold 8px monospace';
         c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 10;
-        c.fillText(`${superItems.boardDrop.item.name} SUR LE PLATEAU`, this.cw - rightPad, 18);
+        c.fillText(`${superItems.boardDrop.item.name} IN MAZE`, this.cw - rightPad, 18);
         c.shadowBlur = 0;
         c.font = '8px monospace'; c.fillStyle = '#00ffff';
-        c.fillText(`À RAMASSER • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
+        c.fillText(`READY TO COLLECT • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
       } else {
         const unlockedItems = progression.getUnlockedSuperItems();
         if (unlockedItems.length === 0) {
@@ -625,17 +625,17 @@ export class Renderer {
           c.fillText(nText, this.cw - rightPad, 16);
           c.font = '7.5px monospace';
           c.fillStyle = '#ff007f';
-          c.fillText(`ENCORE ${killsLeft} KILLS`, this.cw - rightPad, 32);
+          c.fillText(`${killsLeft} MORE KILLS`, this.cw - rightPad, 32);
         } else {
           c.font = isWide ? 'bold 10px monospace' : 'bold 8.5px monospace';
           c.fillStyle = '#ffd700';
           c.shadowColor = '#ffd700';
           c.shadowBlur = 8;
-          c.fillText('SUPER-ITEMS SUR LE PLATEAU', this.cw - rightPad, 16);
+          c.fillText('SUPER-ITEMS IN MAZE', this.cw - rightPad, 16);
           c.shadowBlur = 0;
           c.font = '8px monospace';
           c.fillStyle = '#00ffff';
-          c.fillText(`PROCHAINE APPARITION : ${Math.max(0, superItems.spawnTimer).toFixed(1)}s`, this.cw - rightPad, 34);
+          c.fillText(`NEXT SPAWN: ${Math.max(0, superItems.spawnTimer).toFixed(1)}s`, this.cw - rightPad, 34);
         }
       }
 
@@ -692,7 +692,7 @@ export class Renderer {
       c.fillRect(dX + 2, dY + 2, (dW - 4) * pProg, dH - 4);
       c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillStyle = '#050a14';
-      c.fillText(`PROIE ${predTimer.toFixed(1)}s`, dX + dW / 2, dY + dH / 2);
+      c.fillText(`PREY ${predTimer.toFixed(1)}s`, dX + dW / 2, dY + dH / 2);
     } else if (isMadness) {
       const isOverdrive = overdriveTimer > 0;
       const isReady = dashCd <= 0 || isOverdrive;
@@ -722,7 +722,7 @@ export class Renderer {
     c.font = 'bold 12px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 8;
     c.fillText('LVL ' + (currentLevel + 1) + '/' + list.length + ': ' + lvl.name, this.cw / 2, 30); c.shadowBlur = 0;
     c.font = 'bold 11px monospace'; c.fillStyle = loopCount > 0 ? '#ffd700' : '#aaa';
-    c.fillText(loopCount > 0 ? `WAVE ${wave} • BOUCLE ${loopCount + 1} (+${loopCount * 10}%)` : 'WAVE ' + wave, this.cw / 2, 46);
+    c.fillText(loopCount > 0 ? `WAVE ${wave} • LOOP ${loopCount + 1} (+${loopCount * 10}%)` : 'WAVE ' + wave, this.cw / 2, 46);
 
     // Lives
     c.textAlign = 'right';
@@ -916,7 +916,7 @@ export class Renderer {
     c.fillStyle = this.chromaTier === 0 ? `rgba(210, 210, 210, ${playPulse})` : `rgba(255, 255, 255, ${playPulse})`;
     c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
     c.shadowBlur = this.getChromaBlur(8 * playPulse);
-    c.fillText('▶ APPUYER SUR ESPACE POUR JOUER ◀', this.cw / 2, madY + 50);
+    c.fillText('▶ PRESS SPACEBAR TO PLAY ◀', this.cw / 2, madY + 50);
     c.shadowBlur = 0;
     c.restore();
 
@@ -928,13 +928,13 @@ export class Renderer {
       c.restore();
     }
 
-    // Player Profile & Sync ID Card (JOUEUR au lieu de PILOTE)
+    // Player Profile & Sync ID Card
     c.font = 'bold 11px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#777777' : '#e0f4ff';
     c.textAlign = 'center';
-    c.fillText(`JOUEUR : ${profileManager.profile.pseudo}   •   CODE ID : ${profileManager.profile.syncCode}`, this.cw / 2, 480);
+    c.fillText(`PLAYER : ${profileManager.profile.pseudo}   •   SYNC ID : ${profileManager.profile.syncCode}`, this.cw / 2, 480);
 
-    // Liens de navigation débloqués progressivement
+    // Navigation links unlocked progressively
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
     const unlockedBadges = badges.getUnlockedCount();
     const totalBadges = badges.getTotalCount();
@@ -945,22 +945,22 @@ export class Renderer {
     }
 
     const availableLinks: MenuLinkItem[] = [
-      { id: 'help', label: '[I] AIDE' },
+      { id: 'help', label: '[I] HOW TO PLAY' },
     ];
 
-    // ARSENAL n'apparaît que si au moins un skill ou frag est acquis
+    // ARSENAL appears only if at least one skill or kill is achieved
     if (unlockedCount > 0 || progression.totalGhosts > 0) {
       availableLinks.push({ id: 'arsenal', label: `[C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})` });
     }
 
-    availableLinks.push({ id: 'settings', label: '[O] PARAMÈTRES' });
+    availableLinks.push({ id: 'settings', label: '[O] SETTINGS' });
 
-    // SUCCÈS n'apparaît que si au moins un succès est débloqué
+    // BADGES appears only if at least one badge is unlocked
     if (unlockedBadges > 0) {
-      availableLinks.push({ id: 'badges', label: `[B] SUCCÈS (${unlockedBadges}/${totalBadges})` });
+      availableLinks.push({ id: 'badges', label: `[B] BADGES (${unlockedBadges}/${totalBadges})` });
     }
 
-    availableLinks.push({ id: 'scores', label: '[L] SCORES' });
+    availableLinks.push({ id: 'scores', label: '[L] LEADERBOARD' });
     availableLinks.push({ id: 'sync', label: '[K] SYNC' });
 
     this.menuLinks = [];
@@ -1050,50 +1050,50 @@ export class Renderer {
     c.font = 'bold 9.5px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#666666' : '#8899bb';
     c.textAlign = 'center';
-    c.fillText('TOUT CE QU\'IL FAUT SAVOIR POUR DOMINER LE LABYRINTHE', this.cw / 2, 47);
+    c.fillText('EVERYTHING YOU NEED TO KNOW TO DOMINATE THE MAZE', this.cw / 2, 47);
 
     const cardW = this.cw - 44;
     const cardX = 22;
 
-    // Card 1: CONTRÔLES DE BASE (y: 58, h: 112)
-    this.drawInstructionCard(c, cardX, 58, cardW, 112, '#00f0ff', 'CONTRÔLES DE BASE', [
-      { badge: 'FLÈCHES / ZQSD', desc: 'Virages anticipés fluides et demi-tours immédiats' },
-      { badge: 'ESPACE / DASH', desc: 'Déverrouillé à 10 frags : téléporte et taillade' },
-      { badge: 'SHIFT / CHRONO', desc: 'Déverrouillé à 180 frags : ralentit le monde' },
-      { badge: 'P / ÉCHAP', desc: 'Pause du jeu, réglages audio & scanlines CRT' }
+    // Card 1: BASIC CONTROLS (y: 58, h: 112)
+    this.drawInstructionCard(c, cardX, 58, cardW, 112, '#00f0ff', 'BASIC CONTROLS', [
+      { badge: 'ARROWS / WASD', desc: 'Smooth pre-turning and instant 180° reversals' },
+      { badge: 'SPACE / DASH', desc: 'Unlocked at 10 kills: warp forward and slice through ghosts' },
+      { badge: 'SHIFT / SLOW-MO', desc: 'Unlocked at 180 kills: bends time and slows down the world' },
+      { badge: 'P / ESC', desc: 'Pause game, display & audio settings, CRT scanlines' }
     ]);
 
-    // Card 2: KOMBOS DE DÉPLACEMENT SECRETS (y: 180, h: 76)
-    this.drawInstructionCard(c, cardX, 180, cardW, 76, '#ffd700', 'KOMBOS DE DÉPLACEMENT SECRETS', [
-      { badge: '← → ← →', desc: 'Wiggle EMP : onde radiale qui étourdit et repousse' },
-      { badge: '↑ ↓ ↑ ↓', desc: 'Nitro Jet : turbo vitesse + traînée de feu au sol' }
+    // Card 2: SECRET MOTION COMBOS (y: 180, h: 76)
+    this.drawInstructionCard(c, cardX, 180, cardW, 76, '#ffd700', 'SECRET MOTION COMBOS', [
+      { badge: '← → ← →', desc: 'Wiggle EMP: radial shockwave that stuns and repels nearby foes' },
+      { badge: '↑ ↓ ↑ ↓', desc: 'Nitro Jet: bursts forward with blazing flame trail on tiles' }
     ]);
 
-    // Card 3: SUPER-ITEMS ON THE BOARD (y: 266, h: 76)
-    this.drawInstructionCard(c, cardX, 266, cardW, 76, '#ff007f', 'SUPER-ITEMS SUR LE PLATEAU', [
-      { badge: 'RAMASSAGE AUTO', desc: 'Touchez le Super-Item pour l\'activer immédiatement' },
-      { badge: 'APPARITION', desc: 'Méga Nova, Trou Noir, Lasers 8-Axes, Cryo, Vague...' }
+    // Card 3: SUPER-ITEMS IN THE MAZE (y: 266, h: 76)
+    this.drawInstructionCard(c, cardX, 266, cardW, 76, '#ff007f', 'SUPER-ITEMS IN THE MAZE', [
+      { badge: 'AUTO-COLLECT', desc: 'Touch super-items to trigger their ultimate power instantly' },
+      { badge: 'SPAWNS', desc: 'Mega Nova, Black Hole, 8-Axis Lasers, Cryo Blizzard, Shockwave...' }
     ]);
 
-    // Card 4: CHROMAVORE & ÉVEIL CHROMATIQUE (y: 352, h: 148)
-    this.drawInstructionCard(c, cardX, 352, cardW, 148, '#a855f7', 'CHROMAVORE & ÉVEIL CHROMATIQUE', [
+    // Card 4: CHROMAVORE & CHROMA AWAKENING (y: 352, h: 148)
+    this.drawInstructionCard(c, cardX, 352, cardW, 148, '#a855f7', 'CHROMAVORE & CHROMA AWAKENING', [
       {
-        badge: 'ÉVEIL CHROMATIQUE',
+        badge: 'CHROMA AWAKENING',
         desc: [
-          'Le monde commence en monochrome absolu.',
-          'Dévorez les spectres pour réveiller couleurs et compétences !'
+          'The world begins in pure, cold monochrome.',
+          'Devour ghosts to awaken radiant colors, audio & combat skills!'
         ]
       },
       {
         badge: 'LET\'S HUNT',
         desc: [
-          'Arènes dynamiques & chrono Overdrive.',
-          'Dévorez toutes les orbes et purgez les fantômes pour vaincre.'
+          'Dynamic arenas & Overdrive rush timers.',
+          'Devour all pellets and purge phantom hordes to prevail.'
         ]
       },
       {
-        badge: 'BOUCLE COSMIQUE',
-        desc: 'Terminez le Niveau 10 pour boucler (+10% vitesse/tour).'
+        badge: 'COSMIC LOOP',
+        desc: 'Clear Level 10 to loop into infinite cosmic scaling (+10% speed/loop).'
       }
     ]);
 
@@ -1119,7 +1119,7 @@ export class Renderer {
     c.font = 'bold 11.5px monospace';
     c.fillStyle = this.chromaTier === 0 ? `rgba(220, 220, 220, ${promptPulse})` : `rgba(255, 255, 255, ${promptPulse})`;
     c.textAlign = 'center';
-    c.fillText('▶ PRESS [ESPACE], [I] OU CLIQUEZ POUR RETOURNER ◀', this.cw / 2, pillY + 20);
+    c.fillText('▶ PRESS [SPACE], [I] OR TAP TO RETURN ◀', this.cw / 2, pillY + 20);
     c.restore();
 
     // CRT Scanlines
@@ -1252,35 +1252,35 @@ export class Renderer {
     if (isMadness) {
       c.font = 'bold 22px monospace';
       c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
-      c.fillText('FANTÔMES PURGÉS : ' + madnessKills, this.cw / 2, cy + 48);
+      c.fillText('GHOSTS PURGED: ' + madnessKills, this.cw / 2, cy + 48);
       c.font = 'bold 16px monospace';
       c.fillStyle = this.getChromaAccent('#ff5533', '#cccccc');
-      c.fillText('MAX STREAK : x' + madnessStreak, this.cw / 2, cy + 78);
+      c.fillText('MAX STREAK: x' + madnessStreak, this.cw / 2, cy + 78);
       c.font = '14px monospace';
       c.fillStyle = '#888';
-      c.fillText('RECORD KILLS : ' + bestMadnessKills, this.cw / 2, cy + 106);
+      c.fillText('CAREER BEST KILLS: ' + bestMadnessKills, this.cw / 2, cy + 106);
     } else {
       c.font = 'bold 20px monospace';
       c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
-      c.fillText('SCORE : ' + score, this.cw / 2, cy + 48);
+      c.fillText('SCORE: ' + score, this.cw / 2, cy + 48);
       if (loopCount > 0) {
         c.font = 'bold 13px monospace';
         c.fillStyle = this.getChromaAccent('#00ffcc', '#aaaaaa');
-        c.fillText(`BOUCLE ATTEINTE : ${loopCount + 1} (+${loopCount * 10}% VIT)`, this.cw / 2, cy + 74);
+        c.fillText(`LOOP REACHED: ${loopCount + 1} (+${loopCount * 10}% SPEED)`, this.cw / 2, cy + 74);
       }
       if (hi) {
         c.font = 'bold 16px monospace';
         c.fillStyle = this.getChromaAccent('#ff44ff', '#ffffff');
         c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff44ff';
         c.shadowBlur = this.getChromaBlur(10);
-        if (Math.sin(time * 6) > 0) c.fillText('NOUVEAU RECORD !', this.cw / 2, cy + (loopCount > 0 ? 98 : 76));
+        if (Math.sin(time * 6) > 0) c.fillText('NEW HIGH SCORE!', this.cw / 2, cy + (loopCount > 0 ? 98 : 76));
         c.shadowBlur = 0;
       }
     }
 
     c.fillStyle = this.getChromaAccent('#ffd700', '#888888');
     c.font = '12px monospace';
-    const bTxt = 'Badges & Succès : ' + badgesUnlocked + '/' + badges.getTotalCount() + ' Débloqués';
+    const bTxt = 'Badges & Achievements: ' + badgesUnlocked + '/' + badges.getTotalCount() + ' Unlocked';
     const btw = c.measureText(bTxt).width;
     spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 - btw / 2 - 12, cy + 130, 14);
     c.fillText(bTxt, this.cw / 2 + 8, cy + 130);
@@ -1310,9 +1310,9 @@ export class Renderer {
     c.font = 'bold 10px monospace';
     c.fillStyle = '#ffffff';
     if (nxt.skill) {
-      c.fillText(`CARRIÈRE : ${progression.totalGhosts} FRAGS >> PROCHAIN : ${nxt.skill.name} (${nxt.remaining} FRAGS)`, this.cw / 2, barY - 6);
+      c.fillText(`CAREER: ${progression.totalGhosts.toLocaleString()} KILLS >> NEXT: ${nxt.skill.name} (${nxt.remaining.toLocaleString()} KILLS)`, this.cw / 2, barY - 6);
     } else {
-      c.fillText(`CARRIÈRE MAXIMALE : ${progression.totalGhosts} FRAGS (TOUT DÉBLOQUÉ)`, this.cw / 2, barY - 6);
+      c.fillText(`MAX CAREER: ${progression.totalGhosts.toLocaleString()} KILLS (ALL UNLOCKED)`, this.cw / 2, barY - 6);
     }
 
     c.font = '13px monospace';
@@ -1324,7 +1324,7 @@ export class Renderer {
     c.fillStyle = this.getChromaAccent('#ff007f', '#777777');
     c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
     c.shadowBlur = this.getChromaBlur(8);
-    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] CLASSEMENT  |  [ C ] ARSENAL & SKILLS', this.cw / 2, cy + 220);
+    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] LEADERBOARD  |  [ C ] ARSENAL & SKILLS', this.cw / 2, cy + 220);
     c.shadowBlur = 0;
 
     // Version Tag
@@ -1375,7 +1375,7 @@ export class Renderer {
     c.restore();
 
     // Mode tab
-    const modeLabel = 'LET\'S HUNT — CLASSEMENT FRAGS';
+    const modeLabel = 'LET\'S HUNT — KILL RANKINGS';
     c.font = 'bold 11px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#888888' : '#ff007f';
     c.fillText(modeLabel, this.cw / 2, 62);
@@ -1387,7 +1387,7 @@ export class Renderer {
     c.textAlign = 'center';
     c.fillText('#', 34, startY);
     c.textAlign = 'left';
-    c.fillText('PSEUDO', 64, startY);
+    c.fillText('PLAYER', 64, startY);
     c.textAlign = 'right';
     c.fillText('KILLS & SCORE', this.cw - 28, startY);
 
@@ -1485,17 +1485,17 @@ export class Renderer {
       c.font = '13px monospace';
       c.fillStyle = this.chromaTier === 0 ? '#666666' : '#445566';
       c.textAlign = 'center';
-      c.fillText('Aucun score enregistré...', this.cw / 2, CH * 0.5);
+      c.fillText('No scores recorded yet...', this.cw / 2, CH * 0.5);
       c.font = '11px monospace';
       c.fillStyle = this.chromaTier === 0 ? '#444444' : '#334455';
-      c.fillText('Jouez une partie et entrez votre pseudo !', this.cw / 2, CH * 0.5 + 24);
+      c.fillText('Play a game and set your high score!', this.cw / 2, CH * 0.5 + 24);
     }
 
     // Footer
     c.font = 'bold 10px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#555555' : '#334466';
     c.textAlign = 'center';
-    c.fillText('[ ESPACE / ECHAP ] RETOUR AU MENU', this.cw / 2, CH - 14);
+    c.fillText('[ SPACE / ESC ] RETURN TO MENU', this.cw / 2, CH - 14);
   }
 
   public drawCodex(time: number, tab: 'skills' | 'badges' = 'skills', page: number = 0) {
@@ -1524,7 +1524,7 @@ export class Renderer {
       c.shadowColor = isSkills ? '#00ffff' : '#ffd700';
       c.shadowBlur = 10;
     }
-    const titleText = isSkills ? 'ARSENAL & ARBRE DES COMPÉTENCES' : 'SUCCÈS & TROPHÉES DE CARRIÈRE';
+    const titleText = isSkills ? 'ARSENAL & SKILL TREE' : 'BADGES & CAREER TROPHIES';
     const tIcon = isSkills ? 'lightning' : 'trophy';
     const tw = c.measureText(titleText).width;
     spriteAtlas.drawIcon(c, tIcon, this.cw / 2 - tw / 2 - 14, 26, 16);
@@ -1581,7 +1581,7 @@ export class Renderer {
     c.fillStyle = isBadges
       ? this.getChromaAccent('#ffd700', '#ffffff')
       : (this.chromaTier === 0 ? '#666666' : '#8899aa');
-    const tab2Text = `[2] SUCCÈS (${unlockedBadges}/${totalBadges})`;
+    const tab2Text = `[2] BADGES (${unlockedBadges}/${totalBadges})`;
     const t2w = c.measureText(tab2Text).width;
     spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 + tabW / 2 + 8 - t2w / 2 - 10, tabY + 16, 12);
     c.fillText(tab2Text, this.cw / 2 + tabW / 2 + 8 + 6, tabY + 16);
@@ -1622,9 +1622,9 @@ export class Renderer {
       c.fillStyle = '#ffffff';
       c.textAlign = 'center';
       if (nxt.skill) {
-        c.fillText(`TOTAL CARRIÈRE : ${progression.totalGhosts.toLocaleString()} FRAGS >> PROCHAIN : ${nxt.skill.name} (${nxt.remaining.toLocaleString()} FRAGS)`, this.cw / 2, 70);
+        c.fillText(`CAREER TOTAL: ${progression.totalGhosts.toLocaleString()} KILLS >> NEXT: ${nxt.skill.name} (${nxt.remaining.toLocaleString()} KILLS)`, this.cw / 2, 70);
       } else {
-        c.fillText(`TOTAL CARRIÈRE : ${progression.totalGhosts.toLocaleString()} FRAGS (ARSENAL MAÎTRISÉ À 100% !)`, this.cw / 2, 70);
+        c.fillText(`CAREER TOTAL: ${progression.totalGhosts.toLocaleString()} KILLS (ARSENAL 100% MASTERED!)`, this.cw / 2, 70);
       }
 
       // Base and odd-numbered upgrades on the left; advanced even-numbered upgrades on the right.
@@ -1652,7 +1652,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00ffff';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText('[1] ARSENAL  •  [2] SUCCÈS  •  [TAB] BASCULER  •  [ECHAP / C] RETOUR', this.cw / 2, CH - 14);
+      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [TAB] TOGGLE  •  [ESC / C] BACK', this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     } else {
       // BADGES & ACHIEVEMENTS GALLERY
@@ -1687,7 +1687,7 @@ export class Renderer {
       c.font = 'bold 9.5px monospace';
       c.fillStyle = '#ffffff';
       c.textAlign = 'center';
-      c.fillText(`SUCCÈS ACCOMPLIS : ${unlockedBadges} / ${allBadges.length} (${Math.round(ratio * 100)}%)`, this.cw / 2, 70);
+      c.fillText(`ACHIEVEMENTS UNLOCKED: ${unlockedBadges} / ${allBadges.length} (${Math.round(ratio * 100)}%)`, this.cw / 2, 70);
 
       // Draw 2 Columns of cards (balanced across columns when fewer than 7)
       const cardH = 64;
@@ -1709,7 +1709,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText(`[1] ARSENAL  •  [2] SUCCÈS  •  [PAGE ${curPage + 1}/${maxPages} • FLÈCHES ← / →]  •  [ECHAP / B] RETOUR`, this.cw / 2, CH - 14);
+      c.fillText(`[1] ARSENAL  •  [2] BADGES  •  [PAGE ${curPage + 1}/${maxPages} • ARROWS ← / →]  •  [ESC / B] BACK`, this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     }
   }
@@ -1751,13 +1751,13 @@ export class Renderer {
     c.font = 'bold 8.5px monospace';
     if (unlocked) {
       c.fillStyle = this.getChromaAccent('#00ffcc', '#cccccc');
-      const statusText = 'OBTENU';
+      const statusText = 'UNLOCKED';
       const tw = c.measureText(statusText).width;
       spriteAtlas.drawIcon(c, 'check', x + w - 8 - tw - 8, y + 17, 10);
       c.fillText(statusText, x + w - 8, y + 17);
     } else {
       c.fillStyle = this.chromaTier === 0 ? '#555555' : '#667788';
-      const reqText = b.killsRequired ? `${b.killsRequired.toLocaleString()} FRAGS` : 'DÉFI';
+      const reqText = b.killsRequired ? `${b.killsRequired.toLocaleString()} KILLS` : 'FEAT';
       const tw = c.measureText(reqText).width;
       spriteAtlas.drawIcon(c, 'lock', x + w - 8 - tw - 8, y + 17, 10);
       c.fillText(reqText, x + w - 8, y + 17);
@@ -1784,12 +1784,12 @@ export class Renderer {
       c.font = '7.5px monospace';
       c.fillStyle = this.getChromaAccent('#00ffff', '#888888');
       c.textAlign = 'right';
-      c.fillText(`${progression.totalGhosts.toLocaleString()} / ${b.killsRequired.toLocaleString()} FRAGS`, pbX + pbW, pbY + 11);
+      c.fillText(`${progression.totalGhosts.toLocaleString()} / ${b.killsRequired.toLocaleString()} KILLS`, pbX + pbW, pbY + 11);
     } else if (unlocked) {
       c.font = '7.5px monospace';
       c.fillStyle = this.getChromaAccent('#ffaa00', '#aaaaaa');
       spriteAtlas.drawIcon(c, 'trophy', x + 14, y + 54, 10);
-      c.fillText('Trophée enregistré au profil cloud', x + 24, y + 54);
+      c.fillText('Trophy saved to cloud profile', x + 24, y + 54);
     }
 
     c.restore();
@@ -1844,7 +1844,7 @@ export class Renderer {
       // Hidden / classified: name is hidden!
       c.fillStyle = this.chromaTier === 0 ? '#444444' : '#4a5a70';
       spriteAtlas.drawIcon(c, 'lock', x + 16, y + 14, 12);
-      c.fillText(`[V${s.version}] ??? [CLASSIFIÉ]`, x + 28, y + 14);
+      c.fillText(`[V${s.version}] ??? [CLASSIFIED]`, x + 28, y + 14);
     }
 
     // Status pill
@@ -1852,16 +1852,16 @@ export class Renderer {
     c.font = 'bold 10px monospace';
     if (unlocked) {
       c.fillStyle = this.getChromaAccent('#00ffaa', '#cccccc');
-      const statusText = 'ACTIF';
+      const statusText = 'ACTIVE';
       const tw = c.measureText(statusText).width;
       spriteAtlas.drawIcon(c, 'check', x + w - 8 - tw - 8, y + 14, 10);
       c.fillText(statusText, x + w - 8, y + 14);
     } else if (isNext) {
       c.fillStyle = this.getChromaAccent('#ffd700', '#aaaaaa');
-      c.fillText(`OBJ: ${s.threshold.toLocaleString()} FRAGS`, x + w - 8, y + 14);
+      c.fillText(`GOAL: ${s.threshold.toLocaleString()} KILLS`, x + w - 8, y + 14);
     } else {
       c.fillStyle = this.chromaTier === 0 ? '#444444' : '#6a7888';
-      const reqText = `${s.threshold.toLocaleString()} FRAGS`;
+      const reqText = `${s.threshold.toLocaleString()} KILLS`;
       const tw = c.measureText(reqText).width;
       spriteAtlas.drawIcon(c, 'lock', x + w - 8 - tw - 8, y + 14, 10);
       c.fillText(reqText, x + w - 8, y + 14);
@@ -1878,7 +1878,7 @@ export class Renderer {
       c.fillText(s.command, x + 8, y + 26);
     } else {
       c.fillStyle = this.chromaTier === 0 ? '#333333' : '#334455';
-      c.fillText('COMMANDE CHIFFRÉE', x + 8, y + 26);
+      c.fillText('ENCRYPTED COMMAND', x + 8, y + 26);
     }
 
     // Effect summary
@@ -1893,7 +1893,7 @@ export class Renderer {
       c.fillText(descText, x + 8, y + 37);
     } else {
       c.fillStyle = this.chromaTier === 0 ? '#222222' : '#2a3848';
-      c.fillText('Atteignez le palier précédent pour décoder.', x + 8, y + 37);
+      c.fillText('Reach previous tier to decode.', x + 8, y + 37);
     }
   }
 
@@ -1925,15 +1925,15 @@ export class Renderer {
     c.fillStyle = this.getChromaAccent('#00ffff', '#ffffff');
     c.textAlign = 'center';
     if (isFromMenu) {
-      c.fillText('PARAMÈTRES & ACCESSIBILITÉ', this.cw / 2, cardY + 36);
+      c.fillText('SETTINGS & ACCESSIBILITY', this.cw / 2, cardY + 36);
       c.font = '10px monospace';
       c.fillStyle = this.chromaTier === 0 ? '#666666' : '#667799';
-      c.fillText('OPTIONS VISUELLES • FLUIDITÉ • PROFIL DU JOUEUR', this.cw / 2, cardY + 58);
+      c.fillText('VISUAL OPTIONS • PERFORMANCE • PLAYER PROFILE', this.cw / 2, cardY + 58);
     } else {
-      c.fillText('PAUSE — PARAMÈTRES VISUELS', this.cw / 2, cardY + 36);
+      c.fillText('PAUSE — DISPLAY & AUDIO SETTINGS', this.cw / 2, cardY + 36);
       c.font = '10px monospace';
       c.fillStyle = this.chromaTier === 0 ? '#666666' : '#667799';
-      c.fillText('CLIQUEZ SUR UNE OPTION OU UTILISEZ LES TOUCHES [1] À [5] / [M]', this.cw / 2, cardY + 58);
+      c.fillText('TAP AN OPTION OR PRESS KEYS [1] TO [5] / [M]', this.cw / 2, cardY + 58);
     }
 
     const s = settingsManager.settings;
@@ -1943,42 +1943,42 @@ export class Renderer {
         btn: PAUSE_BUTTONS[0],
         key: '[1]',
         label: 'FREEZE FRAME (HIT-STOP IMPACT)',
-        state: s.freezeFrame ? 'ACTIVÉ' : 'COUPÉ',
+        state: s.freezeFrame ? 'ON' : 'OFF',
         active: s.freezeFrame
       },
       {
         btn: PAUSE_BUTTONS[1],
         key: '[2]',
-        label: 'SECOUSSES D\'ÉCRAN (SCREEN SHAKE)',
-        state: s.screenShake ? 'ACTIVÉ' : 'COUPÉ',
+        label: 'SCREEN SHAKE',
+        state: s.screenShake ? 'ON' : 'OFF',
         active: s.screenShake
       },
       {
         btn: PAUSE_BUTTONS[2],
         key: '[3]',
-        label: 'ÉCLAIRS PLEIN ÉCRAN (FLASHES)',
-        state: s.screenFlash ? 'ACTIVÉ' : 'COUPÉ',
+        label: 'FULLSCREEN FLASHES',
+        state: s.screenFlash ? 'ON' : 'OFF',
         active: s.screenFlash
       },
       {
         btn: PAUSE_BUTTONS[3],
         key: '[4]',
-        label: 'LIGNES CRT SCANLINES (80s TV)',
-        state: s.crtScanlines ? 'ACTIVÉ' : 'COUPÉ',
+        label: 'CRT SCANLINES (80s TV)',
+        state: s.crtScanlines ? 'ON' : 'OFF',
         active: s.crtScanlines
       },
       {
         btn: PAUSE_BUTTONS[4],
         key: '[5]',
-        label: 'DENSITÉ DES PARTICULES',
-        state: s.particleDensity === 'max' ? 'MAX (1000)' : 'ÉCO (350)',
+        label: 'PARTICLE DENSITY',
+        state: s.particleDensity === 'max' ? 'MAX (1000)' : 'ECO (350)',
         active: s.particleDensity === 'max'
       },
       {
         btn: PAUSE_BUTTONS[5],
         key: '[M]',
         label: 'AUDIO & SYNTHWAVE BGM',
-        state: sounds.isMuted() ? 'COUPÉ' : 'ACTIF',
+        state: sounds.isMuted() ? 'OFF' : 'ON',
         active: !sounds.isMuted()
       }
     ];
@@ -2024,7 +2024,7 @@ export class Renderer {
     c.font = 'bold 11px monospace';
     c.fillStyle = this.getChromaAccent('#ff0055', '#888888');
     c.textAlign = 'center';
-    c.fillText('RÉINITIALISER MA PROGRESSION & PROFIL', wipeBtn.x + wipeBtn.w / 2, wipeBtn.y + 21);
+    c.fillText('RESET ALL PROGRESS & PROFILE', wipeBtn.x + wipeBtn.w / 2, wipeBtn.y + 21);
 
     if (isFromMenu) {
       // Home / Return button (spans full width)
@@ -2043,7 +2043,7 @@ export class Renderer {
       c.font = 'bold 13px monospace';
       c.fillStyle = '#ffffff';
       c.textAlign = 'center';
-      c.fillText('◀ RETOUR AU MENU [ECHAP / O]', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
+      c.fillText('◀ MAIN MENU [ESC / O]', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
     } else {
       // Resume button
       const resBtn = PAUSE_BUTTONS[7];
@@ -2062,7 +2062,7 @@ export class Renderer {
       c.font = `bold ${12 * pulse}px monospace`;
       c.fillStyle = '#ffffff';
       c.textAlign = 'center';
-      c.fillText('▶ REPRENDRE [P]', resBtn.x + resBtn.w / 2, resBtn.y + 26);
+      c.fillText('▶ RESUME [P]', resBtn.x + resBtn.w / 2, resBtn.y + 26);
 
       // Restart button
       const rstBtn = PAUSE_BUTTONS[8];
@@ -2080,7 +2080,7 @@ export class Renderer {
       c.font = 'bold 12px monospace';
       c.fillStyle = this.getChromaAccent('#ffaa00', '#aaaaaa');
       c.textAlign = 'center';
-      c.fillText('REJOUER [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 26);
+      c.fillText('RETRY [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 26);
 
       // Home button
       const homeBtn = PAUSE_BUTTONS[9];
@@ -2098,14 +2098,14 @@ export class Renderer {
       c.font = 'bold 12px monospace';
       c.fillStyle = this.getChromaAccent('#ff007f', '#aaaaaa');
       c.textAlign = 'center';
-      c.fillText('ACCUEIL', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
+      c.fillText('MAIN MENU', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
     }
 
     // Footer stats if in madness
     if (isMadness) {
       c.font = '10px monospace';
       c.fillStyle = this.getChromaAccent('#ffd700', '#666666');
-      c.fillText(`MODE CHROMAVORE • Kills : ${kills} • Streak : x${streak}`, this.cw / 2, cardY + cardH - 12);
+      c.fillText(`CHROMAVORE MODE • Kills: ${kills} • Streak: x${streak}`, this.cw / 2, cardY + cardH - 12);
     }
 
     c.font = '8.5px monospace';
@@ -2121,12 +2121,12 @@ export class Renderer {
     const list = isMadness ? MADNESS_LEVELS : LEVELS;
     const lvl = list[currentLevel % list.length];
     c.font = 'bold 36px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 25;
-    c.textAlign = 'center'; c.fillText('NIVEAU ' + (currentLevel + 1), this.cw / 2, CH / 2 - 12); c.shadowBlur = 0;
+    c.textAlign = 'center'; c.fillText('LEVEL ' + (currentLevel + 1), this.cw / 2, CH / 2 - 12); c.shadowBlur = 0;
     c.font = 'bold 18px monospace'; c.fillStyle = '#ffffff'; c.fillText(lvl.name, this.cw / 2, CH / 2 + 20);
     c.font = '13px monospace'; c.fillStyle = '#888'; c.fillText('+' + (1000 * (wave - 1)) + ' WAVE BONUS', this.cw / 2, CH / 2 + 46);
     if (loopCount > 0) {
       c.font = 'bold 15px monospace'; c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 10;
-      c.fillText(`BOUCLE ${loopCount + 1} : VITESSE +${loopCount * 10}% !`, this.cw / 2, CH / 2 + 72);
+      c.fillText(`LOOP ${loopCount + 1}: SPEED +${loopCount * 10}%!`, this.cw / 2, CH / 2 + 72);
       c.shadowBlur = 0;
     }
   }
@@ -2358,16 +2358,16 @@ export class Renderer {
     c.shadowBlur = 0;
 
     // Phase Title & Escalation State
-    let phaseTitle = 'PHASE I : ÉVEIL DU VORTEX';
+    let phaseTitle = 'PHASE I : VORTEX AWAKENING';
     let phaseCol = '#00f0ff';
     if (bonusTimer <= 2.5) {
-      phaseTitle = 'PHASE IV : SINGULARITÉ TOTALE';
+      phaseTitle = 'PHASE IV : TOTAL SINGULARITY';
       phaseCol = Math.sin(time * 16) > 0 ? '#ff0055' : '#ffffff';
     } else if (bonusTimer <= 7.0) {
-      phaseTitle = 'PHASE III : CATACLYSME COSMIQUE';
+      phaseTitle = 'PHASE III : COSMIC CATACLYSM';
       phaseCol = '#ffd700';
     } else if (bonusTimer <= 12.0) {
-      phaseTitle = 'PHASE II : SURGE EXPONENTIELLE';
+      phaseTitle = 'PHASE II : EXPONENTIAL SURGE';
       phaseCol = '#d946ef';
     }
 
@@ -2403,12 +2403,12 @@ export class Renderer {
     c.shadowBlur = 8;
     c.textAlign = 'left';
     spriteAtlas.drawIcon(c, 'skull', 20, 32, 12);
-    c.fillText(bonusKills + ' PULVÉRISÉS', 30, 32);
+    c.fillText(bonusKills + ' OBLITERATED', 30, 32);
     c.shadowBlur = 0;
     c.font = 'bold 9px monospace';
     c.fillStyle = '#00ffff';
     spriteAtlas.drawIcon(c, 'spectre', 20, 48, 11);
-    c.fillText(`${maxDraw} ENNEMIS EN ARÈNE`, 30, 48);
+    c.fillText(`${maxDraw} ENEMIES IN ARENA`, 30, 48);
 
     // Right: Real-time Player Score & Bonus Accumulator
     c.font = 'bold 13px monospace';
@@ -2420,14 +2420,14 @@ export class Renderer {
     c.shadowBlur = 0;
     c.font = 'bold 10px monospace';
     c.fillStyle = '#ffd700';
-    c.fillText('+' + bonusScore.toLocaleString('fr-FR') + ' BONUS', this.cw - 12, 48);
+    c.fillText('+' + bonusScore.toLocaleString('en-US') + ' BONUS', this.cw - 12, 48);
     c.shadowBlur = 0;
 
     // Bottom Controls Hint
     c.font = 'bold 9px monospace';
     c.fillStyle = 'rgba(255, 255, 255, 0.7)';
     c.textAlign = 'center';
-    c.fillText('ABSORBEZ LES HORDES AVEC LE FORCE FIELD • [ESPACE] DASH', this.cw / 2, CH - 14);
+    c.fillText('ABSORB SWARMS WITH FORCE FIELD • [SPACE] DASH', this.cw / 2, CH - 14);
 
     c.restore();
   }
@@ -2461,27 +2461,27 @@ export class Renderer {
     c.textAlign = 'center';
     spriteAtlas.drawIcon(c, 'vortex', this.cw / 2 - 130, by + 34, 18);
     spriteAtlas.drawIcon(c, 'vortex', this.cw / 2 + 130, by + 34, 18);
-    c.fillText('RAMPAGE DU VORTEX TERMINÉ !', this.cw / 2, by + 34);
+    c.fillText('VORTEX RAMPAGE COMPLETE!', this.cw / 2, by + 34);
     c.shadowBlur = 0;
 
     // Kills line
     c.font = 'bold 14px monospace';
     c.fillStyle = '#ffffff';
     spriteAtlas.drawIcon(c, 'skull', this.cw / 2 - 90, by + 74, 16);
-    c.fillText(`${bonusKills} SPECTRES DÉTRUITS`, this.cw / 2 + 8, by + 74);
+    c.fillText(`${bonusKills} GHOSTS DESTROYED`, this.cw / 2 + 8, by + 74);
 
     // Score line
     c.font = 'bold 18px monospace';
     c.fillStyle = '#00ffff';
     c.shadowColor = '#00ffff';
     c.shadowBlur = 12;
-    c.fillText(`+${bonusScore.toLocaleString('fr-FR')} POINTS !`, this.cw / 2, by + 112);
+    c.fillText(`+${bonusScore.toLocaleString('en-US')} POINTS!`, this.cw / 2, by + 112);
     c.shadowBlur = 0;
 
     // Subtitle
     c.font = '9px monospace';
     c.fillStyle = '#a855f7';
-    c.fillText('RETOUR AU LABYRINTHE...', this.cw / 2, by + 150);
+    c.fillText('RETURNING TO MAZE...', this.cw / 2, by + 150);
 
     c.restore();
   }

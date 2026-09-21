@@ -26,12 +26,12 @@ export const SKILL_TREE: SkillDef[] = [
     id: 'dash_v1',
     baseId: 'dash',
     version: 1,
-    name: 'DASH OFFENSIF',
+    name: 'OFFENSIVE DASH',
     icon: 'dash',
     threshold: 10,
     category: 'movement',
-    command: 'ESPACE ou BOUTON DASH',
-    desc: 'Téléportation offensive de 3 cases à travers les fantômes avec taillade'
+    command: 'SPACE or DASH BUTTON',
+    desc: '3-tile offensive warp slashing through ghosts'
   },
   {
     id: 'nova_v1',
@@ -41,8 +41,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nova',
     threshold: 75,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Explosion thermo-nucléaire qui purge instantanément tous les fantômes'
+    command: 'AUTO ON PICKUP',
+    desc: 'Thermo-nuclear burst instantly vaporizing all ghosts on screen'
   },
   {
     id: 'wiggle_v1',
@@ -53,7 +53,7 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 120,
     category: 'kombo',
     command: '← → ← → (Wiggle)',
-    desc: 'Onde de choc EMP qui repousse et étourdit les fantômes proches pendant 2.5s'
+    desc: 'EMP shockwave knocking back and stunning nearby ghosts for 2.5s'
   },
   {
     id: 'chrono_v1',
@@ -63,19 +63,19 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'chrono',
     threshold: 180,
     category: 'movement',
-    command: 'SHIFT ou BOUTON CHRONO',
-    desc: 'Dilatation temporelle : ralentit le monde à 18% pour esquiver les essaims'
+    command: 'SHIFT or CHRONO BTN',
+    desc: 'Time dilation: slows the world to 18% to slip through dense swarms'
   },
   {
     id: 'overdrive_v1',
     baseId: 'overdrive',
     version: 1,
-    name: 'DASH INFINI',
+    name: 'INFINITE DASH',
     icon: 'overdrive',
     threshold: 260,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Dash illimité sans aucun temps de recharge pendant 8 secondes'
+    command: 'AUTO ON PICKUP',
+    desc: 'Zero-cooldown infinite dash for 8 adrenaline-filled seconds'
   },
   {
     id: 'nitro_v1',
@@ -85,8 +85,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nitro',
     threshold: 360,
     category: 'kombo',
-    command: '↑ ↓ ↑ ↓ (Pompage)',
-    desc: 'Vitesse turbo accrue + traînée ardente brûlant les fantômes pendant 3.2s'
+    command: '↑ ↓ ↑ ↓ (Pump)',
+    desc: 'Turbo speed boost leaving a burning trail that incinerates ghosts for 3.2s'
   },
   {
     id: 'vortex_v1',
@@ -96,8 +96,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'black_hole',
     threshold: 500,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Vortex gravitationnel qui attire et désintègre tous les spectres'
+    command: 'AUTO ON PICKUP',
+    desc: 'Gravitational singularity pulling and crushing all spectres in range'
   },
   {
     id: 'laser_v1',
@@ -107,8 +107,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'laser',
     threshold: 700,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Canons lasers cruciformes découpant les couloirs horizontaux et verticaux'
+    command: 'AUTO-FIRES AT 16x COMBO',
+    desc: 'Cross-axial laser cannons cutting through horizontal and vertical corridors'
   },
   {
     id: 'cryo_v1',
@@ -118,8 +118,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'cryo',
     threshold: 950,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Zéro absolu : gèle tous les spectres pour les briser au moindre contact'
+    command: 'AUTO ON PICKUP',
+    desc: 'Absolute zero: freezes all ghosts to shatter them on contact'
   },
   {
     id: 'tsunami_v1',
@@ -129,8 +129,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'tsunami',
     threshold: 1250,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Vague royale sacrée balayant tout le labyrinthe + bonus de temps de survie'
+    command: 'AUTO-FIRES AT 32x GOD MODE',
+    desc: 'Sacred royal wave clearing the entire maze with extra survival time'
   },
   {
     id: 'dash_v2',
@@ -140,19 +140,19 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'dash',
     threshold: 1600,
     category: 'movement',
-    command: 'ESPACE ou BOUTON DASH',
-    desc: 'Portée 4 cases, recharge -25% et déblocage de l\'Arène Widescreen 16:9 !'
+    command: 'SPACE or DASH BUTTON',
+    desc: '4-tile reach, -25% cooldown, and unlocks the 16:9 Widescreen Arena!'
   },
   {
     id: 'super_pellet_v1',
     baseId: 'super_pellet',
     version: 1,
-    name: 'SUPER PASTILLE',
+    name: 'SUPER PELLET',
     icon: 'super_pellet',
     threshold: 2000,
     category: 'item',
-    command: 'AUTOMATIQUE SUR SUPER PASTILLE',
-    desc: 'Les renforts qui arrivent pendant la peur sont eux aussi effrayés'
+    command: 'EAT POWER PELLET',
+    desc: 'Reinforcement ghosts entering the maze are also frightened'
   },
   {
     id: 'wiggle_v2',
@@ -163,7 +163,7 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 2400,
     category: 'kombo',
     command: '← → ← → (Wiggle)',
-    desc: 'Rayon doublé (160px), étourdissement 4s et rend les fantômes vulnérables/mangeables'
+    desc: 'Double radius (160px), 4s stun, and turns ghosts vulnerable to consumption'
   },
   {
     id: 'chrono_v2',
@@ -173,19 +173,19 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'chrono',
     threshold: 2800,
     category: 'movement',
-    command: 'SHIFT ou BOUTON CHRONO',
-    desc: 'Ralentissement extrême à 12%, jauge 150% et régénération passive accélérée'
+    command: 'SHIFT or CHRONO BTN',
+    desc: 'Extreme slow-motion at 12%, 150% energy tank, and accelerated recharge'
   },
   {
     id: 'hd_audio',
     baseId: 'audio',
     version: 1,
-    name: 'OST HD DARKSYNTH',
+    name: 'HD DARKSYNTH OST',
     icon: 'music',
     threshold: 3000,
     category: 'item',
-    command: 'AUTOMATIQUE (3 000 FRAGS)',
-    desc: 'Métamorphose sonore : débloque la bande-son HD Studio Dark Synthwave complète'
+    command: 'OPTIONS MENU [O]',
+    desc: 'Audio transformation: unlocks the complete Studio HD Dark Synthwave soundtrack'
   },
   {
     id: 'nitro_v2',
@@ -195,8 +195,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nitro',
     threshold: 3300,
     category: 'kombo',
-    command: '↑ ↓ ↑ ↓ (Pompage)',
-    desc: 'Vitesse turbo +20%, durée 4.5s et traînée de feu persistante au sol pendant 2.5s'
+    command: '↑ ↓ ↑ ↓ (Pump)',
+    desc: '+20% turbo speed, 4.5s duration, and persistent ground plasma for 2.5s'
   },
   {
     id: 'nova_v2',
@@ -206,8 +206,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nova',
     threshold: 3900,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Purge totale + pluie d\'orbes dorées bonus et multiplicateurs instantanés'
+    command: 'AUTO ON PICKUP',
+    desc: 'Full screen purge + golden bonus orb shower and instant multipliers'
   },
   {
     id: 'dash_v3',
@@ -217,19 +217,19 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'dash',
     threshold: 4500,
     category: 'movement',
-    command: 'ESPACE ou BOUTON DASH',
-    desc: 'Portée 5 cases : traverse les longues lignes du Swarm d\'un seul éclair'
+    command: 'SPACE or DASH BUTTON',
+    desc: '5-tile reach: pierce through deep swarm lines in a single flash'
   },
   {
     id: 'overdrive_v2',
     baseId: 'overdrive',
     version: 2,
-    name: 'CHRONO OVERDRIVE V2',
+    name: 'CHRONO DRIVE V2',
     icon: 'overdrive',
     threshold: 5200,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Dash infini + invulnérabilité totale sans surchauffe pendant toute la durée'
+    command: 'AUTO ON PICKUP',
+    desc: 'Infinite dash + invulnerability with zero overheat for the entire duration'
   },
   {
     id: 'vortex_v2',
@@ -239,8 +239,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'black_hole',
     threshold: 6000,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Le trou noir aspire également toutes les pastilles et orbes de la zone'
+    command: 'AUTO ON PICKUP',
+    desc: 'Black hole also vacuums and collects all dots and pellets in the area'
   },
   {
     id: 'laser_v2',
@@ -250,8 +250,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'laser',
     threshold: 7000,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Lasers à 8 directions (cruciformes + 4 diagonales) rasant intégralement la carte'
+    command: 'AUTO-FIRES AT 16x COMBO',
+    desc: '8-directional laser star (cross + diagonals) slicing the entire arena'
   },
   {
     id: 'dash_v4',
@@ -261,8 +261,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'dash',
     threshold: 8000,
     category: 'movement',
-    command: 'ESPACE ou BOUTON DASH',
-    desc: 'Portée 6 cases : percée maximale à travers les essaims les plus denses'
+    command: 'SPACE or DASH BUTTON',
+    desc: '6-tile reach: maximum breakthrough through the heaviest hordes'
   },
   {
     id: 'cryo_v2',
@@ -272,8 +272,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'cryo',
     threshold: 9000,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Gèle tous les fantômes et les fait exploser en chaîne au bout de 3 secondes'
+    command: 'AUTO ON PICKUP',
+    desc: 'Freezes all ghosts and triggers a chain-reaction explosion after 3s'
   },
   {
     id: 'tsunami_v2',
@@ -283,19 +283,19 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'tsunami',
     threshold: 10000,
     category: 'item',
-    command: 'AUTOMATIQUE AU RAMASSAGE',
-    desc: 'Double vague royale aller-retour + recharge instantanée de l\'arsenal (100% Maîtrisé)'
+    command: 'AUTO-FIRES AT 32x GOD MODE',
+    desc: 'Dual sweeping royal wave back-and-forth + instant arsenal reload (100% Mastered)'
   },
   {
     id: 'dash_v5',
     baseId: 'dash',
     version: 5,
-    name: 'QUANTUM DASH BURST V5',
+    name: 'QUANTUM BURST V5',
     icon: 'dash',
     threshold: 12000,
     category: 'movement',
-    command: 'ESPACE ou BOUTON DASH',
-    desc: 'Brise-Mur Quantique : défonce et traverse jusqu\'à 3 cases de mur avec onde de choc et freeze-frame'
+    command: 'SPACE or DASH BUTTON',
+    desc: 'Quantum Wall-Breaker: smashes and phases through up to 3 walls with shockwave & freeze-frame'
   }
 ];
 
@@ -324,7 +324,7 @@ class ProgressionManager {
       if (prev < s.threshold && next >= s.threshold) {
         newlyUnlocked.push(s);
         sounds.play('badge');
-        wobbleBanner.show('★ NOUVEAU POUVOIR DÉBLOQUÉ ★', s.name, s.command, s.icon, '#00f0ff', 2.4);
+        wobbleBanner.show('★ NEW SKILL UNLOCKED ★', s.name, s.command, s.icon, '#00f0ff', 2.4);
         particles.flash('#00f0ff', 0.35);
         particles.shake(6, 0.2);
       }

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090117">
-<title>CHROMAVORE v3.8.2 // SYNTHWAVE 1984</title>
+<title>CHROMAVORE v3.9.0 // SYNTHWAVE 1984</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='55,5 15,55 45,55 35,95 85,45 55,45' fill='%2300f0ff'/></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -329,12 +329,12 @@ canvas{
         </svg>
       </div>
       <div style="color:#00f0ff;font-size:15px;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">
-        REPRENDRE UNE PARTIE
+        RESTORE SAVED PROFILE
       </div>
       <div style="color:#8899bb;font-size:10px;margin-bottom:14px;line-height:1.4;">
-        Entrez votre Pseudo et votre Code ID de sauvegarde pour restaurer votre progression.
+        Enter your Username and 6-character Sync Code to restore your career stats, skills, and high scores.
       </div>
-      <div style="text-align:left;color:#00ffff;font-size:10px;font-weight:bold;margin-bottom:4px;">PSEUDO</div>
+      <div style="text-align:left;color:#00ffff;font-size:10px;font-weight:bold;margin-bottom:4px;">USERNAME</div>
       <input id="restore-pseudo-input" type="text" maxlength="12" autocomplete="off" placeholder="FLATOUPIX"
         style="
           background:#0c1830;border:1.5px solid #00f0ff;border-radius:6px;
@@ -343,7 +343,7 @@ canvas{
           outline:none;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;
         "
       />
-      <div style="text-align:left;color:#ffd700;font-size:10px;font-weight:bold;margin-bottom:4px;">CODE ID (Ex: CHV-8429)</div>
+      <div style="text-align:left;color:#ffd700;font-size:10px;font-weight:bold;margin-bottom:4px;">SYNC ID (E.g. CHV-8429)</div>
       <input id="restore-code-input" type="text" maxlength="8" autocomplete="off" placeholder="CHV-XXXX"
         style="
           background:#0c1830;border:1.5px solid #ffd700;border-radius:6px;
@@ -360,13 +360,13 @@ canvas{
         font-family:monospace;font-size:12px;font-weight:bold;
         letter-spacing:2px;cursor:pointer;
         box-shadow:0 0 16px rgba(0,240,255,0.4);
-      ">RESTAURER MON PROFIL</button>
+      ">RESTORE PROFILE</button>
       <button id="restore-cancel" style="
         margin-top:8px;width:100%;padding:8px;
         background:transparent;border:1px solid #334466;
         border-radius:8px;color:#667799;
         font-family:monospace;font-size:11px;cursor:pointer;
-      ">ANNULER</button>
+      ">CANCEL</button>
     </div>
   </div>
 
@@ -390,10 +390,10 @@ canvas{
         </svg>
       </div>
       <div style="color:#ff0055;font-size:15px;font-weight:bold;letter-spacing:2px;margin-bottom:12px;">
-        RÉINITIALISER LA PROGRESSION ?
+        RESET ALL PROGRESS?
       </div>
       <div style="color:#aabbcc;font-size:11px;line-height:1.5;margin-bottom:20px;">
-        Voulez-vous vraiment effacer votre progression (fantômes dévorés, compétences débloquées et records) pour repartir de zéro ?
+        Are you sure you want to permanently erase your progress (devoured ghosts, unlocked skills, and records) to start fresh?
       </div>
       <button id="wipe-confirm" style="
         width:100%;padding:11px;
@@ -402,13 +402,13 @@ canvas{
         font-family:monospace;font-size:12px;font-weight:bold;
         letter-spacing:2px;cursor:pointer;
         box-shadow:0 0 16px rgba(255,0,85,0.4);
-      ">OUI, TOUT EFFACER</button>
+      ">YES, RESET EVERYTHING</button>
       <button id="wipe-cancel" style="
         margin-top:8px;width:100%;padding:8px;
         background:transparent;border:1px solid #334466;
         border-radius:8px;color:#8899bb;
         font-family:monospace;font-size:11px;cursor:pointer;
-      ">ANNULER</button>
+      ">CANCEL</button>
     </div>
   </div>
   <!-- Floating Mobile Controls (Option A) -->
@@ -426,7 +426,7 @@ canvas{
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
           <path d="M2 5h3l4-4v14l-4-4H2V5zm10 0c1.5 1.5 1.5 4.5 0 6m2-8c2.5 2.5 2.5 7.5 0 10"/>
         </svg>
-        <span>SON</span>
+        <span>AUDIO</span>
       </button>
     </div>
 
@@ -466,7 +466,7 @@ canvas{
     </div>
   </div>
 </div>
-<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.8.2</div>
+<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.9.0</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

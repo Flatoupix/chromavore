@@ -153,17 +153,17 @@ class Game {
       if (!p || !c) {
         restoreStatus.style.display = 'block';
         restoreStatus.style.color = '#ff0055';
-        restoreStatus.textContent = 'Veuillez remplir le pseudo et le code.';
+        restoreStatus.textContent = 'Please enter both username and Sync ID.';
         return;
       }
       restoreStatus.style.display = 'block';
       restoreStatus.style.color = '#ffd700';
-      restoreStatus.textContent = 'Connexion à Firebase...';
+      restoreStatus.textContent = 'Connecting to cloud profile...';
 
       const ok = await profileManager.restoreProfile(p, c);
       if (ok) {
         restoreStatus.style.color = '#00ffaa';
-        restoreStatus.textContent = `Succès ! Profil ${p} chargé (${profileManager.profile.careerGhosts} spectres)`;
+        restoreStatus.textContent = `Success! Profile ${p} loaded (${profileManager.profile.careerGhosts} ghosts)`;
         badges.hiScore = profileManager.profile.hiScore;
         badges.bestMadnessKills = profileManager.profile.bestMadnessKills;
         badges.syncWithProfile();
@@ -174,7 +174,7 @@ class Game {
         }, 1200);
       } else {
         restoreStatus.style.color = '#ff0055';
-        restoreStatus.textContent = 'Pseudo ou Code ID introuvable sur le cloud.';
+        restoreStatus.textContent = 'Username or Sync ID not found on cloud.';
       }
     };
 
@@ -202,7 +202,7 @@ class Game {
       this.state = 'menu';
       particles.shake(6, 0.25);
       particles.flash('#ff0055', 0.3);
-      particles.addPop(CW / 2, (ROWS * T) / 2, 'PROGRESSION RÉINITIALISÉE !', '#ff0055', 20);
+      particles.addPop(CW / 2, (ROWS * T) / 2, 'PROGRESS RESET!', '#ff0055', 20);
       sounds.play('powerup');
     });
 
@@ -235,8 +235,8 @@ class Game {
     const inputEl = document.getElementById('pseudo-input') as HTMLInputElement;
     if (!modal || !titleEl || !scoreEl || !inputEl) return;
 
-    titleEl.textContent = 'NOUVEAU RECORD !';
-    scoreEl.textContent = `${this.pendingKills} FANTÔMES PURGÉS (STREAK x${this.pendingStreak})`;
+    titleEl.textContent = 'NEW HIGH SCORE!';
+    scoreEl.textContent = `${this.pendingKills} GHOSTS PURGED (STREAK x${this.pendingStreak})`;
 
     const lastPseudo = localStorage.getItem('chv_last_pseudo') || '';
     inputEl.value = lastPseudo;
@@ -334,7 +334,7 @@ class Game {
         // Copy sync code if tapping player line (y: ~480)
         if (cy >= 465 && cy <= 495) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(curCw / 2, 480, 'CODE ID COPIÉ !', '#00ffff', 14);
+          particles.addPop(curCw / 2, 480, 'SYNC ID COPIED!', '#00ffff', 14);
           sounds.play('click');
           return;
         }
@@ -764,7 +764,7 @@ class Game {
     particles.flash(def.glowColor, 0.35);
     particles.emit(this.renderer.cw / 2, (ROWS * T) / 2, 50, def.glowColor, { speed: 220, size: 5, life: 0.8 });
     particles.shake(6, 0.25);
-    particles.addPop(this.renderer.cw / 2, HUD_H + 35, `NIVEAU ${lvlIndex + 1}/${list.length} : ${def.name}`, def.glowColor, 22);
+    particles.addPop(this.renderer.cw / 2, HUD_H + 35, `LEVEL ${lvlIndex + 1}/${list.length}: ${def.name}`, def.glowColor, 22);
   }
 
   private checkArenaUnlock(prevCareer: number) {
@@ -885,7 +885,7 @@ class Game {
     if (!milestones.includes(kills)) return;
     const profile = this.enemyManager.getSwarmProfile(kills, this.maze.currentLevel);
     const pp = this.player.getPos();
-    particles.addPop(pp.x, pp.y - 42, `ESSAIM ↑ • ${profile.cap} SPECTRES MAX`, '#ff5533', 15);
+    particles.addPop(pp.x, pp.y - 42, `SWARM ↑ • ${profile.cap} GHOSTS MAX`, '#ff5533', 15);
     particles.flash('#ff5533', 0.15);
   }
 
@@ -964,7 +964,7 @@ class Game {
 
     sounds.play('portal');
     particles.shake(7, 0.35);
-    particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 40, 'RAMPAGE DU VORTEX ! (15s)', '#d946ef', 24);
+    particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 40, 'VORTEX RAMPAGE! (15s)', '#d946ef', 24);
   }
 
   public updateBonusStage(dt: number) {
@@ -1246,7 +1246,7 @@ class Game {
         progression.addGhostKills(careerBonusKills);
         this.checkArenaUnlock(prevCareer);
         this.madnessKills += careerBonusKills;
-        particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 70, `+${careerBonusKills} KILLS CARRIÈRE (100:1)`, '#ffd700', 20);
+        particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 70, `+${careerBonusKills} CAREER KILLS (100:1)`, '#ffd700', 20);
       }
 
       if (this.bonusKills >= 50) {
@@ -1265,15 +1265,15 @@ class Game {
       title = `APOCALYPSE x${bk}`;
       col = '#ff0055';
     } else if (bk >= 40) {
-      title = `CATACLYSME x${bk}`;
+      title = `CATACLYSM x${bk}`;
       col = '#ffd700';
     } else if (bk >= 20) {
-      title = `OBLITÉRATION x${bk}`;
+      title = `OBLITERATION x${bk}`;
       col = '#d946ef';
     }
     this.bonusMultikillBanner = {
       text: title,
-      subtext: `+${sc.toLocaleString('fr-FR')} PTS`,
+      subtext: `+${sc.toLocaleString('en-US')} PTS`,
       col,
       life: 0.85
     };
@@ -1345,7 +1345,7 @@ class Game {
         this.player.addSuperPelletBoost();
 
         if (isSuperPellet) {
-          particles.addPop(px, py - 38, 'SUPER PASTILLE : RENFORTS EFFRAYÉS !', '#ffd700', 16);
+          particles.addPop(px, py - 38, 'POWER PELLET: SCARED REINFORCEMENTS!', '#ffd700', 16);
           particles.flash('#ffd700', 0.18);
         }
 
@@ -1413,7 +1413,7 @@ class Game {
 
         const bonus = 2000 + (this.wave - 1) * 500;
         this.score += bonus;
-        particles.addPop(px, py - 25, `+${bonus} BONUS NIVEAU !`, '#ffd700', 22);
+        particles.addPop(px, py - 25, `+${bonus} LEVEL CLEAR BONUS!`, '#ffd700', 22);
         sounds.play('powerup');
         particles.flash('#ffd700', 0.25);
         particles.shake(6, 0.25);
@@ -1423,7 +1423,7 @@ class Game {
           this.loopCount++;
           badges.unlock('loop1');
           if (this.loopCount >= 2) badges.unlock('loop2');
-          particles.addPop(CW / 2, HUD_H + 60, `BOUCLE ${this.loopCount + 1} ! (+${this.loopCount * 10}% VITESSE)`, '#ffd700', 24);
+          particles.addPop(CW / 2, HUD_H + 60, `LOOP ${this.loopCount + 1}! (+${this.loopCount * 10}% SPEED)`, '#ffd700', 24);
           particles.flash('#ffd700', 0.45);
           particles.shake(12, 0.4);
         }
@@ -1463,7 +1463,7 @@ class Game {
       sounds.play('powerup');
       particles.shake(10, 0.35);
       particles.flash('#ffd700', 0.3);
-      particles.addPop(px, py - 42, 'MODE DIEU : 15s D\'INVINCIBILITÉ !', '#ffd700', 32);
+      particles.addPop(px, py - 42, 'GOD MODE: 15s INVINCIBILITY!', '#ffd700', 32);
       particles.emit(px, py, 40, '#ffd700', { speed: 200, size: 5.5, life: 0.7 });
       this.combo.t = GOD_MODE_DURATION;
       badges.unlock('combo32');
@@ -1489,28 +1489,28 @@ class Game {
       dBtn.classList.remove('cooling', 'locked', 'overdrive');
 
       if (!isRunActive) {
-        dLbl.textContent = 'JOUER';
+        dLbl.textContent = 'PLAY';
         dLbl.style.color = '#00ffff';
-        dBtn.setAttribute('aria-label', 'Jouer');
+        dBtn.setAttribute('aria-label', 'Play');
       } else if (!dashUnlocked) {
         dBtn.classList.add('locked');
-        dLbl.textContent = '10 FRAGS';
+        dLbl.textContent = '10 KILLS';
         dLbl.style.color = '#ffaa00';
-        dBtn.setAttribute('aria-label', 'Dash déverrouillé à 10 frags');
+        dBtn.setAttribute('aria-label', 'Dash unlocked at 10 kills');
       } else if (isOverdrive) {
         dBtn.classList.add('overdrive');
         dLbl.textContent = 'NO-CD ' + powerups.fx.overdrive.toFixed(1) + 's';
         dLbl.style.color = '#00ffcc';
-        dBtn.setAttribute('aria-label', 'Dash sans recharge');
+        dBtn.setAttribute('aria-label', 'Dash without cooldown');
       } else if (this.player.dashCd > 0) {
         dBtn.classList.add('cooling');
         dLbl.textContent = this.player.dashCd.toFixed(1) + 's';
         dLbl.style.color = '#8899aa';
-        dBtn.setAttribute('aria-label', 'Dash en recharge');
+        dBtn.setAttribute('aria-label', 'Dash cooling down');
       } else {
         dLbl.textContent = 'READY';
         dLbl.style.color = '#00ffff';
-        dBtn.setAttribute('aria-label', 'Dash prêt');
+        dBtn.setAttribute('aria-label', 'Dash ready');
       }
     }
 
@@ -1870,7 +1870,7 @@ class Game {
             particles.shake(12, 0.4);
             particles.flash('#ff0033', 0.5);
             this.madnessTimer = Math.max(2, this.madnessTimer - 6.0);
-            particles.addPop(CW / 2, 70, 'TITAN DU VIDE CRÉÉ ! (-6s)', '#ff0033', 20);
+            particles.addPop(CW / 2, 70, 'VOID TITAN SPAWNED! (-6s)', '#ff0033', 20);
           },
           () => {
             // Void Core intercepted
@@ -1879,7 +1879,7 @@ class Game {
             sounds.play('powerup');
             particles.shake(8, 0.3);
             particles.flash('#00ffff', 0.4);
-            particles.addPop(CW / 2, 70, 'CŒUR DU VIDE ANÉANTI ! (+6s & FORCE FIELD)', '#00ffff', 20);
+            particles.addPop(CW / 2, 70, 'VOID CORE ANNIHILATED! (+6s & FORCE FIELD)', '#00ffff', 20);
           },
           (px, py) => {
             // Nova collection
@@ -1918,7 +1918,7 @@ class Game {
             sounds.resetDotStreak();
             if (wasGod) {
               const pp = this.player.getPos();
-              particles.addPop(pp.x, pp.y - 20, 'FIN DU MODE DIEU (15s)', '#8899aa', 14);
+              particles.addPop(pp.x, pp.y - 20, 'GOD MODE EXPIRED (15s)', '#8899aa', 14);
             }
           } else {
             const tier = getComboTier(this.combo.n);
@@ -1938,7 +1938,7 @@ class Game {
             this.player.reset(this.maze, spdMult);
             this.state = 'playing';
             this.player.invuln = 2.0;
-            particles.addPop(CW / 2, HUD_H + 32, 'BOUCLIER ACTIF (2s)', '#00ffff', 14);
+            particles.addPop(CW / 2, HUD_H + 32, 'SHIELD ACTIVE (2s)', '#00ffff', 14);
           } else {
             this.triggerGameOver();
           }
@@ -1962,17 +1962,17 @@ class Game {
     };
 
     // Every active effect gets an explicit countdown; icons stay compact over the board.
-    add('BOUCLIER', this.player.invuln, 2.2, '#ffffff', 'phase');
-    add('FANTÔMES EFFRAYÉS', powerups.pred.t, powerups.pred.maxT, '#00ffff', 'lightning');
+    add('SHIELD', this.player.invuln, 2.2, '#ffffff', 'phase');
+    add('FRIGHTENED GHOSTS', powerups.pred.t, powerups.pred.maxT, '#00ffff', 'lightning');
     add('FORCE FIELD', powerups.fx.magnet, Math.max(9, powerups.getForceFieldStats(progression.totalGhosts).duration), '#00f0ff', 'magnet');
     add('PHASE', powerups.fx.phase, 4, '#ff00ff', 'phase');
     add('TIMEWARP', powerups.fx.timewarp, 5, '#b080ff', 'chrono');
-    add('DASH INFINI', powerups.fx.overdrive, progression.getSkillLevel('overdrive') >= 2 ? 10 : 8, '#00ffcc', 'overdrive');
+    add('INFINITE DASH', powerups.fx.overdrive, progression.getSkillLevel('overdrive') >= 2 ? 10 : 8, '#00ffcc', 'overdrive');
     for (const effect of superItems.getActiveEffects()) {
       add(effect.label, effect.timer, effect.maxTimer, effect.color, effect.icon);
     }
     if (this.maze.cols > 21) {
-      add('BOOST PASTILLE', this.player.superPelletBoostTimer, 3.5, '#ffd700', 'lightning');
+      add('PELLET BOOST', this.player.superPelletBoostTimer, 3.5, '#ffd700', 'lightning');
     }
 
     return effects;

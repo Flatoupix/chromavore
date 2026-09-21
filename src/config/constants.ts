@@ -59,7 +59,7 @@ export const PN: Record<string, string> = {
   nova: 'NOVA BURST',
   timewarp: 'TIME WARP',
   magnet: 'FORCE FIELD',
-  overdrive: 'DASH INFINI',
+  overdrive: 'INFINITE DASH',
   portal: 'VORTEX RAMPAGE'
 };
 
@@ -130,9 +130,9 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.8.2';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.9.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.8.2';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.9.0';
 
 // ─────────────────────────────────────────────────────────────────
 //  CHROMA AWAKENING — Visual Progression Tiers (career ghost kills)
