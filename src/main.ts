@@ -714,11 +714,20 @@ class Game {
         e.t = 1;
       }
     }
-    // Refill up to a kill-scaled minimum (not a hard 8) so early warps stay manageable
-    const warpMinGhosts = Math.min(8, 2 + Math.floor(this.madnessKills / 10));
-    if (this.enemyManager.enemies.filter(e => e.st !== 'dead').length < warpMinGhosts) {
-      this.enemyManager.spawnMadness(warpMinGhosts - this.enemyManager.enemies.length, this.madnessKills, this.maze);
+    // Refill up to a level- and kill-scaled target so swarm pressure naturally builds up as levels advance
+    const livingGhosts = this.enemyManager.enemies.filter(e => e.st !== 'dead').length;
+    const careerBonus = Math.min(4, Math.floor(progression.totalGhosts / 60));
+    const levelBase = 4 + lvlIndex * 2 + (this.loopCount * 3);
+    const killBonus = Math.floor(this.madnessKills / 8);
+    const swarmProfile = this.enemyManager.getSwarmProfile(this.madnessKills, lvlIndex);
+    const targetSwarm = Math.min(
+      swarmProfile.cap,
+      Math.max(6, levelBase + careerBonus + killBonus)
+    );
+    if (livingGhosts < targetSwarm) {
+      this.enemyManager.spawnMadness(targetSwarm - livingGhosts, this.madnessKills, this.maze, lvlIndex);
     }
+    this.madnessSpawnTimer = Math.min(this.madnessSpawnTimer, 0.8);
     this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
 
     // Wall safety: relocate any active powerup or relic trapped in new layout or inside ghost house
@@ -872,9 +881,9 @@ class Game {
   }
 
   private checkSwarmMilestone(kills: number) {
-    const milestones = [10, 30, 75, 150, 300, 600, 1200, 2500];
+    const milestones = [15, 35, 70, 120, 200, 350];
     if (!milestones.includes(kills)) return;
-    const profile = this.enemyManager.getSwarmProfile(kills);
+    const profile = this.enemyManager.getSwarmProfile(kills, this.maze.currentLevel);
     const pp = this.player.getPos();
     particles.addPop(pp.x, pp.y - 42, `ESSAIM ↑ • ${profile.cap} SPECTRES MAX`, '#ff5533', 15);
     particles.flash('#ff5533', 0.15);
@@ -1723,9 +1732,9 @@ class Game {
         }
         this.madnessSpawnTimer -= dt * timeScale;
         if (this.madnessSpawnTimer <= 0) {
-          const swarm = this.enemyManager.getSwarmProfile(this.madnessKills);
+          const swarm = this.enemyManager.getSwarmProfile(this.madnessKills, this.maze.currentLevel);
           this.madnessSpawnTimer = swarm.interval;
-          this.enemyManager.spawnMadness(swarm.burst, this.madnessKills, this.maze);
+          this.enemyManager.spawnMadness(swarm.burst, this.madnessKills, this.maze, this.maze.currentLevel);
         }
 
         // Action inputs

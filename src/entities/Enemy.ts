@@ -66,25 +66,25 @@ export class EnemyManager {
     );
   }
 
-  public getSwarmProfile(madnessKills: number): SwarmProfile {
-    if (madnessKills >= 2500) return { cap: 96, interval: 0.22, burst: 4 };
-    if (madnessKills >= 1200) return { cap: 76, interval: 0.34, burst: 3 };
-    if (madnessKills >= 600) return { cap: 58, interval: 0.50, burst: 3 };
-    if (madnessKills >= 300) return { cap: 40, interval: 0.68, burst: 2 };
-    if (madnessKills >= 150) return { cap: 28, interval: 0.88, burst: 2 };
-    if (madnessKills >= 75) return { cap: 18, interval: 1.18, burst: 2 };
-    if (madnessKills >= 30) return { cap: 12, interval: 1.55, burst: 1 };
-    if (madnessKills >= 10) return { cap: 8, interval: 2.00, burst: 1 };
-    return { cap: 5, interval: 2.40, burst: 1 };
+  public getSwarmProfile(madnessKills: number, levelIndex: number = 0): SwarmProfile {
+    const effectivePower = madnessKills + levelIndex * 12;
+    if (effectivePower >= 350) return { cap: 96, interval: 0.22, burst: 4 };
+    if (effectivePower >= 200) return { cap: 76, interval: 0.32, burst: 3 };
+    if (effectivePower >= 120) return { cap: 58, interval: 0.45, burst: 3 };
+    if (effectivePower >= 70)  return { cap: 40, interval: 0.65, burst: 2 };
+    if (effectivePower >= 40)  return { cap: 28, interval: 0.90, burst: 2 };
+    if (effectivePower >= 20)  return { cap: 18, interval: 1.20, burst: 2 };
+    if (effectivePower >= 10)  return { cap: 12, interval: 1.50, burst: 1 };
+    return { cap: 8, interval: 1.80, burst: 1 };
   }
 
-  public spawnMadness(count: number, madnessKills: number, maze?: MazeManager) {
+  public spawnMadness(count: number, madnessKills: number, maze?: MazeManager, levelIndex: number = 0) {
     if (maze) this.currentCols = maze.cols;
     const isWide = maze ? (maze.cols > 21) : (this.currentCols > 21);
     const spawns = this.getMadnessSpawnSpots(maze);
     const centerCol = maze ? Math.floor(maze.cols / 2) : 10;
     const types = ['stalker', 'rusher', 'orbiter', 'phaser'];
-    const swarmCap = this.getSwarmProfile(madnessKills).cap;
+    const swarmCap = this.getSwarmProfile(madnessKills, levelIndex).cap;
     let threatCount = this.getMadnessThreatCount();
 
     for (let i = 0; i < count; i++) {
