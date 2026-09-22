@@ -450,7 +450,8 @@ export class Player {
     predMaxTimer: number = 7.0,
     combo: { m: number; t: number; n: number } = { m: 1, t: 0, n: 0 },
     isChronoActive: boolean = false,
-    chromaTier: ChromaTier = 5
+    chromaTier: ChromaTier = 5,
+    ghostKills: number = 0
   ) {
     const pp = this.getPos();
 
@@ -695,11 +696,51 @@ export class Player {
       }
     };
 
-    // Upright Floating Overhead HUD Pill directly above Pac-Man (World coordinates)
+    // Upright Floating Overhead HUD directly above Chromavore (World coordinates)
     const renderOverheadHUD = (ox: number = 0) => {
+      // 1. Growing Spectre Kill Counter directly above Chromavore's head
+      if (ghostKills > 0) {
+        c.save();
+        // Scale factor grows smoothly with kills (from 8px at 1 kill up to ~15px at 600+ kills)
+        const killScale = Math.min(1.75, 1.0 + Math.log10(ghostKills + 1) * 0.28);
+        const fontSize = Math.round(8.5 * killScale);
+        const iconSize = Math.round(9.5 * killScale);
+        const kText = ghostKills.toString();
+
+        c.font = `bold ${fontSize}px monospace`;
+        const tw = c.measureText(kText).width;
+        const totalW = tw + iconSize + 6;
+        const pillW = totalW + 8;
+        const pillH = Math.round(fontSize + 6);
+        const kY = pp.y - P_RAD - 14;
+        const kX = pp.x + ox;
+
+        // Subtle dark cyber backdrop
+        c.fillStyle = 'rgba(6, 10, 22, 0.85)';
+        c.strokeStyle = ghostKills >= 50 ? '#ff007f' : (ghostKills >= 15 ? '#ffd700' : '#00ffff');
+        c.lineWidth = 1;
+        c.shadowColor = c.strokeStyle;
+        c.shadowBlur = 6;
+        c.beginPath();
+        c.roundRect(kX - pillW / 2, kY - pillH / 2, pillW, pillH, 3);
+        c.fill();
+        c.stroke();
+        c.shadowBlur = 0;
+
+        // Skull icon + Kill number
+        spriteAtlas.drawIcon(c, 'skull', kX - pillW / 2 + 3 + iconSize / 2, kY, iconSize);
+        c.fillStyle = '#ffffff';
+        c.textAlign = 'left';
+        c.textBaseline = 'middle';
+        c.fillText(kText, kX - pillW / 2 + iconSize + 6, kY);
+        c.restore();
+      }
+
+      // 2. Status / Predator / Combo badge pill (if active)
       if (isGodMode || isPredator || combo.m > 1) {
         c.save();
-        const badgeY = pp.y - P_RAD - 15;
+        // Offset higher if ghost kill counter is already floating above head
+        const badgeY = pp.y - P_RAD - (ghostKills > 0 ? 30 : 15);
 
         let badgeText = '';
         let badgeIcon = '';

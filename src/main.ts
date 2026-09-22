@@ -2156,7 +2156,8 @@ class Game {
       powerups.pred.maxT,
       this.combo,
       this.isChronoActive,
-      this.renderer.chromaTier
+      this.renderer.chromaTier,
+      this.madnessKills
     );
 
     // Overlays
