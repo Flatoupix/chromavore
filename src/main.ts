@@ -899,7 +899,7 @@ class Game {
 
     particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
     particles.shake(3, 0.12);
-    if (settingsManager.settings.freezeFrame) {
+    if (settingsManager.settings.freezeFrame && this.combo.m < 64) {
       this.hitlag = Math.max(this.hitlag, 0.035);
     }
     sounds.play('kill');
