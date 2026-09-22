@@ -477,7 +477,7 @@ class SoundManager {
       this.hdTracks = {
         normal: createTrack('bgm_normal.mp3'),
         madness: createTrack('bgm_madness.mp3'),
-        singularity: createTrack('bgm_god.mp3')
+        singularity: createTrack('bgm_singularity.mp3')
       };
     } catch (e) {
       console.warn('[SoundManager] Failed to init HD audio', e);
