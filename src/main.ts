@@ -2255,7 +2255,9 @@ class Game {
         powerups.pred.t,
         powerups.pred.maxT,
         this.combo,
-        this.isChronoActive
+        this.isChronoActive,
+        this.renderer.chromaTier,
+        this.killStreakTimer > 0 ? this.madnessStreak : 0
       );
       this.renderer.ctx.restore();
 
@@ -2319,7 +2321,7 @@ class Game {
       this.combo,
       this.isChronoActive,
       this.renderer.chromaTier,
-      this.madnessKills
+      this.state === 'playing' && this.killStreakTimer > 0 ? this.madnessStreak : 0
     );
 
     // Overlays

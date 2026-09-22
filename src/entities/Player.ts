@@ -478,7 +478,7 @@ export class Player {
     combo: { m: number; t: number; n: number } = { m: 1, t: 0, n: 0 },
     isChronoActive: boolean = false,
     chromaTier: ChromaTier = 5,
-    ghostKills: number = 0
+    ghostStreak: number = 0
   ) {
     const pp = this.getPos();
 
@@ -729,14 +729,14 @@ export class Player {
 
     // Upright Floating Overhead HUD directly above Chromavore (World coordinates)
     const renderOverheadHUD = (ox: number = 0) => {
-      // 1. Growing Spectre Kill Counter directly above Chromavore's head
-      if (ghostKills > 0) {
+      // 1. Active ghost kill streak; hidden when expired or after death.
+      if (ghostStreak > 0) {
         c.save();
         // Scale factor grows smoothly with kills (from 8px at 1 kill up to ~15px at 600+ kills)
-        const killScale = Math.min(1.75, 1.0 + Math.log10(ghostKills + 1) * 0.28);
+        const killScale = Math.min(1.75, 1.0 + Math.log10(ghostStreak + 1) * 0.28);
         const fontSize = Math.round(8.5 * killScale);
         const iconSize = Math.round(9.5 * killScale);
-        const kText = ghostKills.toString();
+        const kText = 'x' + ghostStreak;
 
         c.font = `bold ${fontSize}px monospace`;
         const tw = c.measureText(kText).width;
@@ -748,7 +748,7 @@ export class Player {
 
         // Subtle dark cyber backdrop
         c.fillStyle = 'rgba(6, 10, 22, 0.85)';
-        c.strokeStyle = ghostKills >= 50 ? '#ff007f' : (ghostKills >= 15 ? '#ffd700' : '#00ffff');
+        c.strokeStyle = ghostStreak >= 50 ? '#ff007f' : (ghostStreak >= 15 ? '#ffd700' : '#00ffff');
         c.lineWidth = 1;
         c.shadowColor = c.strokeStyle;
         c.shadowBlur = 6;
@@ -771,7 +771,7 @@ export class Player {
       if (isGodMode || isPredator || combo.m > 1) {
         c.save();
         // Offset higher if ghost kill counter is already floating above head
-        const badgeY = pp.y - P_RAD - (ghostKills > 0 ? 30 : 15);
+        const badgeY = pp.y - P_RAD - (ghostStreak > 0 ? 30 : 15);
 
         let badgeText = '';
         let badgeIcon = '';
