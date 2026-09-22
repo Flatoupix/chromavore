@@ -554,11 +554,16 @@ export class Renderer {
       const stX = isWide ? 38 : 30;
       const streakActive = madnessStreak > 0 && killStreakTimer > 0;
       if (streakActive) {
-        spriteAtlas.drawIcon(c, 'flame', stX - 16, 27, 13);
-        c.font = 'bold 10.5px monospace';
-        c.fillStyle = '#ff5533';
-        c.shadowColor = '#ff5533';
-        c.shadowBlur = 6;
+        // Growth every 10 kills (smooth sub-linear step: +1.2px per 10 kills, capped at 18px)
+        const streakTier = Math.floor(madnessStreak / 10);
+        const streakFontSize = Math.min(18, 10.5 + streakTier * 1.2);
+        const streakIconSize = Math.min(18, 13 + streakTier * 1.0);
+
+        spriteAtlas.drawIcon(c, 'flame', stX - 16, 27, streakIconSize);
+        c.font = `bold ${streakFontSize}px monospace`;
+        c.fillStyle = streakTier >= 5 ? '#ffd700' : (streakTier >= 2 ? '#ff7733' : '#ff5533');
+        c.shadowColor = c.fillStyle;
+        c.shadowBlur = Math.min(12, 6 + streakTier * 1.2);
         c.fillText('x' + madnessStreak, stX - 4, 27);
         c.shadowBlur = 0;
 
@@ -567,15 +572,25 @@ export class Renderer {
         const sBarW = isWide ? 44 : 34;
         c.fillStyle = 'rgba(255, 255, 255, 0.15)';
         c.fillRect(stX - 18, 33, sBarW, 2.5);
-        c.fillStyle = '#ff5533';
-        c.shadowColor = '#ff5533';
+        c.fillStyle = c.fillStyle;
+        c.shadowColor = c.fillStyle;
         c.shadowBlur = 4;
         c.fillRect(stX - 18, 33, sBarW * sProg, 2.5);
         c.shadowBlur = 0;
       }
 
       // 3. Status / Combo / Predator
-      if (combo.m >= 32) {
+      if (combo.m >= 64) {
+        // Mode Singularity x64 (30s)
+        const sProg = Math.max(0, Math.min(1, combo.t / 30.0));
+        spriteAtlas.drawIcon(c, 'crown', 15, 41, 12);
+        c.font = 'bold 9.5px monospace'; c.fillStyle = '#ffd700';
+        c.shadowColor = '#ffd700'; c.shadowBlur = 10;
+        c.fillText(`x64 SINGULARITY (${combo.t.toFixed(1)}s)`, 24, 41);
+        c.shadowBlur = 0;
+        c.fillStyle = '#222'; c.fillRect(10, 46, isWide ? 85 : 62, 3);
+        c.fillStyle = '#ffd700'; c.fillRect(10, 46, (isWide ? 85 : 62) * sProg, 3);
+      } else if (combo.m >= 32) {
         const pProg = Math.max(0, Math.min(1, combo.t / GOD_MODE_DURATION));
         spriteAtlas.drawIcon(c, 'lightning', 15, 41, 11);
         c.font = 'bold 9px monospace'; c.fillStyle = '#ffd700';
@@ -2280,14 +2295,39 @@ export class Renderer {
     c.restore();
   }
 
-  public drawMaze32xSupercharge(_mOff: HTMLCanvasElement, time: number) {
+  public drawMaze32xSupercharge(_mOff: HTMLCanvasElement, time: number, isSingularity: boolean = false) {
     const c = this.ctx;
     c.save();
     c.globalCompositeOperation = 'source-atop';
-    // Deep vibrant electrified cyan & golden energy flowing through maze walls
+    // Deep vibrant electrified cyan or pure incandescent gold energy in Singularity flowing through maze walls
     const pulse = 0.40 + 0.12 * Math.sin(time * 6);
-    c.fillStyle = `rgba(0, 240, 255, ${pulse})`;
+    c.fillStyle = isSingularity ? `rgba(255, 215, 0, ${pulse + 0.1})` : `rgba(0, 240, 255, ${pulse})`;
     c.fillRect(0, 0, this.cw, ROWS * T);
+    c.restore();
+  }
+
+  public drawSingularityShockwave(px: number, py: number, radius: number, progress: number) {
+    if (radius <= 0) return;
+    const c = this.ctx;
+    c.save();
+    const alpha = Math.max(0, Math.min(1, 1 - progress));
+
+    // Outer golden plasma wave
+    c.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+    c.shadowColor = '#ffd700';
+    c.shadowBlur = 32;
+    c.lineWidth = 14 * alpha;
+    c.beginPath();
+    c.arc(px, py, radius, 0, PI2);
+    c.stroke();
+
+    // Inner fiery gold deflagration ring
+    c.strokeStyle = `rgba(255, 215, 0, ${alpha * 0.9})`;
+    c.lineWidth = 8 * alpha;
+    c.beginPath();
+    c.arc(px, py, Math.max(0, radius - 12), 0, PI2);
+    c.stroke();
+
     c.restore();
   }
 

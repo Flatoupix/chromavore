@@ -297,7 +297,9 @@ export class Player {
     onCollectDot: (c: number, r: number) => void,
     hasForceField: boolean = false,
     isOverdrive: boolean = false,
-    onSmashWall?: (c: number, r: number) => void
+    onSmashWall?: (c: number, r: number) => void,
+    isSingularity: boolean = false,
+    isShiftHeld: boolean = false
   ): boolean {
     if (this.dashCd > 0 && !isOverdrive) return false;
 
@@ -324,14 +326,25 @@ export class Player {
       this.t = 1;
     }
 
-    const maxDist = DASH_DIST + Math.min(4, Math.max(0, dashLvl - 1));
+    const isSingularityDash = isSingularity && isShiftHeld;
+    const maxDist = isSingularityDash
+      ? (dx !== 0 ? this.currentCols : ROWS)
+      : (DASH_DIST + Math.min(4, Math.max(0, dashLvl - 1)));
+
     for (let i = 0; i < maxDist; i++) {
-      const nx = this.wrapX(this.x + dx);
-      const ny = this.y + dy;
+      let nx = this.wrapX(this.x + dx);
+      let ny = this.wrapY(this.y + dy);
 
       if (!maze.isWalkable(nx, ny, false)) {
-        // Quantum Dash Burst V5 (12,000 kills): punch through and smash up to 3 walls
-        if (dashLvl >= 5 && wallsBroken < 3 && maze.canSmashWall(nx, ny)) {
+        if (isSingularityDash) {
+          // Singularity Dash: carve through boundary walls and open cross-portal gates
+          maze.openCrossPortalGate(dx !== 0 ? 'x' : 'y', dx !== 0 ? this.y : this.x);
+          if (maze.canSmashWall(nx, ny)) {
+            maze.smashWall(nx, ny);
+            if (onSmashWall) onSmashWall(nx, ny);
+          }
+        } else if (dashLvl >= 5 && wallsBroken < 3 && maze.canSmashWall(nx, ny)) {
+          // Quantum Dash Burst V5 (12,000 kills): punch through and smash up to 3 walls
           maze.smashWall(nx, ny);
           wallsBroken++;
           if (onSmashWall) onSmashWall(nx, ny);
@@ -349,14 +362,14 @@ export class Player {
 
       onCollectDot(nx, ny);
 
-      // If Force Field active, vacuum dots in a wide corridor along dash!
-      if (hasForceField) {
+      // If Force Field or Singularity active, vacuum dots in a wide corridor along dash!
+      if (hasForceField || isSingularity) {
         const isWide = this.currentCols > 21;
-        const dashR = isWide ? 3.2 : 2.2;
+        const dashR = isSingularity ? (isWide ? 4.5 : 3.5) : (isWide ? 3.2 : 2.2);
         const radLimit = Math.ceil(dashR);
         for (let radY = -radLimit; radY <= radLimit; radY++) {
           for (let radX = -radLimit; radX <= radLimit; radX++) {
-            const rx = this.wrapX(nx + radX), ry = ny + radY;
+            const rx = this.wrapX(nx + radX), ry = this.wrapY(ny + radY);
             if (ry >= 0 && ry < ROWS && Math.hypot(radX, radY) <= dashR) {
               onCollectDot(rx, ry);
             }
@@ -365,7 +378,7 @@ export class Player {
       }
 
       const px = nx * T + HALF, py = ny * T + HALF;
-      particles.emit(px, py, 6, isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00ffff'), { speed: 80, size: 3, life: 0.35 });
+      particles.emit(px, py, 6, isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00ffff')), { speed: 80, size: 3, life: 0.35 });
     }
 
     if (dashed === 0) {
@@ -383,7 +396,7 @@ export class Player {
     this.dashStreaks.push({
       x1: startPos.x, y1: startPos.y,
       x2: endPos.x, y2: endPos.y,
-      life: 0.24, maxLife: 0.24
+      life: isSingularityDash ? 0.45 : 0.24, maxLife: isSingularityDash ? 0.45 : 0.24
     });
 
     // Offensive Dash: Slay all ghosts in dash trajectory!
@@ -391,14 +404,22 @@ export class Player {
       if (e.st !== 'dead' && e.st !== 'return') {
         const ep = { x: (e.fx + (e.x - e.fx) * e.t) * T + HALF, y: (e.fy + (e.y - e.fy) * e.t) * T + HALF };
         const d = distToSegment(ep.x, ep.y, startPos.x, startPos.y, endPos.x, endPos.y);
-        if (d < T * 1.2) {
+        if (d < T * (isSingularityDash ? 2.5 : 1.2)) {
           onKillGhost(e, ep.x, ep.y);
         }
       }
     }
 
-    // Cyber Dash V2 arrival shockwave
-    if (dashLvl >= 2) {
+    // Cyber Dash arrival shockwave
+    if (isSingularityDash) {
+      particles.emit(endPos.x, endPos.y, 60, '#ffd700', { speed: 220, size: 6, life: 0.65 });
+      particles.emit(endPos.x, endPos.y, 30, '#ffffff', { speed: 260, size: 4, life: 0.5 });
+      particles.shake(12, 0.35);
+      particles.flash('#ffd700', 0.35);
+      particles.addPop(endPos.x, endPos.y - 24, 'SINGULARITY INFINITE WARP !', '#ffd700', 22);
+      sounds.play('nova');
+      sounds.play('dash');
+    } else if (dashLvl >= 2) {
       const shockCol = dashLvl >= 5 ? '#ff007f' : '#00ffff';
       particles.emit(endPos.x, endPos.y, dashLvl >= 5 ? 45 : 30, shockCol, { speed: 180, size: 5.5, life: 0.5 });
       if (dashLvl >= 5) {
@@ -426,12 +447,12 @@ export class Player {
       particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'HYPER DASH !' : 'DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
     }
 
-    particles.emit(startPos.x, startPos.y, 16, isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff'), { speed: 130, size: 4, life: 0.45 });
-    particles.emit(endPos.x, endPos.y, 20, isOverdrive ? '#00ffcc' : '#ffffff', { speed: 150, size: 4.5, life: 0.45 });
-    particles.shake(isOverdrive ? 3 : (dashLvl >= 5 ? 6 : 4), 0.18);
-    particles.flash(isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff'), 0.22);
+    particles.emit(startPos.x, startPos.y, 16, isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff')), { speed: 130, size: 4, life: 0.45 });
+    particles.emit(endPos.x, endPos.y, 20, isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : '#ffffff'), { speed: 150, size: 4.5, life: 0.45 });
+    particles.shake(isSingularityDash ? 8 : (isOverdrive ? 3 : (dashLvl >= 5 ? 6 : 4)), 0.18);
+    particles.flash(isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff')), 0.22);
     sounds.play('dash');
-    this.invuln = Math.max(this.invuln, dashLvl >= 5 ? 0.5 : 0.35);
+    this.invuln = Math.max(this.invuln, isSingularityDash ? 0.8 : (dashLvl >= 5 ? 0.5 : 0.35));
     return true;
   }
 
@@ -439,6 +460,12 @@ export class Player {
     if (c < 0) return this.currentCols - 1;
     if (c >= this.currentCols) return 0;
     return c;
+  }
+
+  public wrapY(r: number): number {
+    if (r < 0) return ROWS - 1;
+    if (r >= ROWS) return 0;
+    return r;
   }
 
   public draw(
@@ -520,9 +547,13 @@ export class Player {
       if (this.invuln > 0 && Math.sin(time * 16) > 0) c.globalAlpha = 0.4;
 
       const isWarn = isPredator && predTimer < 2.5;
+      const isSingularity = combo.m >= 64;
 
       // Dynamic Predator / God glow
-      if (isGodMode) {
+      if (isSingularity) {
+        c.shadowColor = '#ffd700';
+        c.shadowBlur = 24;
+      } else if (isGodMode) {
         c.shadowColor = '#00ffff';
         c.shadowBlur = 30;
       } else if (isPredator) {
@@ -535,8 +566,8 @@ export class Player {
 
       this.drawChromavoreEntity(c, P_RAD, time, this.ma, isGodMode, isPredator, combo.m, chromaTier);
 
-      // Electric plasma sparks (Predator or God mode)
-      if (isPredator || isGodMode) {
+      // Electric plasma sparks (Predator or standard God mode - omitted in clean Singularity gold state)
+      if (!isSingularity && (isPredator || isGodMode)) {
         c.save();
         c.strokeStyle = isGodMode ? '#ffd700' : '#00ffff';
         c.shadowColor = '#00ffff';
@@ -556,8 +587,8 @@ export class Player {
         c.restore();
       }
 
-      // God Mode x32 Radiant Aura & Star Crown
-      if (isGodMode) {
+      // God Mode x32 Radiant Aura & Star Crown (Omitted in clean Singularity gold state)
+      if (!isSingularity && isGodMode) {
         c.save();
         const auraPulse = 1 + Math.sin(time * 8) * 0.12;
         c.strokeStyle = '#00ffff';
@@ -747,7 +778,14 @@ export class Player {
         let badgeCol = '#00ffff';
         let prog = 1;
 
-        if (isGodMode || combo.m >= 32) {
+        if (combo.m >= 64) {
+          badgeCol = '#ffd700';
+          badgeIcon = 'crown';
+          const tVal = combo.t;
+          const maxVal = 30.0;
+          badgeText = `x64 SINGULARITY • ${tVal.toFixed(1)}s`;
+          prog = Math.max(0, Math.min(1, tVal / maxVal));
+        } else if (isGodMode || combo.m >= 32) {
           badgeCol = '#ffd700';
           badgeIcon = 'crown';
           const tVal = combo.m >= 32 ? combo.t : predTimer;
@@ -1076,7 +1114,13 @@ export class Player {
     let accentGlow = '#00ffff';
     let eyeColor = '#00ffff';
 
-    if (isGodMode) {
+    if (comboMultiplier >= 64) {
+      // Pure Radiant Gold Chromavore in Singularity
+      coreColor = '#fff8b3';
+      accentGlow = '#ffd700';
+      eyeColor = '#ffffff';
+      carapaceColor = '#2b2005';
+    } else if (isGodMode) {
       coreColor = '#ffffff';
       accentGlow = '#00ffff';
       eyeColor = '#ffffff';

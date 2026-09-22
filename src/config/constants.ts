@@ -88,6 +88,8 @@ export const COMBO_DECAY = 0.5; // Strictly 0.5s between pellets (gap without pe
 export const STREAK_DECAY_WINDOW = 0.85; // Window between dots/pellets for audio frequency
 export const KILL_STREAK_DECAY_WINDOW = 3.5; // Window between ghost kills to maintain kill streak multiplier
 export const GOD_MODE_DURATION = 15.0; // 15.0s God Mode duration when triggered
+export const SINGULARITY_DURATION = 30.0; // 30.0s Singularity Mode duration when triggered
+export const SINGULARITY_TRIGGER_KILLS = 200; // Trigger Singularity at 200 ghost kills
 export const MADNESS_UNLOCK_KILLS = 1600; // Unlocked with Cyber Dash V2 at 1600 career ghost kills
 export const HD_AUDIO_UNLOCK_KILLS = 3000; // Unlocked at 3000 career ghost kills (HD Dark Synthwave Studio OST)
 
@@ -132,7 +134,7 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.12.0';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.13.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
 export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.12.0';
 

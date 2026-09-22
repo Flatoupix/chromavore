@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, STREAK_DECAY_WINDOW, KILL_STREAK_DECAY_WINDOW, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, STREAK_DECAY_WINDOW, KILL_STREAK_DECAY_WINDOW, GOD_MODE_DURATION, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -32,6 +32,11 @@ class Game {
   public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' = 'menu';
   public playerRank: number = 0;
   public playerDate: string = '';
+
+  // Singularity 64x cinematic intro sequence
+  public singularityIntroTimer: number = 0; // 5.0s intro
+  public singularityShockwaveRadius: number = 0;
+  public singularityTriggered: boolean = false;
 
   // Bonus Level Hyper-Swarm specific
   // Bonus Level Hyper-Swarm specific (500+ entity object-pooled architecture)
@@ -660,6 +665,9 @@ class Game {
     this.dotStreakTimer = 0;
     this.maxDotStreak = 0;
     this.madnessSpawnTimer = 0;
+    this.singularityIntroTimer = 0;
+    this.singularityShockwaveRadius = 0;
+    this.singularityTriggered = false;
 
     this.chronoEnergy = CHRONO_MAX;
     this.isChronoActive = false;
@@ -818,14 +826,17 @@ class Game {
   }
 
   private executeDash() {
+    const isSingularity = this.combo.m >= 64;
     this.player.triggerDash(
       this.maze,
       this.enemyManager.enemies,
       (e, x, y) => this.onKillGhost(e, x, y),
       (c, r) => this.onCollectDot(c, r),
-      powerups.fx.magnet > 0,
+      powerups.fx.magnet > 0 || isSingularity,
       powerups.fx.overdrive > 0,
-      (c, r) => this.onSmashWall(c, r)
+      (c, r) => this.onSmashWall(c, r),
+      isSingularity,
+      input.isChronoKeyHeld
     );
   }
 
@@ -850,6 +861,11 @@ class Game {
     this.killStreakTimer = KILL_STREAK_DECAY_WINDOW;
     if (this.madnessStreak > this.maxMadnessStreak) {
       this.maxMadnessStreak = this.madnessStreak;
+    }
+
+    // Check Singularity Mode trigger at 200 kills
+    if (this.madnessKills >= SINGULARITY_TRIGGER_KILLS && !this.singularityTriggered) {
+      this.triggerSingularitySequence();
     }
 
     // Bonus de points tous les 10 spectres dans la streak !
@@ -915,6 +931,24 @@ class Game {
     const pp = this.player.getPos();
     particles.addPop(pp.x, pp.y - 42, `SWARM ↑ • ${profile.cap} GHOSTS MAX`, '#ff5533', 15);
     particles.flash('#ff5533', 0.15);
+  }
+
+  private triggerSingularitySequence() {
+    this.singularityTriggered = true;
+    this.singularityIntroTimer = 5.0;
+    this.singularityShockwaveRadius = 0;
+    // Set 64x combo and 30s timer
+    this.combo.m = 64;
+    this.combo.t = SINGULARITY_DURATION;
+
+    // Flash screen in cosmic gold & shake
+    particles.flash('#ffd700', 0.5);
+    particles.shake(16, 0.6);
+    sounds.play('nova');
+    sounds.play('powerup');
+
+    const pp = this.player.getPos();
+    particles.addPop(pp.x, pp.y - 45, '« SINGULARITY AWAKENS »', '#ffd700', 26);
   }
 
   private playerDie() {
@@ -1705,13 +1739,17 @@ class Game {
       }
     }
 
-    const isInvincible = this.combo.m >= 32 || this.state === 'bonus';
+    const isSingularity = this.combo.m >= 64;
+    const isInvincible = isSingularity || this.combo.m >= 32 || this.state === 'bonus';
     const isHDUnlocked = progression.totalGhosts >= HD_AUDIO_UNLOCK_KILLS;
+    const isSingularityRising = this.singularityIntroTimer > 0;
     sounds.updateBGM(
       dt,
       this.state === 'playing' || this.state === 'bonus',
       isInvincible,
-      isHDUnlocked
+      isHDUnlocked,
+      isSingularity,
+      isSingularityRising
     );
     badges.update(dt);
     wobbleBanner.update(dt);
@@ -1730,6 +1768,49 @@ class Game {
         break;
 
       case 'playing': {
+        // Singularity 5.0s cinematic intro sequence & deflagration shockwave
+        if (this.singularityIntroTimer > 0) {
+          this.singularityIntroTimer -= dt;
+          const introElapsed = 5.0 - this.singularityIntroTimer;
+          const pp = this.player.getPos();
+
+          // During the first 3 seconds: golden deflagration shockwave expands outward
+          if (introElapsed <= 3.0) {
+            const maxR = Math.max(this.renderer.cw, ROWS * T) * 1.25;
+            const shockProgress = introElapsed / 3.0;
+            this.singularityShockwaveRadius = shockProgress * maxR;
+
+            // Vaporize all spectres reached by the golden shockwave
+            for (const e of this.enemyManager.enemies) {
+              if (e.st !== 'dead' && e.st !== 'return') {
+                const ep = this.enemyManager.getPos(e);
+                const dist = Math.hypot(ep.x - pp.x, ep.y - pp.y);
+                if (dist <= this.singularityShockwaveRadius) {
+                  particles.emit(ep.x, ep.y, 25, '#ffd700', { speed: 180, size: 5, life: 0.6 });
+                  particles.addPop(ep.x, ep.y - 12, 'VAPORIZED !', '#ffd700', 16);
+                  this.onKillGhost(e, ep.x, ep.y);
+                }
+              }
+            }
+
+            // Continuous cinematic screen rumble
+            particles.shake(Math.min(10, 3 + introElapsed * 2.2), 0.1);
+          } else {
+            this.singularityShockwaveRadius = 0;
+          }
+
+          // When 5s intro completes: launch full-speed Singularity!
+          if (this.singularityIntroTimer <= 0) {
+            this.singularityIntroTimer = 0;
+            this.singularityShockwaveRadius = 0;
+            sounds.play('wave');
+            particles.shake(14, 0.4);
+            particles.flash('#ffd700', 0.4);
+            particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« SINGULARITY OVERDRIVE »', '#ffd700', 26);
+          }
+          return;
+        }
+
         // Bullet Time (Chrono-Shift), unlocked at 180 frags
         const chronoLevel = progression.getSkillLevel('chrono');
         const isChronoUnlocked = chronoLevel >= 1;
@@ -1851,10 +1932,11 @@ class Game {
         );
         this.enemyManager.update(dt * timeScale, this.maze, this.player.getPos(), powerups.fx.timewarp);
 
-        // Force Field suction (Dots & Frightened Ghosts), scaled in 16:9 (T * 3.4 vs T * 2.2)
-        if (powerups.fx.magnet > 0) {
+        // Force Field & Singularity suction (Dots & Ghosts), scaled in 16:9
+        const isSingularityMode = this.combo.m >= 64;
+        if (powerups.fx.magnet > 0 || isSingularityMode) {
           const isWide = this.maze.cols > 21;
-          const baseR = isWide ? T * 3.4 : T * 2.2;
+          const baseR = isSingularityMode ? (isWide ? T * 4.6 : T * 3.4) : (isWide ? T * 3.4 : T * 2.2);
           const comboBoost = this.combo.m >= 32 ? 1.25 : (this.combo.m >= 16 ? 1.15 : (this.combo.m >= 8 ? 1.08 : 1.0));
           const r = baseR * comboBoost;
           const pp = this.player.getPos();
@@ -1869,15 +1951,26 @@ class Game {
             }
           }
 
-          // Kill frightened & frozen ghosts in close proximity
-          const ghostKillR = isWide ? T * 2.6 : T * 1.8;
+          // Kill frightened & frozen ghosts in close proximity, or suck ALL ghosts in Singularity mode!
+          const ghostKillR = isSingularityMode ? (isWide ? T * 3.2 : T * 2.4) : (isWide ? T * 2.6 : T * 1.8);
           for (const e of this.enemyManager.enemies) {
-            if ((e.st === 'flee' || e.frozen) && e.st !== 'dead' && e.st !== 'return') {
+            if (e.st !== 'dead' && e.st !== 'return') {
               const ep = this.enemyManager.getPos(e);
               const dist = Math.hypot(pp.x - ep.x, pp.y - ep.y);
-              if (dist < ghostKillR) {
-                particles.emit(ep.x, ep.y, 18, '#ff007f', { speed: 140, size: 4, life: 0.45 });
-                this.onKillGhost(e, ep.x, ep.y);
+
+              // Gravitational pull in Singularity mode
+              if (isSingularityMode && dist < r * 1.5 && dist > 1) {
+                const pullForce = (1 - dist / (r * 1.5)) * 140 * dt;
+                const angle = Math.atan2(pp.y - ep.y, pp.x - ep.x);
+                e.x += (Math.cos(angle) * pullForce) / T;
+                e.y += (Math.sin(angle) * pullForce) / T;
+              }
+
+              if (isSingularityMode || e.st === 'flee' || e.frozen) {
+                if (dist < ghostKillR) {
+                  particles.emit(ep.x, ep.y, 18, isSingularityMode ? '#ffd700' : '#ff007f', { speed: 140, size: 4, life: 0.45 });
+                  this.onKillGhost(e, ep.x, ep.y);
+                }
               }
             }
           }
@@ -1960,7 +2053,18 @@ class Game {
         }
 
         // Combo decay
-        if (this.combo.n > 0) {
+        if (this.combo.m >= 64) {
+          this.combo.t -= dt * chronoScale;
+          if (this.combo.t <= 0) {
+            this.combo.n = 0;
+            this.combo.m = 1;
+            this.combo.t = 0;
+            this.player.pelletSpeedBonus = 0;
+            sounds.resetDotStreak();
+            const pp = this.player.getPos();
+            particles.addPop(pp.x, pp.y - 20, 'SINGULARITY EXPIRED (30s)', '#8899aa', 14);
+          }
+        } else if (this.combo.n > 0) {
           this.combo.t -= dt * chronoScale;
           if (this.combo.t <= 0) {
             const wasGod = this.combo.m >= 32;
@@ -2150,10 +2254,18 @@ class Game {
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
     this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
 
-    // Electrified supercharged maze walls in 32x God Mode
+    // Electrified supercharged maze walls in 32x God Mode & 64x Singularity
+    const isSingularity = this.combo.m >= 64;
     const is32xGod = this.combo.m >= 32;
-    if (is32xGod) {
-      this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time);
+    if (is32xGod || isSingularity) {
+      this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time, isSingularity);
+    }
+
+    // Expanding Golden Deflagration Shockwave during Singularity intro
+    if (this.singularityShockwaveRadius > 0) {
+      const pp = this.player.getPos();
+      const introElapsed = 5.0 - this.singularityIntroTimer;
+      this.renderer.drawSingularityShockwave(pp.x, pp.y, this.singularityShockwaveRadius, introElapsed / 3.0);
     }
 
     this.renderer.drawDots(this.maze, this.time);

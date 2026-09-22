@@ -1168,6 +1168,30 @@ export class MazeManager {
     return true;
   }
 
+  public openCrossPortalGate(axis: 'x' | 'y', index: number): boolean {
+    let opened = false;
+    if (axis === 'x') {
+      const r = Math.max(1, Math.min(this.rows - 2, Math.floor(index)));
+      if (this.map[r]) {
+        this.map[r][0] = TUNNEL;
+        this.map[r][this.cols - 1] = TUNNEL;
+        opened = true;
+      }
+    } else {
+      const c = Math.max(1, Math.min(this.cols - 2, Math.floor(index)));
+      if (this.map[0] && this.map[this.rows - 1]) {
+        this.map[0][c] = TUNNEL;
+        this.map[this.rows - 1][c] = TUNNEL;
+        opened = true;
+      }
+    }
+    if (opened) {
+      this.renderOffscreen();
+      this.computeGhostReturnDist();
+    }
+    return opened;
+  }
+
   public renderOffscreen(chromaTier?: ChromaTier) {
     if (chromaTier !== undefined) this.currentTier = chromaTier;
     const tier = this.currentTier;
