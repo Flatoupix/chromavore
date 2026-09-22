@@ -1761,7 +1761,16 @@ class Game {
     particles.update(dt);
     this.syncTouchControls();
 
-    if (this.hitlag > 0) {
+    // These deadlines must keep advancing through hit-stop and Chrono.
+    // Pause still freezes them because only active play enters this block.
+    if (this.state === 'playing') {
+      this.killStreakTimer = Math.max(0, this.killStreakTimer - dt);
+      if (this.killStreakTimer === 0) this.madnessStreak = 0;
+      this.dotStreakTimer = Math.max(0, this.dotStreakTimer - dt);
+      if (this.dotStreakTimer === 0) this.dotStreak = 0;
+    }
+
+    if (this.hitlag > 0 && this.singularityIntroTimer <= 0) {
       this.hitlag -= dt;
       return;
     }
@@ -1812,6 +1821,7 @@ class Game {
           if (this.singularityIntroTimer <= 0) {
             this.singularityIntroTimer = 0;
             this.singularityShockwaveRadius = 0;
+            this.hitlag = 0;
 
             // Full-screen Nova: destroy every remaining active ghost instantly
             for (const e of this.enemyManager.enemies) {
@@ -1825,7 +1835,13 @@ class Game {
                 this.madnessStreak = savedStreak;
                 this.killStreakTimer = savedStreakTimer;
               }
+              // Returning eyes are also removed by the full-screen finale.
+              e.st = 'dead';
+              e.frozen = false;
+              e.frightened = false;
             }
+            this.hitlag = 0;
+            this.madnessSpawnTimer = this.enemyManager.getSwarmProfile(this.madnessKills).interval;
 
             // Reset streak cleanly before entering active Singularity
             this.madnessStreak = 0;
@@ -1835,7 +1851,7 @@ class Game {
             this.combo.t = SINGULARITY_DURATION;
             // Give player brief invincibility so no ghost can kill them right as they unfreeze
             this.player.invuln = Math.max(this.player.invuln, 1.5);
-            sounds.play('wave');
+            sounds.play('nova');
             particles.shake(18, 0.5);
             particles.flash('#ffd700', 0.6);
             particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« SINGULARITY OVERDRIVE »', '#ffd700', 26);
@@ -2068,24 +2084,6 @@ class Game {
           (seconds) => { this.madnessTimer = Math.min(45, this.madnessTimer + seconds); },
           () => { powerups.fx.overdrive = progression.getSkillLevel('overdrive') >= 2 ? 10.0 : 8.0; }
         );
-
-        // Ghost Kill Streak decay (window between consecutive spectre kills)
-        if (this.killStreakTimer > 0) {
-          this.killStreakTimer -= dt * chronoScale;
-          if (this.killStreakTimer <= 0) {
-            this.madnessStreak = 0;
-            this.killStreakTimer = 0;
-          }
-        }
-
-        // Dot Eating Streak decay (window between consecutive dots)
-        if (this.dotStreakTimer > 0) {
-          this.dotStreakTimer -= dt * chronoScale;
-          if (this.dotStreakTimer <= 0) {
-            this.dotStreak = 0;
-            this.dotStreakTimer = 0;
-          }
-        }
 
         // Combo decay
         if (this.combo.m >= 64) {
