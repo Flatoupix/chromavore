@@ -84,8 +84,9 @@ export const BONUS_ARENA_H = 920;
 export const CT = [0, 8, 22, 48, 85, 120];
 export const CM = [1, 2, 4, 8, 16, 32];
 export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff00aa', '#00ffff'];
-export const COMBO_DECAY = 0.5; // Strictly 0.5s between pellets (gap without pellets resets combo)
-export const STREAK_DECAY_WINDOW = 0.85; // Window between dots/pellets to maintain dot streak and audio tension
+export const COMBO_DECAY = 0.5; // Strictly 0.5s between pellets (gap without pellets resets combo towards God Mode)
+export const STREAK_DECAY_WINDOW = 0.85; // Window between dots/pellets for audio frequency
+export const KILL_STREAK_DECAY_WINDOW = 3.5; // Window between ghost kills to maintain kill streak multiplier
 export const GOD_MODE_DURATION = 15.0; // 15.0s God Mode duration when triggered
 export const MADNESS_UNLOCK_KILLS = 1600; // Unlocked with Cyber Dash V2 at 1600 career ghost kills
 export const HD_AUDIO_UNLOCK_KILLS = 3000; // Unlocked at 3000 career ghost kills (HD Dark Synthwave Studio OST)
@@ -131,9 +132,9 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.11.0';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v3.12.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.11.0';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v3.12.0';
 
 // ─────────────────────────────────────────────────────────────────
 //  CHROMA AWAKENING — Visual Progression Tiers (career ghost kills)

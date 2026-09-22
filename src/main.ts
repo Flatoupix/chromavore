@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, STREAK_DECAY_WINDOW, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, STREAK_DECAY_WINDOW, KILL_STREAK_DECAY_WINDOW, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -68,10 +68,12 @@ class Game {
     return 1 + this.loopCount * 0.10;
   }
 
-  // Madness mode specific
+  // Madness mode & Ghost Kill Streak specific
   public madnessTimer: number = 30.0;
   public madnessKills: number = 0;
   public madnessStreak: number = 0;
+  public killStreakTimer: number = 0;
+  public maxMadnessStreak: number = 0;
   public madnessSpawnTimer: number = 0;
 
   // Dot / Pellet Eating Streak & Frequency
@@ -256,7 +258,7 @@ class Game {
     this.state = 'gameover';
     this.pendingScore = this.score;
     this.pendingKills = this.madnessKills;
-    this.pendingStreak = this.maxDotStreak;
+    this.pendingStreak = this.maxMadnessStreak;
 
     badges.saveScore(this.score);
     badges.saveMadnessKills(this.madnessKills);
@@ -652,6 +654,8 @@ class Game {
     this.madnessTimer = 30.0;
     this.madnessKills = 0;
     this.madnessStreak = 0;
+    this.killStreakTimer = 0;
+    this.maxMadnessStreak = 0;
     this.dotStreak = 0;
     this.dotStreakTimer = 0;
     this.maxDotStreak = 0;
@@ -843,6 +847,20 @@ class Game {
 
     this.madnessKills++;
     this.madnessStreak++;
+    this.killStreakTimer = KILL_STREAK_DECAY_WINDOW;
+    if (this.madnessStreak > this.maxMadnessStreak) {
+      this.maxMadnessStreak = this.madnessStreak;
+    }
+
+    // Bonus de points tous les 10 spectres dans la streak !
+    if (this.madnessStreak % 10 === 0) {
+      const milestoneTier = (this.madnessStreak / 10);
+      const ghostStreakBonus = 2500 * milestoneTier * (this.combo.m || 1);
+      this.score += ghostStreakBonus;
+      particles.addPop(ex, ey - 32, `KILL STREAK x${this.madnessStreak} ! +${ghostStreakBonus}`, '#ffd700', 16);
+      sounds.play('streak');
+    }
+
     this.checkRampageMilestone(this.madnessStreak);
     this.checkSwarmMilestone(this.madnessKills);
 
@@ -905,6 +923,7 @@ class Game {
     this.lives--;
     this.madnessTimer = Math.max(0, this.madnessTimer - 4.0);
     this.madnessStreak = 0;
+    this.killStreakTimer = 0;
     this.dotStreak = 0;
     this.dotStreakTimer = 0;
     const pp = this.player.getPos();
@@ -1417,21 +1436,9 @@ class Game {
         }
       }
 
-      // Dot & Pellet Eating Frequency Streak
+      // Dot & Pellet Eating Frequency Streak (Audio & Combo Pace)
       this.dotStreak++;
       this.dotStreakTimer = STREAK_DECAY_WINDOW;
-      if (this.dotStreak > this.maxDotStreak) {
-        this.maxDotStreak = this.dotStreak;
-      }
-
-      // Bonus de points tous les 10 dans la streak !
-      if (this.dotStreak % 10 === 0) {
-        const bonusMilestone = (this.dotStreak / 10);
-        const streakBonus = 500 * bonusMilestone * (this.combo.m || 1);
-        this.score += streakBonus;
-        particles.addPop(px, py - 24, `STREAK x${this.dotStreak} ! +${streakBonus}`, '#ff5533', 14);
-        sounds.play('streak');
-      }
 
       if (this.combo.n > this.bestCombo) this.bestCombo = this.combo.n;
 
@@ -1934,6 +1941,15 @@ class Game {
           () => { powerups.fx.overdrive = progression.getSkillLevel('overdrive') >= 2 ? 10.0 : 8.0; }
         );
 
+        // Ghost Kill Streak decay (window between consecutive spectre kills)
+        if (this.killStreakTimer > 0) {
+          this.killStreakTimer -= dt * chronoScale;
+          if (this.killStreakTimer <= 0) {
+            this.madnessStreak = 0;
+            this.killStreakTimer = 0;
+          }
+        }
+
         // Dot Eating Streak decay (window between consecutive dots)
         if (this.dotStreakTimer > 0) {
           this.dotStreakTimer -= dt * chronoScale;
@@ -2120,7 +2136,8 @@ class Game {
         this.isChronoActive,
         progression.getSkillLevel('chrono'),
         this.dotStreak,
-        this.dotStreakTimer
+        this.dotStreakTimer,
+        this.killStreakTimer
       );
       this.renderer.drawEffectTimers(this.getEffectTimers());
       // Onboarding skill progress is now directly integrated into the HUD (Section 6)
@@ -2203,7 +2220,8 @@ class Game {
       this.isChronoActive,
       progression.getSkillLevel('chrono'),
       this.dotStreak,
-      this.dotStreakTimer
+      this.dotStreakTimer,
+      this.killStreakTimer
     );
     this.renderer.drawEffectTimers(this.getEffectTimers());
     // Onboarding skill progress is now directly integrated into the HUD (Section 6)
