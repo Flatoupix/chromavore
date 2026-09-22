@@ -568,7 +568,7 @@ export class Renderer {
         c.shadowBlur = 0;
 
         // Kill streak timer gauge (countdown between ghost kills)
-        const sProg = Math.max(0, Math.min(1, killStreakTimer / 3.5));
+        const sProg = Math.max(0, Math.min(1, killStreakTimer / 2.0));
         const sBarW = isWide ? 44 : 34;
         c.fillStyle = 'rgba(255, 255, 255, 0.15)';
         c.fillRect(stX - 18, 33, sBarW, 2.5);
