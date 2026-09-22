@@ -428,6 +428,26 @@ class SoundManager {
           osc.stop(t + 0.20);
           break;
         }
+        case 'streak': {
+          // Discreet crystal chime for dot eating streak milestones (every 10 dots)
+          const notes = [659.25, 880, 1046.5]; // E5, A5, C6 (sparkling, subtle harmonic ping)
+          notes.forEach((freq, idx) => {
+            if (!this.actx) return;
+            const osc = this.actx.createOscillator();
+            const g = this.actx.createGain();
+            osc.type = 'sine';
+            const noteStart = t + idx * 0.032;
+            const noteDur = 0.085;
+            osc.frequency.setValueAtTime(freq, noteStart);
+            g.gain.setValueAtTime(0.038, noteStart);
+            g.gain.exponentialRampToValueAtTime(0.0005, noteStart + noteDur);
+            osc.connect(g);
+            g.connect(this.actx.destination);
+            osc.start(noteStart);
+            osc.stop(noteStart + noteDur);
+          });
+          break;
+        }
       }
     } catch {}
   }

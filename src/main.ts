@@ -1429,10 +1429,8 @@ class Game {
         const bonusMilestone = (this.dotStreak / 10);
         const streakBonus = 500 * bonusMilestone * (this.combo.m || 1);
         this.score += streakBonus;
-        particles.addPop(px, py - 24, `STREAK x${this.dotStreak} ! +${streakBonus}`, '#ff5533', 18);
-        particles.flash('#ff5533', 0.12);
-        particles.shake(3, 0.15);
-        sounds.play('wave');
+        particles.addPop(px, py - 24, `STREAK x${this.dotStreak} ! +${streakBonus}`, '#ff5533', 14);
+        sounds.play('streak');
       }
 
       if (this.combo.n > this.bestCombo) this.bestCombo = this.combo.n;
