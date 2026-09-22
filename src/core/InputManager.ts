@@ -139,31 +139,20 @@ export class InputManager {
   public checkKombos(onWiggle: (lvl: number) => void, onNitro: (lvl: number) => void) {
     const now = performance.now();
     const recent = this.motionHistory.filter(h => now - h.time < 900);
-    if (recent.length < 2) return;
-
-    // Nitro Kombo: "Bao Bao" (Bas-Haut-Bas-Haut, Haut-Bas-Haut-Bas, ou Bas-Bas double-tap rapide)
-    if (this.nitroCd <= 0) {
-      const lvl = progression.getSkillLevel('nitro');
-      if (lvl >= 1) {
-        const last2 = recent.map(r => r.dir).slice(-2).join('-');
-        const last4 = recent.length >= 4 ? recent.map(r => r.dir).slice(-4).join('-') : '';
-        const isBaoBao =
-          last2 === 'down-down' ||
-          last4 === 'down-up-down-up' ||
-          last4 === 'up-down-up-down';
-
-        if (isBaoBao) {
-          this.nitroCd = lvl >= 2 ? 3.5 : 4.0;
-          this.nitroActive = lvl >= 2 ? 4.5 : 3.2;
-          this.motionHistory = [];
-          onNitro(lvl);
-          return;
-        }
-      }
-    }
-
     if (recent.length < 4) return;
     const last4 = recent.map(r => r.dir).slice(-4).join('-');
+
+    // Nitro Kombo: "Bao Bao" = Bas-Haut-Bas-Haut uniquement (down-up-down-up)
+    if (last4 === 'down-up-down-up' && this.nitroCd <= 0) {
+      const lvl = progression.getSkillLevel('nitro');
+      if (lvl >= 1) {
+        this.nitroCd = lvl >= 2 ? 3.5 : 4.0;
+        this.nitroActive = lvl >= 2 ? 4.5 : 3.2;
+        this.motionHistory = [];
+        onNitro(lvl);
+        return;
+      }
+    }
 
     // Wiggle Kombo: Left-Right-Left-Right
     if ((last4 === 'left-right-left-right' || last4 === 'right-left-right-left') && this.wiggleCd <= 0) {
