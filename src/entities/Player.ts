@@ -38,7 +38,7 @@ export class Player {
   public trail: { x: number; y: number }[] = [];
 
   public dashCd: number = 0;
-  public dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number }[] = [];
+  public dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number; singularity?: boolean }[] = [];
   public invuln: number = 2;
   public currentCols: number = COLS;
 
@@ -396,7 +396,8 @@ export class Player {
     this.dashStreaks.push({
       x1: startPos.x, y1: startPos.y,
       x2: endPos.x, y2: endPos.y,
-      life: isSingularityDash ? 0.45 : 0.24, maxLife: isSingularityDash ? 0.45 : 0.24
+      life: isSingularityDash ? 0.65 : 0.24, maxLife: isSingularityDash ? 0.65 : 0.24,
+      singularity: isSingularityDash
     });
 
     // Offensive Dash: Slay all ghosts in dash trajectory!
@@ -487,10 +488,10 @@ export class Player {
       const a = s.life / s.maxLife;
       c.save();
       c.globalAlpha = a * 0.85;
-      c.strokeStyle = '#00ffff';
-      c.lineWidth = 14 * a;
-      c.shadowColor = '#00ffff';
-      c.shadowBlur = 18;
+      c.strokeStyle = s.singularity ? '#ffd700' : '#00ffff';
+      c.lineWidth = (s.singularity ? 32 : 14) * a;
+      c.shadowColor = s.singularity ? '#ffae00' : '#00ffff';
+      c.shadowBlur = s.singularity ? 28 : 18;
       c.lineCap = 'round';
       c.beginPath();
       c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2);
@@ -500,6 +501,33 @@ export class Player {
       c.beginPath();
       c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2);
       c.stroke();
+      if (s.singularity) {
+        const progress = 1 - a;
+        // Expanding launch ring and double impact ring, fading with the trail.
+        c.shadowBlur = 12;
+        c.strokeStyle = '#ffd700';
+        c.lineWidth = 3 * a;
+        for (const [x, y, radius] of [
+          [s.x1, s.y1, 12 + progress * 42],
+          [s.x2, s.y2, 14 + progress * 94],
+          [s.x2, s.y2, 8 + progress * 65]
+        ]) {
+          c.beginPath();
+          c.arc(x, y, radius, 0, PI2);
+          c.stroke();
+        }
+        // Radial gold rays make the arrival read as an impact, not a teleport.
+        c.lineWidth = 2 * a;
+        for (let i = 0; i < 12; i++) {
+          const angle = i * PI2 / 12;
+          const inner = 18 + progress * 50;
+          const outer = inner + 28 * a;
+          c.beginPath();
+          c.moveTo(s.x2 + Math.cos(angle) * inner, s.y2 + Math.sin(angle) * inner);
+          c.lineTo(s.x2 + Math.cos(angle) * outer, s.y2 + Math.sin(angle) * outer);
+          c.stroke();
+        }
+      }
       c.restore();
     }
 
