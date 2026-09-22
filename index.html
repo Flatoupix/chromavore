@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090117">
-<title>CHROMAVORE v3.13.6 // SYNTHWAVE 1984</title>
+<title>CHROMAVORE v3.13.7 // SYNTHWAVE 1984</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='55,5 15,55 45,55 35,95 85,45 55,45' fill='%2300f0ff'/></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -32,6 +32,16 @@ canvas{
   width:auto;height:auto;
   object-fit:contain;flex-shrink:1;
 }
+#fullscreen-toggle{
+  position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));
+  z-index:40;padding:9px 12px;border:1px solid #00f0ff;border-radius:6px;
+  background:rgba(8,1,20,.85);color:#00f0ff;font: bold 12px monospace;
+  cursor:pointer;touch-action:manipulation;box-shadow:0 0 12px #00f0ff33;
+}
+#fullscreen-toggle:hover,#fullscreen-toggle:focus-visible{color:white;border-color:#ff007f;outline:2px solid #ff007f;outline-offset:3px}
+#fullscreen-toggle:disabled{opacity:.5;cursor:default}
+#fullscreen-status{position:fixed;bottom:68px;right:12px;z-index:40;color:#fff;background:#080114;font:12px monospace;max-width:280px}
+#fullscreen-status:empty{display:none}
 
 /* Floating Mobile Controls (Option A) */
 #mobile-controls {
@@ -252,6 +262,8 @@ canvas{
 <body>
 <div id="game-wrap">
   <canvas id="c"></canvas>
+  <button id="fullscreen-toggle" type="button" hidden aria-label="Enter fullscreen" aria-pressed="false">⛶ FULLSCREEN</button>
+  <div id="fullscreen-status" role="status" aria-live="polite"></div>
 
   <!-- Name input modal for leaderboard -->
   <div id="name-modal" style="
@@ -466,7 +478,7 @@ canvas{
     </div>
   </div>
 </div>
-<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.13.6</div>
+<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v3.13.7</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

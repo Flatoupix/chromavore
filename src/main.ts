@@ -7,6 +7,7 @@ import { sounds } from './audio/SoundManager';
 import { MazeManager, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
 import { input } from './core/InputManager';
+import { setupFullscreen } from './core/Fullscreen';
 import { Player } from './entities/Player';
 import { EnemyManager, Ghost } from './entities/Enemy';
 import { powerups } from './entities/Powerups';
@@ -109,6 +110,7 @@ class Game {
     this.configureArena();
     const vOverlay = document.getElementById('chv-version-overlay');
     if (vOverlay) vOverlay.textContent = GAME_VERSION;
+    setupFullscreen();
     this.bindInputs();
     this.startLoop();
   }
