@@ -142,8 +142,8 @@ export class InputManager {
     if (recent.length < 4) return;
     const last4 = recent.map(r => r.dir).slice(-4).join('-');
 
-    // Nitro Kombo: "Bao Bao" = Bas-Haut-Bas-Haut uniquement (down-up-down-up)
-    if (last4 === 'down-up-down-up' && this.nitroCd <= 0) {
+    // Nitro Kombo: "Bao Bao" = Haut-Bas-Haut-Bas uniquement (up-down-up-down)
+    if (last4 === 'up-down-up-down' && this.nitroCd <= 0) {
       const lvl = progression.getSkillLevel('nitro');
       if (lvl >= 1) {
         this.nitroCd = lvl >= 2 ? 3.5 : 4.0;
