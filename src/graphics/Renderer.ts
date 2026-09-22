@@ -510,7 +510,6 @@ export class Renderer {
     lives: number,
     madnessKills: number,
     madnessStreak: number,
-    madnessTimer: number,
     bestMadnessKills: number,
     superItems: SuperItemManager,
     time: number,
@@ -625,11 +624,8 @@ export class Renderer {
         c.fillText(dashLevel > 0 ? 'DASH [SPACE]' : `DASH ${progression.totalGhosts}/${dashThreshold}`, 10, 41);
       }
 
-      // 4. Timer in Center
+      // 4. Level in Center (the run has no overall countdown)
       const tmX = isWide ? Math.round(this.cw * 0.50) : 130;
-      const tmBarW = isWide ? 90 : 46;
-      const tRatio = Math.min(1, madnessTimer / 30);
-      const tCol = madnessTimer < 8 ? (Math.sin(time * 12) > 0 ? '#ff2244' : '#ffffff') : '#00ffff';
       const mDef = MADNESS_LEVELS[currentLevel % MADNESS_LEVELS.length];
       c.font = isWide ? 'bold 10px monospace' : 'bold 8px monospace';
       c.fillStyle = loopCount > 0 ? '#ffd700' : '#8899bb';
@@ -639,19 +635,8 @@ export class Renderer {
           ? (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} • LOOP ${loopCount + 1} (+${loopCount * 10}%)` : `L.${currentLevel + 1} LOOP ${loopCount + 1}`)
           : (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} : ${mDef.name}` : `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length}`),
         tmX,
-        13
+        27
       );
-      c.font = isWide ? 'bold 17px monospace' : 'bold 13px monospace';
-      c.fillStyle = tCol;
-      c.shadowColor = tCol;
-      c.shadowBlur = 8;
-      spriteAtlas.drawIcon(c, 'chrono', tmX - (isWide ? 44 : 34), 27, 14);
-      c.fillText(madnessTimer.toFixed(1) + 's', tmX + 6, 27);
-      c.shadowBlur = 0;
-      c.fillStyle = '#222';
-      c.fillRect(tmX - tmBarW / 2, 40, tmBarW, 3);
-      c.fillStyle = tCol;
-      c.fillRect(tmX - tmBarW / 2, 40, tmBarW * tRatio, 3);
 
       // 5. Chrono-Shift (Bullet Time) Gauge
       const chW = isWide ? 68 : 48;
@@ -2282,17 +2267,6 @@ export class Renderer {
       c.fillText(`LOOP ${loopCount + 1}: SPEED +${loopCount * 10}%!`, this.cw / 2, CH / 2 + 72);
       c.shadowBlur = 0;
     }
-  }
-
-  public drawDangerVignette(madnessTimer: number, _time: number) {
-    if (madnessTimer >= 8.0) return;
-    const c = this.ctx;
-    const vAlpha = 0.22 * (1 - madnessTimer / 8.0);
-    c.save();
-    c.fillStyle = `rgba(255,0,50,${vAlpha})`;
-    c.fillRect(0, 0, this.cw, 8); c.fillRect(0, CH - 8, this.cw, 8);
-    c.fillRect(0, 0, 8, CH); c.fillRect(this.cw - 8, 0, 8, CH);
-    c.restore();
   }
 
   public drawMaze32xSupercharge(_mOff: HTMLCanvasElement, time: number, isSingularity: boolean = false) {

@@ -96,7 +96,6 @@ export class SuperItemManager {
     plPos: { x: number; y: number },
     enemies: any[],
     onKillGhost: (e: any, x: number, y: number) => void,
-    addMadnessTime: (sec: number) => void,
     activateOverdrive?: () => void
   ): boolean {
     const type = item.type;
@@ -149,7 +148,6 @@ export class SuperItemManager {
         this.tsunamiX = 0;
         this.tsunamiMaxTimer = ((this.currentCols * T) + 60) / ((this.currentCols * T) * 1.6);
         this.tsunamiTimer = this.tsunamiMaxTimer;
-        addMadnessTime(lvl >= 2 ? 14.0 : 8.0);
         particles.shake(9, 0.35);
         particles.flash('#ffffff', 0.35);
         particles.addPop((this.currentCols * T) / 2, (ROWS * T) / 2, lvl >= 2 ? 'SOLAR ECLIPSE V2 !' : 'LIGHT TSUNAMI !', '#ffffff', 22);
@@ -175,7 +173,6 @@ export class SuperItemManager {
     onKillGhost: (e: any, x: number, y: number) => void,
     maze?: MazeManager,
     onCollectDot?: (c: number, r: number) => void,
-    addMadnessTime?: (sec: number) => void,
     activateOverdrive?: () => void
   ) {
     if (maze) this.currentCols = maze.cols;
@@ -208,7 +205,7 @@ export class SuperItemManager {
         this.boardDrop = null;
         this.spawnTimer = 12.0 + Math.random() * 8.0;
         // Super-items activate immediately on contact; there is no inventory reserve.
-        this.activate(item, plPos, enemies, onKillGhost, addMadnessTime || (() => {}), activateOverdrive);
+        this.activate(item, plPos, enemies, onKillGhost, activateOverdrive);
       }
     }
 

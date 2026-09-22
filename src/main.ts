@@ -75,7 +75,6 @@ class Game {
   }
 
   // Madness mode & Ghost Kill Streak specific
-  public madnessTimer: number = 30.0;
   public madnessKills: number = 0;
   public madnessStreak: number = 0;
   public killStreakTimer: number = 0;
@@ -658,7 +657,6 @@ class Game {
     this.nearMissCount = 0;
     this.combo = { n: 0, t: 0, m: 1 };
 
-    this.madnessTimer = 30.0;
     this.madnessKills = 0;
     this.madnessStreak = 0;
     this.killStreakTimer = 0;
@@ -752,7 +750,6 @@ class Game {
       this.enemyManager.spawnMadness(targetSwarm - livingGhosts, this.madnessKills, this.maze, lvlIndex);
     }
     this.madnessSpawnTimer = Math.min(this.madnessSpawnTimer, 0.8);
-    this.madnessTimer = Math.min(45, this.madnessTimer + 10.0);
 
     // Wall safety: relocate any active powerup or relic trapped in new layout or inside ghost house
     if (powerups.current && (!this.maze.isWalkable(powerups.current.x, powerups.current.y, false) || this.maze.isInGhostHouse(powerups.current.x, powerups.current.y))) {
@@ -886,7 +883,6 @@ class Game {
     if (this.madnessKills >= 100) badges.unlock('madness100');
 
     badges.saveMadnessKills(this.madnessKills);
-    this.madnessTimer = Math.min(45, this.madnessTimer + 0.35);
 
     // 14% chance to drop powerup on tile (with guaranteed walkable safety)
     if (Math.random() < 0.14 && !powerups.current) {
@@ -939,7 +935,7 @@ class Game {
     this.singularityTriggered = true;
     this.singularityIntroTimer = 5.0;
     this.singularityShockwaveRadius = 0;
-    // Set 64x combo and 30s timer
+    // Set the 64x combo for the Singularity bonus phase.
     this.combo.m = 64;
     this.combo.t = SINGULARITY_DURATION;
 
@@ -957,7 +953,6 @@ class Game {
     this.state = 'dying';
     this.deathT = 1.5;
     this.lives--;
-    this.madnessTimer = Math.max(0, this.madnessTimer - 4.0);
     this.madnessStreak = 0;
     this.killStreakTimer = 0;
     this.dotStreak = 0;
@@ -1416,7 +1411,7 @@ class Game {
           particles.flash('#ffd700', 0.18);
         }
 
-        // Les grosses boules (super-pellets) font remonter le timer et progresser le combo !
+        // Super-pellets progress the combo.
         this.combo.n += 4;
         const oldM = this.combo.m;
         if (oldM < 64) {
@@ -1427,14 +1422,12 @@ class Game {
             if (oldM < 32) {
               this.combo.t = GOD_MODE_DURATION;
             }
-            // En Mode Dieu, ramasser des boules (grosses ou petites) n'incrémente plus le timer de 15s
           } else {
             // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
             this.combo.t = COMBO_DECAY;
           }
         }
 
-        this.madnessTimer = Math.min(45, this.madnessTimer + 3.0);
         const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
@@ -1443,7 +1436,6 @@ class Game {
           this.triggerComboStep(tier, px, py);
         }
       } else {
-        this.madnessTimer = Math.min(45, this.madnessTimer + 0.04);
         const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
         this.player.addDotSpeed(this.combo.m);
@@ -1457,7 +1449,6 @@ class Game {
             if (oldM < 32) {
               this.combo.t = GOD_MODE_DURATION;
             }
-            // En Mode Dieu, les dots ne raccourcissent pas le timer de 15s !
           } else {
             // Normal dot sustains combo timer (0.5s)
             this.combo.t = COMBO_DECAY;
@@ -1892,13 +1883,6 @@ class Game {
         const activeChronoScale = chronoLevel === 2 ? CHRONO_TIMESCALE_V2 : CHRONO_TIMESCALE;
         const timeScale = this.isChronoActive ? activeChronoScale : 1.0;
 
-        // Swarm timer
-        this.madnessTimer -= dt * timeScale;
-        if (this.madnessTimer <= 0) {
-          this.madnessTimer = 0;
-          this.triggerGameOver();
-          return;
-        }
         this.madnessSpawnTimer -= dt * timeScale;
         if (this.madnessSpawnTimer <= 0) {
           const swarm = this.enemyManager.getSwarmProfile(this.madnessKills, this.maze.currentLevel);
@@ -2050,17 +2034,15 @@ class Game {
             sounds.play('death');
             particles.shake(12, 0.4);
             particles.flash('#ff0033', 0.5);
-            this.madnessTimer = Math.max(2, this.madnessTimer - 6.0);
-            particles.addPop(CW / 2, 70, 'VOID TITAN SPAWNED! (-6s)', '#ff0033', 20);
+            particles.addPop(CW / 2, 70, 'VOID TITAN SPAWNED!', '#ff0033', 20);
           },
           () => {
             // Void Core intercepted
             this.score += 5000;
-            this.madnessTimer = Math.min(45, this.madnessTimer + 6.0);
             sounds.play('powerup');
             particles.shake(8, 0.3);
             particles.flash('#00ffff', 0.4);
-            particles.addPop(CW / 2, 70, 'VOID CORE ANNIHILATED! (+6s & FORCE FIELD)', '#00ffff', 20);
+            particles.addPop(CW / 2, 70, 'VOID CORE ANNIHILATED! (FORCE FIELD)', '#00ffff', 20);
           },
           (px, py) => {
             // Nova collection
@@ -2083,7 +2065,6 @@ class Game {
           (e, x, y) => this.onKillGhost(e, x, y),
           this.maze,
           (c, r) => this.onCollectDot(c, r),
-          (seconds) => { this.madnessTimer = Math.min(45, this.madnessTimer + seconds); },
           () => { powerups.fx.overdrive = progression.getSkillLevel('overdrive') >= 2 ? 10.0 : 8.0; }
         );
 
@@ -2125,7 +2106,7 @@ class Game {
       case 'dying':
         this.deathT -= dt;
         if (this.deathT <= 0) {
-          if (this.lives > 0 && this.madnessTimer > 0) {
+          if (this.lives > 0) {
             const spdMult = this.loopSpeedMultiplier;
             this.player.reset(this.maze, spdMult);
             this.state = 'playing';
@@ -2265,7 +2246,7 @@ class Game {
 
       this.renderer.drawHUD(
         this.score, this.dScore, this.lives,
-        this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
+        this.madnessKills, this.madnessStreak, badges.bestMadnessKills,
         superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
         powerups.fx.overdrive,
         this.loopCount,
@@ -2349,15 +2330,10 @@ class Game {
 
     this.renderer.ctx.restore();
 
-    // Danger border vignette (low timer)
-    if (this.state === 'playing') {
-      this.renderer.drawDangerVignette(this.madnessTimer, this.time);
-    }
-
     // HUD & Badges
     this.renderer.drawHUD(
       this.score, this.dScore, this.lives,
-      this.madnessKills, this.madnessStreak, this.madnessTimer, badges.bestMadnessKills,
+      this.madnessKills, this.madnessStreak, badges.bestMadnessKills,
       superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
       powerups.fx.overdrive,
       this.loopCount,
