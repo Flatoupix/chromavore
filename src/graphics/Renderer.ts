@@ -553,18 +553,16 @@ export class Renderer {
       // 2. Ghost Kill Streak (with active decay timer gauge between ghost kills)
       const stX = isWide ? 38 : 30;
       const streakActive = madnessStreak > 0 && killStreakTimer > 0;
-      spriteAtlas.drawIcon(c, 'flame', stX - 16, 27, 13);
-      c.font = 'bold 10.5px monospace';
-      c.fillStyle = streakActive ? '#ff5533' : '#667788';
       if (streakActive) {
+        spriteAtlas.drawIcon(c, 'flame', stX - 16, 27, 13);
+        c.font = 'bold 10.5px monospace';
+        c.fillStyle = '#ff5533';
         c.shadowColor = '#ff5533';
         c.shadowBlur = 6;
-      }
-      c.fillText('x' + madnessStreak, stX - 4, 27);
-      c.shadowBlur = 0;
+        c.fillText('x' + madnessStreak, stX - 4, 27);
+        c.shadowBlur = 0;
 
-      // Kill streak timer gauge (countdown between ghost kills)
-      if (streakActive) {
+        // Kill streak timer gauge (countdown between ghost kills)
         const sProg = Math.max(0, Math.min(1, killStreakTimer / 3.5));
         const sBarW = isWide ? 44 : 34;
         c.fillStyle = 'rgba(255, 255, 255, 0.15)';
