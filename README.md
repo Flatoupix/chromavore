@@ -5,7 +5,7 @@
 
 [![Jouer en ligne](https://img.shields.io/badge/🎮%20JOUER%20EN%20LIGNE-GitHub%20Pages-00ffcc?style=for-the-badge)](https://flatoupix.github.io/chromavore/)
 [![Architecture](https://img.shields.io/badge/Stack-Vite%20%2B%20TypeScript-646cff?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-[![Version](https://img.shields.io/badge/Release-3.13.7-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
+[![Version](https://img.shields.io/badge/Release-3.13.8-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
 
 👉 **Accès direct au jeu :** **[https://flatoupix.github.io/chromavore/](https://flatoupix.github.io/chromavore/)**
 
@@ -111,6 +111,29 @@ chromavore/
    ```
 
 ---
+
+## Déploiement GitHub Pages et itch.io
+
+Chaque push sur `main` compile une seule fois le jeu, puis déploie le même
+contenu de `dist/` sur GitHub Pages et `flatoupix/chromavore:html5` avec butler.
+La version itch.io provient de `package.json`. Le workflow peut aussi être
+relancé manuellement depuis GitHub Actions sur `main`.
+
+Configuration initiale :
+
+1. Obtenir une clé butler via `butler login` ([documentation officielle](https://itch.io/docs/butler/login.html)).
+2. Dans GitHub → Settings → Secrets and variables → Actions, ajouter un secret
+   de dépôt nommé `BUTLER_API_KEY`. Ne jamais placer la clé dans le code ou les logs.
+3. Relancer le workflow. Sans ce secret, le job itch.io échoue explicitement,
+   mais le déploiement GitHub Pages reste indépendant.
+4. Après le premier envoi, dans la page d'édition itch.io, cocher
+   « This file will be played in the browser » pour le nouveau canal `html5`
+   à la place de l'ancienne archive manuelle, puis sauvegarder.
+   Les envois suivants actualisent ce même canal automatiquement.
+
+Ce workflow ne change ni la couverture, ni la description, ni la visibilité
+du projet : un brouillon reste un brouillon. Si la description mentionne une
+version précise, ce texte doit être actualisé séparément.
 
 ## 📄 Licence
 Projet sous licence MIT.

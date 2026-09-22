@@ -1,4 +1,4 @@
-name: Deploy CHROMAVORE to GitHub Pages
+name: Deploy CHROMAVORE to GitHub Pages and itch.io
 
 on:
   push:
@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +35,18 @@ jobs:
       - name: Build with Vite
         run: npm run build
 
+      - name: Read release version
+        id: version
+        run: echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
+
+      - name: Upload itch.io build
+        uses: actions/upload-artifact@v4
+        with:
+          name: itch-html5
+          path: ./dist
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -48,3 +62,44 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-itch:
+    name: Deploy to itch.io
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check itch.io authentication
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          if [ -z "$BUTLER_API_KEY" ]; then
+            echo "::error::Add the BUTLER_API_KEY repository secret to enable itch.io deployment. GitHub Pages deploys independently."
+            exit 1
+          fi
+
+      - name: Download production build
+        uses: actions/download-artifact@v4
+        with:
+          name: itch-html5
+          path: dist
+
+      - name: Install official itch.io butler
+        run: |
+          curl --fail --silent --show-error --location --retry 3 \
+            https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default \
+            --output "$RUNNER_TEMP/butler.zip"
+          unzip -q "$RUNNER_TEMP/butler.zip" -d "$RUNNER_TEMP/butler"
+          chmod +x "$RUNNER_TEMP/butler/butler"
+          "$RUNNER_TEMP/butler/butler" version
+
+      - name: Push HTML5 release
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          test -s dist/index.html
+          "$RUNNER_TEMP/butler/butler" push dist flatoupix/chromavore:html5 --userversion "$RELEASE_VERSION"
