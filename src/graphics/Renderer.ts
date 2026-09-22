@@ -712,7 +712,7 @@ export class Renderer {
         c.fillText('[SHIFT]', chCenter, 41);
       }
 
-      // 6. Active Item / Arsenal status
+      // 6. Real-time Skill & Arsenal Unlock Progression / Active Item Status
       c.textAlign = 'right';
       const rightPad = isWide ? 14 : 10;
       if (superItems.isRunning()) {
@@ -723,34 +723,62 @@ export class Renderer {
       } else if (superItems.boardDrop) {
         c.font = isWide ? 'bold 9px monospace' : 'bold 8px monospace';
         c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 10;
-        c.fillText(`${superItems.boardDrop.item.name} IN MAZE`, this.cw - rightPad, 18);
+        c.fillText(`DROP: ${superItems.boardDrop.item.name}`, this.cw - rightPad, 18);
         c.shadowBlur = 0;
         c.font = '8px monospace'; c.fillStyle = '#00ffff';
         c.fillText(`READY TO COLLECT • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
       } else {
-        const unlockedItems = progression.getUnlockedSuperItems();
-        if (unlockedItems.length === 0) {
-          const novaRequirement = SKILL_TREE.find(s => s.id === 'nova_v1')?.threshold ?? 150;
-          const killsLeft = Math.max(0, novaRequirement - progression.totalGhosts);
+        const nextUnlock = progression.getNextUnlock();
+        if (nextUnlock.skill) {
+          const sk = nextUnlock.skill;
+          const kLeft = nextUnlock.remaining;
+          const prog = Math.max(0, Math.min(1, nextUnlock.progress));
+
           c.font = isWide ? 'bold 9px monospace' : 'bold 8px monospace';
-          c.fillStyle = '#8899aa';
-          const nText = `NOVA : ${progression.totalGhosts}/${novaRequirement}`;
-          const ntw = c.measureText(nText).width;
-          spriteAtlas.drawIcon(c, 'nova', this.cw - rightPad - ntw - 10, 16, 12);
-          c.fillText(nText, this.cw - rightPad, 16);
+          c.fillStyle = '#00f0ff';
+          c.shadowColor = '#00f0ff';
+          c.shadowBlur = 4;
+          const labelText = `${sk.name} : ${progression.totalGhosts}/${sk.threshold}`;
+          const ltw = c.measureText(labelText).width;
+          spriteAtlas.drawIcon(c, sk.icon, this.cw - rightPad - ltw - 10, 16, 12);
+          c.fillText(labelText, this.cw - rightPad, 16);
+          c.shadowBlur = 0;
+
+          // Mini progress gauge and kills left
+          const barW = isWide ? 80 : 60;
+          const barH = 3;
+          const bx = this.cw - rightPad - barW;
+          const by = 26;
+
+          c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+          c.fillRect(bx, by, barW, barH);
+
+          if (prog > 0) {
+            const fillW = Math.max(2, barW * prog);
+            const grad = c.createLinearGradient(bx, by, bx + fillW, by);
+            grad.addColorStop(0, '#0088ff');
+            grad.addColorStop(1, '#00ffff');
+            c.fillStyle = grad;
+            c.shadowColor = '#00ffff';
+            c.shadowBlur = 4;
+            c.fillRect(bx, by, fillW, barH);
+            c.shadowBlur = 0;
+          }
+
           c.font = '7.5px monospace';
-          c.fillStyle = '#ff007f';
-          c.fillText(`${killsLeft} MORE KILLS`, this.cw - rightPad, 32);
-        } else {
-          c.font = isWide ? 'bold 10px monospace' : 'bold 8.5px monospace';
           c.fillStyle = '#ffd700';
-          c.shadowColor = '#ffd700';
+          c.fillText(`${kLeft} KILLS LEFT`, this.cw - rightPad, 38);
+        } else {
+          // All skills/arsenal unlocked
+          c.font = isWide ? 'bold 9.5px monospace' : 'bold 8.5px monospace';
+          c.fillStyle = '#00f0ff';
+          c.shadowColor = '#00f0ff';
           c.shadowBlur = 8;
-          c.fillText('SUPER-ITEMS IN MAZE', this.cw - rightPad, 16);
+          c.fillText('★ ARSENAL MAXED ★', this.cw - rightPad, 18);
           c.shadowBlur = 0;
           c.font = '8px monospace';
-          c.fillStyle = '#00ffff';
-          c.fillText(`NEXT SPAWN: ${Math.max(0, superItems.spawnTimer).toFixed(1)}s`, this.cw - rightPad, 34);
+          c.fillStyle = '#ffd700';
+          c.fillText(`ALL POWERS UNLOCKED`, this.cw - rightPad, 34);
         }
       }
 

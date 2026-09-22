@@ -2125,7 +2125,7 @@ class Game {
         this.dotStreakTimer
       );
       this.renderer.drawEffectTimers(this.getEffectTimers());
-      this.renderer.drawOnboardingHint(progression.totalGhosts, this.time);
+      // Onboarding skill progress is now directly integrated into the HUD (Section 6)
       this.renderer.drawPause(true, this.madnessKills, this.madnessStreak, this.time);
       return;
     }
@@ -2207,7 +2207,7 @@ class Game {
       this.dotStreakTimer
     );
     this.renderer.drawEffectTimers(this.getEffectTimers());
-    this.renderer.drawOnboardingHint(progression.totalGhosts, this.time);
+    // Onboarding skill progress is now directly integrated into the HUD (Section 6)
 
     if (this.state === 'waveTrans') {
       this.renderer.drawWaveTrans(this.maze.currentLevel, this.wave, this.loopCount, true);
