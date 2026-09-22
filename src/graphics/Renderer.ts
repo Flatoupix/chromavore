@@ -1219,7 +1219,7 @@ export class Renderer {
     // Card 2: SECRET MOTION COMBOS (y: 180, h: 76)
     this.drawInstructionCard(c, cardX, 180, cardW, 76, '#ffd700', 'SECRET MOTION COMBOS', [
       { badge: '← → ← →', desc: 'Wiggle EMP: radial shockwave that stuns and repels nearby foes' },
-      { badge: '↑ ↓ ↑ ↓', desc: 'Nitro Jet: bursts forward with blazing flame trail on tiles' }
+      { badge: '↓ ↑ ↓ ↑ (Bao Bao)', desc: 'Nitro Jet: bursts forward with blazing flame trail on tiles' }
     ]);
 
     // Card 3: SUPER-ITEMS IN THE MAZE (y: 266, h: 76)

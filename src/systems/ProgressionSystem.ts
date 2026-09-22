@@ -85,7 +85,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nitro',
     threshold: 360,
     category: 'kombo',
-    command: '↑ ↓ ↑ ↓ (Pump)',
+    command: '↓ ↑ ↓ ↑ (Bao Bao)',
     desc: 'Turbo speed boost leaving a burning trail that incinerates ghosts for 3.2s'
   },
   {
@@ -195,7 +195,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nitro',
     threshold: 3300,
     category: 'kombo',
-    command: '↑ ↓ ↑ ↓ (Pump)',
+    command: '↓ ↑ ↓ ↑ (Bao Bao)',
     desc: '+20% turbo speed, 4.5s duration, and persistent ground plasma for 2.5s'
   },
   {

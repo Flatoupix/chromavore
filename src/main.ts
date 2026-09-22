@@ -1784,7 +1784,7 @@ class Game {
           const shockProgress = Math.min(1.0, introElapsed / 5.0);
           this.singularityShockwaveRadius = shockProgress * maxR;
 
-          // Vaporize all spectres reached by the golden shockwave
+          // Vaporize all spectres reached by the golden shockwave (without inflating kill streak)
           for (const e of this.enemyManager.enemies) {
             if (e.st !== 'dead' && e.st !== 'return') {
               const ep = this.enemyManager.getPos(e);
@@ -1792,7 +1792,12 @@ class Game {
               if (dist <= this.singularityShockwaveRadius) {
                 particles.emit(ep.x, ep.y, 25, '#ffd700', { speed: 180, size: 5, life: 0.6 });
                 particles.addPop(ep.x, ep.y - 12, 'VAPORIZED !', '#ffd700', 16);
+                // Kill ghost but bypass streak inflation during intro cinematic
+                const savedStreak = this.madnessStreak;
+                const savedStreakTimer = this.killStreakTimer;
                 this.onKillGhost(e, ep.x, ep.y);
+                this.madnessStreak = savedStreak;
+                this.killStreakTimer = savedStreakTimer;
               }
             }
           }
@@ -1800,15 +1805,34 @@ class Game {
           // Continuous cinematic screen rumble
           particles.shake(Math.min(10, 3 + introElapsed * 1.6), 0.1);
 
-          // When 5s intro completes: launch full-speed Singularity with a fresh 30s timer!
+          // When 5s intro completes: NOVA finale vaporizes remaining ghosts, then launch Singularity!
           if (this.singularityIntroTimer <= 0) {
             this.singularityIntroTimer = 0;
             this.singularityShockwaveRadius = 0;
+
+            // Full-screen Nova: instantly destroy any remaining active ghosts
+            for (const e of this.enemyManager.enemies) {
+              if (e.st !== 'dead' && e.st !== 'return') {
+                const ep = this.enemyManager.getPos(e);
+                particles.emit(ep.x, ep.y, 30, '#ffd700', { speed: 220, size: 5, life: 0.7 });
+                particles.addPop(ep.x, ep.y - 12, 'NOVA !', '#ffd700', 14);
+                const savedStreak = this.madnessStreak;
+                const savedStreakTimer = this.killStreakTimer;
+                this.onKillGhost(e, ep.x, ep.y);
+                this.madnessStreak = savedStreak;
+                this.killStreakTimer = savedStreakTimer;
+              }
+            }
+
+            // Reset streak cleanly before entering active Singularity
+            this.madnessStreak = 0;
+            this.killStreakTimer = 0;
+
             this.combo.m = 64;
             this.combo.t = SINGULARITY_DURATION;
             sounds.play('wave');
-            particles.shake(14, 0.4);
-            particles.flash('#ffd700', 0.4);
+            particles.shake(18, 0.5);
+            particles.flash('#ffd700', 0.6);
             particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« SINGULARITY OVERDRIVE »', '#ffd700', 26);
           }
           return;
