@@ -133,7 +133,7 @@ class Game {
         date
       });
       modal.style.display = 'none';
-      this.state = 'leaderboard';
+      this.state = 'gameover';
       sounds.play('click');
     };
 
