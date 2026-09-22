@@ -85,6 +85,7 @@ export const CT = [0, 8, 22, 48, 85, 120];
 export const CM = [1, 2, 4, 8, 16, 32];
 export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff00aa', '#00ffff'];
 export const COMBO_DECAY = 0.5; // Strictly 0.5s between pellets (gap without pellets resets combo)
+export const STREAK_DECAY_WINDOW = 0.85; // Window between dots/pellets to maintain dot streak and audio tension
 export const GOD_MODE_DURATION = 15.0; // 15.0s God Mode duration when triggered
 export const MADNESS_UNLOCK_KILLS = 1600; // Unlocked with Cyber Dash V2 at 1600 career ghost kills
 export const HD_AUDIO_UNLOCK_KILLS = 3000; // Unlocked at 3000 career ghost kills (HD Dark Synthwave Studio OST)

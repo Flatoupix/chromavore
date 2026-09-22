@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, STREAK_DECAY_WINDOW, GOD_MODE_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -73,6 +73,11 @@ class Game {
   public madnessKills: number = 0;
   public madnessStreak: number = 0;
   public madnessSpawnTimer: number = 0;
+
+  // Dot / Pellet Eating Streak & Frequency
+  public dotStreak: number = 0;
+  public dotStreakTimer: number = 0;
+  public maxDotStreak: number = 0;
 
   // Bullet Time (Chrono-Shift) specific
   public chronoEnergy: number = CHRONO_MAX;
@@ -251,7 +256,7 @@ class Game {
     this.state = 'gameover';
     this.pendingScore = this.score;
     this.pendingKills = this.madnessKills;
-    this.pendingStreak = this.madnessStreak;
+    this.pendingStreak = this.maxDotStreak;
 
     badges.saveScore(this.score);
     badges.saveMadnessKills(this.madnessKills);
@@ -647,6 +652,9 @@ class Game {
     this.madnessTimer = 30.0;
     this.madnessKills = 0;
     this.madnessStreak = 0;
+    this.dotStreak = 0;
+    this.dotStreakTimer = 0;
+    this.maxDotStreak = 0;
     this.madnessSpawnTimer = 0;
 
     this.chronoEnergy = CHRONO_MAX;
@@ -682,6 +690,8 @@ class Game {
 
   private warpToLevel(lvlIndex: number) {
     sounds.resetDotStreak();
+    this.dotStreak = 0;
+    this.dotStreakTimer = 0;
     const isWidescreen = this.isWidescreenUnlocked();
     const list = this.getCurrentLevelList();
     this.maze.build(lvlIndex, isWidescreen);
@@ -895,6 +905,8 @@ class Game {
     this.lives--;
     this.madnessTimer = Math.max(0, this.madnessTimer - 4.0);
     this.madnessStreak = 0;
+    this.dotStreak = 0;
+    this.dotStreakTimer = 0;
     const pp = this.player.getPos();
     particles.emit(pp.x, pp.y, 40, '#ffffff', { speed: 160, size: 5, life: 0.85, gravity: 80 });
     particles.emit(pp.x, pp.y, 30, '#00b4ff', { speed: 130, size: 4, life: 0.65 });
@@ -1405,6 +1417,24 @@ class Game {
         }
       }
 
+      // Dot & Pellet Eating Frequency Streak
+      this.dotStreak++;
+      this.dotStreakTimer = STREAK_DECAY_WINDOW;
+      if (this.dotStreak > this.maxDotStreak) {
+        this.maxDotStreak = this.dotStreak;
+      }
+
+      // Bonus de points tous les 10 dans la streak !
+      if (this.dotStreak % 10 === 0) {
+        const bonusMilestone = (this.dotStreak / 10);
+        const streakBonus = 500 * bonusMilestone * (this.combo.m || 1);
+        this.score += streakBonus;
+        particles.addPop(px, py - 24, `STREAK x${this.dotStreak} ! +${streakBonus}`, '#ff5533', 18);
+        particles.flash('#ff5533', 0.12);
+        particles.shake(3, 0.15);
+        sounds.play('wave');
+      }
+
       if (this.combo.n > this.bestCombo) this.bestCombo = this.combo.n;
 
       if (this.maze.remainingDots <= 0 && this.state === 'playing') {
@@ -1906,6 +1936,15 @@ class Game {
           () => { powerups.fx.overdrive = progression.getSkillLevel('overdrive') >= 2 ? 10.0 : 8.0; }
         );
 
+        // Dot Eating Streak decay (window between consecutive dots)
+        if (this.dotStreakTimer > 0) {
+          this.dotStreakTimer -= dt * chronoScale;
+          if (this.dotStreakTimer <= 0) {
+            this.dotStreak = 0;
+            this.dotStreakTimer = 0;
+          }
+        }
+
         // Combo decay
         if (this.combo.n > 0) {
           this.combo.t -= dt * chronoScale;
@@ -2081,7 +2120,9 @@ class Game {
         powerups.pred.warn,
         this.chronoEnergy,
         this.isChronoActive,
-        progression.getSkillLevel('chrono')
+        progression.getSkillLevel('chrono'),
+        this.dotStreak,
+        this.dotStreakTimer
       );
       this.renderer.drawEffectTimers(this.getEffectTimers());
       this.renderer.drawOnboardingHint(progression.totalGhosts, this.time);
@@ -2161,7 +2202,9 @@ class Game {
       powerups.pred.warn,
       this.chronoEnergy,
       this.isChronoActive,
-      progression.getSkillLevel('chrono')
+      progression.getSkillLevel('chrono'),
+      this.dotStreak,
+      this.dotStreakTimer
     );
     this.renderer.drawEffectTimers(this.getEffectTimers());
     this.renderer.drawOnboardingHint(progression.totalGhosts, this.time);

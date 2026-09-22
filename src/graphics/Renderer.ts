@@ -527,7 +527,9 @@ export class Renderer {
     isWarn: boolean = false,
     chronoEnergy: number = 100,
     isChronoActive: boolean = false,
-    chronoLevel: number = 1
+    chronoLevel: number = 1,
+    dotStreak: number = 0,
+    dotStreakTimer: number = 0
   ) {
     const isMadness = true;
     const c = this.ctx;
@@ -547,15 +549,35 @@ export class Renderer {
       c.fillText(Math.round(dScore).toString().padStart(6, '0'), isWide ? 52 : 46, 13);
       c.shadowBlur = 0;
 
-      // 2. Kills & Streak
+      // 2. Kills & Streak (Dot/Pellet Eating Frequency Streak)
       spriteAtlas.drawIcon(c, 'skull', 16, 27, 13);
       c.font = 'bold 11px monospace'; c.fillStyle = '#00f0ff';
       c.fillText(madnessKills.toString(), 26, 27);
 
       const stX = isWide ? 76 : 60;
+      const streakActive = dotStreak > 0 && dotStreakTimer > 0;
       spriteAtlas.drawIcon(c, 'flame', stX, 27, 13);
-      c.font = 'bold 10px monospace'; c.fillStyle = '#ff5533';
-      c.fillText('x' + madnessStreak, stX + 10, 27);
+      c.font = 'bold 10px monospace';
+      c.fillStyle = streakActive ? '#ff5533' : '#667788';
+      if (streakActive) {
+        c.shadowColor = '#ff5533';
+        c.shadowBlur = 6;
+      }
+      c.fillText('x' + dotStreak, stX + 10, 27);
+      c.shadowBlur = 0;
+
+      // Streak timer gauge (decay between pellets)
+      if (streakActive) {
+        const sProg = Math.max(0, Math.min(1, dotStreakTimer / 0.85));
+        const sBarW = isWide ? 38 : 30;
+        c.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        c.fillRect(stX - 6, 33, sBarW, 2.5);
+        c.fillStyle = '#ff5533';
+        c.shadowColor = '#ff5533';
+        c.shadowBlur = 4;
+        c.fillRect(stX - 6, 33, sBarW * sProg, 2.5);
+        c.shadowBlur = 0;
+      }
 
       // 3. Status / Combo / Predator
       if (combo.m >= 32) {
