@@ -1780,7 +1780,10 @@ class Game {
           const pp = this.player.getPos();
 
           // During the full 5.0 seconds intro: golden deflagration shockwave expands outward
-          const maxR = Math.max(this.renderer.cw, ROWS * T) * 1.35;
+          // Use full screen diagonal from any corner to guarantee coverage regardless of player position
+          const screenW = this.renderer.cw;
+          const screenH = ROWS * T;
+          const maxR = Math.sqrt(screenW * screenW + screenH * screenH) * 1.1;
           const shockProgress = Math.min(1.0, introElapsed / 5.0);
           this.singularityShockwaveRadius = shockProgress * maxR;
 
@@ -1805,12 +1808,12 @@ class Game {
           // Continuous cinematic screen rumble
           particles.shake(Math.min(10, 3 + introElapsed * 1.6), 0.1);
 
-          // When 5s intro completes: NOVA finale vaporizes remaining ghosts, then launch Singularity!
+          // When 5s intro completes: NOVA finale vaporizes ALL remaining ghosts, then launch Singularity!
           if (this.singularityIntroTimer <= 0) {
             this.singularityIntroTimer = 0;
             this.singularityShockwaveRadius = 0;
 
-            // Full-screen Nova: instantly destroy any remaining active ghosts
+            // Full-screen Nova: destroy every remaining active ghost instantly
             for (const e of this.enemyManager.enemies) {
               if (e.st !== 'dead' && e.st !== 'return') {
                 const ep = this.enemyManager.getPos(e);
@@ -1830,12 +1833,17 @@ class Game {
 
             this.combo.m = 64;
             this.combo.t = SINGULARITY_DURATION;
+            // Give player brief invincibility so no ghost can kill them right as they unfreeze
+            this.player.invuln = Math.max(this.player.invuln, 1.5);
             sounds.play('wave');
             particles.shake(18, 0.5);
             particles.flash('#ffd700', 0.6);
             particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« SINGULARITY OVERDRIVE »', '#ffd700', 26);
+            // Do NOT return — game resumes this same frame
+          } else {
+            // Still in intro cinematic: freeze game logic
+            return;
           }
-          return;
         }
 
         // Bullet Time (Chrono-Shift), unlocked at 180 frags
