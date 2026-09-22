@@ -589,7 +589,8 @@ class SoundManager {
     }
     this.initCtx();
 
-    if (isHDUnlocked && !this.hdLoadFailed) {
+    // If Singularity mode, play the MP3 track directly (Singularity is exclusive to 16:9 HD mode)
+    if (isSingularity || (isHDUnlocked && !this.hdLoadFailed)) {
       this.updateHDMusic(dt, isPlaying, isInvincible, isSingularity, isSingularityRising);
       return;
     }
@@ -603,10 +604,9 @@ class SoundManager {
     this.bgmTime += dt;
     // Step duration:
     // Chrono-Shift: 0.36s (heavy, immersive slow-motion pulse)
-    // Singularity Mode: 0.075s (180+ BPM fast explosive darksynth)
-    // Invincible / God Mode: 0.09s (166 BPM high-energy overdrive)
+    // Invincible / God Mode (Web Audio): 0.09s (166 BPM high-energy overdrive)
     // Normal: 0.125s (120 BPM)
-    const stepDuration = this.isChronoActive ? 0.36 : (isSingularity ? 0.075 : (isInvincible ? 0.09 : 0.125));
+    const stepDuration = this.isChronoActive ? 0.36 : (isInvincible ? 0.09 : 0.125);
 
     if (this.bgmTime >= stepDuration) {
       this.bgmTime -= stepDuration;
@@ -627,18 +627,12 @@ class SoundManager {
         146.8, 293.6, 146.8, 293.6, 164.8, 329.6, 164.8, 329.6
       ];
 
-      // Symphonic Fast Darksynth in D Minor for Singularity Mode
-      const singularityRoots = [
-        146.83, 293.66, 146.83, 293.66, 116.54, 233.08, 116.54, 233.08, // D -> Bb
-        130.81, 261.63, 130.81, 261.63, 110.00, 220.00, 110.00, 220.00  // C -> A
-      ];
-
-      const bassFreq = isSingularity
-        ? singularityRoots[this.bgmStep % singularityRoots.length]
-        : (isInvincible ? godRoots[this.bgmStep % godRoots.length] : roots[this.bgmStep % roots.length]);
+      const bassFreq = isInvincible
+        ? godRoots[this.bgmStep % godRoots.length]
+        : roots[this.bgmStep % roots.length];
 
       try {
-        // Aggressive Darksynth Bass with Resonant Lowpass Filter Envelope
+        // Synthwave Bass with Resonant Lowpass Filter Envelope
         const osc = this.actx.createOscillator();
         const filter = this.actx.createBiquadFilter();
         const g = this.actx.createGain();
@@ -647,11 +641,11 @@ class SoundManager {
         osc.frequency.setValueAtTime(bassFreq, t);
 
         filter.type = 'lowpass';
-        filter.Q.setValueAtTime(isSingularity ? 8.5 : (isInvincible ? 6.5 : 4.5), t);
-        filter.frequency.setValueAtTime(isSingularity ? 2200 : (isInvincible ? 1600 : (this.isChronoActive ? 380 : 850)), t);
-        filter.frequency.exponentialRampToValueAtTime(this.isChronoActive ? 90 : (isSingularity ? 160 : 140), t + stepDuration * 0.85);
+        filter.Q.setValueAtTime(isInvincible ? 6.5 : 4.5, t);
+        filter.frequency.setValueAtTime(isInvincible ? 1600 : (this.isChronoActive ? 380 : 850), t);
+        filter.frequency.exponentialRampToValueAtTime(this.isChronoActive ? 90 : 140, t + stepDuration * 0.85);
 
-        const bassVol = isSingularity ? 0.065 : (isInvincible ? 0.055 : 0.045);
+        const bassVol = isInvincible ? 0.055 : 0.045;
         g.gain.setValueAtTime(bassVol, t);
         g.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * 0.9);
 
@@ -662,29 +656,31 @@ class SoundManager {
         osc.start(t);
         osc.stop(t + stepDuration * 0.9);
 
-        // Symphonic Strings & Brass Lead Arpeggio
-        const isArpStep = isSingularity ? true : (isInvincible ? (this.bgmStep % 2 === 0) : (this.bgmStep % 4 === 0));
+        // Melodic Arpeggio Synth Lead
+        // Invincible: Soaring bright triumphant arpeggio every 2 steps
+        // Normal: Classic synthwave arpeggio every 4 steps
+        const isArpStep = isInvincible ? (this.bgmStep % 2 === 0) : (this.bgmStep % 4 === 0);
 
         if (isArpStep) {
           const normalScale = [440, 523.25, 659.25, 783.99, 880, 1046.5];
           const godScale = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98];
-          const singularityScale = [587.33, 698.46, 880.00, 1046.50, 1174.66, 1396.91, 1760.00];
-          const scale = isSingularity ? singularityScale : (isInvincible ? godScale : normalScale);
-          const arpFreq = scale[this.bgmStep % scale.length];
+          const scale = isInvincible ? godScale : normalScale;
+          const arpFreq = scale[(this.bgmStep / (isInvincible ? 1 : 2)) % scale.length];
 
           const arpOsc = this.actx.createOscillator();
           const arpG = this.actx.createGain();
-          arpOsc.type = isSingularity ? 'sawtooth' : (isInvincible ? 'triangle' : 'sine');
+          arpOsc.type = isInvincible ? 'triangle' : 'sine';
           arpOsc.frequency.setValueAtTime(arpFreq, t);
 
-          const arpVol = isSingularity ? 0.042 : (isInvincible ? 0.035 : 0.02);
+          const arpVol = isInvincible ? 0.035 : 0.02;
           arpG.gain.setValueAtTime(arpVol, t);
-          arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * (isSingularity ? 1.0 : (isInvincible ? 1.2 : 1.5)));
+          arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * (isInvincible ? 1.2 : 1.5));
 
           arpOsc.connect(arpG);
           arpG.connect(this.actx.destination);
 
           arpOsc.start(t);
+          arpOsc.stop(t + stepDuration * (isInvincible ? 1.2 : 1.5));
         }
       } catch {}
     }
