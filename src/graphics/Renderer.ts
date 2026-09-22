@@ -393,21 +393,114 @@ export class Renderer {
   }
 
   public drawOnboardingHint(careerKills: number, time: number) {
-    let hint = '';
-    if (careerKills < 1) hint = 'OBJECTIVE: DEVOUR A POWER PELLET';
-    else if (careerKills < 10) hint = `FRIGHTENED GHOSTS = KILLS • DASH ${careerKills}/10`;
-    else if (careerKills < 75) hint = 'DASH: SPACEBAR • NEXT SUPER-ITEM AT 75 KILLS';
-    if (!hint) return;
-
     const c = this.ctx;
-    const alpha = 0.7 + Math.sin(time * 3) * 0.2;
+    const nextUnlock = progression.getNextUnlock();
+
     c.save();
-    c.font = 'bold 10px monospace';
-    c.textAlign = 'center';
-    c.fillStyle = `rgba(255, 215, 0, ${alpha})`;
-    c.shadowColor = '#ffd700';
-    c.shadowBlur = 8;
-    c.fillText(hint, this.cw / 2, HUD_H + 19);
+    const cx = this.cw / 2;
+    const bannerY = HUD_H + 15;
+
+    if (!nextUnlock.skill) {
+      // Everything in the Arsenal / Skill tree is unlocked!
+      const alpha = 0.8 + Math.sin(time * 3) * 0.2;
+      c.font = 'bold 9px monospace';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = `rgba(0, 255, 234, ${alpha})`;
+      c.shadowColor = '#00f0ff';
+      c.shadowBlur = 6;
+      c.fillText('★ ARSENAL FULLY UNLOCKED ★', cx, bannerY);
+      c.restore();
+      return;
+    }
+
+    const skill = nextUnlock.skill;
+    const killsRemaining = nextUnlock.remaining;
+    const span = skill.threshold - nextUnlock.prevThreshold;
+    const currentInSpan = careerKills - nextUnlock.prevThreshold;
+    const progress = Math.max(0, Math.min(1, nextUnlock.progress));
+
+    // Badge / Pill dimensions
+    const barW = Math.min(190, this.cw * 0.45);
+    const barH = 4;
+    const pillW = barW + 80;
+    const pillH = 26;
+    const pillX = cx - pillW / 2;
+    const pillY = bannerY - pillH / 2 + 2;
+
+    // Semi-transparent dark pill container
+    c.fillStyle = 'rgba(6, 10, 22, 0.75)';
+    c.strokeStyle = 'rgba(0, 240, 255, 0.22)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(pillX, pillY, pillW, pillH, 5);
+    c.fill();
+    c.stroke();
+
+    // Icon of next skill
+    const iconX = pillX + 16;
+    const iconY = bannerY + 2;
+    spriteAtlas.drawIcon(c, skill.icon, iconX, iconY, 13);
+
+    // Text label above/beside bar
+    c.textAlign = 'left';
+    c.textBaseline = 'middle';
+    c.font = 'bold 8px monospace';
+    c.fillStyle = '#88aacc';
+    c.fillText('NEXT:', iconX + 11, bannerY - 3);
+
+    c.font = 'bold 8.5px monospace';
+    c.fillStyle = '#00ffff';
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 4;
+    c.fillText(skill.name, iconX + 40, bannerY - 3);
+    c.shadowBlur = 0;
+
+    // Kills counter / remaining on right side
+    c.textAlign = 'right';
+    c.font = 'bold 7.5px monospace';
+    c.fillStyle = '#ffd700';
+    c.fillText(`${careerKills}/${skill.threshold} (${killsRemaining} left)`, pillX + pillW - 10, bannerY - 3);
+
+    // Progress bar
+    const bx = iconX + 11;
+    const by = bannerY + 6;
+    const bTotalW = pillX + pillW - 10 - bx;
+
+    // Bar background
+    c.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    c.beginPath();
+    c.roundRect(bx, by, bTotalW, barH, 2);
+    c.fill();
+
+    // Bar filled
+    if (progress > 0) {
+      const fillW = Math.max(3, bTotalW * progress);
+      const grad = c.createLinearGradient(bx, by, bx + fillW, by);
+      grad.addColorStop(0, '#0088ff');
+      grad.addColorStop(0.7, '#00ffff');
+      grad.addColorStop(1, '#ffd700');
+
+      c.fillStyle = grad;
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 6;
+      c.beginPath();
+      c.roundRect(bx, by, fillW, barH, 2);
+      c.fill();
+      c.shadowBlur = 0;
+
+      // Glow pulse on tip
+      const tipX = bx + fillW;
+      const pulse = (Math.sin(time * 6) + 1) * 0.5;
+      c.fillStyle = '#ffffff';
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 4 + pulse * 4;
+      c.beginPath();
+      c.arc(tipX, by + barH / 2, 1.6 + pulse * 0.8, 0, Math.PI * 2);
+      c.fill();
+      c.shadowBlur = 0;
+    }
+
     c.restore();
   }
 
