@@ -1417,17 +1417,19 @@ class Game {
         // Les grosses boules (super-pellets) font remonter le timer et progresser le combo !
         this.combo.n += 4;
         const oldM = this.combo.m;
-        const tier = getComboTier(this.combo.n);
-        this.combo.m = CM[tier];
+        if (oldM < 64) {
+          const tier = getComboTier(this.combo.n);
+          this.combo.m = CM[tier];
 
-        if (this.combo.m >= 32) {
-          if (oldM < 32) {
-            this.combo.t = GOD_MODE_DURATION;
+          if (this.combo.m >= 32) {
+            if (oldM < 32) {
+              this.combo.t = GOD_MODE_DURATION;
+            }
+            // En Mode Dieu, ramasser des boules (grosses ou petites) n'incrémente plus le timer de 15s
+          } else {
+            // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
+            this.combo.t = COMBO_DECAY;
           }
-          // En Mode Dieu, ramasser des boules (grosses ou petites) n'incrémente plus le timer de 15s
-        } else {
-          // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
-          this.combo.t = COMBO_DECAY;
         }
 
         this.madnessTimer = Math.min(45, this.madnessTimer + 3.0);
@@ -1435,6 +1437,7 @@ class Game {
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
         if (this.combo.m > oldM && this.combo.m > 1) {
+          const tier = getComboTier(this.combo.n);
           this.triggerComboStep(tier, px, py);
         }
       } else {
@@ -1445,16 +1448,18 @@ class Game {
         this.combo.n++;
         const oldM = this.combo.m;
         const tier = getComboTier(this.combo.n);
-        this.combo.m = CM[tier];
+        if (oldM < 64) {
+          this.combo.m = CM[tier];
 
-        if (this.combo.m >= 32) {
-          if (oldM < 32) {
-            this.combo.t = GOD_MODE_DURATION;
+          if (this.combo.m >= 32) {
+            if (oldM < 32) {
+              this.combo.t = GOD_MODE_DURATION;
+            }
+            // En Mode Dieu, les dots ne raccourcissent pas le timer de 15s !
+          } else {
+            // Normal dot sustains combo timer (0.5s)
+            this.combo.t = COMBO_DECAY;
           }
-          // En Mode Dieu, les dots ne raccourcissent pas le timer de 15s !
-        } else {
-          // Normal dot sustains combo timer (0.5s)
-          this.combo.t = COMBO_DECAY;
         }
 
         const pts = 10 * this.combo.m;
@@ -1774,35 +1779,33 @@ class Game {
           const introElapsed = 5.0 - this.singularityIntroTimer;
           const pp = this.player.getPos();
 
-          // During the first 3 seconds: golden deflagration shockwave expands outward
-          if (introElapsed <= 3.0) {
-            const maxR = Math.max(this.renderer.cw, ROWS * T) * 1.25;
-            const shockProgress = introElapsed / 3.0;
-            this.singularityShockwaveRadius = shockProgress * maxR;
+          // During the full 5.0 seconds intro: golden deflagration shockwave expands outward
+          const maxR = Math.max(this.renderer.cw, ROWS * T) * 1.35;
+          const shockProgress = Math.min(1.0, introElapsed / 5.0);
+          this.singularityShockwaveRadius = shockProgress * maxR;
 
-            // Vaporize all spectres reached by the golden shockwave
-            for (const e of this.enemyManager.enemies) {
-              if (e.st !== 'dead' && e.st !== 'return') {
-                const ep = this.enemyManager.getPos(e);
-                const dist = Math.hypot(ep.x - pp.x, ep.y - pp.y);
-                if (dist <= this.singularityShockwaveRadius) {
-                  particles.emit(ep.x, ep.y, 25, '#ffd700', { speed: 180, size: 5, life: 0.6 });
-                  particles.addPop(ep.x, ep.y - 12, 'VAPORIZED !', '#ffd700', 16);
-                  this.onKillGhost(e, ep.x, ep.y);
-                }
+          // Vaporize all spectres reached by the golden shockwave
+          for (const e of this.enemyManager.enemies) {
+            if (e.st !== 'dead' && e.st !== 'return') {
+              const ep = this.enemyManager.getPos(e);
+              const dist = Math.hypot(ep.x - pp.x, ep.y - pp.y);
+              if (dist <= this.singularityShockwaveRadius) {
+                particles.emit(ep.x, ep.y, 25, '#ffd700', { speed: 180, size: 5, life: 0.6 });
+                particles.addPop(ep.x, ep.y - 12, 'VAPORIZED !', '#ffd700', 16);
+                this.onKillGhost(e, ep.x, ep.y);
               }
             }
-
-            // Continuous cinematic screen rumble
-            particles.shake(Math.min(10, 3 + introElapsed * 2.2), 0.1);
-          } else {
-            this.singularityShockwaveRadius = 0;
           }
 
-          // When 5s intro completes: launch full-speed Singularity!
+          // Continuous cinematic screen rumble
+          particles.shake(Math.min(10, 3 + introElapsed * 1.6), 0.1);
+
+          // When 5s intro completes: launch full-speed Singularity with a fresh 30s timer!
           if (this.singularityIntroTimer <= 0) {
             this.singularityIntroTimer = 0;
             this.singularityShockwaveRadius = 0;
+            this.combo.m = 64;
+            this.combo.t = SINGULARITY_DURATION;
             sounds.play('wave');
             particles.shake(14, 0.4);
             particles.flash('#ffd700', 0.4);
@@ -2265,7 +2268,7 @@ class Game {
     if (this.singularityShockwaveRadius > 0) {
       const pp = this.player.getPos();
       const introElapsed = 5.0 - this.singularityIntroTimer;
-      this.renderer.drawSingularityShockwave(pp.x, pp.y, this.singularityShockwaveRadius, introElapsed / 3.0);
+      this.renderer.drawSingularityShockwave(pp.x, pp.y, this.singularityShockwaveRadius, introElapsed / 5.0);
     }
 
     this.renderer.drawDots(this.maze, this.time);
