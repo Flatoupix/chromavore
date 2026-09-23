@@ -207,7 +207,7 @@ public clearLocal(): void {
 /** Hard reset: clear local and delete remote data */
 public async hardReset(): Promise<void> {
   this.clearLocal();
-  const dbUrl = (FIREBASE_CONFIG.databaseURL || localStorage.getItem('chv_firebase_url') || '').trim().replace(/\\/+$/, '');
+  const dbUrl = (FIREBASE_CONFIG.databaseURL || localStorage.getItem('chv_firebase_url') || '').trim().replace(/\/+$/, '');
   if (!dbUrl) return;
   try {
     await fetch(`${dbUrl}/leaderboard.json`, { method: 'DELETE' });
