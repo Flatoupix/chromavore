@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "leaderboard": {
+      ".read": true,
+      ".write": "newData.exists()",
+      "$entry": {
+        ".write": "newData.exists()",
+        ".validate": "newData.hasChildren(['pseudo', 'score', 'date']) && newData.child('pseudo').isString() && newData.child('score').isNumber() && newData.child('date').isString()"
+      }
+    }
+  }
+}
