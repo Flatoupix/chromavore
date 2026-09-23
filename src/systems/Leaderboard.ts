@@ -195,6 +195,26 @@ class LeaderboardManager {
     FIREBASE_CONFIG.databaseURL = url.trim();
     this.syncRemote();
   }
+// ---------- Reset utilities (personal project, no extra guard) ----------
+/** Remove local leaderboard storage */
+public clearLocal(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    this.entries = [];
+  } catch {}
+}
+
+/** Hard reset: clear local and delete remote data */
+public async hardReset(): Promise<void> {
+  this.clearLocal();
+  const dbUrl = (FIREBASE_CONFIG.databaseURL || localStorage.getItem('chv_firebase_url') || '').trim().replace(/\\/+$/, '');
+  if (!dbUrl) return;
+  try {
+    await fetch(`${dbUrl}/leaderboard.json`, { method: 'DELETE' });
+  } catch (err) {
+    console.warn('Leaderboard hard reset remote error:', err);
+  }
+}
 }
 
 export const leaderboard = new LeaderboardManager();

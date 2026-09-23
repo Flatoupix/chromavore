@@ -20,7 +20,9 @@ import { leaderboard } from './systems/Leaderboard';
 import { progression } from './systems/ProgressionSystem';
 import { profileManager } from './systems/ProfileManager';
 import { wobbleBanner } from './graphics/WobbleBanner';
-
+if (import.meta.env.DEV) {
+  import('./utils/adminReset');
+}
 class Game {
   private canvas: HTMLCanvasElement;
   private renderer: Renderer;
