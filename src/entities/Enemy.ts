@@ -149,6 +149,31 @@ export class EnemyManager {
     }
   }
 
+  public spawnTitan(maze?: MazeManager) {
+    const spots = this.getMadnessSpawnSpots(maze);
+    const pt = Math.random() < 0.5 ? spots.left : spots.right;
+    const ghost: Ghost = {
+      type: 'titan',
+      x: pt.x,
+      y: pt.y,
+      fx: pt.x,
+      fy: pt.y,
+      t: 1,
+      dx: 1,
+      dy: 0,
+      st: 'active',
+      speed: 1.8,
+      delay: 0,
+      fl: 0,
+      nm: false,
+      frozen: false,
+      frightened: false,
+      isTitan: true,
+      returnTimer: 0
+    };
+    this.enemies.push(ghost);
+  }
+
   public getPos(e: Ghost): { x: number; y: number } {
     const cols = this.currentCols;
     let fx_ = e.fx, fy_ = e.fy, tx = e.x, ty = e.y;

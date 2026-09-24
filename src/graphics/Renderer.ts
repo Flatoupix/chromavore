@@ -184,18 +184,37 @@ export class Renderer {
     }
   }
 
-  public drawNitroTrail(trail: { x: number; y: number; life: number; maxLife: number }[]) {
+  public drawNitroTrail(trail: { x: number; y: number; life: number; maxLife: number }[], isSingularity: boolean = false) {
     const c = this.ctx;
     for (const t of trail) {
       const a = t.life / t.maxLife;
       c.save();
-      c.globalAlpha = a * 0.65;
-      c.fillStyle = '#ff6600';
-      c.shadowColor = '#ff3300';
-      c.shadowBlur = 14;
-      c.beginPath();
-      c.arc(t.x, t.y, 8 * a, 0, PI2);
-      c.fill();
+      if (isSingularity) {
+        // Cosmic Singularity Hyper-Nitro: Incandescent golden/magenta plasma trail
+        c.globalAlpha = a * 0.9;
+        c.fillStyle = '#ffd700';
+        c.shadowColor = '#ff0055';
+        c.shadowBlur = 28;
+        c.beginPath();
+        c.arc(t.x, t.y, 24 * a, 0, PI2);
+        c.fill();
+
+        // Inner white-hot stellar core
+        c.fillStyle = '#ffffff';
+        c.shadowColor = '#ffd700';
+        c.shadowBlur = 16;
+        c.beginPath();
+        c.arc(t.x, t.y, 10 * a, 0, PI2);
+        c.fill();
+      } else {
+        c.globalAlpha = a * 0.65;
+        c.fillStyle = '#ff6600';
+        c.shadowColor = '#ff3300';
+        c.shadowBlur = 14;
+        c.beginPath();
+        c.arc(t.x, t.y, 8 * a, 0, PI2);
+        c.fill();
+      }
       c.restore();
     }
   }
@@ -2277,6 +2296,93 @@ export class Renderer {
     const pulse = 0.40 + 0.12 * Math.sin(time * 6);
     c.fillStyle = isSingularity ? `rgba(255, 215, 0, ${pulse + 0.1})` : `rgba(0, 240, 255, ${pulse})`;
     c.fillRect(0, 0, this.cw, ROWS * T);
+    c.restore();
+  }
+
+  public drawDebugMenu(
+    debugButtons: { id: string; label: string; key: string; color: string; active?: boolean; x: number; y: number; w: number; h: number }[],
+    time: number
+  ) {
+    const c = this.ctx;
+    // Dark cyber backdrop
+    c.fillStyle = 'rgba(4, 2, 12, 0.88)';
+    c.fillRect(0, 0, this.cw, CH);
+
+    const cardW = Math.min(620, this.cw - 24);
+    const cardH = 490;
+    const cardX = Math.floor((this.cw - cardW) / 2);
+    const cardY = 50;
+
+    c.save();
+    // Modal card
+    c.fillStyle = 'rgba(10, 14, 26, 0.98)';
+    c.strokeStyle = '#ffd700';
+    c.shadowColor = '#ffd700';
+    c.shadowBlur = 18;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.roundRect(cardX, cardY, cardW, cardH, 12);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Header
+    c.font = 'bold 20px monospace';
+    c.fillStyle = '#ffd700';
+    c.textAlign = 'center';
+    c.fillText('🛠️ CHROMAVORE DEBUG SUITE & GOD CONSOLE', this.cw / 2, cardY + 34);
+
+    c.font = '10.5px monospace';
+    c.fillStyle = '#aaaaaa';
+    c.fillText('PRESS [F2] / [²] TO TOGGLE DEBUG PAUSE • CLICK OR PRESS HOTKEYS', this.cw / 2, cardY + 54);
+
+    // Section separator
+    c.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(cardX + 20, cardY + 68);
+    c.lineTo(cardX + cardW - 20, cardY + 68);
+    c.stroke();
+
+    // Render debug buttons
+    for (const b of debugButtons) {
+      c.save();
+      const isActive = b.active;
+      c.fillStyle = isActive ? 'rgba(0, 255, 170, 0.22)' : 'rgba(25, 30, 48, 0.75)';
+      c.strokeStyle = isActive ? '#00ffaa' : b.color;
+      c.lineWidth = isActive ? 2 : 1.2;
+      c.shadowColor = isActive ? '#00ffaa' : b.color;
+      c.shadowBlur = isActive ? 10 : 4;
+      c.beginPath();
+      c.roundRect(b.x, b.y, b.w, b.h, 6);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+
+      // Hotkey badge
+      c.textAlign = 'left';
+      c.font = 'bold 10px monospace';
+      c.fillStyle = b.color;
+      c.fillText(b.key, b.x + 8, b.y + b.h / 2 + 3);
+
+      // Label
+      c.font = 'bold 10px monospace';
+      c.fillStyle = '#ffffff';
+      c.fillText(b.label, b.x + 36, b.y + b.h / 2 + 3);
+
+      if (isActive !== undefined) {
+        c.textAlign = 'right';
+        c.fillStyle = isActive ? '#00ffaa' : '#667788';
+        c.fillText(isActive ? 'ON' : 'OFF', b.x + b.w - 10, b.y + b.h / 2 + 3);
+      }
+      c.restore();
+    }
+
+    // Footer tip
+    c.font = '11px monospace';
+    c.fillStyle = '#00ffff';
+    c.textAlign = 'center';
+    c.fillText('PRESS [F2] OR CLICK RESUME TO TEST LIVE GAMEPLAY', this.cw / 2, cardY + cardH - 18);
     c.restore();
   }
 

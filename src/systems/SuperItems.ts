@@ -166,6 +166,25 @@ export class SuperItemManager {
     return true;
   }
 
+  public triggerSuperItem(
+    type: SuperItem['type'],
+    plPos: { x: number; y: number },
+    enemies: any[],
+    onKillGhost: (e: any, x: number, y: number) => void,
+    activateOverdrive?: () => void
+  ) {
+    const meta: Record<string, { name: string; icon: string }> = {
+      nova: { name: 'MEGA NOVA', icon: 'nova' },
+      overdrive: { name: 'DASH INFINI', icon: 'overdrive' },
+      vortex: { name: 'BLACK HOLE', icon: 'black_hole' },
+      laser: { name: 'HYPER BEAMS', icon: 'laser' },
+      cryo: { name: 'CRYO SHATTER', icon: 'cryo' },
+      tsunami: { name: 'LIGHT TSUNAMI', icon: 'tsunami' }
+    };
+    const itemMeta = meta[type] || { name: 'SUPER ITEM', icon: 'nova' };
+    this.activate({ type, name: itemMeta.name, icon: itemMeta.icon }, plPos, enemies, onKillGhost, activateOverdrive);
+  }
+
   public update(
     dt: number,
     plPos: { x: number; y: number },

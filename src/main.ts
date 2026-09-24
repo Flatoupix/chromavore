@@ -32,7 +32,8 @@ class Game {
   private touchDeck: TouchDeckManager;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' | 'debug' = 'menu';
+  public previousStateBeforeDebug: 'playing' | 'paused' | 'bonus' = 'playing';
   public playerRank: number = 0;
   public playerDate: string = '';
 
@@ -540,6 +541,17 @@ class Game {
         // Do not unpause on misclick outside buttons
         return;
       }
+
+      if (this.state === 'debug') {
+        const debugBtns = this.getDebugButtons();
+        for (const b of debugBtns) {
+          if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+            this.executeDebugAction(b.id);
+            return;
+          }
+        }
+        return;
+      }
     });
 
     // Touch swipe steering & double tap dash
@@ -581,6 +593,39 @@ class Game {
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      // Toggle Debug Mode with F2 or ² (Backquote)
+      if (e.code === 'F2' || e.code === 'Backquote') {
+        this.toggleDebugMode();
+        e.preventDefault();
+        return;
+      }
+
+      if (this.state === 'debug') {
+        if (e.code === 'Escape') {
+          this.toggleDebugMode();
+          e.preventDefault();
+          return;
+        }
+        // Direct Debug Hotkeys
+        if (e.code === 'KeyG') this.executeDebugAction('god_mode');
+        else if (e.code === 'KeyS') this.executeDebugAction('singularity');
+        else if (e.code === 'KeyN') this.executeDebugAction('nitro_burst');
+        else if (e.code === 'KeyE') this.executeDebugAction('emp_blast');
+        else if (e.code === 'KeyV') this.executeDebugAction('enter_vortex');
+        else if (e.code === 'KeyC') this.executeDebugAction('toggle_chrono');
+        else if (e.code === 'KeyO') this.executeDebugAction('infinite_dash');
+        else if (e.code === 'KeyL') this.executeDebugAction('add_life');
+        else if (e.code === 'Digit1' || e.code === 'Numpad1') this.executeDebugAction('item_nova');
+        else if (e.code === 'Digit2' || e.code === 'Numpad2') this.executeDebugAction('item_laser');
+        else if (e.code === 'Digit3' || e.code === 'Numpad3') this.executeDebugAction('item_vortex');
+        else if (e.code === 'Digit4' || e.code === 'Numpad4') this.executeDebugAction('item_tsunami');
+        else if (e.code === 'Digit5' || e.code === 'Numpad5') this.executeDebugAction('item_cryo');
+        else if (e.code === 'KeyT') this.executeDebugAction('spawn_titan');
+        else if (e.code === 'KeyW') this.executeDebugAction('clear_maze_dots');
+        e.preventDefault();
+        return;
+      }
+
       if (this.state === 'settings') {
         if (e.code === 'Escape' || e.code === 'KeyO' || e.code === 'Enter') {
           this.state = 'menu';
@@ -2025,6 +2070,10 @@ class Game {
       return;
     }
 
+    if (this.state === 'debug') {
+      return;
+    }
+
     if (input.isRestartRequested) {
       if (this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'ready') {
         this.startGame();
@@ -2265,10 +2314,18 @@ class Game {
               // Nitro Flame Jet
               const isSingularity = this.combo.m >= 64;
               const isV2 = lvl >= 2;
-              sounds.play('dash');
-              particles.shake(isSingularity ? 14 : (isV2 ? 8 : 6), 0.25);
-              particles.flash(isSingularity ? '#ffd700' : (isV2 ? '#00ffff' : '#ff7700'), 0.3);
               const pp = this.player.getPos();
+              sounds.play('dash');
+              if (isSingularity) {
+                sounds.play('nova');
+                particles.shake(16, 0.45);
+                particles.flash('#ffd700', 0.45);
+                particles.emit(pp.x, pp.y, 60, '#ffd700', { speed: 280, size: 6, life: 0.7 });
+                particles.emit(pp.x, pp.y, 40, '#ff0055', { speed: 220, size: 5, life: 0.6 });
+              } else {
+                particles.shake(isV2 ? 8 : 6, 0.25);
+                particles.flash(isV2 ? '#00ffff' : '#ff7700', 0.3);
+              }
               particles.addPop(
                 pp.x, pp.y - 26,
                 isSingularity ? '★ COSMIC HYPER-NITRO ★' : (isV2 ? 'PLASMA BURNER V2 !' : 'NITRO FLAME JET !'),
@@ -2283,14 +2340,18 @@ class Game {
         // Incinerate ghosts touching nitro trail (boosted radius & cosmic deflagration in Singularity!)
         if (input.nitroActive > 0) {
           const isSingularity = this.combo.m >= 64;
-          const hitRad = isSingularity ? T * 2.2 : T * 0.95;
+          const hitRad = isSingularity ? T * 3.2 : T * 0.95;
           for (const tp of input.nitroTrail) {
+            if (isSingularity && Math.random() < 0.3) {
+              particles.emit(tp.x + (Math.random() - 0.5) * 20, tp.y + (Math.random() - 0.5) * 20, 1, '#ffd700', { speed: 60, size: 3.5, life: 0.3 });
+            }
             for (const e of this.enemyManager.enemies) {
               if (e.st !== 'dead' && e.st !== 'return') {
                 const ep = this.enemyManager.getPos(e);
                 if (Math.hypot(ep.x - tp.x, ep.y - tp.y) < hitRad) {
                   if (isSingularity) {
-                    particles.emit(ep.x, ep.y, 10, '#ffd700', { speed: 180, size: 4.5, life: 0.45 });
+                    particles.emit(ep.x, ep.y, 16, '#ffd700', { speed: 220, size: 5, life: 0.5 });
+                    particles.flash('#ffd700', 0.15);
                   }
                   this.onKillGhost(e, ep.x, ep.y);
                 }
@@ -2498,6 +2559,192 @@ class Game {
     return effects;
   }
 
+  public getDebugButtons(): { id: string; label: string; key: string; color: string; active?: boolean; x: number; y: number; w: number; h: number }[] {
+    const cardW = Math.min(620, this.renderer.cw - 24);
+    const cardX = Math.floor((this.renderer.cw - cardW) / 2);
+    const cardY = 50;
+    const startY = cardY + 80;
+    const colW = (cardW - 40 - 16) / 2;
+    const rowH = 34;
+    const gap = 8;
+
+    const isSingularity = this.combo.m >= 64;
+    const is32xGod = this.combo.m >= 32;
+
+    const defs = [
+      // Left Column: Powers & Modes
+      { id: 'god_mode', label: 'TOGGLE x32 GOD MODE', key: '[G]', color: '#ffd700', active: is32xGod, col: 0, row: 0 },
+      { id: 'singularity', label: 'TOGGLE x64 SINGULARITY', key: '[S]', color: '#ff00aa', active: isSingularity, col: 0, row: 1 },
+      { id: 'nitro_burst', label: 'FIRE NITRO FLAME JET', key: '[N]', color: '#ff6600', col: 0, row: 2 },
+      { id: 'emp_blast', label: 'FIRE WIGGLE EMP BLAST', key: '[E]', color: '#00ffff', col: 0, row: 3 },
+      { id: 'enter_vortex', label: 'ENTER VORTEX ARENA', key: '[V]', color: '#d946ef', col: 0, row: 4 },
+      { id: 'toggle_chrono', label: 'TOGGLE CHRONO BULLET-TIME', key: '[C]', color: '#00ffff', active: this.isChronoActive, col: 0, row: 5 },
+      { id: 'infinite_dash', label: 'GIVE INFINITE DASH (OVERDRIVE)', key: '[O]', color: '#00ffcc', active: powerups.fx.overdrive > 0, col: 0, row: 6 },
+      { id: 'add_life', label: 'HEAL PAC-MAN (+1 LIFE)', key: '[L]', color: '#ff3366', col: 0, row: 7 },
+
+      // Right Column: Super-Items & Maze Triggers
+      { id: 'item_nova', label: 'SUPER-ITEM: MEGA NOVA', key: '[1]', color: '#ffd700', col: 1, row: 0 },
+      { id: 'item_laser', label: 'SUPER-ITEM: HYPER BEAMS', key: '[2]', color: '#00ffff', col: 1, row: 1 },
+      { id: 'item_vortex', label: 'SUPER-ITEM: BLACK HOLE', key: '[3]', color: '#bb44ff', col: 1, row: 2 },
+      { id: 'item_tsunami', label: 'SUPER-ITEM: LIGHT TSUNAMI', key: '[4]', color: '#ffffff', col: 1, row: 3 },
+      { id: 'item_cryo', label: 'SUPER-ITEM: CRYO SHATTER', key: '[5]', color: '#aaffff', col: 1, row: 4 },
+      { id: 'spawn_titan', label: 'SPAWN VOID TITAN GHOST', key: '[T]', color: '#ff0055', col: 1, row: 5 },
+      { id: 'clear_maze_dots', label: 'AUTO-CLEAR DOTS (WARP LEVEL)', key: '[W]', color: '#00ffaa', col: 1, row: 6 },
+      { id: 'resume_play', label: '▶ RESUME GAMEPLAY', key: '[F2]', color: '#00ffaa', col: 1, row: 7 },
+    ];
+
+    return defs.map(d => ({
+      id: d.id,
+      label: d.label,
+      key: d.key,
+      color: d.color,
+      active: d.active,
+      x: cardX + 20 + d.col * (colW + 16),
+      y: startY + d.row * (rowH + gap),
+      w: colW,
+      h: rowH
+    }));
+  }
+
+  public executeDebugAction(actionId: string) {
+    const pp = this.player.getPos();
+    sounds.play('click');
+    switch (actionId) {
+      case 'god_mode':
+        if (this.combo.m >= 32 && this.combo.m < 64) {
+          this.combo.m = 1;
+          this.combo.n = 0;
+          this.combo.t = 0;
+        } else {
+          this.combo.n = 85;
+          this.combo.m = 32;
+          this.combo.t = GOD_MODE_DURATION;
+          particles.flash('#ffd700', 0.3);
+          particles.shake(8, 0.25);
+          particles.addPop(pp.x, pp.y - 20, 'DEBUG: x32 GOD MODE', '#ffd700', 20);
+        }
+        break;
+      case 'singularity':
+        if (this.combo.m >= 64) {
+          this.combo.m = 1;
+          this.combo.n = 0;
+          this.combo.t = 0;
+        } else {
+          this.combo.n = 150;
+          this.combo.m = 64;
+          this.combo.t = SINGULARITY_DURATION;
+          this.singularityNovaUsed = false;
+          particles.flash('#ff00aa', 0.4);
+          particles.shake(14, 0.35);
+          particles.addPop(pp.x, pp.y - 20, 'DEBUG: x64 SINGULARITY', '#ff00aa', 22);
+        }
+        break;
+      case 'nitro_burst':
+        input.nitroActive = 4.5;
+        input.nitroCd = 0;
+        const isSing = this.combo.m >= 64;
+        sounds.play('dash');
+        if (isSing) {
+          sounds.play('nova');
+          particles.shake(16, 0.45);
+          particles.flash('#ffd700', 0.4);
+          particles.emit(pp.x, pp.y, 60, '#ffd700', { speed: 280, size: 6, life: 0.7 });
+        } else {
+          particles.shake(8, 0.25);
+          particles.flash('#ff7700', 0.3);
+        }
+        particles.addPop(pp.x, pp.y - 20, isSing ? 'DEBUG: SINGULARITY NITRO' : 'DEBUG: NITRO JET', isSing ? '#ffd700' : '#ff7700', 20);
+        break;
+      case 'emp_blast':
+        sounds.play('nova');
+        particles.shake(10, 0.3);
+        particles.flash('#00ffff', 0.35);
+        particles.emit(pp.x, pp.y, 35, '#00ffff', { speed: 220, size: 5, life: 0.6 });
+        particles.addPop(pp.x, pp.y - 20, 'DEBUG: EMP BLAST', '#00ffff', 20);
+        for (const e of this.enemyManager.enemies) {
+          if (e.st !== 'dead' && e.st !== 'return') {
+            const ep = this.enemyManager.getPos(e);
+            this.onKillGhost(e, ep.x, ep.y);
+          }
+        }
+        break;
+      case 'enter_vortex':
+        this.enterBonusStage();
+        return;
+      case 'toggle_chrono':
+        this.isChronoActive = !this.isChronoActive;
+        this.chronoEnergy = CHRONO_MAX;
+        sounds.setChronoActive(this.isChronoActive);
+        particles.addPop(pp.x, pp.y - 20, this.isChronoActive ? 'DEBUG: CHRONO ON' : 'DEBUG: CHRONO OFF', '#00ffff', 18);
+        break;
+      case 'infinite_dash':
+        if (powerups.fx.overdrive > 0) {
+          powerups.fx.overdrive = 0;
+        } else {
+          powerups.fx.overdrive = 12.0;
+          this.player.dashCd = 0;
+          particles.flash('#00ffcc', 0.3);
+          particles.addPop(pp.x, pp.y - 20, 'DEBUG: OVERDRIVE DASH (12s)', '#00ffcc', 18);
+        }
+        break;
+      case 'add_life':
+        this.lives = Math.min(5, this.lives + 1);
+        sounds.play('powerup');
+        particles.addPop(pp.x, pp.y - 20, `DEBUG: LIVES = ${this.lives}`, '#ff3366', 20);
+        break;
+      case 'item_nova':
+        superItems.triggerSuperItem('nova', pp, this.enemyManager.enemies, (e, x, y) => this.onKillGhost(e, x, y));
+        break;
+      case 'item_laser':
+        superItems.triggerSuperItem('laser', pp, this.enemyManager.enemies, (e, x, y) => this.onKillGhost(e, x, y));
+        break;
+      case 'item_vortex':
+        superItems.triggerSuperItem('vortex', pp, this.enemyManager.enemies, (e, x, y) => this.onKillGhost(e, x, y));
+        break;
+      case 'item_tsunami':
+        superItems.triggerSuperItem('tsunami', pp, this.enemyManager.enemies, (e, x, y) => this.onKillGhost(e, x, y));
+        break;
+      case 'item_cryo':
+        superItems.triggerSuperItem('cryo', pp, this.enemyManager.enemies, (e, x, y) => this.onKillGhost(e, x, y));
+        break;
+      case 'spawn_titan':
+        this.enemyManager.spawnTitan(this.maze);
+        sounds.play('nova');
+        particles.flash('#ff0033', 0.3);
+        particles.shake(8, 0.25);
+        particles.addPop(pp.x, pp.y - 20, 'DEBUG: VOID TITAN SPAWNED', '#ff0033', 20);
+        break;
+      case 'clear_maze_dots': {
+        const completedLvl = this.maze.currentLevel;
+        const list = this.getCurrentLevelList();
+        const nextLvl = (completedLvl + 1) % list.length;
+        this.warpToLevel(nextLvl);
+        sounds.play('powerup');
+        particles.flash('#00ffaa', 0.3);
+        particles.addPop(pp.x, pp.y - 20, `DEBUG: WARPED TO LEVEL ${nextLvl + 1}`, '#00ffaa', 20);
+        this.state = 'playing';
+        return;
+      }
+      case 'resume_play':
+        this.state = this.previousStateBeforeDebug;
+        sounds.play('click');
+        return;
+    }
+  }
+
+  public toggleDebugMode() {
+    if (this.state === 'debug') {
+      this.state = this.previousStateBeforeDebug;
+      sounds.play('click');
+    } else {
+      if (this.state === 'playing' || this.state === 'paused' || this.state === 'bonus' || this.state === 'ready') {
+        this.previousStateBeforeDebug = this.state === 'paused' ? 'paused' : (this.state === 'bonus' ? 'bonus' : 'playing');
+        this.state = 'debug';
+        sounds.play('click');
+      }
+    }
+  }
+
   private render() {
     // Chroma Awakening — mise à jour du tier à chaque frame
     const newTier = getChromaTier(progression.totalGhosts);
@@ -2621,6 +2868,56 @@ class Game {
       return;
     }
 
+    if (this.state === 'debug') {
+      this.renderer.ctx.save();
+      this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
+      this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
+
+      const is32xGod = this.combo.m >= 32;
+      if (is32xGod) {
+        this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time);
+      }
+
+      this.renderer.drawDots(this.maze, this.time);
+      powerups.draw(this.renderer.ctx, this.time);
+      superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
+      this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
+      this.player.draw(
+        this.renderer.ctx,
+        this.time,
+        is32xGod,
+        powerups.pred.on,
+        powerups.pred.t,
+        powerups.pred.maxT,
+        this.combo,
+        this.isChronoActive,
+        this.renderer.chromaTier,
+        this.killStreakTimer > 0 ? this.madnessStreak : 0
+      );
+      this.renderer.ctx.restore();
+
+      this.renderer.drawHUD(
+        this.score, this.dScore, this.lives,
+        this.madnessKills, this.madnessStreak, badges.bestMadnessKills,
+        superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
+        powerups.fx.overdrive,
+        this.loopCount,
+        powerups.pred.on,
+        powerups.pred.t,
+        powerups.pred.maxT,
+        powerups.pred.warn,
+        this.chronoEnergy,
+        this.isChronoActive,
+        progression.getSkillLevel('chrono'),
+        this.dotStreak,
+        this.dotStreakTimer,
+        this.killStreakTimer
+      );
+      this.renderer.drawEffectTimers(this.getEffectTimers());
+      this.renderer.drawDebugMenu(this.getDebugButtons(), this.time);
+      return;
+    }
+
     // Maze translation
     this.renderer.ctx.save();
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
@@ -2643,7 +2940,7 @@ class Game {
     this.renderer.drawDots(this.maze, this.time);
     this.renderer.drawDualSpawnMarkers(this.time, true);
     powerups.draw(this.renderer.ctx, this.time);
-    this.renderer.drawNitroTrail(input.nitroTrail);
+    this.renderer.drawNitroTrail(input.nitroTrail, isSingularity);
     // Super-Item visuals (Lasers, Vortex, Tsunami)
     superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
 
