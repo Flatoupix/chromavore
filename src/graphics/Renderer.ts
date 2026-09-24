@@ -13,6 +13,7 @@ import { BadgeManager, badges, BADGES } from '../systems/BadgeSystem';
 import { sounds } from '../audio/SoundManager';
 import { settingsManager, PAUSE_BUTTONS, updatePauseButtonPositions } from '../systems/SettingsManager';
 import { progression, SKILL_TREE } from '../systems/ProgressionSystem';
+import { experienceSystem, SKILL_NODES, SKILL_TREE_BRANCHES } from '../systems/ExperienceSystem';
 import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from './SpriteAtlas';
 
@@ -643,7 +644,7 @@ export class Renderer {
         c.fillText(dashLevel > 0 ? 'DASH [SPACE]' : `DASH ${progression.totalGhosts}/${dashThreshold}`, 10, 41);
       }
 
-      // 4. Level in Center (the run has no overall countdown)
+      // 4. Level & Account XP in Center
       const tmX = isWide ? Math.round(this.cw * 0.50) : 130;
       const mDef = MADNESS_LEVELS[currentLevel % MADNESS_LEVELS.length];
       c.font = isWide ? 'bold 10px monospace' : 'bold 8px monospace';
@@ -654,8 +655,28 @@ export class Renderer {
           ? (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} • LOOP ${loopCount + 1} (+${loopCount * 10}%)` : `L.${currentLevel + 1} LOOP ${loopCount + 1}`)
           : (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} : ${mDef.name}` : `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length}`),
         tmX,
-        27
+        21
       );
+
+      // Account Level & XP Gauge in Center HUD
+      const accLvl = experienceSystem.accountLevel;
+      const curXp = experienceSystem.accountXp;
+      const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
+      const xpRatio = reqXp === Infinity ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
+      const xpW = isWide ? 96 : 70;
+      const xpH = 3.5;
+      const xpX = tmX - xpW / 2;
+      const xpY = 32;
+
+      c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      c.fillRect(xpX, xpY, xpW, xpH);
+      c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#00ffaa';
+      c.fillRect(xpX, xpY, xpW * xpRatio, xpH);
+
+      c.font = 'bold 7.5px monospace';
+      c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#88ffcc';
+      const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
+      c.fillText(`ACC LVL ${accLvl}${surgeTag}`, tmX, 44);
 
       // 5. Chrono-Shift (Bullet Time) Gauge
       const chW = isWide ? 68 : 48;
@@ -1655,12 +1676,14 @@ export class Renderer {
     c.fillText('[ SPACE / ESC ] RETURN TO MENU', this.cw / 2, CH - 14);
   }
 
-  public drawCodex(time: number, tab: 'skills' | 'badges' = 'skills', page: number = 0) {
+  public drawCodex(time: number, tab: 'skills' | 'badges' | 'tree' = 'skills', page: number = 0) {
     const c = this.ctx;
     c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
     c.fillRect(0, 0, this.cw, CH);
 
     const isSkills = tab === 'skills';
+    const isBadges = tab === 'badges';
+    const isTree = (tab as string) === 'tree';
     const unlockedSkills = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
     const unlockedBadges = badges.getUnlockedCount();
     const totalBadges = badges.getTotalCount();
@@ -1678,72 +1701,62 @@ export class Renderer {
       grad.addColorStop(0.5, '#ff00aa');
       grad.addColorStop(1, '#ffd700');
       c.fillStyle = grad;
-      c.shadowColor = isSkills ? '#00ffff' : '#ffd700';
+      c.shadowColor = isTree ? '#00ffaa' : (isSkills ? '#00ffff' : '#ffd700');
       c.shadowBlur = 10;
     }
-    const titleText = isSkills ? 'ARSENAL & SKILL TREE' : 'BADGES & CAREER TROPHIES';
-    const tIcon = isSkills ? 'lightning' : 'trophy';
+    const titleText = isTree ? 'CHROMAVORE 4.0 — ARBRE DE COMPÉTENCES' : (isSkills ? 'ARSENAL & RECHERCHE' : 'BADGES & TROPHÉES');
+    const tIcon = isTree ? 'crown' : (isSkills ? 'lightning' : 'trophy');
     const tw = c.measureText(titleText).width;
-    spriteAtlas.drawIcon(c, tIcon, this.cw / 2 - tw / 2 - 14, 26, 16);
-    spriteAtlas.drawIcon(c, tIcon, this.cw / 2 + tw / 2 + 14, 26, 16);
-    c.fillText(titleText, this.cw / 2, 26);
+    spriteAtlas.drawIcon(c, tIcon, this.cw / 2 - tw / 2 - 14, 24, 16);
+    spriteAtlas.drawIcon(c, tIcon, this.cw / 2 + tw / 2 + 14, 24, 16);
+    c.fillText(titleText, this.cw / 2, 24);
     c.shadowBlur = 0;
     c.restore();
 
-    // Tab Switcher Bar at top (y: 36, h: 26)
-    const tabW = 200, tabH = 24, tabY = 36;
+    // Tab Switcher Bar at top (y: 34, h: 24, 3 tabs)
+    const tabW = Math.min(160, Math.floor((this.cw - 60) / 3));
+    const tabH = 22, tabY = 34;
+    const totalTabsW = tabW * 3 + 16;
+    const tabsStartX = this.cw / 2 - totalTabsW / 2;
 
     // Tab 1: Skills
+    const t1X = tabsStartX;
     c.fillStyle = isSkills
-      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 240, 255, 0.22)')
+      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 240, 255, 0.22)')
       : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.7)' : 'rgba(15, 20, 35, 0.7)');
-    c.strokeStyle = isSkills
-      ? this.getChromaAccent('#00f0ff', '#777777')
-      : (this.chromaTier === 0 ? '#333333' : '#223348');
+    c.strokeStyle = isSkills ? this.getChromaAccent('#00f0ff', '#777777') : '#223348';
     c.lineWidth = isSkills ? 1.8 : 1;
-    c.shadowColor = isSkills ? this.getChromaAccent('#00f0ff', 'transparent') : 'transparent';
-    c.shadowBlur = isSkills ? this.getChromaBlur(8) : 0;
-    c.beginPath();
-    c.roundRect(this.cw / 2 - tabW - 8, tabY, tabW, tabH, 5);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-    c.font = 'bold 10px monospace';
-    c.fillStyle = isSkills
-      ? this.getChromaAccent('#00f0ff', '#ffffff')
-      : (this.chromaTier === 0 ? '#666666' : '#8899aa');
+    c.beginPath(); c.roundRect(t1X, tabY, tabW, tabH, 5); c.fill(); c.stroke();
+    c.font = 'bold 9.5px monospace';
+    c.fillStyle = isSkills ? this.getChromaAccent('#00f0ff', '#ffffff') : '#8899aa';
     c.textAlign = 'center';
-    const tab1Text = `[1] ARSENAL (${unlockedSkills}/${SKILL_TREE.length})`;
-    const t1w = c.measureText(tab1Text).width;
-    spriteAtlas.drawIcon(c, 'lightning', this.cw / 2 - tabW / 2 - 8 - t1w / 2 - 10, tabY + 16, 12);
-    c.fillText(tab1Text, this.cw / 2 - tabW / 2 - 8 + 6, tabY + 16);
+    c.fillText(`[1] ARSENAL`, t1X + tabW / 2, tabY + 15);
 
     // Tab 2: Badges
-    const isBadges = tab === 'badges';
+    const t2X = tabsStartX + tabW + 8;
     c.fillStyle = isBadges
-      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 215, 0, 0.22)')
+      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 215, 0, 0.22)')
       : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.7)' : 'rgba(15, 20, 35, 0.7)');
-    c.strokeStyle = isBadges
-      ? this.getChromaAccent('#ffd700', '#777777')
-      : (this.chromaTier === 0 ? '#333333' : '#223348');
+    c.strokeStyle = isBadges ? this.getChromaAccent('#ffd700', '#777777') : '#223348';
     c.lineWidth = isBadges ? 1.8 : 1;
-    c.shadowColor = isBadges ? this.getChromaAccent('#ffd700', 'transparent') : 'transparent';
-    c.shadowBlur = isBadges ? this.getChromaBlur(8) : 0;
-    c.beginPath();
-    c.roundRect(this.cw / 2 + 8, tabY, tabW, tabH, 5);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-    c.font = 'bold 10px monospace';
-    c.fillStyle = isBadges
-      ? this.getChromaAccent('#ffd700', '#ffffff')
-      : (this.chromaTier === 0 ? '#666666' : '#8899aa');
-    const tab2Text = `[2] BADGES (${unlockedBadges}/${totalBadges})`;
-    const t2w = c.measureText(tab2Text).width;
-    spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 + tabW / 2 + 8 - t2w / 2 - 10, tabY + 16, 12);
-    c.fillText(tab2Text, this.cw / 2 + tabW / 2 + 8 + 6, tabY + 16);
+    c.beginPath(); c.roundRect(t2X, tabY, tabW, tabH, 5); c.fill(); c.stroke();
+    c.font = 'bold 9.5px monospace';
+    c.fillStyle = isBadges ? this.getChromaAccent('#ffd700', '#ffffff') : '#8899aa';
+    c.fillText(`[2] BADGES`, t2X + tabW / 2, tabY + 15);
 
-    // Dynamically center 2 columns of cards across any arena width
+    // Tab 3: Tree
+    const t3X = tabsStartX + (tabW + 8) * 2;
+    c.fillStyle = isTree
+      ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 255, 170, 0.22)')
+      : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.7)' : 'rgba(15, 20, 35, 0.7)');
+    c.strokeStyle = isTree ? this.getChromaAccent('#00ffaa', '#777777') : '#223348';
+    c.lineWidth = isTree ? 1.8 : 1;
+    c.beginPath(); c.roundRect(t3X, tabY, tabW, tabH, 5); c.fill(); c.stroke();
+    c.font = 'bold 9.5px monospace';
+    c.fillStyle = isTree ? this.getChromaAccent('#00ffaa', '#ffffff') : '#8899aa';
+    c.fillText(`[3] ARBRE SKILLS`, t3X + tabW / 2, tabY + 15);
+
+    // Dynamically center columns
     const isWide = this.cw >= 750;
     const colW = isWide ? Math.min(460, Math.floor((this.cw - 80) / 2)) : 265;
     const gapX = isWide ? 24 : 10;
@@ -1752,7 +1765,101 @@ export class Renderer {
     const col1X = startX;
     const col2X = startX + colW + gapX;
 
-    if (isSkills) {
+    if (isTree) {
+      // ═══════════════════════════════════════════════════════════════
+      //  CHROMAVORE 4.0 — ARBRE DE COMPÉTENCES & REPARTITION SP
+      // ═══════════════════════════════════════════════════════════════
+      const sp = experienceSystem.skillPoints;
+      const accLvl = experienceSystem.accountLevel;
+      const curXp = experienceSystem.accountXp;
+      const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
+      const xpRatio = reqXp === Infinity ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
+
+      // Header Banner with Account Level, XP Bar & Available SP
+      const barW = Math.min(this.cw - 60, 680), barH = 10;
+      const barX = this.cw / 2 - barW / 2, barY = 80;
+
+      c.fillStyle = 'rgba(15, 20, 35, 0.9)';
+      c.strokeStyle = '#00ffaa';
+      c.lineWidth = 1;
+      c.beginPath(); c.roundRect(barX, barY, barW, barH, 4); c.fill(); c.stroke();
+
+      c.fillStyle = '#00ffaa';
+      c.shadowColor = '#00ffaa';
+      c.shadowBlur = 8;
+      c.beginPath(); c.roundRect(barX, barY, barW * xpRatio, barH, 4); c.fill();
+      c.shadowBlur = 0;
+
+      c.font = 'bold 11px monospace';
+      c.fillStyle = '#ffffff';
+      c.textAlign = 'left';
+      c.fillText(`NIVEAU DE COMPTE : ${accLvl} / 100`, barX, 72);
+      c.textAlign = 'right';
+      c.fillText(reqXp === Infinity ? 'MAX LEVEL' : `XP: ${curXp.toLocaleString()} / ${reqXp.toLocaleString()} PTS`, barX + barW, 72);
+
+      // SP Pill and Respec Button
+      c.textAlign = 'center';
+      c.font = 'bold 12px monospace';
+      c.fillStyle = '#ffd700';
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 10;
+      c.fillText(`POINTS DISPONIBLES : ${sp} SP`, this.cw / 2 - 80, 108);
+      c.shadowBlur = 0;
+
+      // Reset / Respec Pill (Clickable)
+      c.fillStyle = 'rgba(255, 0, 85, 0.2)';
+      c.strokeStyle = '#ff0055';
+      c.lineWidth = 1.2;
+      c.beginPath(); c.roundRect(this.cw / 2 + 35, 94, 150, 22, 4); c.fill(); c.stroke();
+      c.font = 'bold 9.5px monospace';
+      c.fillStyle = '#ff6699';
+      c.fillText('[R] RÉINITIALISER (FREE)', this.cw / 2 + 110, 108);
+
+      // 3 Columns for 3 Branches: Agilité, Contrôle, Carnage
+      const branchKeys: Array<'agility' | 'control' | 'carnage'> = ['agility', 'control', 'carnage'];
+      const branchColW = Math.min(270, Math.floor((this.cw - 48) / 3));
+      const branchGap = Math.floor((this.cw - branchColW * 3) / 4);
+
+      for (let bi = 0; bi < branchKeys.length; bi++) {
+        const bKey = branchKeys[bi];
+        const bInfo = SKILL_TREE_BRANCHES[bKey];
+        const bx = branchGap + bi * (branchColW + branchGap);
+        const by = 126;
+
+        // Branch Header Card
+        c.fillStyle = 'rgba(20, 24, 40, 0.85)';
+        c.strokeStyle = bInfo.color;
+        c.lineWidth = 1.5;
+        c.shadowColor = bInfo.color;
+        c.shadowBlur = 6;
+        c.beginPath(); c.roundRect(bx, by, branchColW, 26, 4); c.fill(); c.stroke();
+        c.shadowBlur = 0;
+
+        c.font = 'bold 10px monospace';
+        c.fillStyle = bInfo.color;
+        c.textAlign = 'center';
+        c.fillText(bInfo.name, bx + branchColW / 2, by + 17);
+
+        // Render Nodes in this branch
+        const branchNodes = SKILL_NODES.filter(n => n.branch === bKey);
+        const nodeStartY = by + 34;
+        const nodeH = 92;
+        const nodeGap = 8;
+
+        for (let ni = 0; ni < branchNodes.length; ni++) {
+          const node = branchNodes[ni];
+          const ny = nodeStartY + ni * (nodeH + nodeGap);
+          this.drawSkillTreeNode(c, node, bx, ny, branchColW, nodeH);
+        }
+      }
+
+      // Footer
+      c.font = 'bold 10px monospace';
+      c.fillStyle = '#00ffaa';
+      c.textAlign = 'center';
+      c.fillText('[CLIC SUR NOEUD] INVESTIR 1 SP  •  [R] RESPEC  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] RETOUR', this.cw / 2, CH - 14);
+
+    } else if (isSkills) {
       // Career Progress Bar Header
       const nxt = progression.getNextUnlock();
       const barW = Math.min(totalGridW, isWide ? 620 : 460), barH = 8;
@@ -1809,7 +1916,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00ffff';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [TAB] TOGGLE  •  [ESC / C] BACK', this.cw / 2, CH - 14);
+      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [3] ARBRE SKILLS  •  [TAB] TOGGLE  •  [ESC / C] RETOUR', this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     } else {
       // BADGES & ACHIEVEMENTS GALLERY
@@ -1866,9 +1973,89 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText(`[1] ARSENAL  •  [2] BADGES  •  [PAGE ${curPage + 1}/${maxPages} • ARROWS ← / →]  •  [ESC / B] BACK`, this.cw / 2, CH - 14);
+      c.fillText(`[1] ARSENAL  •  [2] BADGES  •  [3] ARBRE SKILLS  •  [PAGE ${curPage + 1}/${maxPages} • ARROWS ← / →]  •  [ESC] RETOUR`, this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     }
+  }
+
+  private drawSkillTreeNode(c: CanvasRenderingContext2D, node: import('../systems/ExperienceSystem').SkillNode, x: number, y: number, w: number, h: number) {
+    const rank = experienceSystem.getSkillRank(node.id);
+    const check = experienceSystem.canUpgradeSkill(node.id);
+    const isMax = rank >= node.maxRank;
+    const canBuy = check.can;
+
+    c.save();
+    c.fillStyle = isMax ? 'rgba(0, 255, 170, 0.12)' : (canBuy ? 'rgba(0, 240, 255, 0.08)' : 'rgba(15, 20, 35, 0.6)');
+    c.strokeStyle = isMax ? '#00ffaa' : (canBuy ? '#00ffff' : '#334455');
+    c.lineWidth = isMax ? 1.8 : (canBuy ? 1.4 : 1);
+    c.beginPath(); c.roundRect(x, y, w, h, 6); c.fill(); c.stroke();
+
+    // Node Header: Icon + Name + Cost / Max
+    c.textAlign = 'left';
+    c.font = 'bold 10px monospace';
+    c.fillStyle = isMax ? '#00ffaa' : (canBuy ? '#ffffff' : '#8899aa');
+    spriteAtlas.drawIcon(c, node.icon, x + 12, y + 14, 12);
+    c.fillText(node.name, x + 24, y + 14);
+
+    c.textAlign = 'right';
+    c.font = 'bold 9px monospace';
+    c.fillStyle = isMax ? '#00ffaa' : (canBuy ? '#ffd700' : '#667788');
+    c.fillText(isMax ? 'MAXED' : `${node.costPerRank} SP`, x + w - 8, y + 14);
+
+    // Rank gauge dots
+    const dotW = 8, dotGap = 4;
+    const totalDotsW = node.maxRank * dotW + (node.maxRank - 1) * dotGap;
+    const dotsStartX = x + 8;
+    const dotsY = y + 24;
+
+    for (let r = 0; r < node.maxRank; r++) {
+      const rx = dotsStartX + r * (dotW + dotGap);
+      c.fillStyle = r < rank ? '#00ffaa' : 'rgba(255, 255, 255, 0.15)';
+      c.beginPath(); c.roundRect(rx, dotsY, dotW, 4, 1.5); c.fill();
+    }
+
+    // Rank text
+    c.textAlign = 'right';
+    c.font = '8px monospace';
+    c.fillStyle = '#8899aa';
+    c.fillText(`RANG ${rank}/${node.maxRank}`, x + w - 8, dotsY + 5);
+
+    // Description (auto line break)
+    c.textAlign = 'left';
+    c.font = '8px monospace';
+    c.fillStyle = isMax ? '#d0f0e0' : (canBuy ? '#cccccc' : '#778899');
+
+    const maxCharsPerLine = Math.floor((w - 16) / 5.2);
+    const words = node.desc.split(' ');
+    let line = '';
+    let lineIdx = 0;
+    for (const wd of words) {
+      if ((line + ' ' + wd).length > maxCharsPerLine) {
+        c.fillText(line.trim(), x + 8, y + 43 + lineIdx * 12);
+        line = wd + ' ';
+        lineIdx++;
+      } else {
+        line += wd + ' ';
+      }
+    }
+    if (line.trim().length > 0 && lineIdx < 3) {
+      c.fillText(line.trim(), x + 8, y + 43 + lineIdx * 12);
+    }
+
+    // Upgrade CTA / Warning
+    if (!isMax) {
+      c.textAlign = 'center';
+      c.font = 'bold 8px monospace';
+      if (canBuy) {
+        c.fillStyle = '#00ffff';
+        c.fillText(`▶ CLIC POUR AMÉLIORER (-${node.costPerRank} SP) ◀`, x + w / 2, y + h - 8);
+      } else if (check.reason) {
+        c.fillStyle = '#ff5577';
+        c.fillText(`[ ${check.reason.toUpperCase()} ]`, x + w / 2, y + h - 8);
+      }
+    }
+
+    c.restore();
   }
 
   private drawBadgeCard(c: CanvasRenderingContext2D, b: import('../systems/BadgeSystem').BadgeDef, x: number, y: number, w: number, h: number) {
@@ -2309,9 +2496,9 @@ export class Renderer {
     c.fillRect(0, 0, this.cw, CH);
 
     const cardW = Math.min(620, this.cw - 24);
-    const cardH = 490;
+    const cardH = 510;
     const cardX = Math.floor((this.cw - cardW) / 2);
-    const cardY = 50;
+    const cardY = 36;
 
     c.save();
     // Modal card

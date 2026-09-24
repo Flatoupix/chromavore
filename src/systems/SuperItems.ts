@@ -6,6 +6,7 @@ import { CW, ROWS, COLS, T, HALF, PI2, EC } from '../config/constants';
 import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { progression } from './ProgressionSystem';
+import { experienceSystem } from './ExperienceSystem';
 import { MazeManager } from '../levels/levels';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
 
@@ -135,7 +136,8 @@ export class SuperItemManager {
       }
       case 'cryo': {
         sounds.play('powerup');
-        this.cryoMaxTimer = lvl >= 2 ? 5.5 : 4.0;
+        const freezeBonus = experienceSystem.getFreezeDurationBonus();
+        this.cryoMaxTimer = (lvl >= 2 ? 5.5 : 4.0) + freezeBonus;
         this.cryoTimer = this.cryoMaxTimer;
         for (const e of enemies) e.frozen = true;
         particles.shake(6, 0.25);
@@ -201,7 +203,8 @@ export class SuperItemManager {
     if (!this.boardDrop && !this.isRunning() && maze) {
       const unlockedPool = progression.getUnlockedSuperItems();
       if (unlockedPool.length > 0) {
-        this.spawnTimer -= dt;
+        const freqBonus = experienceSystem.getSuperItemFrequencyBonus();
+        this.spawnTimer -= dt * (1.0 + freqBonus);
         if (this.spawnTimer <= 0) this.spawnRandomOnBoard(maze);
       }
     }

@@ -4,6 +4,8 @@
 
 import { particles } from '../systems/ParticleSystem';
 import { progression } from '../systems/ProgressionSystem';
+import { experienceSystem } from '../systems/ExperienceSystem';
+import { BASE_NITRO_CD, BASE_WIGGLE_CD } from '../config/constants';
 
 export interface MotionRecord {
   dir: string;
@@ -150,7 +152,9 @@ export class InputManager {
     if (last4 === 'up-down-up-down' && this.nitroCd <= 0) {
       const lvl = progression.getSkillLevel('nitro');
       if (lvl >= 1) {
-        this.nitroCd = lvl >= 2 ? 3.5 : 4.0;
+        const speedBonus = experienceSystem.getNitroSpeedBonus();
+        const baseCd = lvl >= 2 ? BASE_NITRO_CD * 0.75 : BASE_NITRO_CD;
+        this.nitroCd = Math.max(3.0, baseCd * (1.0 - speedBonus));
         this.nitroActive = lvl >= 2 ? 4.5 : 3.2;
         this.motionHistory = [];
         onNitro(lvl);
@@ -162,7 +166,9 @@ export class InputManager {
     if ((last4 === 'left-right-left-right' || last4 === 'right-left-right-left') && this.wiggleCd <= 0) {
       const lvl = progression.getSkillLevel('wiggle');
       if (lvl >= 1) {
-        this.wiggleCd = lvl >= 2 ? 3.0 : 3.5;
+        const empRank = experienceSystem.getSkillRank('emp_overcharge');
+        const baseCd = lvl >= 2 ? BASE_WIGGLE_CD * 0.75 : BASE_WIGGLE_CD;
+        this.wiggleCd = Math.max(4.0, baseCd * (1.0 - empRank * 0.12));
         this.motionHistory = [];
         onWiggle(lvl);
         return;

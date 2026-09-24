@@ -125,10 +125,12 @@ export const HIT_DIST = T * 0.65;
 export const NM_DIST = T * 1.5;
 export const INVULN = 2;
 
-// Dash settings
+// Base Cooldowns (Tactical Balance 4.0)
 export const DASH_DIST = 3;
-export const DASH_CD = 2.8;
-export const DASH_MADNESS_CD = 0.6;
+export const DASH_CD = 3.8;
+export const DASH_MADNESS_CD = 1.6;
+export const BASE_NITRO_CD = 9.0;
+export const BASE_WIGGLE_CD = 14.0;
 export const DASH_BTN = { x: CW - 38, y: ROWS * T - 26, r: 24 };
 
 // Spawn coords

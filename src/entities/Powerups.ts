@@ -4,6 +4,7 @@ import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
 import { profileManager } from '../systems/ProfileManager';
+import { experienceSystem } from '../systems/ExperienceSystem';
 
 export interface PowerupItem {
   x: number;
@@ -313,9 +314,10 @@ export class PowerupManager {
   }
 
   public triggerPredator(enemies: any[], affectsReinforcements: boolean = false) {
+    const baseDuration = 7.0 + experienceSystem.getPelletDurationBonus();
     this.pred.on = true;
-    this.pred.maxT = 7.0;
-    this.pred.t = 7.0;
+    this.pred.maxT = baseDuration;
+    this.pred.t = baseDuration;
     this.pred.k = 0;
     this.pred.warn = false;
     this.pred.global = affectsReinforcements;

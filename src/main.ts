@@ -18,6 +18,7 @@ import { Renderer, type EffectTimer } from './graphics/Renderer';
 import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
 import { leaderboard } from './systems/Leaderboard';
 import { progression } from './systems/ProgressionSystem';
+import { experienceSystem, SKILL_NODES } from './systems/ExperienceSystem';
 import { profileManager } from './systems/ProfileManager';
 import { wobbleBanner } from './graphics/WobbleBanner';
 if (import.meta.env.DEV) {
@@ -77,7 +78,7 @@ class Game {
   public waveT: number = 0;
   public hitlag: number = 0;
   public loopCount: number = 0;
-  public codexTab: 'skills' | 'badges' = 'skills';
+  public codexTab: 'skills' | 'badges' | 'tree' = 'tree';
   public badgePage: number = 0;
   public get loopSpeedMultiplier(): number {
     return 1 + this.loopCount * 0.10;
@@ -383,19 +384,75 @@ class Game {
       }
 
       if (this.state === 'codex') {
-        const tabW = 200, tabH = 26, tabY = 36;
-        // Click Tab 1 (Skills)
-        if (cy >= tabY && cy <= tabY + tabH && cx >= curCw / 2 - tabW - 8 && cx <= curCw / 2 - 8) {
+        const tabW = Math.min(160, Math.floor((curCw - 60) / 3));
+        const tabH = 22, tabY = 34;
+        const totalTabsW = tabW * 3 + 16;
+        const tabsStartX = curCw / 2 - totalTabsW / 2;
+
+        const t1X = tabsStartX;
+        const t2X = tabsStartX + tabW + 8;
+        const t3X = tabsStartX + (tabW + 8) * 2;
+
+        // Click Tab 1 (Skills / Arsenal)
+        if (cy >= tabY && cy <= tabY + tabH && cx >= t1X && cx <= t1X + tabW) {
           this.codexTab = 'skills';
           sounds.play('click');
           return;
         }
         // Click Tab 2 (Badges)
-        if (cy >= tabY && cy <= tabY + tabH && cx >= curCw / 2 + 8 && cx <= curCw / 2 + tabW + 8) {
+        if (cy >= tabY && cy <= tabY + tabH && cx >= t2X && cx <= t2X + tabW) {
           this.codexTab = 'badges';
           sounds.play('click');
           return;
         }
+        // Click Tab 3 (Skill Tree)
+        if (cy >= tabY && cy <= tabY + tabH && cx >= t3X && cx <= t3X + tabW) {
+          this.codexTab = 'tree';
+          sounds.play('click');
+          return;
+        }
+
+        // Tree interactions (Upgrade Node or Respec)
+        if (this.codexTab === 'tree') {
+          // Check Respec Button: cx around curCw / 2 + 35, w: 150, y: 94..116
+          if (cx >= curCw / 2 + 35 && cx <= curCw / 2 + 185 && cy >= 94 && cy <= 116) {
+            experienceSystem.respecSkills();
+            particles.flash('#00ffaa', 0.25);
+            particles.shake(4, 0.15);
+            return;
+          }
+
+          // Check click on any skill node
+          const branchKeys: Array<'agility' | 'control' | 'carnage'> = ['agility', 'control', 'carnage'];
+          const branchColW = Math.min(270, Math.floor((curCw - 48) / 3));
+          const branchGap = Math.floor((curCw - branchColW * 3) / 4);
+
+          for (let bi = 0; bi < branchKeys.length; bi++) {
+            const bKey = branchKeys[bi];
+            const bx = branchGap + bi * (branchColW + branchGap);
+            const by = 126;
+            const branchNodes = SKILL_NODES.filter(n => n.branch === bKey);
+            const nodeStartY = by + 34;
+            const nodeH = 92;
+            const nodeGap = 8;
+
+            for (let ni = 0; ni < branchNodes.length; ni++) {
+              const node = branchNodes[ni];
+              const ny = nodeStartY + ni * (nodeH + nodeGap);
+              if (cx >= bx && cx <= bx + branchColW && cy >= ny && cy <= ny + nodeH) {
+                const upgraded = experienceSystem.upgradeSkill(node.id);
+                if (upgraded) {
+                  particles.flash('#00ffaa', 0.25);
+                  particles.shake(4, 0.15);
+                } else {
+                  sounds.play('click');
+                }
+                return;
+              }
+            }
+          }
+        }
+
         // If in badges and clicking bottom pagination
         if (this.codexTab === 'badges' && cy >= CH - 45) {
           if (cx > curCw * 0.25 && cx < curCw * 0.75) {
@@ -409,6 +466,7 @@ class Game {
             return;
           }
         }
+
         this.state = 'menu';
         sounds.play('click');
         return;
@@ -622,6 +680,7 @@ class Game {
         else if (e.code === 'Digit5' || e.code === 'Numpad5') this.executeDebugAction('item_cryo');
         else if (e.code === 'KeyT') this.executeDebugAction('spawn_titan');
         else if (e.code === 'KeyW') this.executeDebugAction('clear_maze_dots');
+        else if (e.code === 'KeyX') this.executeDebugAction('add_xp');
         e.preventDefault();
         return;
       }
@@ -665,8 +724,19 @@ class Game {
           this.codexTab = 'badges';
           sounds.play('click');
           e.preventDefault();
+        } else if (e.code === 'Digit3' || e.code === 'Numpad3') {
+          this.codexTab = 'tree';
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'KeyR' && this.codexTab === 'tree') {
+          experienceSystem.respecSkills();
+          particles.flash('#00ffaa', 0.25);
+          particles.shake(4, 0.15);
+          e.preventDefault();
         } else if (e.code === 'Tab') {
-          this.codexTab = this.codexTab === 'skills' ? 'badges' : 'skills';
+          if (this.codexTab === 'tree') this.codexTab = 'skills';
+          else if (this.codexTab === 'skills') this.codexTab = 'badges';
+          else this.codexTab = 'tree';
           sounds.play('click');
           e.preventDefault();
         } else if (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD' || e.code === 'PageDown') {
@@ -961,6 +1031,14 @@ class Game {
     this.score += pts;
     particles.addPop(ex, ey - 15, '+' + pts, '#ffd700', 16);
 
+    // Chromavore 4.0 XP Engine: +100 XP * combo (or +500 for titan)
+    const xpEarned = e.isTitan ? 500 : 100 * Math.max(1, this.combo.m);
+    const lvlUp = experienceSystem.addXp(xpEarned, 'ghost_kill');
+    if (lvlUp) {
+      this.lives = Math.min(5, this.lives + 1);
+      particles.addPop(ex, ey - 35, '+1 VIE !', '#00ffaa', 22);
+    }
+
     particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
     particles.shake(3, 0.12);
     if (settingsManager.settings.freezeFrame && this.combo.m < 64) {
@@ -1018,6 +1096,7 @@ class Game {
     this.deathT = 1.5;
     this.lives--;
     this.lifeKills = 0;
+    experienceSystem.onPlayerDeath();
     this.madnessStreak = 0;
     this.killStreakTimer = 0;
     this.dotStreak = 0;
@@ -1646,6 +1725,16 @@ class Game {
         particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 70, `+${careerBonusKills} CAREER KILLS (100:1)`, '#ffd700', 20);
       }
 
+      // Vortex Mode XP attribution: 1 XP per 400 pts scored
+      const vortexXp = Math.floor(this.bonusScore / 400);
+      if (vortexXp > 0) {
+        const lvlUpVortex = experienceSystem.addXp(vortexXp, 'vortex_score');
+        if (lvlUpVortex) {
+          this.lives = Math.min(5, this.lives + 1);
+          particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 40, '+1 VIE !', '#00ffaa', 22);
+        }
+      }
+
       if (this.bonusKills >= 50) {
         badges.unlock('bonus50');
       }
@@ -1723,6 +1812,11 @@ class Game {
           sounds.play('near');
           const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_NM_RECHARGE);
+          const lvlUp = experienceSystem.addXp(60, 'near_miss');
+          if (lvlUp) {
+            this.lives = Math.min(5, this.lives + 1);
+            particles.addPop(pp.x, pp.y - 35, '+1 VIE !', '#00ffaa', 22);
+          }
         }
       } else {
         e.nm = false;
@@ -1776,6 +1870,12 @@ class Game {
         const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
+        const lvlUpPellet = experienceSystem.addXp(30, 'pellet');
+        if (lvlUpPellet) {
+          this.lives = Math.min(5, this.lives + 1);
+          particles.addPop(px, py - 35, '+1 VIE !', '#00ffaa', 22);
+        }
+
         if (this.combo.m > oldM && this.combo.m > 1) {
           const tier = getComboTier(this.combo.n, isWide);
           this.triggerComboStep(tier, px, py);
@@ -1803,6 +1903,12 @@ class Game {
         const pts = 10 * this.combo.m;
         this.score += pts;
 
+        const lvlUpDot = experienceSystem.addXp(5, 'dot');
+        if (lvlUpDot) {
+          this.lives = Math.min(5, this.lives + 1);
+          particles.addPop(px, py - 35, '+1 VIE !', '#00ffaa', 22);
+        }
+
         // Floating +XXX score popup above eaten dot!
         particles.addPop(px, py - 10, '+' + pts, CC[tier], 10 + tier * 2);
         particles.emit(px, py, 2 + tier * 2, C_DOT, { speed: 40 + tier * 20, size: 2 + tier, life: 0.3 + tier * 0.1 });
@@ -1822,6 +1928,13 @@ class Game {
       if (this.maze.remainingDots <= 0 && this.state === 'playing') {
         const completedLvl = this.maze.currentLevel;
         const list = this.getCurrentLevelList();
+
+        // Level Clear XP: +1,500 XP
+        const lvlUpClear = experienceSystem.addXp(1500, 'maze_clear');
+        if (lvlUpClear) {
+          this.lives = Math.min(5, this.lives + 1);
+          particles.addPop(px, py - 45, '+1 VIE !', '#00ffaa', 22);
+        }
 
         // Unlock Level Completion Badges (Levels 1 to 10 in 4:3 or 16:9)
         const lvlNum = completedLvl + 1;
@@ -2107,6 +2220,7 @@ class Game {
       isSingularityRising
     );
     badges.update(dt);
+    experienceSystem.update(dt);
     wobbleBanner.update(dt);
     particles.update(dt);
     this.syncTouchControls();
@@ -2562,11 +2676,11 @@ class Game {
   public getDebugButtons(): { id: string; label: string; key: string; color: string; active?: boolean; x: number; y: number; w: number; h: number }[] {
     const cardW = Math.min(620, this.renderer.cw - 24);
     const cardX = Math.floor((this.renderer.cw - cardW) / 2);
-    const cardY = 50;
-    const startY = cardY + 80;
+    const cardY = 36;
+    const startY = cardY + 76;
     const colW = (cardW - 40 - 16) / 2;
-    const rowH = 34;
-    const gap = 8;
+    const rowH = 32;
+    const gap = 6;
 
     const isSingularity = this.combo.m >= 64;
     const is32xGod = this.combo.m >= 32;
@@ -2589,8 +2703,9 @@ class Game {
       { id: 'item_tsunami', label: 'SUPER-ITEM: LIGHT TSUNAMI', key: '[4]', color: '#ffffff', col: 1, row: 3 },
       { id: 'item_cryo', label: 'SUPER-ITEM: CRYO SHATTER', key: '[5]', color: '#aaffff', col: 1, row: 4 },
       { id: 'spawn_titan', label: 'SPAWN VOID TITAN GHOST', key: '[T]', color: '#ff0055', col: 1, row: 5 },
-      { id: 'clear_maze_dots', label: 'AUTO-CLEAR DOTS (WARP LEVEL)', key: '[W]', color: '#00ffaa', col: 1, row: 6 },
-      { id: 'resume_play', label: '▶ RESUME GAMEPLAY', key: '[F2]', color: '#00ffaa', col: 1, row: 7 },
+      { id: 'add_xp', label: 'GAIN +5,000 ACCOUNT XP', key: '[X]', color: '#ffd700', col: 1, row: 6 },
+      { id: 'clear_maze_dots', label: 'AUTO-CLEAR DOTS (WARP)', key: '[W]', color: '#00ffaa', col: 1, row: 7 },
+      { id: 'resume_play', label: '▶ RESUME GAMEPLAY', key: '[F2]', color: '#00ffaa', col: 0, row: 8 },
     ];
 
     return defs.map(d => ({
@@ -2724,6 +2839,15 @@ class Game {
         particles.addPop(pp.x, pp.y - 20, `DEBUG: WARPED TO LEVEL ${nextLvl + 1}`, '#00ffaa', 20);
         this.state = 'playing';
         return;
+      }
+      case 'add_xp': {
+        const lvlUp = experienceSystem.addXp(5000, 'debug');
+        sounds.play('powerup');
+        particles.flash('#ffd700', 0.4);
+        particles.shake(8, 0.25);
+        particles.addPop(pp.x, pp.y - 20, `DEBUG: +5,000 XP (LVL ${experienceSystem.accountLevel})`, '#ffd700', 20);
+        if (lvlUp) this.lives = Math.min(5, this.lives + 1);
+        break;
       }
       case 'resume_play':
         this.state = this.previousStateBeforeDebug;

@@ -8,6 +8,10 @@ export interface PlayerProfile {
   pseudo: string;
   syncCode: string;
   careerGhosts: number;
+  accountLevel: number;
+  accountXp: number;
+  skillPoints: number;
+  skillUpgrades: Record<string, number>;
   hiScore: number;
   bestMadnessKills: number;
   badges: Record<string, boolean>;
@@ -47,11 +51,17 @@ class ProfileManager {
 
     let badges = {};
     try { badges = JSON.parse(localStorage.getItem('chv_badges') || '{}'); } catch {}
+    let skillUpgrades = {};
+    try { skillUpgrades = JSON.parse(localStorage.getItem('chv_skill_upgrades') || '{}'); } catch {}
 
     const profile: PlayerProfile = {
       pseudo: lastPseudo,
       syncCode: existingCode,
       careerGhosts: parseInt(localStorage.getItem('chv_career_ghosts') || '0', 10),
+      accountLevel: parseInt(localStorage.getItem('chv_account_level') || '1', 10),
+      accountXp: parseInt(localStorage.getItem('chv_account_xp') || '0', 10),
+      skillPoints: parseInt(localStorage.getItem('chv_skill_points') || '0', 10),
+      skillUpgrades,
       hiScore: parseInt(localStorage.getItem('chv_hi') || '0', 10),
       bestMadnessKills: parseInt(localStorage.getItem('chv_madness_hi') || '0', 10),
       badges,
@@ -69,6 +79,10 @@ class ProfileManager {
       localStorage.setItem(STORAGE_SYNC_CODE, this.profile.syncCode);
       localStorage.setItem('chv_last_pseudo', this.profile.pseudo);
       localStorage.setItem('chv_career_ghosts', this.profile.careerGhosts.toString());
+      localStorage.setItem('chv_account_level', this.profile.accountLevel.toString());
+      localStorage.setItem('chv_account_xp', this.profile.accountXp.toString());
+      localStorage.setItem('chv_skill_points', this.profile.skillPoints.toString());
+      localStorage.setItem('chv_skill_upgrades', JSON.stringify(this.profile.skillUpgrades));
       localStorage.setItem('chv_hi', this.profile.hiScore.toString());
       localStorage.setItem('chv_madness_hi', this.profile.bestMadnessKills.toString());
       localStorage.setItem('chv_badges', JSON.stringify(this.profile.badges));
@@ -129,6 +143,10 @@ class ProfileManager {
       localStorage.removeItem(STORAGE_SYNC_CODE);
       localStorage.removeItem('chv_last_pseudo');
       localStorage.removeItem('chv_career_ghosts');
+      localStorage.removeItem('chv_account_level');
+      localStorage.removeItem('chv_account_xp');
+      localStorage.removeItem('chv_skill_points');
+      localStorage.removeItem('chv_skill_upgrades');
       localStorage.removeItem('chv_hi');
       localStorage.removeItem('chv_madness_hi');
       localStorage.removeItem('chv_badges');
@@ -140,6 +158,10 @@ class ProfileManager {
       pseudo: 'PLAYER1',
       syncCode: newCode,
       careerGhosts: 0,
+      accountLevel: 1,
+      accountXp: 0,
+      skillPoints: 0,
+      skillUpgrades: {},
       hiScore: 0,
       bestMadnessKills: 0,
       badges: {},

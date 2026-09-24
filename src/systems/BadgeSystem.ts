@@ -8,6 +8,7 @@ import { particles } from './ParticleSystem';
 import { profileManager } from './ProfileManager';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
 import { wobbleBanner } from '../graphics/WobbleBanner';
+import { experienceSystem } from './ExperienceSystem';
 
 export interface BadgeDef {
   id: string;
@@ -159,6 +160,7 @@ export class BadgeManager {
     } catch {}
 
     sounds.play('badge');
+    experienceSystem.addXp(2500, 'badge_unlock');
     wobbleBanner.show('★ BADGE UNLOCKED ★', BADGES[id].name, BADGES[id].desc, BADGES[id].icon, '#ffd700', 2.2);
     particles.flash('#ffd700', 0.25);
     particles.shake(5, 0.18);

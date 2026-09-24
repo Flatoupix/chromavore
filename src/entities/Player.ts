@@ -7,6 +7,7 @@ import { sounds } from '../audio/SoundManager';
 import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
 import { progression } from '../systems/ProgressionSystem';
+import { experienceSystem } from '../systems/ExperienceSystem';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
 
 export function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
@@ -316,15 +317,18 @@ export class Player {
     if (!dx && !dy) { dx = this.ndx; dy = this.ndy; }
     if (!dx && !dy) { dx = this.lastDx || 1; dy = this.lastDy || 0; }
 
-    const startPos = this.getPos();
-    let dashed = 0;
-    let wallsBroken = 0;
-
     if (this.t < 1) {
       this.fx = this.x;
       this.fy = this.y;
       this.t = 1;
     }
+
+    // Ensure the current origin tile's dot is collected so no dot is skipped at dash start
+    onCollectDot(this.x, this.y);
+
+    const startPos = this.getPos();
+    let dashed = 0;
+    let wallsBroken = 0;
 
     const isSingularityDash = isSingularity && isShiftHeld;
     const maxDist = isSingularityDash
@@ -388,7 +392,9 @@ export class Player {
 
     const endPos = this.getPos();
     const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
-    this.dashCd = isOverdrive ? 0 : DASH_MADNESS_CD * cdMult;
+    const skillReduction = experienceSystem.getDashCdReduction();
+    const finalCdMult = Math.max(0.25, cdMult * (1.0 - skillReduction));
+    this.dashCd = isOverdrive ? 0 : DASH_MADNESS_CD * finalCdMult;
 
     if (dx !== 0) { this.st = 1.9; this.sq = 0.52; }
     else { this.st = 0.52; this.sq = 1.9; }
@@ -453,7 +459,8 @@ export class Player {
     particles.shake(isSingularityDash ? 8 : (isOverdrive ? 3 : (dashLvl >= 5 ? 6 : 4)), 0.18);
     particles.flash(isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff')), 0.22);
     sounds.play('dash');
-    this.invuln = Math.max(this.invuln, isSingularityDash ? 0.8 : (dashLvl >= 5 ? 0.5 : 0.35));
+    const phaseBonus = experienceSystem.getPhaseIntangibilityDuration();
+    this.invuln = Math.max(this.invuln, (isSingularityDash ? 0.8 : (dashLvl >= 5 ? 0.5 : 0.35)) + phaseBonus);
     return true;
   }
 
