@@ -59,6 +59,10 @@ class Game {
   public bonusShockwave: { radius: number; life: number } = { radius: 0, life: 0 };
   public bonusItems: { x: number; y: number; type: string; name: string; color: string; icon: string; timer: number }[] = [];
   public bonusItemSpawnTimer: number = 2.0;
+  public bonusLaserTimer: number = 0;
+  public bonusTsunamiX: number = -1;
+  public bonusVortex: { x: number; y: number; life: number; maxLife: number } | null = null;
+  public bonusNovaRing: { x: number; y: number; radius: number; life: number } | null = null;
   public score: number = 0;
   public dScore: number = 0;
   public lives: number = 3;
@@ -1004,6 +1008,10 @@ class Game {
     this.bonusShockwave = { radius: 0, life: 0 };
     this.bonusItems = [];
     this.bonusItemSpawnTimer = 1.5;
+    this.bonusLaserTimer = 0;
+    this.bonusTsunamiX = -1;
+    this.bonusVortex = null;
+    this.bonusNovaRing = null;
 
     // Initialize 600-capacity Object Pool if needed (zero runtime allocations!)
     const POOL_CAPACITY = 600;
@@ -1305,10 +1313,10 @@ class Game {
     if (this.bonusItemSpawnTimer <= 0 && this.bonusTimer > 2.0) {
       this.bonusItemSpawnTimer = 2.4 + Math.random() * 1.2;
       const itemTypes = [
-        { type: 'nova_capsule', name: 'SUPERNOVA CORE', color: '#ff0055', icon: 'zap' },
-        { type: 'black_hole', name: 'SINGULARITY RIFT', color: '#b000ff', icon: 'whirl' },
-        { type: 'lightning_burst', name: 'LIGHTNING OVERDRIVE', color: '#ffd700', icon: 'dash' },
-        { type: 'tsunami_burst', name: 'COSMIC TSUNAMI', color: '#00f0ff', icon: 'wave' }
+        { type: 'nova_capsule', name: 'SUPERNOVA CORE', color: '#ff0055', icon: 'nova' },
+        { type: 'black_hole', name: 'SINGULARITY RIFT', color: '#b000ff', icon: 'black_hole' },
+        { type: 'lightning_burst', name: 'HYPER BEAMS', color: '#00ffff', icon: 'laser' },
+        { type: 'tsunami_burst', name: 'COSMIC TSUNAMI', color: '#ffffff', icon: 'tsunami' }
       ];
       const pick = itemTypes[(Math.random() * itemTypes.length) | 0];
       const margin = 100;
@@ -1337,25 +1345,32 @@ class Game {
         // Collect Item!
         sounds.play('powerup');
         sounds.play('nova');
-        particles.flash(it.color, 0.35);
-        particles.shake(12, 0.4);
+        particles.flash(it.color, 0.4);
+        particles.shake(14, 0.45);
 
         let itemScore = 500000;
         let itemKills = 0;
 
         if (it.type === 'nova_capsule') {
           itemScore = 750000;
-          // Supernova: annihilate all ghosts within 380px radius!
+          sounds.play('nova');
+          // Supernova Shockwave: expanding golden ring & immediate screen shake
+          this.bonusNovaRing = { x: it.x, y: it.y, radius: 20, life: 0.8 };
+          particles.shake(16, 0.5);
+          particles.flash('#ffd700', 0.4);
+          particles.emit(it.x, it.y, 100, '#ffd700', { speed: 300, size: 6, life: 0.8 });
+
+          // Supernova: annihilate all ghosts within 420px radius!
           for (let gi = 0; gi < this.bonusActiveCount; gi++) {
             const g = this.bonusGhosts[gi];
-            if (Math.hypot(g.x - it.x, g.y - it.y) < 380) {
+            if (Math.hypot(g.x - it.x, g.y - it.y) < 420) {
               g.alive = false;
               itemKills++;
               this.bonusKills++;
               const pts = 500 + Math.min(3000, this.bonusKills * 25);
               this.bonusScore += pts;
               this.score += pts;
-              particles.emit(g.x, g.y, 8, it.color, { speed: 180, size: 4, life: 0.5 });
+              particles.emit(g.x, g.y, 8, '#ffd700', { speed: 180, size: 4, life: 0.5 });
               const lastIdx = this.bonusActiveCount - 1;
               if (gi !== lastIdx) {
                 const temp = this.bonusGhosts[gi];
@@ -1368,68 +1383,190 @@ class Game {
           }
         } else if (it.type === 'black_hole') {
           itemScore = 1000000;
-          // Black hole: devour 50 active ghosts instantly!
-          const devourTarget = Math.min(50, this.bonusActiveCount);
-          for (let gi = 0; gi < devourTarget && this.bonusActiveCount > 0; gi++) {
-            const g = this.bonusGhosts[0];
-            g.alive = false;
-            itemKills++;
-            this.bonusKills++;
-            const pts = 600 + Math.min(3000, this.bonusKills * 25);
-            this.bonusScore += pts;
-            this.score += pts;
-            particles.emit(g.x, g.y, 6, '#b000ff', { speed: 160, size: 3.5, life: 0.45 });
-            const lastIdx = this.bonusActiveCount - 1;
-            if (0 !== lastIdx) {
-              this.bonusGhosts[0] = this.bonusGhosts[lastIdx];
-              this.bonusGhosts[lastIdx] = g;
-            }
-            this.bonusActiveCount--;
-          }
+          sounds.play('powerup');
+          // Spawn persistent Black Hole singularity in arena for 4.5s
+          this.bonusVortex = { x: it.x, y: it.y, life: 4.5, maxLife: 4.5 };
+          particles.shake(10, 0.35);
+          particles.flash('#bb44ff', 0.35);
+          particles.emit(it.x, it.y, 40, '#bb44ff', { speed: 200, size: 5, life: 0.6 });
         } else if (it.type === 'lightning_burst') {
           itemScore = 500000;
-          // Instant overdrive speed + dash recharge!
+          sounds.play('dash');
+          // Activate Cross Hyper Beams (3.5s) + Overdrive speed & 0-cd dash!
+          this.bonusLaserTimer = 3.5;
           powerups.fx.overdrive = 4.0;
           this.player.dashCd = 0;
-          // Chain lightning to 35 ghosts
-          const zapTarget = Math.min(35, this.bonusActiveCount);
-          for (let gi = 0; gi < zapTarget && this.bonusActiveCount > 0; gi++) {
-            const g = this.bonusGhosts[this.bonusActiveCount - 1];
-            g.alive = false;
-            itemKills++;
-            this.bonusKills++;
-            const pts = 450 + Math.min(3000, this.bonusKills * 25);
-            this.bonusScore += pts;
-            this.score += pts;
-            particles.emit(g.x, g.y, 8, '#ffd700', { speed: 200, size: 4, life: 0.4 });
-            this.bonusActiveCount--;
-          }
+          particles.shake(10, 0.3);
+          particles.flash('#00ffff', 0.35);
+          particles.emit(this.bonusPacPos.x, this.bonusPacPos.y, 40, '#00ffff', { speed: 220, size: 5, life: 0.5 });
         } else if (it.type === 'tsunami_burst') {
           itemScore = 800000;
-          // Sweeping cosmic wave killing 45 ghosts
-          const waveTarget = Math.min(45, this.bonusActiveCount);
-          for (let gi = 0; gi < waveTarget && this.bonusActiveCount > 0; gi++) {
-            const g = this.bonusGhosts[this.bonusActiveCount - 1];
-            g.alive = false;
-            itemKills++;
-            this.bonusKills++;
-            const pts = 500 + Math.min(3000, this.bonusKills * 25);
-            this.bonusScore += pts;
-            this.score += pts;
-            particles.emit(g.x, g.y, 7, '#00f0ff', { speed: 170, size: 3.5, life: 0.5 });
-            this.bonusActiveCount--;
-          }
+          sounds.play('wave');
+          // Launch real advancing Cosmic Tsunami wave across arena from left to right
+          this.bonusTsunamiX = 0;
+          particles.shake(12, 0.4);
+          particles.flash('#ffffff', 0.4);
+          particles.emit(0, BONUS_ARENA_H / 2, 50, '#00f0ff', { speed: 220, size: 5, life: 0.6 });
         }
 
         this.bonusScore += itemScore;
         this.score += itemScore;
-        particles.addPop(it.x, it.y - 25, `${it.name}! +${itemScore.toLocaleString('en-US')}`, it.color, 22);
+        particles.addPop(it.x, it.y - 25, `${it.name}! +${itemScore.toLocaleString('en-US')}`, it.color, 24);
 
-        this.bonusBatchKills += itemKills;
-        this.bonusBatchScore += itemScore;
-        this.triggerMultikillBanner();
+        if (itemKills > 0) {
+          this.bonusBatchKills += itemKills;
+          this.bonusBatchScore += itemScore;
+          this.triggerMultikillBanner();
+        }
 
         this.bonusItems.splice(bi, 1);
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Continuous Active Super Effects Physics & Elimination in Arena
+    // ─────────────────────────────────────────────────────────────
+
+    // 1. Cross Hyper Beams slicing ghosts continuously
+    if (this.bonusLaserTimer > 0) {
+      this.bonusLaserTimer -= dt;
+      let laserKills = 0;
+      let laserScore = 0;
+      const pacX = this.bonusPacPos.x;
+      const pacY = this.bonusPacPos.y;
+      for (let gi = 0; gi < this.bonusActiveCount; gi++) {
+        const g = this.bonusGhosts[gi];
+        const hitCross = Math.abs(g.x - pacX) < 26 || Math.abs(g.y - pacY) < 26;
+        if (hitCross) {
+          g.alive = false;
+          laserKills++;
+          this.bonusKills++;
+          const pts = 400 + Math.min(3000, this.bonusKills * 25);
+          laserScore += pts;
+          this.bonusScore += pts;
+          this.score += pts;
+          particles.emit(g.x, g.y, 7, '#00ffff', { speed: 170, size: 3.5, life: 0.4 });
+          const lastIdx = this.bonusActiveCount - 1;
+          if (gi !== lastIdx) {
+            this.bonusGhosts[gi] = this.bonusGhosts[lastIdx];
+            this.bonusGhosts[lastIdx] = g;
+          }
+          this.bonusActiveCount--;
+          gi--;
+        }
+      }
+      if (laserKills > 0) {
+        this.bonusBatchKills += laserKills;
+        this.bonusBatchScore += laserScore;
+        this.bonusBatchTimer = 0.14;
+        sounds.play('crunch');
+        if (this.bonusBatchKills >= 15) this.triggerMultikillBanner();
+      }
+    }
+
+    // 2. Black Hole Singularity physical gravitation & consumption
+    if (this.bonusVortex) {
+      this.bonusVortex.life -= dt;
+      const vx = this.bonusVortex.x;
+      const vy = this.bonusVortex.y;
+      const suctionRadius = 260;
+      const eventHorizon = 40;
+      let vortexKills = 0;
+      let vortexScore = 0;
+
+      for (let gi = 0; gi < this.bonusActiveCount; gi++) {
+        const g = this.bonusGhosts[gi];
+        const dx = vx - g.x;
+        const dy = vy - g.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= eventHorizon) {
+          // Devoured into singularity!
+          g.alive = false;
+          vortexKills++;
+          this.bonusKills++;
+          const pts = 550 + Math.min(3000, this.bonusKills * 25);
+          vortexScore += pts;
+          this.bonusScore += pts;
+          this.score += pts;
+          particles.emit(g.x, g.y, 10, '#b000ff', { speed: 140, size: 4, life: 0.45 });
+          const lastIdx = this.bonusActiveCount - 1;
+          if (gi !== lastIdx) {
+            this.bonusGhosts[gi] = this.bonusGhosts[lastIdx];
+            this.bonusGhosts[lastIdx] = g;
+          }
+          this.bonusActiveCount--;
+          gi--;
+        } else if (dist < suctionRadius) {
+          // Strong inward gravitational pull
+          const pull = (1 - dist / suctionRadius) * 220;
+          g.x += (dx / dist) * pull * dt;
+          g.y += (dy / dist) * pull * dt;
+        }
+      }
+
+      if (vortexKills > 0) {
+        this.bonusBatchKills += vortexKills;
+        this.bonusBatchScore += vortexScore;
+        this.bonusBatchTimer = 0.14;
+        sounds.play('pellet');
+        if (this.bonusBatchKills >= 15) this.triggerMultikillBanner();
+      }
+
+      if (this.bonusVortex.life <= 0) {
+        particles.emit(vx, vy, 60, '#ff00ff', { speed: 220, size: 5, life: 0.65 });
+        particles.flash('#bb44ff', 0.25);
+        this.bonusVortex = null;
+      }
+    }
+
+    // 3. Advancing Cosmic Tsunami Wave sweeping from left to right
+    if (this.bonusTsunamiX >= 0) {
+      const tsunamiSpeed = BONUS_ARENA_W * 0.95; // traverses arena in ~1.05s
+      this.bonusTsunamiX += tsunamiSpeed * dt;
+      let tsunamiKills = 0;
+      let tsunamiScore = 0;
+
+      for (let gi = 0; gi < this.bonusActiveCount; gi++) {
+        const g = this.bonusGhosts[gi];
+        if (g.x <= this.bonusTsunamiX + 25) {
+          g.alive = false;
+          tsunamiKills++;
+          this.bonusKills++;
+          const pts = 500 + Math.min(3000, this.bonusKills * 25);
+          tsunamiScore += pts;
+          this.bonusScore += pts;
+          this.score += pts;
+          particles.emit(g.x, g.y, 8, '#00f0ff', { speed: 180, size: 4, life: 0.45 });
+          const lastIdx = this.bonusActiveCount - 1;
+          if (gi !== lastIdx) {
+            this.bonusGhosts[gi] = this.bonusGhosts[lastIdx];
+            this.bonusGhosts[lastIdx] = g;
+          }
+          this.bonusActiveCount--;
+          gi--;
+        }
+      }
+
+      if (tsunamiKills > 0) {
+        this.bonusBatchKills += tsunamiKills;
+        this.bonusBatchScore += tsunamiScore;
+        this.bonusBatchTimer = 0.14;
+        sounds.play('crunch');
+        if (this.bonusBatchKills >= 20) this.triggerMultikillBanner();
+      }
+
+      if (this.bonusTsunamiX > BONUS_ARENA_W + 80) {
+        this.bonusTsunamiX = -1;
+      }
+    }
+
+    // 4. Expanding Supernova Shockwave Ring animation & expansion
+    if (this.bonusNovaRing && this.bonusNovaRing.life > 0) {
+      this.bonusNovaRing.life -= dt;
+      this.bonusNovaRing.radius += 550 * dt;
+      if (this.bonusNovaRing.life <= 0) {
+        this.bonusNovaRing = null;
       }
     }
 
@@ -2389,7 +2526,13 @@ class Game {
         this.bonusActiveCount,
         this.bonusShockwave.radius,
         this.bonusMultikillBanner,
-        this.bonusItems
+        this.bonusItems,
+        {
+          laserTimer: this.bonusLaserTimer,
+          tsunamiX: this.bonusTsunamiX,
+          vortex: this.bonusVortex,
+          novaRing: this.bonusNovaRing
+        }
       );
       if (this.bonusTallyTimer > 0) {
         this.renderer.drawBonusTally(this.bonusKills, this.bonusScore, this.time);

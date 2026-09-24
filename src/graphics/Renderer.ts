@@ -2364,7 +2364,13 @@ export class Renderer {
     ghostCount: number = swarmGhosts.length,
     shockwaveRadius: number = 0,
     burstBanner: { text: string; subtext: string; col: string; life: number } | null = null,
-    bonusItems: { x: number; y: number; type: string; name: string; color: string; icon: string }[] = []
+    bonusItems: { x: number; y: number; type: string; name: string; color: string; icon: string }[] = [],
+    bonusActiveEffects?: {
+      laserTimer: number;
+      tsunamiX: number;
+      vortex: { x: number; y: number; life: number; maxLife: number } | null;
+      novaRing: { x: number; y: number; radius: number; life: number } | null;
+    }
   ) {
     const c = this.ctx;
     c.clearRect(0, 0, this.cw, CH);
@@ -2475,6 +2481,112 @@ export class Renderer {
         c.shadowBlur = 8;
         c.textAlign = 'center';
         c.fillText(it.name, it.x, it.y - 30);
+        c.restore();
+      }
+    }
+
+    // Draw active super effects inside the arena
+    if (bonusActiveEffects) {
+      // 1. Cross Laser Beams
+      if (bonusActiveEffects.laserTimer > 0) {
+        c.save();
+        c.strokeStyle = '#00ffff';
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 24;
+        c.lineWidth = 16 + Math.sin(time * 25) * 5;
+        c.beginPath();
+        c.moveTo(0, playerPos.y); c.lineTo(BONUS_ARENA_W, playerPos.y);
+        c.moveTo(playerPos.x, 0); c.lineTo(playerPos.x, BONUS_ARENA_H);
+        c.stroke();
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = 4;
+        c.stroke();
+        c.restore();
+      }
+
+      // 2. Black Hole Singularity
+      if (bonusActiveEffects.vortex) {
+        const vx = bonusActiveEffects.vortex.x;
+        const vy = bonusActiveEffects.vortex.y;
+        c.save();
+        // Accretion disk distortion ring
+        c.translate(vx, vy);
+        const pulse = 1 + Math.sin(time * 8) * 0.12;
+        c.strokeStyle = 'rgba(187, 68, 255, 0.45)';
+        c.lineWidth = 4;
+        c.beginPath();
+        c.arc(0, 0, 85 * pulse, 0, PI2);
+        c.stroke();
+
+        // Swirling arms
+        c.rotate(time * 12);
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 24;
+        c.lineWidth = 3.5;
+        for (let i = 0; i < 6; i++) {
+          const startA = (i * PI2) / 6;
+          c.strokeStyle = i % 2 === 0 ? '#ff00aa' : '#00ffff';
+          c.beginPath();
+          c.arc(0, 0, 20 + (i % 3) * 18, startA, startA + Math.PI * 0.85);
+          c.stroke();
+        }
+        c.shadowBlur = 0;
+
+        // Core Event Horizon
+        c.fillStyle = '#000000';
+        c.beginPath();
+        c.arc(0, 0, 24, 0, PI2);
+        c.fill();
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = 2.5;
+        c.shadowColor = '#bb44ff';
+        c.shadowBlur = 18;
+        c.beginPath();
+        c.arc(0, 0, 24, 0, PI2);
+        c.stroke();
+        c.restore();
+      }
+
+      // 3. Cosmic Tsunami Wave
+      if (bonusActiveEffects.tsunamiX >= 0) {
+        const tx = bonusActiveEffects.tsunamiX;
+        c.save();
+        const gr = c.createLinearGradient(tx - 70, 0, tx, 0);
+        gr.addColorStop(0, 'rgba(0, 240, 255, 0)');
+        gr.addColorStop(0.7, 'rgba(0, 240, 255, 0.45)');
+        gr.addColorStop(1, 'rgba(255, 255, 255, 0.95)');
+        c.fillStyle = gr;
+        c.fillRect(tx - 70, 0, 70, BONUS_ARENA_H);
+        c.strokeStyle = '#00ffff';
+        c.lineWidth = 6;
+        c.shadowColor = '#ffffff';
+        c.shadowBlur = 22;
+        c.beginPath();
+        c.moveTo(tx, 0);
+        c.lineTo(tx, BONUS_ARENA_H);
+        c.stroke();
+        c.restore();
+      }
+
+      // 4. Expanding Supernova Shockwave Ring
+      if (bonusActiveEffects.novaRing && bonusActiveEffects.novaRing.life > 0) {
+        const nr = bonusActiveEffects.novaRing;
+        c.save();
+        const a = Math.min(1, nr.life / 0.8);
+        c.globalAlpha = a;
+        c.strokeStyle = '#ffd700';
+        c.shadowColor = '#ff0055';
+        c.shadowBlur = 28;
+        c.lineWidth = 14 * a;
+        c.beginPath();
+        c.arc(nr.x, nr.y, nr.radius, 0, PI2);
+        c.stroke();
+
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = 4 * a;
+        c.beginPath();
+        c.arc(nr.x, nr.y, nr.radius, 0, PI2);
+        c.stroke();
         c.restore();
       }
     }
