@@ -956,17 +956,19 @@ export class MazeManager {
   public isWidescreen: boolean = false;
   public ghostReturnDist: number[][] = [];
   public currentTier: ChromaTier = 0;
-  public mOff: HTMLCanvasElement;
-  public mc: CanvasRenderingContext2D;
+  public mOff!: HTMLCanvasElement;
+  public mc!: CanvasRenderingContext2D;
 
   public get cw(): number { return this.cols * T; }
   public get ch(): number { return this.rows * T + HUD_H; }
 
-  constructor() {
-    this.mOff = document.createElement('canvas');
-    this.mOff.width = BASE_COLS * T;
-    this.mOff.height = ROWS * T;
-    this.mc = this.mOff.getContext('2d')!;
+  constructor(renderEnabled: boolean = true) {
+    if (renderEnabled) {
+      this.mOff = document.createElement('canvas');
+      this.mOff.width = BASE_COLS * T;
+      this.mOff.height = ROWS * T;
+      this.mc = this.mOff.getContext('2d')!;
+    }
     this.build(0);
   }
 
@@ -1002,8 +1004,10 @@ export class MazeManager {
     if (chromaTier !== undefined) this.currentTier = chromaTier;
     this.isWidescreen = isWidescreen;
     this.cols = isWidescreen ? MADNESS_COLS : BASE_COLS;
-    this.mOff.width = this.cols * T;
-    this.mOff.height = this.rows * T;
+    if (this.mOff) {
+      this.mOff.width = this.cols * T;
+      this.mOff.height = this.rows * T;
+    }
 
     const list = isWidescreen ? MADNESS_LEVELS_16_9 : MADNESS_LEVELS_4_3;
     this.currentLevel = lvlIndex % list.length;
@@ -1194,6 +1198,7 @@ export class MazeManager {
 
   public renderOffscreen(chromaTier?: ChromaTier) {
     if (chromaTier !== undefined) this.currentTier = chromaTier;
+    if (!this.mc) return;
     const tier = this.currentTier;
     const lvl = this.getLevelDef();
     const c = this.mc;
