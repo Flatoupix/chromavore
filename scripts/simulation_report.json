@@ -1,0 +1,124 @@
+{
+  "generatedAt": "2026-09-24T21:43:54.773Z",
+  "tuning": {
+    "dotXp": 2,
+    "pelletXp": 15,
+    "nearMissXp": 25,
+    "mazeClearXp": 400,
+    "curveBase": 420,
+    "curveExp": 1.48
+  },
+  "results": [
+    {
+      "archetype": "CASUAL (Débutant)",
+      "xpPerGame": 547,
+      "gameDurationSec": 90,
+      "milestones": {
+        "lvl_5": {
+          "games": 13,
+          "hours": 0.3,
+          "totalXp": 7111
+        },
+        "lvl_10": {
+          "games": 83,
+          "hours": 2.1,
+          "totalXp": 45401
+        },
+        "lvl_20": {
+          "games": 490,
+          "hours": 12.3,
+          "totalXp": 268030
+        },
+        "lvl_35": {
+          "games": 2017,
+          "hours": 50.4,
+          "totalXp": 1103299
+        },
+        "lvl_50": {
+          "games": 4937,
+          "hours": 123.4,
+          "totalXp": 2700539
+        }
+      }
+    },
+    {
+      "archetype": "INTERMEDIATE (Moyen)",
+      "xpPerGame": 2594,
+      "gameDurationSec": 210,
+      "milestones": {
+        "lvl_5": {
+          "games": 3,
+          "hours": 0.2,
+          "totalXp": 7782
+        },
+        "lvl_10": {
+          "games": 18,
+          "hours": 1.1,
+          "totalXp": 46692
+        },
+        "lvl_20": {
+          "games": 104,
+          "hours": 6.1,
+          "totalXp": 269776
+        },
+        "lvl_35": {
+          "games": 426,
+          "hours": 24.9,
+          "totalXp": 1105044
+        },
+        "lvl_50": {
+          "games": 1041,
+          "hours": 60.7,
+          "totalXp": 2700354
+        },
+        "lvl_75": {
+          "games": 2870,
+          "hours": 167.4,
+          "totalXp": 7444780
+        }
+      }
+    },
+    {
+      "archetype": "PRO (Singularity Master)",
+      "xpPerGame": 11532,
+      "gameDurationSec": 360,
+      "milestones": {
+        "lvl_5": {
+          "games": 1,
+          "hours": 0.1,
+          "totalXp": 11532
+        },
+        "lvl_10": {
+          "games": 4,
+          "hours": 0.4,
+          "totalXp": 46128
+        },
+        "lvl_20": {
+          "games": 24,
+          "hours": 2.4,
+          "totalXp": 276768
+        },
+        "lvl_35": {
+          "games": 96,
+          "hours": 9.6,
+          "totalXp": 1107072
+        },
+        "lvl_50": {
+          "games": 235,
+          "hours": 23.5,
+          "totalXp": 2710020
+        },
+        "lvl_75": {
+          "games": 646,
+          "hours": 64.6,
+          "totalXp": 7449672
+        },
+        "lvl_100": {
+          "games": 1323,
+          "hours": 132.3,
+          "totalXp": 15256836
+        }
+      }
+    }
+  ]
+}

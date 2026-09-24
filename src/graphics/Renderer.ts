@@ -2677,14 +2677,20 @@ export class Renderer {
     c.fillStyle = bgGrad;
     c.fillRect(0, 0, this.cw, CH);
 
-    // Save context for scaled zoomed-out arena (viewed from afar)
+    // Save context for scaled zoomed-out arena (viewed from afar in full overview letterbox)
     c.save();
     c.beginPath();
     c.rect(0, HUD_H, this.cw, CH - HUD_H);
     c.clip();
 
-    const scale = this.cw / BONUS_ARENA_W; // ~0.52x zoom out!
-    c.translate(0, HUD_H);
+    // Scale so entire 860x920 arena fits inside the viewport under HUD, preserving epic zoomed-out view
+    const availW = this.cw;
+    const availH = CH - HUD_H;
+    const scale = Math.min(availW / BONUS_ARENA_W, availH / BONUS_ARENA_H);
+    const offsetX = (availW - BONUS_ARENA_W * scale) / 2;
+    const offsetY = HUD_H + (availH - BONUS_ARENA_H * scale) / 2;
+
+    c.translate(offsetX, offsetY);
     c.scale(scale, scale);
 
     // Cosmic Grid Floor (accelerates near climax)

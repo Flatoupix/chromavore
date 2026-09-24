@@ -1031,8 +1031,8 @@ class Game {
     this.score += pts;
     particles.addPop(ex, ey - 15, '+' + pts, '#ffd700', 16);
 
-    // Chromavore 4.0 XP Engine: +100 XP * combo (or +500 for titan)
-    const xpEarned = e.isTitan ? 500 : 100 * Math.max(1, this.combo.m);
+    // Chromavore 4.0.1 Balanced XP Engine: +30 to 190 XP based on combo (or +250 for titan)
+    const xpEarned = e.isTitan ? 250 : Math.round(30 + 10 * Math.min(16, Math.max(1, this.combo.m)));
     const lvlUp = experienceSystem.addXp(xpEarned, 'ghost_kill');
     if (lvlUp) {
       this.lives = Math.min(5, this.lives + 1);
@@ -1725,8 +1725,8 @@ class Game {
         particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 70, `+${careerBonusKills} CAREER KILLS (100:1)`, '#ffd700', 20);
       }
 
-      // Vortex Mode XP attribution: 1 XP per 400 pts scored
-      const vortexXp = Math.floor(this.bonusScore / 400);
+      // Vortex Mode XP attribution: normalized bonus (max 450 XP per session)
+      const vortexXp = Math.min(450, Math.floor(this.bonusScore / 50000));
       if (vortexXp > 0) {
         const lvlUpVortex = experienceSystem.addXp(vortexXp, 'vortex_score');
         if (lvlUpVortex) {
@@ -1812,7 +1812,7 @@ class Game {
           sounds.play('near');
           const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_NM_RECHARGE);
-          const lvlUp = experienceSystem.addXp(60, 'near_miss');
+          const lvlUp = experienceSystem.addXp(25, 'near_miss');
           if (lvlUp) {
             this.lives = Math.min(5, this.lives + 1);
             particles.addPop(pp.x, pp.y - 35, '+1 VIE !', '#00ffaa', 22);
@@ -1870,7 +1870,7 @@ class Game {
         const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
-        const lvlUpPellet = experienceSystem.addXp(30, 'pellet');
+        const lvlUpPellet = experienceSystem.addXp(15, 'pellet');
         if (lvlUpPellet) {
           this.lives = Math.min(5, this.lives + 1);
           particles.addPop(px, py - 35, '+1 VIE !', '#00ffaa', 22);
@@ -1903,7 +1903,7 @@ class Game {
         const pts = 10 * this.combo.m;
         this.score += pts;
 
-        const lvlUpDot = experienceSystem.addXp(5, 'dot');
+        const lvlUpDot = experienceSystem.addXp(2, 'dot');
         if (lvlUpDot) {
           this.lives = Math.min(5, this.lives + 1);
           particles.addPop(px, py - 35, '+1 VIE !', '#00ffaa', 22);
@@ -1929,8 +1929,8 @@ class Game {
         const completedLvl = this.maze.currentLevel;
         const list = this.getCurrentLevelList();
 
-        // Level Clear XP: +1,500 XP
-        const lvlUpClear = experienceSystem.addXp(1500, 'maze_clear');
+        // Level Clear XP: +400 XP
+        const lvlUpClear = experienceSystem.addXp(400, 'maze_clear');
         if (lvlUpClear) {
           this.lives = Math.min(5, this.lives + 1);
           particles.addPop(px, py - 45, '+1 VIE !', '#00ffaa', 22);

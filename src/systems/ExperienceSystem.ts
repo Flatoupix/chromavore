@@ -171,13 +171,14 @@ class ExperienceSystem {
   public lastLevelUpInfo: LevelUpEvent | null = null;
 
   /**
-   * Exponential Account Level Curve:
-   * Level N requires floor(850 * N^1.38) XP
+   * Balanced Account Level Curve (v4.0.1):
+   * Early levels are fast to unlock skill points, higher levels require solid mastery.
+   * Level N requires floor(420 * N^1.48) XP
    */
   public getXpRequiredForLevel(level: number): number {
-    if (level < 1) return 850;
+    if (level < 1) return 420;
     if (level >= 100) return Infinity; // Max level reached!
-    return Math.floor(850 * Math.pow(level, 1.38));
+    return Math.floor(420 * Math.pow(level, 1.48));
   }
 
   public get accountLevel(): number {
