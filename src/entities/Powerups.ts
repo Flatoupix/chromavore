@@ -322,7 +322,8 @@ export class PowerupManager {
     for (const e of enemies) {
       // A basic pellet only marks ghosts already in the current swarm.
       // Super Pastille extends this effect to every reinforcement spawned during the timer.
-      if (e.st === 'active' || e.st === 'spawn' || e.st === 'return') {
+      // Titans are totally immune to pellets! Only Invincible (x32), Singularity (x64) or Super-Items can slay them.
+      if (!e.isTitan && (e.st === 'active' || e.st === 'spawn' || e.st === 'return')) {
         e.frightened = true;
         if (e.st === 'active') e.st = 'flee';
       }

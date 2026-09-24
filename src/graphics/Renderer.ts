@@ -2363,7 +2363,8 @@ export class Renderer {
     player: Player,
     ghostCount: number = swarmGhosts.length,
     shockwaveRadius: number = 0,
-    burstBanner: { text: string; subtext: string; col: string; life: number } | null = null
+    burstBanner: { text: string; subtext: string; col: string; life: number } | null = null,
+    bonusItems: { x: number; y: number; type: string; name: string; color: string; icon: string }[] = []
   ) {
     const c = this.ctx;
     c.clearRect(0, 0, this.cw, CH);
@@ -2439,6 +2440,42 @@ export class Renderer {
       const stampFrames = this.ghostStamps.get(g.color);
       if (stampFrames) {
         c.drawImage(stampFrames[animFrame], (g.x - 18) | 0, (g.y - 18) | 0);
+      }
+    }
+
+    // Draw bonus powerup capsules/items in the arena
+    if (bonusItems) {
+      for (const it of bonusItems) {
+        c.save();
+        const p = 1 + Math.sin(time * 6 + it.x) * 0.15;
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = 2.5;
+        c.shadowColor = it.color;
+        c.shadowBlur = 16;
+        c.fillStyle = it.color;
+        c.beginPath();
+        c.arc(it.x, it.y, 22 * p, 0, PI2);
+        c.fill();
+        c.stroke();
+        c.shadowBlur = 0;
+
+        // Rotating energy ring
+        c.strokeStyle = '#ffffff';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        c.arc(it.x, it.y, 28 * p, time * 3, time * 3 + Math.PI);
+        c.stroke();
+
+        spriteAtlas.drawIcon(c, it.icon, it.x, it.y, 22);
+
+        // Name tag
+        c.font = 'bold 11px monospace';
+        c.fillStyle = '#ffffff';
+        c.shadowColor = it.color;
+        c.shadowBlur = 8;
+        c.textAlign = 'center';
+        c.fillText(it.name, it.x, it.y - 30);
+        c.restore();
       }
     }
 

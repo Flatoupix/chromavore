@@ -80,11 +80,16 @@ export const BONUS_FORCE_FIELD_MAX_RAD = 115; // Massive singularity radius at c
 export const BONUS_ARENA_W = 860;
 export const BONUS_ARENA_H = 920;
 
-// Combo settings: Clear progression with distinct x4, x8, x16, and x32 God Mode at 120 dots (was 180)
-export const CT = [0, 8, 22, 48, 85, 120];
+// Combo settings: Clear progression with distinct x4, x8, x16, and x32 God Mode
+// In 4:3 (compact): 120 dots for God Mode
+export const CT_4_3 = [0, 8, 22, 48, 85, 120];
+// In 16:9 (widescreen, high-speed & dense): re-challenged to 210 dots for God Mode
+export const CT_16_9 = [0, 14, 38, 82, 145, 210];
+export const CT = CT_4_3;
 export const CM = [1, 2, 4, 8, 16, 32];
 export const CC = ['#ffffff', '#ffee44', '#ff8833', '#ff44aa', '#ff00aa', '#00ffff'];
 export const COMBO_DECAY = 0.5; // Strictly 0.5s between pellets (gap without pellets resets combo towards God Mode)
+export const COMBO_DECAY_WIDE = 0.42; // Tighter pace in high-speed 16:9 widescreen
 export const STREAK_DECAY_WINDOW = 0.85; // Window between dots/pellets for audio frequency
 export const KILL_STREAK_DECAY_WINDOW = 2.0; // Window between ghost kills to maintain kill streak multiplier
 export const GOD_MODE_DURATION = 15.0; // 15.0s God Mode duration when triggered
@@ -102,9 +107,10 @@ export const CHRONO_PASSIVE_RECHARGE = 3.2; // % per second passive recharge
 export const CHRONO_DOT_RECHARGE = 0.8; // % per dot eaten
 export const CHRONO_NM_RECHARGE = 6.0; // % per Near-Miss dodge
 
-export function getComboTier(n: number): number {
-  for (let i = CT.length - 1; i >= 0; i--) {
-    if (n >= CT[i]) return i;
+export function getComboTier(n: number, isWide: boolean = false): number {
+  const table = isWide ? CT_16_9 : CT_4_3;
+  for (let i = table.length - 1; i >= 0; i--) {
+    if (n >= table[i]) return i;
   }
   return 0;
 }

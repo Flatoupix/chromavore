@@ -67,7 +67,31 @@ export const BADGES: Record<string, BadgeDef> = {
   madness50:    { id: 'madness50',    name: 'BERSERK TRANSCENDENT', desc: 'Eliminate 50 spectres in a single session',           icon: 'skull', category: 'feat' },
   madness100:   { id: 'madness100',   name: 'TOTAL EXTERMINATOR',   desc: 'Eliminate 100 spectres in a single session',          icon: 'nova', category: 'feat' },
   bonus50:      { id: 'bonus50',      name: 'SWARM SLAYER',         desc: 'Pulverize 50 spectres in a Bonus Stage',              icon: 'vortex', category: 'feat' },
-  arena16_9:    { id: 'arena16_9',    name: '16:9 ARENA UNLOCKED',  desc: 'Unlock access to Widescreen Madness Mode',            icon: 'screen', category: 'feat' }
+  arena16_9:    { id: 'arena16_9',    name: '16:9 ARENA UNLOCKED',  desc: 'Unlock access to Widescreen Madness Mode',            icon: 'screen', category: 'feat' },
+
+  // === 4:3 CLASSIC SECTOR MASTERY (LEVELS 1 TO 10) ===
+  clear_lvl1:   { id: 'clear_lvl1',   name: 'SECTOR 1 PURGED',      desc: 'Complete Level 1 in 4:3 format (Neon Alley)',         icon: 'flame', category: 'feat' },
+  clear_lvl2:   { id: 'clear_lvl2',   name: 'SECTOR 2 PURGED',      desc: 'Complete Level 2 in 4:3 format (Cyber Grid)',         icon: 'flame', category: 'feat' },
+  clear_lvl3:   { id: 'clear_lvl3',   name: 'SECTOR 3 PURGED',      desc: 'Complete Level 3 in 4:3 format (Synth Highway)',      icon: 'flame', category: 'feat' },
+  clear_lvl4:   { id: 'clear_lvl4',   name: 'SECTOR 4 PURGED',      desc: 'Complete Level 4 in 4:3 format (Outrun 1984)',        icon: 'flame', category: 'feat' },
+  clear_lvl5:   { id: 'clear_lvl5',   name: 'SECTOR 5 PURGED',      desc: 'Complete Level 5 in 4:3 format (Cyber Freeway)',      icon: 'rocket', category: 'feat' },
+  clear_lvl6:   { id: 'clear_lvl6',   name: 'SECTOR 6 PURGED',      desc: 'Complete Level 6 in 4:3 format (Retro Metropolis)',   icon: 'lightning', category: 'feat' },
+  clear_lvl7:   { id: 'clear_lvl7',   name: 'SECTOR 7 PURGED',      desc: 'Complete Level 7 in 4:3 format (Grid Runner)',        icon: 'lightning', category: 'feat' },
+  clear_lvl8:   { id: 'clear_lvl8',   name: 'SECTOR 8 PURGED',      desc: 'Complete Level 8 in 4:3 format (Laser Labyrinth)',    icon: 'laser', category: 'feat' },
+  clear_lvl9:   { id: 'clear_lvl9',   name: 'SECTOR 9 PURGED',      desc: 'Complete Level 9 in 4:3 format (Neon Casino)',        icon: 'crown', category: 'feat' },
+  clear_lvl10:  { id: 'clear_lvl10',  name: 'SECTOR 10 MASTER',     desc: 'Complete Level 10 in 4:3 format (Cyber Matrix)',      icon: 'crown', category: 'feat' },
+
+  // === 16:9 WIDESCREEN HYPER-ARENA MASTERY (LEVELS 1 TO 10) ===
+  wide_lvl1:    { id: 'wide_lvl1',    name: '16:9 VELOCITY',        desc: 'Conquer Level 1 in 16:9 Widescreen (Neon Velocity)',  icon: 'screen', category: 'feat' },
+  wide_lvl2:    { id: 'wide_lvl2',    name: '16:9 SUPERGRID',       desc: 'Conquer Level 2 in 16:9 Widescreen (Supergrid)',      icon: 'screen', category: 'feat' },
+  wide_lvl3:    { id: 'wide_lvl3',    name: '16:9 BOULEVARD',       desc: 'Conquer Level 3 in 16:9 Widescreen (Boulevard)',      icon: 'screen', category: 'feat' },
+  wide_lvl4:    { id: 'wide_lvl4',    name: '16:9 MEGAWAY',         desc: 'Conquer Level 4 in 16:9 Widescreen (Megaway)',        icon: 'screen', category: 'feat' },
+  wide_lvl5:    { id: 'wide_lvl5',    name: '16:9 INTERSTATE',      desc: 'Conquer Level 5 in 16:9 Widescreen (Interstate)',     icon: 'rocket', category: 'feat' },
+  wide_lvl6:    { id: 'wide_lvl6',    name: '16:9 HYPERCIRCUIT',    desc: 'Conquer Level 6 in 16:9 Widescreen (Hypercircuit)',   icon: 'lightning', category: 'feat' },
+  wide_lvl7:    { id: 'wide_lvl7',    name: '16:9 FLUID ARTERY',    desc: 'Conquer Level 7 in 16:9 Widescreen (Fluid Artery)',   icon: 'lightning', category: 'feat' },
+  wide_lvl8:    { id: 'wide_lvl8',    name: '16:9 SPEED RING',      desc: 'Conquer Level 8 in 16:9 Widescreen (Speed Ring)',     icon: 'vortex', category: 'feat' },
+  wide_lvl9:    { id: 'wide_lvl9',    name: '16:9 TITAN HIGHWAY',   desc: 'Conquer Level 9 in 16:9 Widescreen (Titan Highway)',  icon: 'crown', category: 'feat' },
+  wide_lvl10:   { id: 'wide_lvl10',   name: '16:9 INFINITY APEX',   desc: 'Conquer Level 10 in 16:9 Widescreen (Infinity Apex)', icon: 'crown', category: 'feat' }
 };
 
 export const BADGE_PAGE_SIZE = 14;

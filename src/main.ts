@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, STREAK_DECAY_WINDOW, KILL_STREAK_DECAY_WINDOW, GOD_MODE_DURATION, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, COMBO_DECAY_WIDE, STREAK_DECAY_WINDOW, KILL_STREAK_DECAY_WINDOW, GOD_MODE_DURATION, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -36,12 +36,12 @@ class Game {
   public playerRank: number = 0;
   public playerDate: string = '';
 
-  // Singularity 64x cinematic intro sequence
+  // Singularity 64x cinematic intro sequence & mechanics
   public singularityIntroTimer: number = 0; // 5.0s intro
   public singularityShockwaveRadius: number = 0;
   public singularityTriggered: boolean = false;
+  public singularityNovaUsed: boolean = false; // 1 Nova per Singularity
 
-  // Bonus Level Hyper-Swarm specific
   // Bonus Level Hyper-Swarm specific (500+ entity object-pooled architecture)
   public bonusTimer: number = BONUS_DURATION;
   public bonusKills: number = 0;
@@ -57,6 +57,8 @@ class Game {
   public bonusBatchTimer: number = 0;
   public bonusMultikillBanner: { text: string; subtext: string; col: string; life: number } | null = null;
   public bonusShockwave: { radius: number; life: number } = { radius: 0, life: 0 };
+  public bonusItems: { x: number; y: number; type: string; name: string; color: string; icon: string; timer: number }[] = [];
+  public bonusItemSpawnTimer: number = 2.0;
   public score: number = 0;
   public dScore: number = 0;
   public lives: number = 3;
@@ -77,7 +79,9 @@ class Game {
   }
 
   // Madness mode & Ghost Kill Streak specific
-  public madnessKills: number = 0;
+  public madnessKills: number = 0; // Total session kills
+  public lifeKills: number = 0;    // Kills during current life (resets on death)
+  public maxLifeKills: number = 0;
   public madnessStreak: number = 0;
   public killStreakTimer: number = 0;
   public maxMadnessStreak: number = 0;
@@ -660,6 +664,8 @@ class Game {
     this.combo = { n: 0, t: 0, m: 1 };
 
     this.madnessKills = 0;
+    this.lifeKills = 0;
+    this.maxLifeKills = 0;
     this.madnessStreak = 0;
     this.killStreakTimer = 0;
     this.maxMadnessStreak = 0;
@@ -670,6 +676,9 @@ class Game {
     this.singularityIntroTimer = 0;
     this.singularityShockwaveRadius = 0;
     this.singularityTriggered = false;
+    this.singularityNovaUsed = false;
+    this.bonusItems = [];
+    this.bonusItemSpawnTimer = 2.0;
 
     this.chronoEnergy = CHRONO_MAX;
     this.isChronoActive = false;
@@ -858,14 +867,18 @@ class Game {
     this.checkArenaUnlock(prevCareer);
 
     this.madnessKills++;
+    this.lifeKills++;
+    if (this.lifeKills > this.maxLifeKills) {
+      this.maxLifeKills = this.lifeKills;
+    }
     this.madnessStreak++;
     this.killStreakTimer = KILL_STREAK_DECAY_WINDOW;
     if (this.madnessStreak > this.maxMadnessStreak) {
       this.maxMadnessStreak = this.madnessStreak;
     }
 
-    // Check Singularity Mode trigger at 200 kills
-    if (this.madnessKills >= SINGULARITY_TRIGGER_KILLS && !this.singularityTriggered) {
+    // Check Singularity Mode trigger at 200 kills (pure single-life feat or high session mastery)
+    if ((this.lifeKills >= SINGULARITY_TRIGGER_KILLS || this.madnessKills >= SINGULARITY_TRIGGER_KILLS) && !this.singularityTriggered) {
       this.triggerSingularitySequence();
     }
 
@@ -955,6 +968,7 @@ class Game {
     this.state = 'dying';
     this.deathT = 1.5;
     this.lives--;
+    this.lifeKills = 0;
     this.madnessStreak = 0;
     this.killStreakTimer = 0;
     this.dotStreak = 0;
@@ -988,6 +1002,8 @@ class Game {
     this.bonusBatchTimer = 0;
     this.bonusMultikillBanner = null;
     this.bonusShockwave = { radius: 0, life: 0 };
+    this.bonusItems = [];
+    this.bonusItemSpawnTimer = 1.5;
 
     // Initialize 600-capacity Object Pool if needed (zero runtime allocations!)
     const POOL_CAPACITY = 600;
@@ -1282,6 +1298,141 @@ class Game {
       }
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Vortex Mode Special Item Capsules Spawning & Collection
+    // ─────────────────────────────────────────────────────────────
+    this.bonusItemSpawnTimer -= dt;
+    if (this.bonusItemSpawnTimer <= 0 && this.bonusTimer > 2.0) {
+      this.bonusItemSpawnTimer = 2.4 + Math.random() * 1.2;
+      const itemTypes = [
+        { type: 'nova_capsule', name: 'SUPERNOVA CORE', color: '#ff0055', icon: 'zap' },
+        { type: 'black_hole', name: 'SINGULARITY RIFT', color: '#b000ff', icon: 'whirl' },
+        { type: 'lightning_burst', name: 'LIGHTNING OVERDRIVE', color: '#ffd700', icon: 'dash' },
+        { type: 'tsunami_burst', name: 'COSMIC TSUNAMI', color: '#00f0ff', icon: 'wave' }
+      ];
+      const pick = itemTypes[(Math.random() * itemTypes.length) | 0];
+      const margin = 100;
+      this.bonusItems.push({
+        x: margin + Math.random() * (BONUS_ARENA_W - margin * 2),
+        y: margin + Math.random() * (BONUS_ARENA_H - margin * 2),
+        type: pick.type,
+        name: pick.name,
+        color: pick.color,
+        icon: pick.icon,
+        timer: 7.0
+      });
+    }
+
+    // Update and check collection of bonus items
+    for (let bi = this.bonusItems.length - 1; bi >= 0; bi--) {
+      const it = this.bonusItems[bi];
+      it.timer -= dt;
+      if (it.timer <= 0) {
+        this.bonusItems.splice(bi, 1);
+        continue;
+      }
+
+      const distToPac = Math.hypot(this.bonusPacPos.x - it.x, this.bonusPacPos.y - it.y);
+      if (distToPac < 55) {
+        // Collect Item!
+        sounds.play('powerup');
+        sounds.play('nova');
+        particles.flash(it.color, 0.35);
+        particles.shake(12, 0.4);
+
+        let itemScore = 500000;
+        let itemKills = 0;
+
+        if (it.type === 'nova_capsule') {
+          itemScore = 750000;
+          // Supernova: annihilate all ghosts within 380px radius!
+          for (let gi = 0; gi < this.bonusActiveCount; gi++) {
+            const g = this.bonusGhosts[gi];
+            if (Math.hypot(g.x - it.x, g.y - it.y) < 380) {
+              g.alive = false;
+              itemKills++;
+              this.bonusKills++;
+              const pts = 500 + Math.min(3000, this.bonusKills * 25);
+              this.bonusScore += pts;
+              this.score += pts;
+              particles.emit(g.x, g.y, 8, it.color, { speed: 180, size: 4, life: 0.5 });
+              const lastIdx = this.bonusActiveCount - 1;
+              if (gi !== lastIdx) {
+                const temp = this.bonusGhosts[gi];
+                this.bonusGhosts[gi] = this.bonusGhosts[lastIdx];
+                this.bonusGhosts[lastIdx] = temp;
+              }
+              this.bonusActiveCount--;
+              gi--;
+            }
+          }
+        } else if (it.type === 'black_hole') {
+          itemScore = 1000000;
+          // Black hole: devour 50 active ghosts instantly!
+          const devourTarget = Math.min(50, this.bonusActiveCount);
+          for (let gi = 0; gi < devourTarget && this.bonusActiveCount > 0; gi++) {
+            const g = this.bonusGhosts[0];
+            g.alive = false;
+            itemKills++;
+            this.bonusKills++;
+            const pts = 600 + Math.min(3000, this.bonusKills * 25);
+            this.bonusScore += pts;
+            this.score += pts;
+            particles.emit(g.x, g.y, 6, '#b000ff', { speed: 160, size: 3.5, life: 0.45 });
+            const lastIdx = this.bonusActiveCount - 1;
+            if (0 !== lastIdx) {
+              this.bonusGhosts[0] = this.bonusGhosts[lastIdx];
+              this.bonusGhosts[lastIdx] = g;
+            }
+            this.bonusActiveCount--;
+          }
+        } else if (it.type === 'lightning_burst') {
+          itemScore = 500000;
+          // Instant overdrive speed + dash recharge!
+          powerups.fx.overdrive = 4.0;
+          this.player.dashCd = 0;
+          // Chain lightning to 35 ghosts
+          const zapTarget = Math.min(35, this.bonusActiveCount);
+          for (let gi = 0; gi < zapTarget && this.bonusActiveCount > 0; gi++) {
+            const g = this.bonusGhosts[this.bonusActiveCount - 1];
+            g.alive = false;
+            itemKills++;
+            this.bonusKills++;
+            const pts = 450 + Math.min(3000, this.bonusKills * 25);
+            this.bonusScore += pts;
+            this.score += pts;
+            particles.emit(g.x, g.y, 8, '#ffd700', { speed: 200, size: 4, life: 0.4 });
+            this.bonusActiveCount--;
+          }
+        } else if (it.type === 'tsunami_burst') {
+          itemScore = 800000;
+          // Sweeping cosmic wave killing 45 ghosts
+          const waveTarget = Math.min(45, this.bonusActiveCount);
+          for (let gi = 0; gi < waveTarget && this.bonusActiveCount > 0; gi++) {
+            const g = this.bonusGhosts[this.bonusActiveCount - 1];
+            g.alive = false;
+            itemKills++;
+            this.bonusKills++;
+            const pts = 500 + Math.min(3000, this.bonusKills * 25);
+            this.bonusScore += pts;
+            this.score += pts;
+            particles.emit(g.x, g.y, 7, '#00f0ff', { speed: 170, size: 3.5, life: 0.5 });
+            this.bonusActiveCount--;
+          }
+        }
+
+        this.bonusScore += itemScore;
+        this.score += itemScore;
+        particles.addPop(it.x, it.y - 25, `${it.name}! +${itemScore.toLocaleString('en-US')}`, it.color, 22);
+
+        this.bonusBatchKills += itemKills;
+        this.bonusBatchScore += itemScore;
+        this.triggerMultikillBanner();
+
+        this.bonusItems.splice(bi, 1);
+      }
+    }
+
     // End of 15 seconds: Cosmic Singularity Climax & Terminal Shockwave!
     if (this.bonusTimer <= 0) {
       this.bonusTimer = 0;
@@ -1357,16 +1508,23 @@ class Game {
 
       if (d < HIT_DIST) {
         if (this.player.invuln > 0) continue;
-        if (e.st === 'flee' || e.frozen) {
-          this.onKillGhost(e, ep.x, ep.y);
-        } else if (powerups.fx.phase > 0) {
+        if (powerups.fx.phase > 0) {
           continue;
         } else if (this.combo.m >= 32) {
-          // x32 GOD MODE INVINCIBLE: Devour ghost on contact!
+          // x32 GOD MODE / x64 SINGULARITY: Devour any ghost including Titans on contact!
           this.onKillGhost(e, ep.x, ep.y);
-          particles.shake(6, 0.2);
-          particles.addPop(ep.x, ep.y - 15, 'x32 ANNIHILATION !', '#ffd700', 18);
-          sounds.play('pellet');
+          particles.shake(e.isTitan ? 12 : 6, 0.25);
+          particles.flash(e.isTitan ? '#ff0033' : '#ffd700', 0.2);
+          particles.addPop(ep.x, ep.y - 15, e.isTitan ? 'TITAN SLAYED !' : 'x32 ANNIHILATION !', '#ffd700', 18);
+          sounds.play(e.isTitan ? 'nova' : 'pellet');
+        } else if (e.isTitan) {
+          // Titans are immune to normal pellets! If touched without Invincibility/Singularity, Pac-Man dies!
+          particles.addPop(ep.x, ep.y - 20, 'TITAN IMMUNE TO PELLETS !', '#ff0055', 18);
+          particles.flash('#ff0033', 0.4);
+          this.playerDie();
+          return;
+        } else if (e.st === 'flee' || e.frozen) {
+          this.onKillGhost(e, ep.x, ep.y);
         } else {
           // Pac-Man is MORTAL in Madness mode!
           this.playerDie();
@@ -1397,6 +1555,9 @@ class Game {
       this.maze.remainingDots--;
       const px = c * T + HALF, py = r * T + HALF;
 
+      const isWide = this.maze.cols > 21;
+      const decayDuration = isWide ? COMBO_DECAY_WIDE : COMBO_DECAY;
+
       if (isPellet) {
         const isSuperPellet = progression.getSkillLevel('super_pellet') >= 1;
         const pts = 50 * this.combo.m;
@@ -1417,7 +1578,7 @@ class Game {
         this.combo.n += 4;
         const oldM = this.combo.m;
         if (oldM < 64) {
-          const tier = getComboTier(this.combo.n);
+          const tier = getComboTier(this.combo.n, isWide);
           this.combo.m = CM[tier];
 
           if (this.combo.m >= 32) {
@@ -1425,8 +1586,8 @@ class Game {
               this.combo.t = GOD_MODE_DURATION;
             }
           } else {
-            // Power pellet sustains combo timer (strictly capped at COMBO_DECAY = 0.5s max)
-            this.combo.t = COMBO_DECAY;
+            // Power pellet sustains combo timer
+            this.combo.t = decayDuration;
           }
         }
 
@@ -1434,7 +1595,7 @@ class Game {
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
         if (this.combo.m > oldM && this.combo.m > 1) {
-          const tier = getComboTier(this.combo.n);
+          const tier = getComboTier(this.combo.n, isWide);
           this.triggerComboStep(tier, px, py);
         }
       } else {
@@ -1443,7 +1604,7 @@ class Game {
         this.player.addDotSpeed(this.combo.m);
         this.combo.n++;
         const oldM = this.combo.m;
-        const tier = getComboTier(this.combo.n);
+        const tier = getComboTier(this.combo.n, isWide);
         if (oldM < 64) {
           this.combo.m = CM[tier];
 
@@ -1452,8 +1613,8 @@ class Game {
               this.combo.t = GOD_MODE_DURATION;
             }
           } else {
-            // Normal dot sustains combo timer (0.5s)
-            this.combo.t = COMBO_DECAY;
+            // Normal dot sustains combo timer
+            this.combo.t = decayDuration;
           }
         }
 
@@ -1479,6 +1640,14 @@ class Game {
       if (this.maze.remainingDots <= 0 && this.state === 'playing') {
         const completedLvl = this.maze.currentLevel;
         const list = this.getCurrentLevelList();
+
+        // Unlock Level Completion Badges (Levels 1 to 10 in 4:3 or 16:9)
+        const lvlNum = completedLvl + 1;
+        if (isWide) {
+          badges.unlock(`wide_lvl${lvlNum}`);
+        } else {
+          badges.unlock(`clear_lvl${lvlNum}`);
+        }
 
         const bonus = 2000 + (this.wave - 1) * 500;
         this.score += bonus;
@@ -1844,12 +2013,14 @@ class Game {
 
             this.combo.m = 64;
             this.combo.t = SINGULARITY_DURATION;
+            this.singularityNovaUsed = false;
             // Give player brief invincibility so no ghost can kill them right as they unfreeze
             this.player.invuln = Math.max(this.player.invuln, 1.5);
             sounds.play('nova');
             particles.shake(18, 0.5);
             particles.flash('#ffd700', 0.6);
             particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« SINGULARITY OVERDRIVE »', '#ffd700', 26);
+            particles.addPop(this.renderer.cw / 2, HUD_H + 74, '[N / X] SINGULARITY NOVA READY (1 USE)', '#00ffff', 16);
             // Do NOT return — game resumes this same frame
           } else {
             // Still in intro cinematic: freeze game logic
@@ -1898,6 +2069,31 @@ class Game {
           input.isDashRequested = false;
         }
 
+        // Singularity Nova Trigger (Limit: 1 use per Singularity)
+        if (input.isNovaRequested) {
+          if (this.combo.m >= 64) {
+            if (!this.singularityNovaUsed) {
+              this.singularityNovaUsed = true;
+              sounds.play('nova');
+              particles.shake(20, 0.6);
+              particles.flash('#ffd700', 0.6);
+              const pp = this.player.getPos();
+              particles.addPop(pp.x, pp.y - 35, '★ SINGULARITY NOVA ★', '#ffd700', 26);
+              particles.emit(pp.x, pp.y, 80, '#ffd700', { speed: 300, size: 6, life: 0.9 });
+              for (const e of this.enemyManager.enemies) {
+                if (e.st !== 'dead' && e.st !== 'return') {
+                  const ep = this.enemyManager.getPos(e);
+                  this.onKillGhost(e, ep.x, ep.y);
+                }
+              }
+            } else {
+              const pp = this.player.getPos();
+              particles.addPop(pp.x, pp.y - 25, 'NOVA DEPLETED (1/SINGULARITY)', '#ff4466', 14);
+            }
+          }
+          input.isNovaRequested = false;
+        }
+
         // Motion Kombos
         input.checkKombos(
             (lvl: number) => {
@@ -1930,24 +2126,35 @@ class Game {
             },
             (lvl: number) => {
               // Nitro Flame Jet
+              const isSingularity = this.combo.m >= 64;
               const isV2 = lvl >= 2;
               sounds.play('dash');
-              particles.shake(isV2 ? 8 : 6, 0.22);
-              particles.flash(isV2 ? '#00ffff' : '#ff7700', 0.28);
+              particles.shake(isSingularity ? 14 : (isV2 ? 8 : 6), 0.25);
+              particles.flash(isSingularity ? '#ffd700' : (isV2 ? '#00ffff' : '#ff7700'), 0.3);
               const pp = this.player.getPos();
-              particles.addPop(pp.x, pp.y - 26, isV2 ? 'PLASMA BURNER V2 !' : 'NITRO FLAME JET !', isV2 ? '#00ffff' : '#ff7700', 20);
+              particles.addPop(
+                pp.x, pp.y - 26,
+                isSingularity ? '★ COSMIC HYPER-NITRO ★' : (isV2 ? 'PLASMA BURNER V2 !' : 'NITRO FLAME JET !'),
+                isSingularity ? '#ffd700' : (isV2 ? '#00ffff' : '#ff7700'),
+                isSingularity ? 24 : 20
+              );
             }
         );
 
         input.updateCooldowns(dt, this.player.getPos());
 
-        // Incinerate ghosts touching nitro trail
+        // Incinerate ghosts touching nitro trail (boosted radius & cosmic deflagration in Singularity!)
         if (input.nitroActive > 0) {
+          const isSingularity = this.combo.m >= 64;
+          const hitRad = isSingularity ? T * 2.2 : T * 0.95;
           for (const tp of input.nitroTrail) {
             for (const e of this.enemyManager.enemies) {
               if (e.st !== 'dead' && e.st !== 'return') {
                 const ep = this.enemyManager.getPos(e);
-                if (Math.hypot(ep.x - tp.x, ep.y - tp.y) < T * 0.95) {
+                if (Math.hypot(ep.x - tp.x, ep.y - tp.y) < hitRad) {
+                  if (isSingularity) {
+                    particles.emit(ep.x, ep.y, 10, '#ffd700', { speed: 180, size: 4.5, life: 0.45 });
+                  }
                   this.onKillGhost(e, ep.x, ep.y);
                 }
               }
@@ -2096,7 +2303,8 @@ class Game {
               particles.addPop(pp.x, pp.y - 20, 'GOD MODE EXPIRED (15s)', '#8899aa', 14);
             }
           } else {
-            const tier = getComboTier(this.combo.n);
+            const isWide = this.maze.cols > 21;
+            const tier = getComboTier(this.combo.n, isWide);
             this.combo.m = CM[tier];
           }
         }
@@ -2180,7 +2388,8 @@ class Game {
         this.player,
         this.bonusActiveCount,
         this.bonusShockwave.radius,
-        this.bonusMultikillBanner
+        this.bonusMultikillBanner,
+        this.bonusItems
       );
       if (this.bonusTallyTimer > 0) {
         this.renderer.drawBonusTally(this.bonusKills, this.bonusScore, this.time);
