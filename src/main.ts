@@ -473,34 +473,44 @@ class Game {
       }
 
       if (this.state === 'gameover') {
-        const madW = 380, madH = 44;
-        const madX = curCw / 2 - madW / 2;
-        const madY = 390;
+        const cyBase = CH * 0.30;
+        const btnW = 160, btnH = 34, btnGap = 16;
+        const totalBtnW = btnW * 2 + btnGap;
+        const startBtnX = curCw / 2 - totalBtnW / 2;
+        const btnY = cyBase + 185;
 
-        // Restart run
-        if (cx >= madX && cx <= madX + madW && cy >= madY && cy <= madY + madH) {
+        const replayX = startBtnX;
+        const menuX = startBtnX + btnW + btnGap;
+
+        // Bouton 1: REJOUER
+        if (cx >= replayX && cx <= replayX + btnW && cy >= btnY && cy <= btnY + btnH) {
           this.startGame();
           sounds.play('start');
           return;
         }
 
-        // Bottom Navigation (Codex & Leaderboard)
-        if (cy >= 496 && cy <= 526) {
+        // Bouton 2: RETOUR MENU
+        if (cx >= menuX && cx <= menuX + btnW && cy >= btnY && cy <= btnY + btnH) {
+          this.state = 'menu';
+          sounds.play('click');
+          return;
+        }
+
+        // Navigation secondaire : Leaderboard & Codex
+        if (cy >= cyBase + 225 && cy <= cyBase + 250) {
           if (cx < curCw / 2) {
-            this.state = 'codex';
-            this.codexTab = 'badges';
+            this.state = 'leaderboard';
+            leaderboard.syncRemote();
             sounds.play('click');
             return;
           } else {
-            this.state = 'leaderboard';
-            leaderboard.syncRemote();
+            this.state = 'codex';
+            this.codexTab = 'skills';
             sounds.play('click');
             return;
           }
         }
 
-        this.state = 'menu';
-        sounds.play('click');
         return;
       }
 
@@ -683,6 +693,15 @@ class Game {
         else if (e.code === 'KeyX') this.executeDebugAction('add_xp');
         e.preventDefault();
         return;
+      }
+
+      if (this.state === 'gameover') {
+        if (e.code === 'Escape') {
+          this.state = 'menu';
+          sounds.play('click');
+          e.preventDefault();
+          return;
+        }
       }
 
       if (this.state === 'settings') {

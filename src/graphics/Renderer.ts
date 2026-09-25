@@ -1493,16 +1493,57 @@ export class Renderer {
       c.fillText(`MAX CAREER: ${progression.totalGhosts.toLocaleString()} KILLS (ALL UNLOCKED)`, this.cw / 2, barY - 6);
     }
 
-    c.font = '13px monospace';
-    c.fillStyle = '#aaa';
-    if (Math.sin(time * 3) > 0) c.fillText('PRESS SPACE TO REPLAY', this.cw / 2, cy + 195);
+    // Interactive Action Buttons : REPLAY & RETOUR MENU
+    const btnW = 160, btnH = 34;
+    const btnGap = 16;
+    const totalBtnW = btnW * 2 + btnGap;
+    const startBtnX = this.cw / 2 - totalBtnW / 2;
+    const btnY = cy + 185;
 
-    // Leaderboard link
-    c.font = 'bold 11px monospace';
-    c.fillStyle = this.getChromaAccent('#ff007f', '#777777');
+    // 1. Bouton REPLAY
+    const replayX = startBtnX;
+    c.save();
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(0, 240, 255, 0.15)';
+    c.strokeStyle = this.getChromaAccent('#00f0ff', '#888888');
+    c.lineWidth = 1.8;
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00f0ff';
+    c.shadowBlur = this.getChromaBlur(8);
+    c.beginPath();
+    c.roundRect(replayX, btnY, btnW, btnH, 6);
+    c.fill();
+    c.stroke();
+
+    c.font = 'bold 12px monospace';
+    c.fillStyle = this.getChromaAccent('#00f0ff', '#ffffff');
+    c.textAlign = 'center';
+    c.fillText('▶ REJOUER [ESPACE]', replayX + btnW / 2, btnY + 21);
+    c.restore();
+
+    // 2. Bouton MENU PRINCIPAL
+    const menuX = startBtnX + btnW + btnGap;
+    c.save();
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255, 0, 127, 0.15)';
+    c.strokeStyle = this.getChromaAccent('#ff007f', '#888888');
+    c.lineWidth = 1.8;
     c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
     c.shadowBlur = this.getChromaBlur(8);
-    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] LEADERBOARD  |  [ C ] ARSENAL & SKILLS', this.cw / 2, cy + 220);
+    c.beginPath();
+    c.roundRect(menuX, btnY, btnW, btnH, 6);
+    c.fill();
+    c.stroke();
+
+    c.font = 'bold 12px monospace';
+    c.fillStyle = this.getChromaAccent('#ff007f', '#ffffff');
+    c.textAlign = 'center';
+    c.fillText('⌂ MENU [ECHAP]', menuX + btnW / 2, btnY + 21);
+    c.restore();
+
+    // Secondary Links (Leaderboard & Codex)
+    c.font = 'bold 11px monospace';
+    c.fillStyle = this.getChromaAccent('#ffd700', '#777777');
+    c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
+    c.shadowBlur = this.getChromaBlur(6);
+    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] LEADERBOARD   •   [ C ] ARSENAL & SKILLS', this.cw / 2, cy + 236);
     c.shadowBlur = 0;
 
     // Version Tag
