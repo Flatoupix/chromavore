@@ -100,18 +100,21 @@ try {
 
   const report = {
     generatedAt: new Date().toISOString(),
-    version: '4.0.6',
+    version: '4.0.7',
     configuration: { gamesPerReplicate: games, replicates, maxSeconds, baseSeed: seed, scenarios },
     metricDefinitions: {
       campaignXpPerMinute: 'XP earned divided by cumulative simulated campaign minutes; meaned across independent campaign replicates.',
       timeToLevelSeconds: 'Cumulative simulated play time from the supplied starting profile until the target level.',
       dispersion: 'Replicate standard deviation, minimum, and maximum; replicates share matched seeds across scenarios.'
     },
+    interpretationWarnings: results.every(result => result.summary.averageMazesCleared.mean === 0)
+      ? ['No simulated bot clears a maze in this sample; use these runs to compare bot survival/XP only, not to rebalance maze-clear rewards or human campaign pacing. Improve or validate navigation before making balance decisions from long-run progression.']
+      : [],
     modelScope: [
-      'Uses production maze, movement/contact constants, XP awards for dots/pellets/ghost kills/near-misses, combo surge, career-kill dash unlocks, and level-up lives.',
+      'Uses production maze layouts and transitions, level-clear XP, loop speed scaling, movement/contact constants, XP awards for dots/pellets/ghost kills/near-misses, combo surge, career-kill dash unlocks, and level-up lives.',
       'Ghost steering and bot decision-making are approximations; the player is an automated policy, not a human skill model.',
-      'Does not simulate Vortex sessions, super-item drops/effects, badge XP, Titans, or maze-clear progression.',
-      'In-run auto-spending only models Pellet Resonance and Dash Reflex; it is a counterfactual policy, not current UI behavior.',
+      'Does not simulate Vortex sessions, super-item drops/effects, badge XP, or Titans.',
+      'Account skills are auto-purchased at level-up using real node costs/prerequisites for Dash Reflex, Multi-Dash, Phase Shift, and Pellet Resonance; this approximates when a player opens the skill tree. Multi-Dash ranks currently have no active charge behavior in the gameplay runtime, so purchasing them is modeled as a point sink.',
       'The default ghost XP combo cap of 16 matches the current game implementation; cap 64 is available as a candidate comparison.',
       'The default Singularity threshold is the production value; overriding it is a diagnostic acceleration only, not a proposed game change.'
     ],
@@ -131,6 +134,7 @@ try {
       `Lv ${summary.finalLevel.mean.toFixed(1)}±${summary.finalLevel.sd.toFixed(1)}, ` +
       `${summary.campaignXpPerMinute.mean.toFixed(0)} XP/min, ` +
       `avg survival ${summary.averageRunSeconds.mean.toFixed(1)}s, ` +
+      `${summary.averageMazesCleared.mean.toFixed(2)} map clears/run, ` +
       `Singularity ${(summary.singularityRunRate.mean * 100).toFixed(1)}%` +
       (comparison ? `, ΔXP/min ${comparison.campaignXpPerMinutePercent.mean >= 0 ? '+' : ''}${comparison.campaignXpPerMinutePercent.mean.toFixed(1)}% vs reference` : '') +
       (skillComparison && scenario.skillPolicy !== 'none' ? `, skills ${skillComparison.campaignXpPerMinutePercent.mean >= 0 ? '+' : ''}${skillComparison.campaignXpPerMinutePercent.mean.toFixed(1)}% XP/min` : '') + '\n');
@@ -214,6 +218,7 @@ function summarize(runs) {
     averageRunSeconds: stat('averageRunSeconds'),
     medianRunXp: stat('medianRunXp'),
     averageRunKills: stat('averageRunKills'),
+    averageMazesCleared: stat('averageMazesCleared'),
     averageRunDeaths: stat('averageRunDeaths'),
     averageDotsCollected: stat('averageDotsCollected'),
     singularityRunRate: stat('singularityRunRate'),
@@ -233,6 +238,7 @@ function pairedDelta(candidate, baseline) {
     finalLevel: describe(candidate.replicates.map((run, index) => run.finalProfile.accountLevel - baseline.replicates[index].finalProfile.accountLevel)),
     campaignXpPerMinutePercent: xpPerMinutePercent,
     averageRunSeconds: delta('averageRunSeconds'),
+    averageMazesCleared: delta('averageMazesCleared'),
     averageRunDeaths: delta('averageRunDeaths'),
     singularityRunRate: delta('singularityRunRate')
   };
@@ -242,7 +248,7 @@ function toCsv(results, gamesPerReplicate) {
   const columns = [
     'botStrategy', 'skillPolicy', 'ghostXpComboCap', 'xpCurveMultiplier', 'xpGainMultiplier', 'singularityTriggerKills', 'replicate', 'games',
     'finalLevel', 'careerGhosts', 'campaignSeconds', 'campaignXp', 'campaignXpPerMinute', 'averageRunSeconds',
-    'medianRunXp', 'averageRunKills', 'averageRunDeaths', 'averageDotsCollected', 'singularityRunRate', 'gameOverRate',
+    'medianRunXp', 'averageRunKills', 'averageMazesCleared', 'averageRunDeaths', 'averageDotsCollected', 'singularityRunRate', 'gameOverRate',
     'deltaXpPerMinutePctVsNoSkills', 'deltaLevelVsNoSkills',
     'secondsToLevel5', 'secondsToLevel10', 'secondsToLevel20', 'secondsToLevel35', 'secondsToLevel50', 'secondsToLevel75', 'secondsToLevel100'
   ];
@@ -253,7 +259,8 @@ function toCsv(results, gamesPerReplicate) {
         result.scenario.botStrategy, result.scenario.skillPolicy, result.scenario.ghostXpComboCap,
         result.scenario.xpCurveMultiplier, result.scenario.xpGainMultiplier, result.scenario.singularityTriggerKills, index + 1, gamesPerReplicate,
         run.finalProfile.accountLevel, run.finalProfile.careerGhosts, run.totalCampaignSeconds, run.totalCampaignXp,
-        run.campaignXpPerMinute, run.averageRunSeconds, run.medianRunXp, run.averageRunKills, run.averageRunDeaths,
+        run.campaignXpPerMinute, run.averageRunSeconds, run.medianRunXp, run.averageRunKills,
+        run.averageMazesCleared, run.averageRunDeaths,
         run.averageDotsCollected, run.singularityRunRate, run.gameOverRate,
         result.deltaVsNoSkills?.campaignXpPerMinutePercent.mean ?? '',
         result.deltaVsNoSkills?.finalLevel.mean ?? '',

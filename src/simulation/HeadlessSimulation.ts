@@ -1,5 +1,5 @@
 import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, T, getComboTier } from '../config/constants';
-import { MazeManager } from '../levels/levels';
+import { MADNESS_LEVELS_16_9, MADNESS_LEVELS_4_3, MazeManager } from '../levels/levels';
 import { chooseBotAction, type BotDirection, type BotGhost, type BotStrategy } from './BotController';
 
 export type SimulatedSkillPolicy = 'none' | 'pellet-focus' | 'dash-focus' | 'balanced';
@@ -33,6 +33,7 @@ export interface HeadlessRunMetrics {
   ticks: number;
   dotsCollected: number;
   ghostsKilled: number;
+  mazesCleared: number;
   xpEarned: number;
   deaths: number;
   ghostsSpawned: number;
@@ -67,6 +68,7 @@ export interface HeadlessCampaignMetrics {
   totalCampaignSeconds: number;
   campaignXpPerMinute: number;
   averageRunKills: number;
+  averageMazesCleared: number;
   averageRunDeaths: number;
   averageDotsCollected: number;
   singularityRunRate: number;
@@ -166,9 +168,13 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   const random = seededRandom(options.seed);
   let careerGhosts = options.profile?.careerGhosts ?? 0;
   const widescreen = options.widescreen ?? (careerGhosts >= 1600);
+  const mazeList = widescreen ? MADNESS_LEVELS_16_9 : MADNESS_LEVELS_4_3;
   const maze = new MazeManager(false);
-  maze.build(0, widescreen);
-  const dots = maze.dotMap.map(row => row.slice());
+  let mazeIndex = 0;
+  maze.build(mazeIndex, widescreen);
+  let dots = maze.dotMap.map(row => row.slice());
+  let baseWalkable = maze.map.map((row, y) => row.map((_, x) => maze.isWalkable(x, y, false)));
+  let comboDecay = maze.cols > 21 ? COMBO_DECAY_WIDE : COMBO_DECAY;
   const spawn = maze.getSpawn();
   let player = { ...spawn };
   let playerMoveIn = 0;
@@ -195,6 +201,8 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   let ticks = 0;
   let ghostsSpawned = 0;
   let dashes = 0;
+  let mazesCleared = 0;
+  let loopCount = 0;
   let dashCooldown = 0;
   let invulnerability = 2.0;
   let playerMove = { fromX: player.x, fromY: player.y, x: player.x, y: player.y, progress: 1, dx: 0, dy: 0 };
@@ -213,24 +221,26 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   currentLevelXp = options.profile?.accountXp ?? 0;
   const ghosts: SimGhost[] = [];
   const fixedDt = 1 / 30;
-  const playerSpeed = widescreen ? P_MADNESS_BASE_SPEED + 4.3 : P_SPEED;
+  const basePlayerSpeed = widescreen ? P_MADNESS_BASE_SPEED + 4.3 : P_SPEED;
   const maxSeconds = options.maxSeconds ?? 300;
-  const baseWalkable = maze.map.map((row, y) => row.map((_, x) => maze.isWalkable(x, y, false)));
-  const isWide = maze.cols > 21;
-  const comboDecay = isWide ? COMBO_DECAY_WIDE : COMBO_DECAY;
+  const playerSpeed = () => basePlayerSpeed * (1 + loopCount * 0.1);
   const buyAvailableSkill = () => {
     if (skillPolicy === 'none') return;
     const priorities = skillPolicy === 'pellet-focus'
-      ? ['pellet_resonance', 'dash_reflex']
+      ? ['pellet_resonance', 'dash_reflex', 'phase_shift']
       : skillPolicy === 'dash-focus'
-        ? ['dash_reflex', 'pellet_resonance']
-        : (skillsBought % 2 === 0 ? ['dash_reflex', 'pellet_resonance'] : ['pellet_resonance', 'dash_reflex']);
+        ? ['dash_reflex', 'multi_dash', 'phase_shift', 'pellet_resonance']
+        : (skillsBought % 2 === 0
+          ? ['dash_reflex', 'pellet_resonance', 'multi_dash', 'phase_shift']
+          : ['pellet_resonance', 'dash_reflex', 'phase_shift', 'multi_dash']);
     for (const id of priorities) {
       const rank = skillRanks[id] ?? 0;
-      const maxRank = id === 'pellet_resonance' ? 5 : 5;
-      if (rank < maxRank && skillPoints >= 1) {
+      const maxRank = id === 'multi_dash' || id === 'phase_shift' ? 3 : 5;
+      const cost = id === 'multi_dash' || id === 'phase_shift' ? 2 : 1;
+      const requirement = id === 'phase_shift' ? (skillRanks.multi_dash ?? 0) > 0 : id === 'multi_dash' ? (skillRanks.dash_reflex ?? 0) > 0 : true;
+      if (rank < maxRank && requirement && skillPoints >= cost) {
         skillRanks[id] = rank + 1;
-        skillPoints--;
+        skillPoints -= cost;
         skillsBought++;
         return;
       }
@@ -254,6 +264,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     const collectible = dots[y]?.[x];
     if (!collectible) return;
     dots[y][x] = 0;
+    maze.remainingDots = Math.max(0, maze.remainingDots - 1);
     dotCount++;
     const previousMultiplier = comboMultiplier;
     if (collectible === 3) {
@@ -271,7 +282,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
       awardXp(2);
     }
     if (comboMultiplier < 64) {
-      comboMultiplier = CM[getComboTier(comboCount, isWide)];
+      comboMultiplier = CM[getComboTier(comboCount, maze.cols > 21)];
       if (comboMultiplier >= 32 && previousMultiplier < 32) comboTimer = GOD_MODE_DURATION;
       else if (comboMultiplier < 32) comboTimer = comboDecay;
     }
@@ -298,22 +309,57 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     ghosts.push({ ...point, dangerous: true, fromX: point.x, fromY: point.y, progress: 1, dx, dy: 0, speed, type, frightened: false, nearMiss: false });
     ghostsSpawned++;
   };
-  const centerCol = Math.floor(maze.cols / 2);
-  const centralExit = maze.isWalkable(centerCol, 8, true)
-    ? { x: centerCol, y: 8 }
-    : maze.findNearestWalkable(centerCol, 8, true);
-  const initialCount = Math.min(10, 4 + Math.floor(careerGhosts / 50));
-  for (let index = 0; index < initialCount; index++) {
-    let point = centralExit;
-    if (widescreen && index % 3 !== 0) {
-      const nestX = index % 3 === 1 ? Math.round(maze.cols * 0.24) : Math.round(maze.cols * 0.76);
-      const candidate = { x: nestX + Math.floor(random() * 3) - 1, y: 10 + Math.floor(random() * 3) - 1 };
-      point = maze.isWalkable(candidate.x, candidate.y, true)
-        ? candidate
-        : maze.findNearestWalkable(nestX, 10, true);
+  const spawnInitialGhosts = () => {
+    const centerCol = Math.floor(maze.cols / 2);
+    const centralExit = maze.isWalkable(centerCol, 8, true)
+      ? { x: centerCol, y: 8 }
+      : maze.findNearestWalkable(centerCol, 8, true);
+    const initialCount = Math.min(10, 4 + Math.floor(careerGhosts / 50));
+    for (let index = 0; index < initialCount; index++) {
+      let point = centralExit;
+      if (widescreen && index % 3 !== 0) {
+        const nestX = index % 3 === 1 ? Math.round(maze.cols * 0.24) : Math.round(maze.cols * 0.76);
+        const candidate = { x: nestX + Math.floor(random() * 3) - 1, y: 10 + Math.floor(random() * 3) - 1 };
+        point = maze.isWalkable(candidate.x, candidate.y, true)
+          ? candidate
+          : maze.findNearestWalkable(nestX, 10, true);
+      }
+      spawnGhost(point, index);
     }
-    spawnGhost(point, index);
-  }
+  };
+  spawnInitialGhosts();
+  const advanceMaze = () => {
+    mazesCleared++;
+    const previousIndex = mazeIndex;
+    mazeIndex = (mazeIndex + 1) % mazeList.length;
+    if (previousIndex === mazeList.length - 1) loopCount++;
+    awardXp(400);
+    maze.build(mazeIndex, widescreen);
+    dots = maze.dotMap.map(row => row.slice());
+    baseWalkable = maze.map.map((row, y) => row.map((_, x) => maze.isWalkable(x, y, false)));
+    comboDecay = maze.cols > 21 ? COMBO_DECAY_WIDE : COMBO_DECAY;
+    const safeSpawn = maze.getSpawn();
+    player = { ...safeSpawn };
+    playerMove = { fromX: player.x, fromY: player.y, x: player.x, y: player.y, progress: 1, dx: 0, dy: 0 };
+    playerMoveIn = 0;
+    invulnerability = Math.max(invulnerability, 1.8);
+    spawnIn = Math.min(spawnIn, 0.8);
+    const targetSwarm = Math.min(swarmProfile(kills).cap, Math.max(8 + mazeIndex * 2, 6 + mazeIndex * 3 + loopCount * 4 + Math.min(6, Math.floor(careerGhosts / 50)) + Math.floor(kills / 6)));
+    const living = ghosts.filter(ghost => ghost.dangerous || ghost.frightened).length;
+    for (const ghost of ghosts) {
+      if ((ghost.dangerous || ghost.frightened) && !maze.isWalkable(ghost.x, ghost.y, true)) {
+        const safe = maze.findNearestWalkable(ghost.x, ghost.y, true);
+        ghost.x = ghost.fromX = safe.x;
+        ghost.y = ghost.fromY = safe.y;
+        ghost.progress = 1;
+      }
+    }
+    for (let i = living; i < targetSwarm; i++) {
+      const center = Math.floor(maze.cols / 2);
+      const point = maze.isWalkable(center, 8, true) ? { x: center, y: 8 } : maze.findNearestWalkable(center, 8, true);
+      spawnGhost(point, living + i);
+    }
+  };
 
   while (elapsed < maxSeconds && (lives > 0 || deathTimer > 0)) {
     ticks++;
@@ -368,7 +414,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
         comboCount = 0;
         comboMultiplier = 1;
       } else if (comboMultiplier < 32) {
-        comboMultiplier = CM[getComboTier(comboCount, isWide)];
+        comboMultiplier = CM[getComboTier(comboCount, maze.cols > 21)];
       }
     }
     if (singularityTimer > 0) {
@@ -406,24 +452,25 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
             }
           }
         }
+        if (maze.remainingDots <= 0) advanceMaze();
         playerMove = { fromX: player.x, fromY: player.y, x: player.x, y: player.y, progress: 1, dx: 0, dy: 0 };
         const cooldownFactor = (dashLevel >= 2 ? 0.75 : 1) * (1 - (skillRanks.dash_reflex ?? 0) * 0.12);
         dashCooldown = 1.6 * Math.max(0.25, cooldownFactor);
         const phaseRank = skillRanks.phase_shift ?? 0;
         invulnerability = Math.max(invulnerability, 0.35 + (phaseRank > 0 ? 0.3 + (phaseRank - 1) * 0.15 : 0));
-        playerMoveIn = 1 / playerSpeed;
+        playerMoveIn = 1 / playerSpeed();
         dashes++;
       } else {
         const x = wrap(player.x + direction.x, maze.cols), y = player.y + direction.y;
         if (maze.isWalkable(x, y, false) && (direction.x !== 0 || direction.y !== 0)) {
           playerMove = { fromX: player.x, fromY: player.y, x, y, progress: 0, dx: direction.x, dy: direction.y };
         }
-        playerMoveIn = 1 / playerSpeed;
+        playerMoveIn = 1 / playerSpeed();
       }
     }
 
     if (playerMove.progress < 1) {
-      playerMove.progress = Math.min(1, playerMove.progress + fixedDt * playerSpeed);
+      playerMove.progress = Math.min(1, playerMove.progress + fixedDt * playerSpeed());
       if (playerMove.progress >= 1) {
         player = { x: playerMove.x, y: playerMove.y };
         playerMove.fromX = player.x;
@@ -431,6 +478,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
         playerMove.dx = 0;
         playerMove.dy = 0;
         collectAt(player.x, player.y);
+        if (maze.remainingDots <= 0) advanceMaze();
       }
     }
 
@@ -517,7 +565,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   }
 
   return {
-    seed: options.seed, simulatedSeconds: elapsed, ticks, dotsCollected: dotCount, ghostsKilled: kills,
+    seed: options.seed, simulatedSeconds: elapsed, ticks, dotsCollected: dotCount, ghostsKilled: kills, mazesCleared,
     xpEarned: xp, deaths, ghostsSpawned, level, gameOver: lives <= 0, dashes, singularityTriggered,
     ghostXpComboCap, xpGainMultiplier, xpCurveMultiplier, singularityTriggerKills,
     skillRanks,
@@ -541,6 +589,7 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
   const durations: number[] = [];
   const xpByRun: number[] = [];
   const killsByRun: number[] = [];
+  const mazesByRun: number[] = [];
   const deathsByRun: number[] = [];
   const dotsByRun: number[] = [];
   let singularityRuns = 0;
@@ -562,6 +611,7 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     durations.push(run.simulatedSeconds);
     xpByRun.push(run.xpEarned);
     killsByRun.push(run.ghostsKilled);
+    mazesByRun.push(run.mazesCleared);
     deathsByRun.push(run.deaths);
     dotsByRun.push(run.dotsCollected);
     if (run.singularityTriggered) singularityRuns++;
@@ -595,6 +645,7 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     totalCampaignSeconds: campaignSeconds,
     campaignXpPerMinute: campaignSeconds > 0 ? totalCampaignXp / (campaignSeconds / 60) : 0,
     averageRunKills: average(killsByRun),
+    averageMazesCleared: average(mazesByRun),
     averageRunDeaths: average(deathsByRun),
     averageDotsCollected: average(dotsByRun),
     singularityRunRate: runCount ? singularityRuns / runCount : 0,

@@ -134,10 +134,12 @@ Pour isoler rapidement l'effet du plafond de combo sans attendre 200 kills,
 outil de diagnostic uniquement ; le jeu conserve son seuil réel de 200.
 
 Le rapport donne les moyennes, médianes, écarts-types, min/max entre répétitions,
-les taux d'atteinte des niveaux cibles, l'XP par minute simulée, les kills et la
-survie. Les limites du modèle (IA simplifiée, items/Vortex/badges non simulés)
-sont inscrites dans chaque rapport : les résultats orientent les réglages, mais
-ne remplacent pas une validation avec des sessions humaines.
+les taux d'atteinte des niveaux cibles, l'XP par minute simulée, les kills, la
+survie et les cartes terminées. Le simulateur suit les transitions de cartes,
+les +400 XP par clear et la vitesse croissante des boucles. Les limites du
+modèle (pilotage/IA simplifiés, items/Vortex/badges/Titans non simulés, achats de
+skills automatisés au level-up) sont inscrites dans chaque rapport : les
+résultats orientent les réglages, mais ne remplacent pas des sessions humaines.
 
 ---
 
