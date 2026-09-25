@@ -1,4 +1,4 @@
-import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, T, getComboTier } from '../config/constants';
+import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, T, getComboTier } from '../config/constants';
 import { MazeManager } from '../levels/levels';
 import { chooseBotAction, type BotDirection, type BotGhost, type BotStrategy } from './BotController';
 
@@ -18,6 +18,12 @@ export interface HeadlessRunOptions {
   widescreen?: boolean;
   botStrategy?: BotStrategy;
   skillPolicy?: SimulatedSkillPolicy;
+  /** Candidate balance knobs; defaults mirror the current production XP rules. */
+  ghostXpComboCap?: number;
+  xpGainMultiplier?: number;
+  xpCurveMultiplier?: number;
+  /** Diagnostic override; the default uses the production 200-kill threshold. */
+  singularityTriggerKills?: number;
   profile?: Partial<HeadlessProfile>;
 }
 
@@ -33,6 +39,11 @@ export interface HeadlessRunMetrics {
   level: number;
   gameOver: boolean;
   dashes: number;
+  singularityTriggered: boolean;
+  ghostXpComboCap: number;
+  xpGainMultiplier: number;
+  xpCurveMultiplier: number;
+  singularityTriggerKills: number;
   skillRanks: Record<string, number>;
   profile: HeadlessProfile;
 }
@@ -51,9 +62,14 @@ export interface HeadlessCampaignMetrics {
   p90RunSeconds: number;
   medianRunXp: number;
   p90RunXp: number;
+  averageRunXp: number;
+  totalCampaignXp: number;
+  totalCampaignSeconds: number;
+  campaignXpPerMinute: number;
   averageRunKills: number;
   averageRunDeaths: number;
   averageDotsCollected: number;
+  singularityRunRate: number;
   gameOverRate: number;
   timeToLevelSeconds: Record<number, number | null>;
   finalProfile: HeadlessProfile;
@@ -187,6 +203,10 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   const skillRanks: Record<string, number> = { ...(options.profile?.skillUpgrades ?? {}) };
   const skillPolicy = options.skillPolicy ?? 'none';
   const botStrategy = options.botStrategy ?? 'collector';
+  const ghostXpComboCap = Math.max(1, options.ghostXpComboCap ?? 16);
+  const xpGainMultiplier = Math.max(0, options.xpGainMultiplier ?? 1);
+  const xpCurveMultiplier = Math.max(0.01, options.xpCurveMultiplier ?? 1);
+  const singularityTriggerKills = Math.max(1, Math.floor(options.singularityTriggerKills ?? SINGULARITY_TRIGGER_KILLS));
   let skillsBought = 0;
   const accountLevel = options.profile?.accountLevel ?? 1;
   level = accountLevel;
@@ -218,11 +238,11 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   };
   const awardXp = (baseAmount: number) => {
     if (level >= 100) return;
-    const amount = Math.round(baseAmount * (levelUpsThisLife > 0 ? 2 : 1));
+    const amount = Math.round(baseAmount * xpGainMultiplier * (levelUpsThisLife > 0 ? 2 : 1));
     xp += amount;
     currentLevelXp += amount;
-    while (level < 100 && currentLevelXp >= Math.floor(420 * Math.pow(level, 1.48))) {
-      currentLevelXp -= Math.floor(420 * Math.pow(level, 1.48));
+    while (level < 100 && currentLevelXp >= Math.floor(420 * Math.pow(level, 1.48) * xpCurveMultiplier)) {
+      currentLevelXp -= Math.floor(420 * Math.pow(level, 1.48) * xpCurveMultiplier);
       level++;
       levelUpsThisLife++;
       skillPoints++;
@@ -263,13 +283,13 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     kills++;
     careerGhosts++;
     lifeKills++;
-    if (!singularityTriggered && (lifeKills >= 200 || kills >= 200)) {
+    if (!singularityTriggered && (lifeKills >= singularityTriggerKills || kills >= singularityTriggerKills)) {
       singularityTriggered = true;
       singularityIntroTimer = 5;
       comboMultiplier = 64;
-      comboTimer = 30;
+      comboTimer = SINGULARITY_DURATION;
     }
-    awardXp(Math.round(30 + 10 * Math.min(16, Math.max(1, comboMultiplier))));
+    awardXp(Math.round(30 + 10 * Math.min(ghostXpComboCap, Math.max(1, comboMultiplier))));
   };
   const spawnGhost = (point: { x: number; y: number }, threatIndex: number) => {
     const type = (['stalker', 'rusher', 'orbiter', 'phaser'] as const)[Math.floor(random() * 4)];
@@ -306,9 +326,9 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
       singularityIntroTimer = Math.max(0, singularityIntroTimer - fixedDt);
       if (singularityIntroTimer === 0) {
         for (const ghost of ghosts) killGhost(ghost);
-        singularityTimer = 30;
+        singularityTimer = SINGULARITY_DURATION;
         comboMultiplier = 64;
-        comboTimer = 30;
+        comboTimer = SINGULARITY_DURATION;
         invulnerability = Math.max(invulnerability, 1.5);
       }
       continue;
@@ -498,7 +518,8 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
 
   return {
     seed: options.seed, simulatedSeconds: elapsed, ticks, dotsCollected: dotCount, ghostsKilled: kills,
-    xpEarned: xp, deaths, ghostsSpawned, level, gameOver: lives <= 0, dashes,
+    xpEarned: xp, deaths, ghostsSpawned, level, gameOver: lives <= 0, dashes, singularityTriggered,
+    ghostXpComboCap, xpGainMultiplier, xpCurveMultiplier, singularityTriggerKills,
     skillRanks,
     profile: { careerGhosts, accountLevel: level, accountXp: currentLevelXp, skillPoints, skillUpgrades: skillRanks }
   };
@@ -522,6 +543,7 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
   const killsByRun: number[] = [];
   const deathsByRun: number[] = [];
   const dotsByRun: number[] = [];
+  let singularityRuns = 0;
   const milestones: Record<number, number | null> = { 5: null, 10: null, 20: null, 35: null, 50: null, 75: null, 100: null };
   let campaignSeconds = 0;
   let gameOvers = 0;
@@ -542,6 +564,7 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     killsByRun.push(run.ghostsKilled);
     deathsByRun.push(run.deaths);
     dotsByRun.push(run.dotsCollected);
+    if (run.singularityTriggered) singularityRuns++;
     campaignSeconds += run.simulatedSeconds;
     if (run.gameOver) gameOvers++;
     profile = run.profile;
@@ -556,6 +579,7 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     return sorted[Math.min(sorted.length - 1, Math.ceil(fraction * sorted.length) - 1)];
   };
   const average = (values: number[]) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+  const totalCampaignXp = xpByRun.reduce((sum, value) => sum + value, 0);
 
   return {
     games: runCount,
@@ -566,9 +590,14 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     p90RunSeconds: percentile(durations, 0.9),
     medianRunXp: percentile(xpByRun, 0.5),
     p90RunXp: percentile(xpByRun, 0.9),
+    averageRunXp: average(xpByRun),
+    totalCampaignXp,
+    totalCampaignSeconds: campaignSeconds,
+    campaignXpPerMinute: campaignSeconds > 0 ? totalCampaignXp / (campaignSeconds / 60) : 0,
     averageRunKills: average(killsByRun),
     averageRunDeaths: average(deathsByRun),
     averageDotsCollected: average(dotsByRun),
+    singularityRunRate: runCount ? singularityRuns / runCount : 0,
     gameOverRate: runCount ? gameOvers / runCount : 0,
     timeToLevelSeconds: milestones,
     finalProfile: profile

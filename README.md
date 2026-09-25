@@ -110,6 +110,35 @@ chromavore/
    npm run build
    ```
 
+### Calibration headless (Monte Carlo)
+
+Le simulateur lance des campagnes reproductibles sans rendu et exporte un rapport
+JSON ainsi qu'un CSV pour comparer les résultats dans un tableur. Les scénarios
+partagent les mêmes seeds entre variantes afin de réduire le bruit de comparaison.
+
+```bash
+npm run simulate:headless -- --games 100 --replicates 3
+```
+
+Exemple de comparaison du plafond XP des kills, des compétences et de la courbe :
+
+```bash
+npm run simulate:headless -- --games 100 --replicates 5 \
+  --bots collector --skills none,balanced \
+  --ghost-caps 16,64 --xp-curves 0.9,1,1.1 \
+  --out scripts/reports/progression-candidates.json
+```
+
+Pour isoler rapidement l'effet du plafond de combo sans attendre 200 kills,
+`--singularity-kills 20` peut servir à un test accéléré. Cette valeur est un
+outil de diagnostic uniquement ; le jeu conserve son seuil réel de 200.
+
+Le rapport donne les moyennes, médianes, écarts-types, min/max entre répétitions,
+les taux d'atteinte des niveaux cibles, l'XP par minute simulée, les kills et la
+survie. Les limites du modèle (IA simplifiée, items/Vortex/badges non simulés)
+sont inscrites dans chaque rapport : les résultats orientent les réglages, mais
+ne remplacent pas une validation avec des sessions humaines.
+
 ---
 
 ## Déploiement GitHub Pages et itch.io
