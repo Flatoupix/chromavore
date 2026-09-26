@@ -150,10 +150,21 @@ class Game {
       sounds.play('click');
     };
 
+    const closeToMenu = () => {
+      modal.style.display = 'none';
+      this.state = 'menu';
+      sounds.play('click');
+    };
+
     submit.addEventListener('click', save);
     input.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Enter') save();
+      if (e.key === 'Enter') {
+        e.stopPropagation();
+        save();
+      } else if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeToMenu();
+      }
     });
     input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
 
@@ -161,6 +172,11 @@ class Game {
       modal.style.display = 'none';
       this.state = 'gameover';
     });
+
+    const menuBtn = document.getElementById('pseudo-menu');
+    if (menuBtn) {
+      menuBtn.addEventListener('click', closeToMenu);
+    }
   }
 
   private setupProfileModals() {
