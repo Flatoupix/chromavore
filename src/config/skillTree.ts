@@ -20,19 +20,19 @@ export interface SkillNode {
 
 export const SKILL_TREE_BRANCHES: Record<string, { name: string; color: string; desc: string }> = {
   agility: {
-    name: 'VITESSE & AGILITÉ',
+    name: 'SPEED & AGILITY',
     color: '#00ffff',
-    desc: 'Maîtrise spatiale, cooldowns réduits, intangibilité, multi-dashs et laser quantique'
+    desc: 'Movement, cooldowns, phase shifting, multi-dashes, and the Quantum Laser.'
   },
   control: {
-    name: 'CONTRÔLE & TEMPO',
+    name: 'CONTROL & TEMPO',
     color: '#d946ef',
-    desc: 'Domination temporelle, impulsions EMP, freeze prolongé, aspiration et bastion cinétique'
+    desc: 'Chrono control, EMP pulses, longer freezes, magnetic pull, and Kinetic Bastion.'
   },
   carnage: {
-    name: 'PUISSANCE & CARNAGE',
+    name: 'POWER & CARNAGE',
     color: '#ff0055',
-    desc: 'Durée et résonance des pastilles, brise-Titans, super-drops et vortex de singularité'
+    desc: 'Power Pellet duration, Titan breaking, Super-Item drops, and Singularity effects.'
   }
 };
 
@@ -45,8 +45,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'dash',
     maxRank: 5,
     costPerRank: 1,
-    desc: 'Réduit le cooldown du Dash de 12% par rang (jusqu\'à -60%).',
-    tradeoffDesc: 'Rangs 4-5 : Vitesse de ruée +20%, mais requiert une précision chirurgicale près des murs.'
+    desc: 'Reduces Dash cooldown by 12% per rank (up to 60%).',
+    tradeoffDesc: 'Ranks 4–5: +20% burst speed, but demand precise turns near walls.'
   },
   {
     id: 'multi_dash',
@@ -56,8 +56,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'dash_reflex',
-    desc: 'Confère +1 charge de Dash consécutive par rang (jusqu\'à 4 charges).',
-    tradeoffDesc: 'Les dashs en chaîne (<1.2s) infligent +25% de dégâts d\'onde de choc mais coûtent 8% d\'énergie Chrono.'
+    desc: 'Grants +1 consecutive Dash charge per rank (up to 4 charges).',
+    tradeoffDesc: 'Dashes chained within 1.2s deal +25% shockwave damage, but cost 8% Chrono energy.'
   },
   {
     id: 'vector_surge',
@@ -67,8 +67,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 4,
     costPerRank: 2,
     reqSkillId: 'dash_reflex',
-    desc: 'Double-taper la direction actuelle active un cran de turbo instantané (+20% vitesse/cran, jusqu\'à 4 crans superposables).',
-    tradeoffDesc: 'Vitesse extrême de virage : chaque cran dure 2.5s et exige une anticipation millimétrée des intersections.'
+    desc: 'Double-tap your current direction for a burst of speed (+20% per rank, up to 4 ranks).',
+    tradeoffDesc: 'Each burst lasts 2.5s; high speed makes tight turns harder to control.'
   },
   {
     id: 'hyper_nitro',
@@ -77,8 +77,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'nitro',
     maxRank: 4,
     costPerRank: 1,
-    desc: 'Vitesse de pointe du Nitro (+10%/rang) et traînée de plasma incinératrice prolongée (+0.5s/rang).',
-    tradeoffDesc: 'Combo Shift: [↑ ↓ ↑ ↓]. Vitesse extrême diminuant légèrement la maniabilité dans les virages serrés.'
+    desc: 'Increases Nitro speed by 10% and extends its plasma trail by 0.5s per rank.',
+    tradeoffDesc: 'Shift combo: [↑ ↓ ↑ ↓]. Higher speed slightly reduces control in tight turns.'
   },
   {
     id: 'phase_shift',
@@ -88,8 +88,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'multi_dash',
-    desc: 'Intangibilité de 0.35s (+0.18s/rang) après chaque Dash.',
-    tradeoffDesc: 'Rang 3 : Permet de traverser les spectres vivants et brise temporairement les murs intérieurs.'
+    desc: 'Become intangible for 0.35s (+0.18s per rank) after each Dash.',
+    tradeoffDesc: 'Rank 3 lets you phase through ghosts and briefly break interior walls.'
   },
   {
     id: 'quantum_laser',
@@ -102,8 +102,8 @@ export const SKILL_NODES: SkillNode[] = [
     isUltimate: true,
     comboSequence: ['right', 'down', 'right', 'down'],
     comboHint: '[DOUBLE-SHIFT] + [→ ↓ → ↓]',
-    desc: 'ULTIME D\'AGILITÉ : Décharge un quadruple rayon laser cardinal annihilant tous les spectres dans les couloirs en ligne directe.',
-    tradeoffDesc: 'Délai de 24s (18s au rang 2). Transperce les portails et multiplie les points de combo par x3.'
+    desc: 'AGILITY ULTIMATE: Fires four cardinal lasers that annihilate ghosts along their paths.',
+    tradeoffDesc: '24s cooldown (18s at rank 2). Pierces portals and triples combo score.'
   },
 
   // ─── BRANCHE CONTRÔLE ───
@@ -114,8 +114,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'chrono',
     maxRank: 5,
     costPerRank: 1,
-    desc: 'Augmente le réservoir de Bullet-Time de +20%/rang (jusqu\'à +100%).',
-    tradeoffDesc: 'Rangs 4-5 : Ralentit le temps à 12% (au lieu de 18%), mais la recharge passive est réduite sans collecte active.'
+    desc: 'Increases the Chrono energy pool by 20% per rank (up to 100%).',
+    tradeoffDesc: 'Ranks 4–5 slow time to 12% instead of 18%, but reduce passive recharge without collecting.'
   },
   {
     id: 'emp_overcharge',
@@ -124,8 +124,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'wiggle',
     maxRank: 4,
     costPerRank: 1,
-    desc: 'Étend le rayon de l\'onde de choc Wiggle EMP (+25%/rang) et étourdit les fantômes.',
-    tradeoffDesc: 'Combo Shift: [← → ← →]. Rang 3+ : Convertit les débris de fantômes en orbes magnétiques.'
+    desc: 'Increases the Wiggle EMP shockwave radius by 25% per rank and stuns ghosts.',
+    tradeoffDesc: 'Shift combo: [← → ← →]. Rank 3+ turns ghost debris into magnetic orbs.'
   },
   {
     id: 'deep_freeze',
@@ -135,8 +135,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'emp_overcharge',
-    desc: 'Prolonge la durée d\'étourdissement des fantômes touchés par l\'EMP (+1.2s/rang).',
-    tradeoffDesc: 'Dévorer un fantôme gelé provoque une onde d\'éclats de glace qui gèle les spectres adjacents.'
+    desc: 'Extends the EMP stun duration by 1.2s per rank.',
+    tradeoffDesc: 'Devouring a frozen ghost releases ice shards that freeze nearby specters.'
   },
   {
     id: 'magnetic_core',
@@ -145,8 +145,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'magnet',
     maxRank: 3,
     costPerRank: 2,
-    desc: 'Aspire passivement les pastilles proches dans un rayon de 1.8 à 4.2 cases.',
-    tradeoffDesc: 'Attire également les fantômes vulnérables 15% plus vite vers Chromavore (tension magnétique accrue).'
+    desc: 'Passively attracts nearby pellets within a radius of 1.8–4.2 tiles.',
+    tradeoffDesc: 'Also pulls vulnerable ghosts toward Chromavore 15% faster.'
   },
   {
     id: 'aegis_shield',
@@ -156,8 +156,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'deep_freeze',
-    desc: 'Démarre chaque vie avec +1 bouclier d\'énergie orbital par rang (jusqu\'à 3 boucliers). Chaque bouclier absorbe un coup mortel et déclenche une onde de choc de dégagement.',
-    tradeoffDesc: 'Boucliers consommés récupérables en collectant un Super-Item ou 80 pac-gommes consécutives.'
+    desc: 'Start each life with one orbital shield per rank (up to 3). Each shield absorbs a fatal hit and releases a shockwave.',
+    tradeoffDesc: 'Consumed shields can be restored by collecting a Super-Item or 80 consecutive pellets.'
   },
   {
     id: 'kinetic_bastion',
@@ -170,8 +170,8 @@ export const SKILL_NODES: SkillNode[] = [
     isUltimate: true,
     comboSequence: ['down', 'down', 'up', 'up'],
     comboHint: '[DOUBLE-SHIFT] + [↓ ↓ ↑ ↑]',
-    desc: 'ULTIME DE CONTRÔLE : Dôme cinétique de 6s. Chaque impact consume 1.5s de dôme, coûte 25 points de Chrono et déclenche une contre-onde qui élimine les fantômes proches.',
-    tradeoffDesc: 'Délai de 26s. Rang 2 : Durée 8s et contre-onde étendue à 5 cases.'
+    desc: 'CONTROL ULTIMATE: A 6s kinetic dome. Each impact consumes 1.5s, costs 25 Chrono, and triggers a counterwave that destroys nearby ghosts.',
+    tradeoffDesc: '26s cooldown. Rank 2 lasts 8s and expands the counterwave to 5 tiles.'
   },
 
   // ─── BRANCHE CARNAGE ───
@@ -182,8 +182,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'super_pellet',
     maxRank: 5,
     costPerRank: 1,
-    desc: 'Allonge la durée de vulnérabilité des spectres (+1.4s par rang, jusqu\'à +7.0s).',
-    tradeoffDesc: 'Rangs 4-5 : Dévorer des fantômes vulnérables confère +25% de score et d\'XP supplémentaires.'
+    desc: 'Extends ghost vulnerability by 1.4s per rank (up to 7s).',
+    tradeoffDesc: 'Ranks 4–5: devouring vulnerable ghosts grants 25% bonus score and XP.'
   },
   {
     id: 'titan_breaker',
@@ -193,8 +193,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'pellet_resonance',
-    desc: 'Contre-mesure anti-Titans : ralentit les Titans et permet de les percuter.',
-    tradeoffDesc: 'Rang 1 : Dasher dans un Titan brise son armure et l\'étourdit. Rang 3 : Le pulvérise net (+2500 pts).'
+    desc: 'Anti-Titan upgrade: slows Titans and lets you ram them.',
+    tradeoffDesc: 'Rank 1 breaks a Titan’s armor and stuns it on impact. Rank 3 destroys it (+2,500 pts).'
   },
   {
     id: 'super_frequency',
@@ -203,8 +203,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'nova',
     maxRank: 4,
     costPerRank: 1,
-    desc: 'Augmente la fréquence d\'apparition des Super-Items (+25%/rang).',
-    tradeoffDesc: 'Collecter un Super-Item confère +1.8s d\'invulnérabilité et recharge instantanément 30% d\'énergie Chrono.'
+    desc: 'Increases Super-Item spawn frequency by 25% per rank.',
+    tradeoffDesc: 'Collecting a Super-Item grants 1.8s of invulnerability and instantly restores 30% Chrono energy.'
   },
   {
     id: 'singularity_mastery',
@@ -214,8 +214,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'titan_breaker',
-    desc: 'Étend la fenêtre de maintien de Combo (+0.4s/rang) et réduit le seuil de Singularité de 200 à 164 kills.',
-    tradeoffDesc: 'Rang 3 : Étend la durée de la Singularité cosmique à 35s au lieu de 30s.'
+    desc: 'Extends combo grace by 0.4s per rank and lowers the Singularity threshold from 200 to 164 kills.',
+    tradeoffDesc: 'Rank 3 extends cosmic Singularity from 30s to 35s.'
   },
   {
     id: 'singularity_nova',
@@ -228,7 +228,7 @@ export const SKILL_NODES: SkillNode[] = [
     isUltimate: true,
     comboSequence: ['up', 'right', 'down', 'left'],
     comboHint: '[DOUBLE-SHIFT] + [↑ → ↓ ←]',
-    desc: 'ULTIME DE CARNAGE : Déclenche une micro-singularité instantanée qui aspire tous les fantômes et les désintègre.',
-    tradeoffDesc: 'Délai de 40s (1 utilisation par manche). Déclenche un sursaut de multiplicateur x64 pendant 8s.'
+    desc: 'CARNAGE ULTIMATE: Triggers a micro-Singularity that pulls in and disintegrates every ghost.',
+    tradeoffDesc: '40s cooldown (one use per run). Triggers an x64 multiplier surge for 8s.'
   }
 ];

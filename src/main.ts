@@ -403,9 +403,9 @@ class Game {
 
         const totalW = Math.min(540, curCw - 24);
         const cardW = Math.floor((totalW - 14) / 2);
-        const cardH = 76;
+        const cardH = 88;
         const startX = curCw / 2 - totalW / 2;
-        const cardY = 305;
+        const cardY = 300;
         const arcX = startX;
         const custX = startX + cardW + 14;
 
@@ -414,7 +414,7 @@ class Game {
           if (profileManager.gameMode !== 'arcade') {
             profileManager.setGameMode('arcade');
             sounds.play('click');
-            particles.addPop(arcX + cardW / 2, cardY + cardH / 2, 'MODE ARCADE CHOISI !', '#00ffff', 14);
+            particles.addPop(arcX + cardW / 2, cardY + cardH / 2, 'CHROMAVORE ARCADE SELECTED', '#00ffff', 14);
           } else {
             this.startGame();
             sounds.play('start');
@@ -427,7 +427,7 @@ class Game {
           if (profileManager.gameMode !== 'custom') {
             profileManager.setGameMode('custom');
             sounds.play('click');
-            particles.addPop(custX + cardW / 2, cardY + cardH / 2, 'MODE CUSTOM CHOISI !', '#ff007f', 14);
+            particles.addPop(custX + cardW / 2, cardY + cardH / 2, 'CHROMAMANCER SELECTED', '#ff007f', 14);
           } else {
             this.startGame();
             sounds.play('start');
@@ -473,7 +473,7 @@ class Game {
         }
 
         // Tree interactions (Upgrade Node or Respec)
-        if (this.codexTab === 'tree') {
+        if (this.codexTab === 'tree' && profileManager.gameMode === 'custom') {
           // Check Respec Button: cx around curCw / 2 + 35, w: 150, y: 94..116
           if (cx >= curCw / 2 + 35 && cx <= curCw / 2 + 185 && cy >= 94 && cy <= 116) {
             experienceSystem.respecSkills();
@@ -1291,7 +1291,7 @@ class Game {
     const lvlUp = experienceSystem.addXp(xpEarned, 'ghost_kill');
     if (lvlUp) {
       this.lives = Math.min(5, this.lives + 1);
-      particles.addPop(ex, ey - 35, '+1 VIE !', '#00ffaa', 22);
+      particles.addPop(ex, ey - 35, '+1 LIFE!', '#00ffaa', 22);
     }
 
     particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
@@ -1986,7 +1986,7 @@ class Game {
         const lvlUpVortex = experienceSystem.addXp(vortexXp, 'vortex_score');
         if (lvlUpVortex) {
           this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 40, '+1 VIE !', '#00ffaa', 22);
+          particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 40, '+1 LIFE!', '#00ffaa', 22);
         }
       }
 
@@ -2127,7 +2127,7 @@ class Game {
           const lvlUp = experienceSystem.addXp(25, 'near_miss');
           if (lvlUp) {
             this.lives = Math.min(5, this.lives + 1);
-            particles.addPop(pp.x, pp.y - 35, '+1 VIE !', '#00ffaa', 22);
+            particles.addPop(pp.x, pp.y - 35, '+1 LIFE!', '#00ffaa', 22);
           }
         }
       } else {
@@ -2185,7 +2185,7 @@ class Game {
         const lvlUpPellet = experienceSystem.addXp(15, 'pellet');
         if (lvlUpPellet) {
           this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(px, py - 35, '+1 VIE !', '#00ffaa', 22);
+          particles.addPop(px, py - 35, '+1 LIFE!', '#00ffaa', 22);
         }
 
         if (this.combo.m > oldM && this.combo.m > 1) {
@@ -2218,7 +2218,7 @@ class Game {
         const lvlUpDot = experienceSystem.addXp(2, 'dot');
         if (lvlUpDot) {
           this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(px, py - 35, '+1 VIE !', '#00ffaa', 22);
+          particles.addPop(px, py - 35, '+1 LIFE!', '#00ffaa', 22);
         }
 
         // Floating +XXX score popup above eaten dot!
@@ -2245,7 +2245,7 @@ class Game {
         const lvlUpClear = experienceSystem.addXp(400, 'maze_clear');
         if (lvlUpClear) {
           this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(px, py - 45, '+1 VIE !', '#00ffaa', 22);
+          particles.addPop(px, py - 45, '+1 LIFE!', '#00ffaa', 22);
         }
 
         // Unlock Level Completion Badges (Levels 1 to 10 in 4:3 or 16:9)

@@ -47,6 +47,7 @@ class ExperienceSystem {
   }
 
   public getSkillRank(skillId: string): number {
+    if (profileManager.gameMode !== 'custom') return 0;
     return profileManager.profile.skillUpgrades?.[skillId] || 0;
   }
 
@@ -130,30 +131,33 @@ class ExperienceSystem {
   }
 
   public canUpgradeSkill(skillId: string): { can: boolean; reason?: string } {
+    if (profileManager.gameMode !== 'custom') {
+      return { can: false, reason: 'The Skill Tree is only available in Chromamancer' };
+    }
     const node = SKILL_NODES.find(n => n.id === skillId);
-    if (!node) return { can: false, reason: 'Compétence inconnue' };
+    if (!node) return { can: false, reason: 'Unknown skill' };
 
     if (node.isUltimate && !this.isUltimateRevealed(skillId)) {
-      return { can: false, reason: 'Ultime secret : complétez toutes les compétences de l’arbre' };
+      return { can: false, reason: 'Secret ultimate: max out every core skill' };
     }
 
     const currentRank = this.getSkillRank(skillId);
-    if (currentRank >= node.maxRank) return { can: false, reason: 'Rang maximal atteint' };
+    if (currentRank >= node.maxRank) return { can: false, reason: 'Maximum rank reached' };
 
     if (this.skillPoints < node.costPerRank) {
-      return { can: false, reason: `Requis: ${node.costPerRank} Point(s)` };
+      return { can: false, reason: `Requires ${node.costPerRank} Skill Point(s)` };
     }
 
     if (node.reqSkillId) {
       const parentRank = this.getSkillRank(node.reqSkillId);
       if (parentRank === 0) {
         const parentNode = SKILL_NODES.find(n => n.id === node.reqSkillId);
-        return { can: false, reason: `Requis: ${parentNode?.name || node.reqSkillId}` };
+        return { can: false, reason: `Requires ${parentNode?.name || node.reqSkillId}` };
       }
     }
 
     if (node.reqAccountLevel && this.accountLevel < node.reqAccountLevel) {
-      return { can: false, reason: `Niveau ${node.reqAccountLevel} requis` };
+      return { can: false, reason: `Requires account level ${node.reqAccountLevel}` };
     }
 
     return { can: true };
@@ -175,6 +179,7 @@ class ExperienceSystem {
   }
 
   public respecSkills() {
+    if (profileManager.gameMode !== 'custom') return;
     let refund = 0;
     const upgrades = profileManager.profile.skillUpgrades || {};
     for (const [id, rank] of Object.entries(upgrades)) {

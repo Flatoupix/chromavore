@@ -381,10 +381,10 @@ export class Renderer {
     c.textAlign = 'center';
     c.fillStyle = borderColor;
     const headerTitle = isExec
-      ? '★ COMPETENCE DECLENCHEE ★'
+      ? '★ SKILL ACTIVATED ★'
       : (isInvalid
-        ? '✕ SEQUENCE ANNULEE / INVALIDE ✕'
-        : (isValid ? '▲ SEQUENCE VALIDE : RELACHEZ SHIFT ▲' : '▲ MODE SEQUENCE [BULLET-TIME] ▲'));
+        ? '✕ SEQUENCE CANCELLED / INVALID ✕'
+        : (isValid ? '▲ SEQUENCE READY: RELEASE SHIFT ▲' : '▲ SEQUENCE MODE [BULLET TIME] ▲'));
     c.fillText(headerTitle, this.cw / 2, panelY + 14);
 
     // Sequence Slots
@@ -784,7 +784,7 @@ export class Renderer {
 
         c.font = 'bold 7.5px monospace';
         c.fillStyle = '#00e5ff';
-        c.fillText(`KILLS : ${progression.totalGhosts} • [ARCADE]`, tmX, 44);
+      c.fillText(`KILLS: ${progression.totalGhosts} • [ARCADE]`, tmX, 44);
       }
 
       // 5. Chrono-Shift (Bullet Time) Gauge
@@ -1057,12 +1057,12 @@ export class Renderer {
     const c = this.ctx;
     const tier = this.chromaTier;
 
-    // Fond selon le tier
+    // Background by Chroma tier
     c.fillStyle = tier === 0 ? '#050505' : tier === 1 ? '#060610' : '#080114';
     c.fillRect(0, 0, this.cw, CH);
     c.textAlign = 'center';
 
-    // Grille perspective Synthwave — masquée au tier 0, atténuée ensuite
+    // Perspective synthwave grid — hidden at tier 0, subdued at higher tiers
     if (tier >= 1) {
       const horizonY = 245;
       c.save();
@@ -1088,7 +1088,7 @@ export class Renderer {
       c.restore();
     }
 
-    // Soleil Outrun — gris au tier 0–1, coloré ensuite
+    // OutRun sun — grayscale at tiers 0–1, colored at higher tiers
     const sunX = this.cw / 2, sunY = 245, sunR = 48;
     c.save();
     if (tier <= 1) {
@@ -1121,7 +1121,7 @@ export class Renderer {
     }
     c.restore();
 
-    // Titre CHROMAVORE — monochrome → néon selon le tier
+    // CHROMAVORE title — monochrome to neon by tier
     const ty = 105, p = 1 + Math.sin(time * 2) * 0.03;
     c.save();
     c.font = `bold ${38 * p}px monospace`;
@@ -1170,17 +1170,17 @@ export class Renderer {
       c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 240, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // --- SÉLECTION DU MODE DE JEU (ARCADE vs CUSTOM) ---
+    // --- MODE SELECTION: CHROMAVORE ARCADE vs CHROMAMANCER ---
     const isCustom = profileManager.gameMode === 'custom';
     const totalW = Math.min(540, this.cw - 24);
     const cardW = Math.floor((totalW - 14) / 2);
-    const cardH = 76;
+    const cardH = 88;
     const startX = this.cw / 2 - totalW / 2;
-    const cardY = 305;
+    const cardY = 300;
 
     const playPulse = 0.55 + 0.45 * Math.sin(time * 3.5);
 
-    // 1. CARTE ARCADE (Plat tout prêt / Route classique)
+    // CHROMAVORE: score-focused arcade runs with kill-based unlocks.
     const arcX = startX;
     const arcActive = !isCustom;
     c.save();
@@ -1195,29 +1195,33 @@ export class Renderer {
     c.stroke();
 
     c.textAlign = 'center';
-    c.font = 'bold 13px monospace';
-    c.fillStyle = arcActive ? '#ffffff' : '#8899aa';
-    c.fillText('🕹️ MODE ARCADE', arcX + cardW / 2, cardY + 22);
+    c.font = 'bold 14px monospace';
+    c.fillStyle = arcActive ? '#ffffff' : '#d3e1ec';
+    c.fillText('CHROMAVORE', arcX + cardW / 2, cardY + 20);
 
+    c.font = 'bold 9px monospace';
+    c.fillStyle = arcActive ? '#00ffff' : '#9fb5c5';
+    c.fillText('ARCADE  •  SCORE ATTACK', arcX + cardW / 2, cardY + 34);
     c.font = '9px monospace';
-    c.fillStyle = arcActive ? '#00ffff' : '#556677';
-    c.fillText('Super-Items & Route Prévue', arcX + cardW / 2, cardY + 36);
+    c.fillStyle = arcActive ? '#e2f7ff' : '#c0cfda';
+    c.fillText('Unlock powers by reaching kill milestones.', arcX + cardW / 2, cardY + 48);
     const arcBest = profileManager.profile.arcadeBestKills || 0;
     const arcPts = (profileManager.profile.arcadeHiScore || 0).toLocaleString();
-    c.fillText(arcBest > 0 ? `Record: ${arcBest} Kills (${arcPts} pts)` : 'Singularité x64 • God Mode x32', arcX + cardW / 2, cardY + 49);
+    c.fillStyle = arcActive ? '#b3cbd8' : '#aabac6';
+    c.fillText(arcBest > 0 ? `BEST  ${arcBest} KILLS  •  ${arcPts} PTS` : 'NO ACCOUNT XP OR SKILL POINTS', arcX + cardW / 2, cardY + 63);
 
     if (arcActive) {
       c.font = 'bold 9px monospace';
       c.fillStyle = `rgba(0, 255, 255, ${playPulse})`;
-      c.fillText('▶ [ESPACE] JOUER ◀', arcX + cardW / 2, cardY + 66);
+      c.fillText('▶ [SPACE] / CLICK TO PLAY ◀', arcX + cardW / 2, cardY + 81);
     } else {
-      c.font = '8.5px monospace';
-      c.fillStyle = '#667788';
-      c.fillText('CLIQUER POUR CHOISIR', arcX + cardW / 2, cardY + 66);
+      c.font = '9px monospace';
+      c.fillStyle = '#c0cfda';
+      c.fillText('CLICK TO SELECT', arcX + cardW / 2, cardY + 81);
     }
     c.restore();
 
-    // 2. CARTE CUSTOM (Plat composé / Arbre de compétences & builds libres)
+    // CHROMAMANCER: persistent XP, skill points, and player-built loadouts.
     const custX = startX + cardW + 14;
     const custActive = isCustom;
     c.save();
@@ -1232,25 +1236,29 @@ export class Renderer {
     c.stroke();
 
     c.textAlign = 'center';
-    c.font = 'bold 13px monospace';
-    c.fillStyle = custActive ? '#ffffff' : '#8899aa';
-    c.fillText('⚡ MODE CUSTOM', custX + cardW / 2, cardY + 22);
+    c.font = 'bold 14px monospace';
+    c.fillStyle = custActive ? '#ffffff' : '#d3e1ec';
+    c.fillText('CHROMAMANCER', custX + cardW / 2, cardY + 20);
 
+    c.font = 'bold 9px monospace';
+    c.fillStyle = custActive ? '#ff00a0' : '#c08aa7';
+    c.fillText('ROGUELITE  •  PERSISTENT PROGRESSION', custX + cardW / 2, cardY + 34);
     c.font = '9px monospace';
-    c.fillStyle = custActive ? '#ff00a0' : '#556677';
-    c.fillText('Arbre de Talents & Builds Libres', custX + cardW / 2, cardY + 36);
+    c.fillStyle = custActive ? '#ffd0e8' : '#d0bdca';
+    c.fillText('Earn XP, gain Skill Points, shape your build.', custX + cardW / 2, cardY + 48);
     const custBest = profileManager.profile.customBestKills || 0;
     const custPts = (profileManager.profile.customHiScore || 0).toLocaleString();
-    c.fillText(custBest > 0 ? `Record: ${custBest} Kills (${custPts} pts)` : 'Aegis Shield • Surge • Aspiration', custX + cardW / 2, cardY + 49);
+    c.fillStyle = custActive ? '#d4bac9' : '#b9a9b7';
+    c.fillText(custBest > 0 ? `BEST  ${custBest} KILLS  •  ${custPts} PTS` : 'PERSISTENT XP & SKILL TREE', custX + cardW / 2, cardY + 63);
 
     if (custActive) {
       c.font = 'bold 9px monospace';
       c.fillStyle = `rgba(255, 0, 127, ${playPulse})`;
-      c.fillText('▶ [ESPACE] JOUER ◀', custX + cardW / 2, cardY + 66);
+      c.fillText('▶ [SPACE] / CLICK TO PLAY ◀', custX + cardW / 2, cardY + 81);
     } else {
-      c.font = '8.5px monospace';
-      c.fillStyle = '#667788';
-      c.fillText('CLIQUER POUR CHOISIR', custX + cardW / 2, cardY + 66);
+      c.font = '9px monospace';
+      c.fillStyle = '#d0bdca';
+      c.fillText('CLICK TO SELECT', custX + cardW / 2, cardY + 81);
     }
     c.restore();
 
@@ -1264,9 +1272,9 @@ export class Renderer {
 
     // Player Profile & Sync ID Card
     c.font = 'bold 11px monospace';
-    c.fillStyle = this.chromaTier === 0 ? '#777777' : '#e0f4ff';
+    c.fillStyle = this.chromaTier === 0 ? '#c0c0c0' : '#e0f4ff';
     c.textAlign = 'center';
-    c.fillText(`PLAYER : ${profileManager.profile.pseudo}   •   SYNC ID : ${profileManager.profile.syncCode}`, this.cw / 2, 480);
+    c.fillText(`PLAYER: ${profileManager.profile.pseudo}   •   SYNC ID: ${profileManager.profile.syncCode}`, this.cw / 2, 480);
 
     // Navigation links unlocked progressively
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
@@ -1299,7 +1307,7 @@ export class Renderer {
 
     this.menuLinks = [];
     c.font = 'bold 11px monospace';
-    c.fillStyle = this.getChromaAccent('#00f0ff', '#777777');
+    c.fillStyle = this.getChromaAccent('#00f0ff', '#d0d0d0');
     c.shadowColor = c.fillStyle;
     c.shadowBlur = this.getChromaBlur(6);
 
@@ -1397,37 +1405,34 @@ export class Renderer {
       { badge: 'P / ESC', desc: 'Pause game, display & audio settings, CRT scanlines' }
     ]);
 
-    // Card 2: SECRET MOTION COMBOS (y: 180, h: 76)
-    this.drawInstructionCard(c, cardX, 180, cardW, 76, '#ffd700', 'SECRET MOTION COMBOS', [
-      { badge: '← → ← →', desc: 'Wiggle EMP: radial shockwave that stuns and repels nearby foes' },
-      { badge: '↓ ↑ ↓ ↑ (Bao Bao)', desc: 'Nitro Jet: bursts forward with blazing flame trail on tiles' }
+    // Card 2: explain the Shift sequence input clearly.
+    this.drawInstructionCard(c, cardX, 180, cardW, 90, '#ffd700', 'SHIFT SEQUENCES • MOVE WHILE CHRONO IS ACTIVE', [
+      { badge: 'DOUBLE-TAP SHIFT', badgeW: 132, desc: 'Enter a direction sequence, then release Shift to activate it. You can keep moving.' },
+      { badge: '← → ← → / ↑ ↓ ↑ ↓', badgeW: 132, desc: 'Wiggle EMP / Nitro Jet (when unlocked).' }
     ]);
 
     // Card 3: SUPER-ITEMS IN THE MAZE (y: 266, h: 76)
-    this.drawInstructionCard(c, cardX, 266, cardW, 76, '#ff007f', 'SUPER-ITEMS IN THE MAZE', [
+    this.drawInstructionCard(c, cardX, 280, cardW, 76, '#ff007f', 'SUPER-ITEMS IN THE MAZE', [
       { badge: 'AUTO-COLLECT', desc: 'Touch super-items to trigger their ultimate power instantly' },
       { badge: 'SPAWNS', desc: 'Mega Nova, Black Hole, 8-Axis Lasers, Cryo Blizzard, Shockwave...' }
     ]);
 
-    // Card 4: CHROMAVORE & CHROMA AWAKENING (y: 352, h: 148)
-    this.drawInstructionCard(c, cardX, 352, cardW, 148, '#a855f7', 'CHROMAVORE & CHROMA AWAKENING', [
+    // Card 4: distinct progression tracks for each game mode.
+    this.drawInstructionCard(c, cardX, 366, cardW, 148, '#a855f7', 'TWO MODES • TWO PROGRESSION TRACKS', [
+      {
+        badge: 'CHROMAVORE • ARCADE',
+        badgeW: 132,
+        desc: 'Unlock arcade powers by reaching ghost-kill milestones. No account XP or Skill Points.'
+      },
+      {
+        badge: 'CHROMAMANCER',
+        badgeW: 132,
+        desc: 'Earn persistent XP, gain Skill Points at level-ups, and build your loadout in the Skill Tree.'
+      },
       {
         badge: 'CHROMA AWAKENING',
-        desc: [
-          'The world begins in pure, cold monochrome.',
-          'Devour ghosts to awaken radiant colors, audio & combat skills!'
-        ]
-      },
-      {
-        badge: 'LET\'S HUNT',
-        desc: [
-          'Dynamic arenas & Overdrive rush timers.',
-          'Devour all pellets and purge phantom hordes to prevail.'
-        ]
-      },
-      {
-        badge: 'COSMIC LOOP',
-        desc: 'Clear Level 10 to loop into infinite cosmic scaling (+10% speed/loop).'
+        badgeW: 132,
+        desc: 'In Chromavore, ghost kills awaken the world’s color, sound, and combat effects.'
       }
     ]);
 
@@ -1672,7 +1677,7 @@ export class Renderer {
     c.font = 'bold 12px monospace';
     c.fillStyle = this.getChromaAccent('#00f0ff', '#ffffff');
     c.textAlign = 'center';
-    c.fillText('▶ REJOUER [ESPACE]', replayX + btnW / 2, btnY + 21);
+    c.fillText('▶ REPLAY [SPACE]', replayX + btnW / 2, btnY + 21);
     c.restore();
 
     // 2. Bouton MENU PRINCIPAL
@@ -1691,7 +1696,7 @@ export class Renderer {
     c.font = 'bold 12px monospace';
     c.fillStyle = this.getChromaAccent('#ff007f', '#ffffff');
     c.textAlign = 'center';
-    c.fillText('⌂ MENU [ECHAP]', menuX + btnW / 2, btnY + 21);
+    c.fillText('⌂ MAIN MENU [ESC]', menuX + btnW / 2, btnY + 21);
     c.restore();
 
     // Secondary Links (Leaderboard & Codex)
@@ -1750,7 +1755,7 @@ export class Renderer {
     c.shadowBlur = 0;
     c.restore();
 
-    // Mode Selector Tabs: [ ARCADE ] vs [ CUSTOM ]
+    // Separate scoreboards for the two game modes.
     const tabW = Math.min(180, Math.floor((this.cw - 48) / 2));
     const tabH = 26;
     const tabY = 46;
@@ -1772,7 +1777,7 @@ export class Renderer {
     c.textBaseline = 'middle';
     c.font = 'bold 11px monospace';
     c.fillStyle = isArcade ? '#ffffff' : '#778899';
-    c.fillText('🕹️ ARCADE PUR', tab1X + tabW / 2, tabY + tabH / 2);
+    c.fillText('CHROMAVORE • ARCADE', tab1X + tabW / 2, tabY + tabH / 2);
     c.restore();
 
     // Tab 2: Custom
@@ -1789,7 +1794,7 @@ export class Renderer {
     c.textBaseline = 'middle';
     c.font = 'bold 11px monospace';
     c.fillStyle = isCustom ? '#ffffff' : '#778899';
-    c.fillText('⚡ CUSTOM (TALENTS)', tab2X + tabW / 2, tabY + tabH / 2);
+    c.fillText('CHROMAMANCER', tab2X + tabW / 2, tabY + tabH / 2);
     c.restore();
 
     // Column headers
@@ -1938,7 +1943,7 @@ export class Renderer {
       c.shadowColor = isTree ? '#00ffaa' : (isSkills ? '#00ffff' : '#ffd700');
       c.shadowBlur = 10;
     }
-    const titleText = isTree ? 'CHROMAVORE 4.0 — ARBRE DE COMPÉTENCES' : (isSkills ? 'ARSENAL & RECHERCHE' : 'BADGES & TROPHÉES');
+    const titleText = isTree ? 'CHROMAMANCER — SKILL TREE' : (isSkills ? 'ARSENAL & RESEARCH' : 'BADGES & TROPHIES');
     const tIcon = isTree ? 'crown' : (isSkills ? 'lightning' : 'trophy');
     const tw = c.measureText(titleText).width;
     spriteAtlas.drawIcon(c, tIcon, this.cw / 2 - tw / 2 - 14, 24, 16);
@@ -1988,7 +1993,7 @@ export class Renderer {
     c.beginPath(); c.roundRect(t3X, tabY, tabW, tabH, 5); c.fill(); c.stroke();
     c.font = 'bold 9.5px monospace';
     c.fillStyle = isTree ? this.getChromaAccent('#00ffaa', '#ffffff') : '#8899aa';
-    c.fillText(`[3] ARBRE SKILLS`, t3X + tabW / 2, tabY + 15);
+    c.fillText(`[3] SKILL TREE`, t3X + tabW / 2, tabY + 15);
 
     // Dynamically center columns
     const isWide = this.cw >= 750;
@@ -2001,8 +2006,28 @@ export class Renderer {
 
     if (isTree) {
       // ═══════════════════════════════════════════════════════════════
-      //  CHROMAVORE 4.0 — ARBRE DE COMPÉTENCES & REPARTITION SP
+      //  CHROMAMANCER — SKILL TREE & SKILL POINTS
       // ═══════════════════════════════════════════════════════════════
+      if (profileManager.gameMode !== 'custom') {
+        const panelW = Math.min(420, this.cw - 48);
+        const panelX = (this.cw - panelW) / 2;
+        const panelY = 220;
+        c.fillStyle = 'rgba(20, 12, 30, 0.92)';
+        c.strokeStyle = '#ff007f';
+        c.lineWidth = 1.5;
+        c.beginPath(); c.roundRect(panelX, panelY, panelW, 118, 8); c.fill(); c.stroke();
+        c.textAlign = 'center';
+        c.font = 'bold 14px monospace';
+        c.fillStyle = '#ff66bb';
+        c.fillText('CHROMAMANCER SKILL TREE', this.cw / 2, panelY + 31);
+        c.font = '10px monospace';
+        c.fillStyle = '#c8b8c8';
+        c.fillText('Persistent XP and Skill Points belong to Chromamancer.', this.cw / 2, panelY + 57);
+        c.fillText('Switch modes from the main menu to spend Skill Points.', this.cw / 2, panelY + 77);
+        c.font = 'bold 10px monospace';
+        c.fillStyle = '#00ffff';
+        c.fillText('[ESC] BACK TO MODE SELECT', this.cw / 2, panelY + 101);
+      } else {
       const sp = experienceSystem.skillPoints;
       const accLvl = experienceSystem.accountLevel;
       const curXp = experienceSystem.accountXp;
@@ -2027,7 +2052,7 @@ export class Renderer {
       c.font = 'bold 11px monospace';
       c.fillStyle = '#ffffff';
       c.textAlign = 'left';
-      c.fillText(`NIVEAU : ${accLvl} / 100`, barX, 72);
+      c.fillText(`ACCOUNT LEVEL: ${accLvl} / 100`, barX, 72);
       c.textAlign = 'right';
       c.fillText(reqXp === Infinity ? 'MAX LEVEL' : `XP: ${curXp.toLocaleString()} / ${reqXp.toLocaleString()} PTS`, barX + barW, 72);
 
@@ -2037,7 +2062,7 @@ export class Renderer {
       c.fillStyle = '#ffd700';
       c.shadowColor = '#ffd700';
       c.shadowBlur = 10;
-      c.fillText(`POINTS DISPONIBLES : ${sp} SP`, this.cw / 2 - 80, 108);
+      c.fillText(`AVAILABLE: ${sp} SKILL POINTS`, this.cw / 2 - 80, 108);
       c.shadowBlur = 0;
 
       // Reset / Respec Pill (Clickable)
@@ -2047,9 +2072,9 @@ export class Renderer {
       c.beginPath(); c.roundRect(this.cw / 2 + 35, 94, 150, 22, 4); c.fill(); c.stroke();
       c.font = 'bold 9.5px monospace';
       c.fillStyle = '#ff6699';
-      c.fillText('[R] RÉINITIALISER (FREE)', this.cw / 2 + 110, 108);
+      c.fillText('[R] RESPEC (FREE)', this.cw / 2 + 110, 108);
 
-      // 3 Columns for 3 Branches: Agilité, Contrôle, Carnage
+      // Three skill branches: Agility, Control, and Carnage.
       const branchKeys: Array<'agility' | 'control' | 'carnage'> = ['agility', 'control', 'carnage'];
       const branchColW = Math.min(270, Math.floor((this.cw - 48) / 3));
       const branchGap = Math.floor((this.cw - branchColW * 3) / 4);
@@ -2091,7 +2116,8 @@ export class Renderer {
       c.font = 'bold 10px monospace';
       c.fillStyle = '#00ffaa';
       c.textAlign = 'center';
-      c.fillText('[CLIC SUR NOEUD] INVESTIR 1 SP  •  [R] RESPEC  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] RETOUR', this.cw / 2, CH - 14);
+      c.fillText('[CLICK A NODE TO UPGRADE]  •  [R] RESPEC  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] BACK', this.cw / 2, CH - 14);
+      }
 
     } else if (isSkills) {
       // Career Progress Bar Header
@@ -2150,7 +2176,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00ffff';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [3] ARBRE SKILLS  •  [TAB] TOGGLE  •  [ESC / C] RETOUR', this.cw / 2, CH - 14);
+      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [3] SKILL TREE  •  [TAB] SWITCH  •  [ESC / C] BACK', this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     } else {
       // BADGES & ACHIEVEMENTS GALLERY
@@ -2207,7 +2233,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText(`[1] ARSENAL  •  [2] BADGES  •  [3] ARBRE SKILLS  •  [PAGE ${curPage + 1}/${maxPages} • ARROWS ← / →]  •  [ESC] RETOUR`, this.cw / 2, CH - 14);
+      c.fillText(`[1] ARSENAL  •  [2] BADGES  •  [3] SKILL TREE  •  [PAGE ${curPage + 1}/${maxPages} • ARROWS ← / →]  •  [ESC] BACK`, this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     }
   }
@@ -2230,7 +2256,7 @@ export class Renderer {
       c.textAlign = 'left';
       c.font = 'bold 9px monospace';
       c.fillStyle = '#ff4477';
-      c.fillText('🔒 ??? [ULTIME VERROUILLÉ]', x + 8, y + 13);
+      c.fillText('🔒 ??? [ULTIMATE LOCKED]', x + 8, y + 13);
 
       c.textAlign = 'right';
       c.font = 'bold 8px monospace';
@@ -2240,9 +2266,9 @@ export class Renderer {
       c.textAlign = 'left';
       c.font = '7.5px monospace';
       c.fillStyle = '#aa7788';
-      c.fillText('Technologie secrète verrouillée.', x + 8, y + 28);
-      c.fillText('Complétez les compétences de l’arbre', x + 8, y + 40);
-      c.fillText('pour décrypter cet ultime.', x + 8, y + 52);
+      c.fillText('Secret technology remains sealed.', x + 8, y + 28);
+      c.fillText('Max out every core skill to reveal', x + 8, y + 40);
+      c.fillText('this ultimate ability.', x + 8, y + 52);
 
       c.restore();
       return;
@@ -2301,7 +2327,7 @@ export class Renderer {
     c.fillStyle = isMax ? '#d0f0e0' : (canBuy ? '#cccccc' : '#778899');
 
     const maxCharsPerLine = Math.floor((w - 16) / 4.8);
-    const words = (node.tradeoffDesc || node.desc).split(' ');
+    const words = node.desc.split(' ');
     let line = '';
     let lineIdx = 0;
     for (const wd of words) {
@@ -2324,7 +2350,7 @@ export class Renderer {
       c.font = 'bold 7.5px monospace';
       if (canBuy) {
         c.fillStyle = isUlt ? '#ffd700' : '#00ffff';
-        c.fillText(`▶ CLIC POUR AMÉLIORER (-${node.costPerRank} SP) ◀`, x + w / 2, y + h - 5);
+        c.fillText(`▶ UPGRADE (-${node.costPerRank} SP) ◀`, x + w / 2, y + h - 5);
       } else if (check.reason) {
         c.fillStyle = '#ff5577';
         c.fillText(`[ ${check.reason.toUpperCase()} ]`, x + w / 2, y + h - 5);

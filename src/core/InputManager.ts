@@ -118,7 +118,7 @@ export class InputManager {
       this.isSequenceMode = true;
       this.sequenceBuffer = [];
       this.sequenceStatus = 'recording';
-      this.sequenceFeedback = 'SEQUENCE EN COURS... (ZQSD / FLECHES)';
+      this.sequenceFeedback = 'SEQUENCE IN PROGRESS... (ARROWS / WASD)';
       this.sequenceMatchedSkill = null;
       sounds.play('sequence_step', 0);
     } else {
@@ -205,13 +205,13 @@ export class InputManager {
       const av = this.getSkillAvailability(matched.id);
       if (!av.unlocked) {
         this.sequenceStatus = 'invalid';
-        this.sequenceFeedback = `${matched.name} (VERROUILLE DANS CODEX)`;
+        this.sequenceFeedback = `${matched.name} (LOCKED IN CODEX)`;
       } else if (av.cd > 0) {
         this.sequenceStatus = 'cooldown';
-        this.sequenceFeedback = `${matched.name} EN RECHARGE (${av.cd.toFixed(1)}s)`;
+        this.sequenceFeedback = `${matched.name} ON COOLDOWN (${av.cd.toFixed(1)}s)`;
       } else {
         this.sequenceStatus = 'valid';
-        this.sequenceFeedback = `PRET : ${matched.name} [RELACHEZ SHIFT]`;
+        this.sequenceFeedback = `READY: ${matched.name} [RELEASE SHIFT]`;
       }
       return;
     }
@@ -224,11 +224,11 @@ export class InputManager {
 
     if (isPrefix) {
       this.sequenceStatus = 'recording';
-      this.sequenceFeedback = 'SAISIE DE SEQUENCE...';
+      this.sequenceFeedback = 'ENTERING SEQUENCE...';
       this.sequenceMatchedSkill = null;
     } else {
       this.sequenceStatus = 'invalid';
-      this.sequenceFeedback = 'SEQUENCE INCONNUE';
+      this.sequenceFeedback = 'UNKNOWN SEQUENCE';
       this.sequenceMatchedSkill = null;
     }
   }
@@ -243,7 +243,7 @@ export class InputManager {
     const matched = this.matchCombo(this.sequenceBuffer);
     if (!matched) {
       this.sequenceStatus = 'invalid';
-      this.sequenceFeedback = 'SEQUENCE INVALIDE';
+      this.sequenceFeedback = 'INVALID SEQUENCE';
       this.sequenceFeedbackTimer = 0.7;
       sounds.play('sequence_fail');
       return;
@@ -252,7 +252,7 @@ export class InputManager {
     const av = this.getSkillAvailability(matched.id);
     if (!av.unlocked) {
       this.sequenceStatus = 'invalid';
-      this.sequenceFeedback = `${matched.name} NON DEBLOQUE !`;
+      this.sequenceFeedback = `${matched.name} LOCKED!`;
       this.sequenceFeedbackTimer = 1.0;
       sounds.play('sequence_fail');
       return;
@@ -260,7 +260,7 @@ export class InputManager {
 
     if (av.cd > 0) {
       this.sequenceStatus = 'cooldown';
-      this.sequenceFeedback = `${matched.name} EN RECHARGE (${av.cd.toFixed(1)}s)`;
+      this.sequenceFeedback = `${matched.name} ON COOLDOWN (${av.cd.toFixed(1)}s)`;
       this.sequenceFeedbackTimer = 1.0;
       sounds.play('sequence_fail');
       return;
@@ -269,7 +269,7 @@ export class InputManager {
     // Skill is valid, unlocked, and ready: Execute ONCE!
     this.startSkillCooldown(matched.id, av.level);
     this.sequenceStatus = 'executed';
-    this.sequenceFeedback = `★ ${matched.name} ACTIVE ! ★`;
+    this.sequenceFeedback = `★ ${matched.name} ACTIVATED! ★`;
     this.sequenceFeedbackTimer = 1.2;
     sounds.play('sequence_success');
 

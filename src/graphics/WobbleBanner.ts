@@ -125,7 +125,7 @@ export class WobbleBannerManager {
     c.fillText(item.title, tickerX + 34, tickerY + 25);
     c.shadowBlur = 0;
 
-    // 5. Right side info tag (description or "DÉBLOQUÉ !")
+    // 5. Right-side info tag (description or "UNLOCKED!")
     c.textAlign = 'right';
     if (item.desc) {
       c.font = 'bold 8px monospace';
@@ -136,7 +136,7 @@ export class WobbleBannerManager {
     } else {
       c.font = 'bold 8px monospace';
       c.fillStyle = '#00ffcc';
-      c.fillText('DÉBLOQUÉ !', tickerX + tickerW - 10, tickerY + 19);
+      c.fillText('UNLOCKED!', tickerX + tickerW - 10, tickerY + 19);
     }
 
     // 6. Micro countdown timer bar at bottom edge of ticker
@@ -149,4 +149,3 @@ export class WobbleBannerManager {
 }
 
 export const wobbleBanner = new WobbleBannerManager();
-
