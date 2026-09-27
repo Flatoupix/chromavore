@@ -403,9 +403,9 @@ class Game {
 
         const totalW = Math.min(540, curCw - 24);
         const cardW = Math.floor((totalW - 14) / 2);
-        const cardH = 88;
+        const cardH = 76;
         const startX = curCw / 2 - totalW / 2;
-        const cardY = 300;
+        const cardY = 306;
         const arcX = startX;
         const custX = startX + cardW + 14;
 
@@ -414,7 +414,6 @@ class Game {
           if (profileManager.gameMode !== 'arcade') {
             profileManager.setGameMode('arcade');
             sounds.play('click');
-            particles.addPop(arcX + cardW / 2, cardY + cardH / 2, 'CHROMAVORE ARCADE SELECTED', '#00ffff', 14);
           } else {
             this.startGame();
             sounds.play('start');
@@ -427,7 +426,6 @@ class Game {
           if (profileManager.gameMode !== 'custom') {
             profileManager.setGameMode('custom');
             sounds.play('click');
-            particles.addPop(custX + cardW / 2, cardY + cardH / 2, 'CHROMAMANCER SELECTED', '#ff007f', 14);
           } else {
             this.startGame();
             sounds.play('start');
@@ -2372,8 +2370,17 @@ class Game {
   }
 
   private update(dt: number) {
-    this.time += dt;
     input.pollGamepad();
+
+    // The sequence clock uses wall time; no gameplay, effects, or HUD timers advance.
+    if (this.state === 'playing' && input.isSequenceMode) {
+      input.updateSequenceTimer();
+      this.syncTouchControls();
+      return;
+    }
+    if (this.state !== 'playing' && input.isSequenceMode) input.cancelChronoInput();
+
+    this.time += dt;
 
     // Smooth animated score
     if (this.dScore < this.score) {

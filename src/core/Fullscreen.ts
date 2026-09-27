@@ -7,8 +7,9 @@ export function setupFullscreen() {
   button.hidden = false;
   const sync = () => {
     const active = !!document.fullscreenElement;
-    button.textContent = active ? '⛶ EXIT FULLSCREEN' : '⛶ FULLSCREEN';
+    button.textContent = '⛶';
     button.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    button.title = active ? 'Exit fullscreen' : 'Enter fullscreen';
     button.setAttribute('aria-pressed', String(active));
     status.textContent = '';
   };

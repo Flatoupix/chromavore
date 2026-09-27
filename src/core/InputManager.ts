@@ -84,6 +84,9 @@ export class InputManager {
   public sequenceStatus: 'idle' | 'recording' | 'valid' | 'invalid' | 'cooldown' | 'executed' = 'idle';
   public sequenceFeedback: string = '';
   public sequenceFeedbackTimer: number = 0;
+  public readonly SEQUENCE_DURATION: number = 4;
+  public sequenceTimeLeft: number = 0;
+  private sequenceEndTime: number = 0;
   public sequenceMatchedSkill: string | null = null;
   public lastShiftPressTime: number = 0;
   public readonly DOUBLE_TAP_WINDOW_MS: number = 300;
@@ -114,16 +117,21 @@ export class InputManager {
     const isDoubleTap = this.lastShiftPressTime > 0 && (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
 
     if (isDoubleTap) {
-      // Enter sequence mode while holding Chrono bullet time!
+      // Give the player a short, real-time window while the world is frozen.
       this.isSequenceMode = true;
+      this.sequenceTimeLeft = this.SEQUENCE_DURATION;
+      this.sequenceEndTime = now + this.SEQUENCE_DURATION * 1000;
       this.sequenceBuffer = [];
       this.sequenceStatus = 'recording';
-      this.sequenceFeedback = 'SEQUENCE IN PROGRESS... (ARROWS / WASD)';
+      this.sequenceFeedback = 'ENTER 4 DIRECTIONS';
+      this.sequenceFeedbackTimer = 0;
       this.sequenceMatchedSkill = null;
       sounds.play('sequence_step', 0);
     } else {
       // Standard single-hold Chrono bullet time
       this.isSequenceMode = false;
+      this.sequenceTimeLeft = 0;
+      this.sequenceEndTime = 0;
       this.sequenceBuffer = [];
       this.sequenceStatus = 'idle';
       this.sequenceFeedback = '';
@@ -138,6 +146,8 @@ export class InputManager {
     if (this.isSequenceMode) {
       this.evaluateAndTriggerSequence();
       this.isSequenceMode = false;
+      this.sequenceTimeLeft = 0;
+      this.sequenceEndTime = 0;
     }
     this.heldDirections = [];
   }
@@ -146,6 +156,8 @@ export class InputManager {
     this.isChronoKeyHeld = false;
     this.lastShiftPressTime = 0;
     this.isSequenceMode = false;
+    this.sequenceTimeLeft = 0;
+    this.sequenceEndTime = 0;
     this.sequenceBuffer = [];
     this.sequenceStatus = 'idle';
     this.sequenceFeedback = '';
@@ -155,10 +167,30 @@ export class InputManager {
   }
 
   public addSequenceDirection(dirKey: string) {
-    if (this.sequenceBuffer.length >= 6) return;
+    if (this.sequenceBuffer.length >= 4) return;
     this.sequenceBuffer.push(dirKey);
     sounds.play('sequence_step', this.sequenceBuffer.length);
     this.updateSequencePreview();
+  }
+
+  public updateSequenceTimer() {
+    if (!this.isSequenceMode) return;
+    this.sequenceTimeLeft = Math.max(0, (this.sequenceEndTime - performance.now()) / 1000);
+    if (this.sequenceTimeLeft > 0) return;
+
+    this.evaluateAndTriggerSequence();
+    if (this.sequenceStatus === 'idle' || (this.sequenceStatus === 'invalid' && !this.sequenceMatchedSkill)) {
+      this.sequenceStatus = 'invalid';
+      this.sequenceFeedback = 'TIME UP';
+      this.sequenceFeedbackTimer = 0.9;
+      if (this.sequenceBuffer.length === 0) sounds.play('sequence_fail');
+    }
+    this.isSequenceMode = false;
+    this.sequenceEndTime = 0;
+    this.isChronoKeyHeld = false;
+    this.isChronoRequested = false;
+    this.lastShiftPressTime = 0;
+    this.heldDirections = [];
   }
 
   private matchCombo(seq: string[]): SkillComboDef | null {
@@ -351,12 +383,13 @@ export class InputManager {
 
       if (dir && !e.repeat) {
         if (this.isSequenceMode) {
-          // Record combo input while preserving normal movement during Chrono.
+          // Sequence directions never steer Chromavore when play resumes.
           this.addSequenceDirection(dirKey);
+        } else {
+          this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
+          this.heldDirections.push({ x: dir.x, y: dir.y, code: e.code });
+          this.setNextDir(dir.x, dir.y);
         }
-        this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
-        this.heldDirections.push({ x: dir.x, y: dir.y, code: e.code });
-        this.setNextDir(dir.x, dir.y);
       }
 
       // Backspace removes last sequence step
@@ -535,6 +568,8 @@ export class InputManager {
     this.heldShiftKeys.clear();
     this.heldDirections = [];
     this.isSequenceMode = false;
+    this.sequenceTimeLeft = 0;
+    this.sequenceEndTime = 0;
     this.sequenceBuffer = [];
     this.sequenceStatus = 'idle';
     this.sequenceFeedback = '';

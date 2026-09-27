@@ -358,14 +358,18 @@ export class Renderer {
     const isInvalid = input.sequenceStatus === 'invalid' || input.sequenceStatus === 'cooldown';
     const isValid = input.sequenceStatus === 'valid';
 
-    const panelW = Math.min(380, this.cw - 32);
-    const panelH = 58;
-    const panelX = this.cw / 2 - panelW / 2;
-    const panelY = 56;
+    if (input.isSequenceMode) {
+      c.fillStyle = 'rgba(3, 5, 14, 0.66)';
+      c.fillRect(0, HUD_H, this.cw, ROWS * T);
+    }
 
-    // Glowing cyber card
+    const panelW = Math.min(380, this.cw - 32);
+    const panelH = 112;
+    const panelX = this.cw / 2 - panelW / 2;
+    const panelY = HUD_H + (ROWS * T - panelH) / 2;
+
     const borderColor = isExec ? '#00ffaa' : (isInvalid ? '#ff0055' : (isValid ? '#ffd700' : '#00f0ff'));
-    c.fillStyle = 'rgba(10, 16, 30, 0.94)';
+    c.fillStyle = 'rgba(8, 12, 25, 0.98)';
     c.strokeStyle = borderColor;
     c.lineWidth = 1.8;
     c.shadowColor = borderColor;
@@ -376,23 +380,25 @@ export class Renderer {
     c.stroke();
     c.shadowBlur = 0;
 
-    // Title Header
-    c.font = 'bold 9px monospace';
+    c.font = 'bold 14px monospace';
     c.textAlign = 'center';
     c.fillStyle = borderColor;
-    const headerTitle = isExec
-      ? '★ SKILL ACTIVATED ★'
-      : (isInvalid
-        ? '✕ SEQUENCE CANCELLED / INVALID ✕'
-        : (isValid ? '▲ SEQUENCE READY: RELEASE SHIFT ▲' : '▲ SEQUENCE MODE [BULLET TIME] ▲'));
-    c.fillText(headerTitle, this.cw / 2, panelY + 14);
+    const headerTitle = isExec ? 'SKILL ACTIVATED' : (isValid ? 'SEQUENCE READY' : 'SEQUENCE');
+    c.fillText(headerTitle, this.cw / 2, panelY + 25);
+
+    if (input.isSequenceMode) {
+      c.font = 'bold 19px monospace';
+      c.fillStyle = '#ffffff';
+      c.textAlign = 'right';
+      c.fillText(Math.ceil(input.sequenceTimeLeft).toString(), panelX + panelW - 17, panelY + 26);
+    }
 
     // Sequence Slots
     const maxSlots = 4;
-    const slotW = 26, slotH = 20, slotGap = 8;
+    const slotW = 34, slotH = 30, slotGap = 10;
     const totalSlotsW = maxSlots * slotW + (maxSlots - 1) * slotGap;
     const startX = this.cw / 2 - totalSlotsW / 2;
-    const slotY = panelY + 20;
+    const slotY = panelY + 38;
 
     const arrowSymbols: Record<string, string> = {
       up: '▲',
@@ -414,10 +420,10 @@ export class Renderer {
       c.stroke();
 
       if (dirKey) {
-        c.font = 'bold 12px monospace';
+        c.font = 'bold 17px monospace';
         c.fillStyle = '#ffffff';
         c.textAlign = 'center';
-        c.fillText(arrowSymbols[dirKey] || dirKey, sx + slotW / 2, slotY + 14);
+        c.fillText(arrowSymbols[dirKey] || dirKey, sx + slotW / 2, slotY + 21);
       } else {
         c.fillStyle = 'rgba(255, 255, 255, 0.3)';
         c.beginPath();
@@ -426,11 +432,17 @@ export class Renderer {
       }
     }
 
-    // Feedback Subtitle
+    if (input.isSequenceMode) {
+      c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      c.fillRect(panelX + 18, panelY + 77, panelW - 36, 3);
+      c.fillStyle = borderColor;
+      c.fillRect(panelX + 18, panelY + 77, (panelW - 36) * input.sequenceTimeLeft / input.SEQUENCE_DURATION, 3);
+    }
+
     c.font = 'bold 8.5px monospace';
-    c.fillStyle = isInvalid ? '#ff7799' : (isValid ? '#ffd700' : '#88e5ff');
+    c.fillStyle = isExec ? '#00ffaa' : (isInvalid ? '#ff7799' : (isValid ? '#ffd700' : '#b9eaf3'));
     c.textAlign = 'center';
-    c.fillText(input.sequenceFeedback || 'Entrez les directions pour composer', this.cw / 2, panelY + 50);
+    c.fillText(input.sequenceFeedback || 'ENTER 4 DIRECTIONS', this.cw / 2, panelY + 99, panelW - 24);
 
     c.restore();
   }
@@ -1174,11 +1186,9 @@ export class Renderer {
     const isCustom = profileManager.gameMode === 'custom';
     const totalW = Math.min(540, this.cw - 24);
     const cardW = Math.floor((totalW - 14) / 2);
-    const cardH = 88;
+    const cardH = 76;
     const startX = this.cw / 2 - totalW / 2;
-    const cardY = 300;
-
-    const playPulse = 0.55 + 0.45 * Math.sin(time * 3.5);
+    const cardY = 306;
 
     // CHROMAVORE: score-focused arcade runs with kill-based unlocks.
     const arcX = startX;
@@ -1195,30 +1205,16 @@ export class Renderer {
     c.stroke();
 
     c.textAlign = 'center';
-    c.font = 'bold 14px monospace';
+    c.font = 'bold 15px monospace';
     c.fillStyle = arcActive ? '#ffffff' : '#d3e1ec';
-    c.fillText('CHROMAVORE', arcX + cardW / 2, cardY + 20);
+    c.fillText('CHROMAVORE', arcX + cardW / 2, cardY + 25);
 
-    c.font = 'bold 9px monospace';
+    c.font = 'bold 10px monospace';
     c.fillStyle = arcActive ? '#00ffff' : '#9fb5c5';
-    c.fillText('ARCADE  •  SCORE ATTACK', arcX + cardW / 2, cardY + 34);
+    c.fillText('ARCADE', arcX + cardW / 2, cardY + 45);
     c.font = '9px monospace';
-    c.fillStyle = arcActive ? '#e2f7ff' : '#c0cfda';
-    c.fillText('Unlock powers by reaching kill milestones.', arcX + cardW / 2, cardY + 48);
-    const arcBest = profileManager.profile.arcadeBestKills || 0;
-    const arcPts = (profileManager.profile.arcadeHiScore || 0).toLocaleString();
-    c.fillStyle = arcActive ? '#b3cbd8' : '#aabac6';
-    c.fillText(arcBest > 0 ? `BEST  ${arcBest} KILLS  •  ${arcPts} PTS` : 'NO ACCOUNT XP OR SKILL POINTS', arcX + cardW / 2, cardY + 63);
-
-    if (arcActive) {
-      c.font = 'bold 9px monospace';
-      c.fillStyle = `rgba(0, 255, 255, ${playPulse})`;
-      c.fillText('▶ [SPACE] / CLICK TO PLAY ◀', arcX + cardW / 2, cardY + 81);
-    } else {
-      c.font = '9px monospace';
-      c.fillStyle = '#c0cfda';
-      c.fillText('CLICK TO SELECT', arcX + cardW / 2, cardY + 81);
-    }
+    c.fillStyle = arcActive ? '#d9f8ff' : '#b8c9d2';
+    c.fillText('KILL UNLOCKS', arcX + cardW / 2, cardY + 63);
     c.restore();
 
     // CHROMAMANCER: persistent XP, skill points, and player-built loadouts.
@@ -1236,31 +1232,22 @@ export class Renderer {
     c.stroke();
 
     c.textAlign = 'center';
-    c.font = 'bold 14px monospace';
+    c.font = 'bold 15px monospace';
     c.fillStyle = custActive ? '#ffffff' : '#d3e1ec';
-    c.fillText('CHROMAMANCER', custX + cardW / 2, cardY + 20);
+    c.fillText('CHROMAMANCER', custX + cardW / 2, cardY + 25);
 
-    c.font = 'bold 9px monospace';
+    c.font = 'bold 10px monospace';
     c.fillStyle = custActive ? '#ff00a0' : '#c08aa7';
-    c.fillText('ROGUELITE  •  PERSISTENT PROGRESSION', custX + cardW / 2, cardY + 34);
+    c.fillText('ROGUELITE', custX + cardW / 2, cardY + 45);
     c.font = '9px monospace';
     c.fillStyle = custActive ? '#ffd0e8' : '#d0bdca';
-    c.fillText('Earn XP, gain Skill Points, shape your build.', custX + cardW / 2, cardY + 48);
-    const custBest = profileManager.profile.customBestKills || 0;
-    const custPts = (profileManager.profile.customHiScore || 0).toLocaleString();
-    c.fillStyle = custActive ? '#d4bac9' : '#b9a9b7';
-    c.fillText(custBest > 0 ? `BEST  ${custBest} KILLS  •  ${custPts} PTS` : 'PERSISTENT XP & SKILL TREE', custX + cardW / 2, cardY + 63);
-
-    if (custActive) {
-      c.font = 'bold 9px monospace';
-      c.fillStyle = `rgba(255, 0, 127, ${playPulse})`;
-      c.fillText('▶ [SPACE] / CLICK TO PLAY ◀', custX + cardW / 2, cardY + 81);
-    } else {
-      c.font = '9px monospace';
-      c.fillStyle = '#d0bdca';
-      c.fillText('CLICK TO SELECT', custX + cardW / 2, cardY + 81);
-    }
+    c.fillText('XP  •  SKILL TREE', custX + cardW / 2, cardY + 63);
     c.restore();
+
+    c.font = 'bold 10px monospace';
+    c.fillStyle = this.chromaTier === 0 ? '#c0c0c0' : '#a9bdcc';
+    c.textAlign = 'center';
+    c.fillText('SPACE TO PLAY', this.cw / 2, 410);
 
     // CRT Scanlines
     if (settingsManager.settings.crtScanlines) {
@@ -1279,7 +1266,6 @@ export class Renderer {
     // Navigation links unlocked progressively
     const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
     const unlockedBadges = badges.getUnlockedCount();
-    const totalBadges = badges.getTotalCount();
 
     interface MenuLinkItem {
       id: string;
@@ -1287,23 +1273,23 @@ export class Renderer {
     }
 
     const availableLinks: MenuLinkItem[] = [
-      { id: 'help', label: '[I] HOW TO PLAY' },
+      { id: 'help', label: 'HOW TO PLAY' },
     ];
 
     // ARSENAL appears only if at least one skill or kill is achieved
     if (unlockedCount > 0 || progression.totalGhosts > 0) {
-      availableLinks.push({ id: 'arsenal', label: `[C] ARSENAL (${unlockedCount}/${SKILL_TREE.length})` });
+      availableLinks.push({ id: 'arsenal', label: 'ARSENAL' });
     }
 
-    availableLinks.push({ id: 'settings', label: '[O] SETTINGS' });
+    availableLinks.push({ id: 'settings', label: 'SETTINGS' });
 
     // BADGES appears only if at least one badge is unlocked
     if (unlockedBadges > 0) {
-      availableLinks.push({ id: 'badges', label: `[B] BADGES (${unlockedBadges}/${totalBadges})` });
+      availableLinks.push({ id: 'badges', label: 'BADGES' });
     }
 
-    availableLinks.push({ id: 'scores', label: '[L] LEADERBOARD' });
-    availableLinks.push({ id: 'sync', label: '[K] SYNC' });
+    availableLinks.push({ id: 'scores', label: 'SCORES' });
+    availableLinks.push({ id: 'sync', label: 'SYNC' });
 
     this.menuLinks = [];
     c.font = 'bold 11px monospace';
@@ -1406,8 +1392,8 @@ export class Renderer {
     ]);
 
     // Card 2: explain the Shift sequence input clearly.
-    this.drawInstructionCard(c, cardX, 180, cardW, 90, '#ffd700', 'SHIFT SEQUENCES • MOVE WHILE CHRONO IS ACTIVE', [
-      { badge: 'DOUBLE-TAP SHIFT', badgeW: 132, desc: 'Enter a direction sequence, then release Shift to activate it. You can keep moving.' },
+    this.drawInstructionCard(c, cardX, 180, cardW, 90, '#ffd700', 'SHIFT SEQUENCES • 4-SECOND FREEZE', [
+      { badge: 'DOUBLE-TAP SHIFT', badgeW: 132, desc: 'The world freezes. Enter four directions; release Shift or wait for the countdown.' },
       { badge: '← → ← → / ↑ ↓ ↑ ↓', badgeW: 132, desc: 'Wiggle EMP / Nitro Jet (when unlocked).' }
     ]);
 
