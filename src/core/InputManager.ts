@@ -87,6 +87,7 @@ export class InputManager {
   public sequenceMatchedSkill: string | null = null;
   public lastShiftPressTime: number = 0;
   public readonly DOUBLE_TAP_WINDOW_MS: number = 300;
+  private heldShiftKeys = new Set<string>();
 
   // External execution callback wired to main.ts
   public onSkillExecuted?: (skillId: string, lvl: number) => void;
@@ -110,7 +111,7 @@ export class InputManager {
 
   public handleChronoDown() {
     const now = performance.now();
-    const isDoubleTap = (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
+    const isDoubleTap = this.lastShiftPressTime > 0 && (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
 
     if (isDoubleTap) {
       // Enter sequence mode while holding Chrono bullet time!
@@ -139,6 +140,18 @@ export class InputManager {
       this.isSequenceMode = false;
     }
     this.heldDirections = [];
+  }
+
+  public cancelChronoInput() {
+    this.isChronoKeyHeld = false;
+    this.lastShiftPressTime = 0;
+    this.isSequenceMode = false;
+    this.sequenceBuffer = [];
+    this.sequenceStatus = 'idle';
+    this.sequenceFeedback = '';
+    this.sequenceFeedbackTimer = 0;
+    this.heldDirections = [];
+    this.heldShiftKeys.clear();
   }
 
   public addSequenceDirection(dirKey: string) {
@@ -297,6 +310,7 @@ export class InputManager {
   }
 
   private setupKeyboard() {
+    window.addEventListener('blur', () => this.cancelChronoInput());
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       this.keys[e.code] = true;
 
@@ -304,8 +318,11 @@ export class InputManager {
 
       // Bullet Time (Chrono-Shift) & Sequence Mode on Shift
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        if (!e.repeat) {
-          this.handleChronoDown();
+        if (!e.repeat && !this.heldShiftKeys.has(e.code)) {
+          this.heldShiftKeys.add(e.code);
+          if (this.heldShiftKeys.size === 1) {
+            this.handleChronoDown();
+          }
         }
         e.preventDefault();
         return;
@@ -334,14 +351,12 @@ export class InputManager {
 
       if (dir && !e.repeat) {
         if (this.isSequenceMode) {
-          // In sequence mode, directional input composes combo string instead of moving player!
+          // Record combo input while preserving normal movement during Chrono.
           this.addSequenceDirection(dirKey);
-          return;
-        } else {
-          this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
-          this.heldDirections.push({ x: dir.x, y: dir.y, code: e.code });
-          this.setNextDir(dir.x, dir.y);
         }
+        this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
+        this.heldDirections.push({ x: dir.x, y: dir.y, code: e.code });
+        this.setNextDir(dir.x, dir.y);
       }
 
       // Backspace removes last sequence step
@@ -350,6 +365,15 @@ export class InputManager {
           this.sequenceBuffer.pop();
           sounds.play('sequence_step', this.sequenceBuffer.length);
           this.updateSequencePreview();
+        }
+        e.preventDefault();
+        return;
+      }
+
+      if (this.isSequenceMode) {
+        if (e.code === 'KeyP' || e.code === 'Escape') {
+          this.cancelChronoInput();
+          this.isPauseRequested = e.code === 'KeyP';
         }
         e.preventDefault();
         return;
@@ -365,14 +389,7 @@ export class InputManager {
         this.isStartRequested = true;
       }
       if (e.code === 'KeyP' || e.code === 'Escape') {
-        if (this.isSequenceMode) {
-          this.isSequenceMode = false;
-          this.sequenceBuffer = [];
-          this.sequenceStatus = 'idle';
-          this.sequenceFeedback = '';
-        } else {
-          this.isPauseRequested = true;
-        }
+        this.isPauseRequested = true;
       }
       if (k === 'm' || e.code === 'KeyM') {
         this.isAudioToggleRequested = true;
@@ -406,7 +423,8 @@ export class InputManager {
     window.addEventListener('keyup', (e: KeyboardEvent) => {
       this.keys[e.code] = false;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        this.handleChronoUp();
+        this.heldShiftKeys.delete(e.code);
+        if (this.heldShiftKeys.size === 0) this.handleChronoUp();
         return;
       }
       this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
@@ -512,6 +530,10 @@ export class InputManager {
     this.bastionCd = 0;
     this.bastionActive = 0;
     this.singularityNovaCd = 0;
+    this.isChronoKeyHeld = false;
+    this.lastShiftPressTime = 0;
+    this.heldShiftKeys.clear();
+    this.heldDirections = [];
     this.isSequenceMode = false;
     this.sequenceBuffer = [];
     this.sequenceStatus = 'idle';

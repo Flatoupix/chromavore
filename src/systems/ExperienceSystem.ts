@@ -125,10 +125,8 @@ class ExperienceSystem {
   public isUltimateRevealed(skillId: string): boolean {
     const node = SKILL_NODES.find(n => n.id === skillId);
     if (!node || !node.isUltimate) return true;
-    const branchNodes = SKILL_NODES.filter(n => n.branch === node.branch && n.id !== node.id);
-    const branchPointsSpent = branchNodes.reduce((acc, n) => acc + (this.getSkillRank(n.id) * n.costPerRank), 0);
-    const prereqRank = node.reqSkillId ? this.getSkillRank(node.reqSkillId) : 0;
-    return prereqRank >= 1 || branchPointsSpent >= 10;
+    const coreNodes = SKILL_NODES.filter(n => !n.isUltimate);
+    return coreNodes.every(coreNode => this.getSkillRank(coreNode.id) >= coreNode.maxRank);
   }
 
   public canUpgradeSkill(skillId: string): { can: boolean; reason?: string } {
@@ -136,7 +134,7 @@ class ExperienceSystem {
     if (!node) return { can: false, reason: 'Compétence inconnue' };
 
     if (node.isUltimate && !this.isUltimateRevealed(skillId)) {
-      return { can: false, reason: 'Ultime secret (10 SP requis dans la branche)' };
+      return { can: false, reason: 'Ultime secret : complétez toutes les compétences de l’arbre' };
     }
 
     const currentRank = this.getSkillRank(skillId);

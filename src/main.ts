@@ -2503,7 +2503,7 @@ class Game {
     }
 
     if (input.isRestartRequested) {
-      if (this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'ready') {
+      if (this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'ready' || this.state === 'gameover') {
         this.startGame();
         sounds.play('start');
       }

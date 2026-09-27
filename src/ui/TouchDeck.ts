@@ -95,6 +95,7 @@ export class TouchDeckManager {
       chronoBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        chronoBtn.setPointerCapture(e.pointerId);
         input.handleChronoDown();
         input.isChronoRequested = true;
         chronoBtn.classList.add('active-chrono');
@@ -106,8 +107,12 @@ export class TouchDeckManager {
         chronoBtn.classList.remove('active-chrono');
       };
       chronoBtn.addEventListener('pointerup', releaseChrono);
-      chronoBtn.addEventListener('pointercancel', releaseChrono);
-      chronoBtn.addEventListener('pointerleave', releaseChrono);
+      chronoBtn.addEventListener('pointercancel', (e) => {
+        e.preventDefault();
+        input.cancelChronoInput();
+        input.isChronoRequested = false;
+        chronoBtn.classList.remove('active-chrono');
+      });
     }
 
     bindBtn('btn-pause', () => { input.isPauseRequested = true; });

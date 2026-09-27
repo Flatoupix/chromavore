@@ -170,8 +170,8 @@ export const SKILL_NODES: SkillNode[] = [
     isUltimate: true,
     comboSequence: ['down', 'down', 'up', 'up'],
     comboHint: '[DOUBLE-SHIFT] + [↓ ↓ ↑ ↑]',
-    desc: 'ULTIME DE CONTRÔLE : Dôme cinétique de 6s. Convertit tout impact mortel en onde de choc répulsive au coût de 25% Chrono au lieu d\'une vie.',
-    tradeoffDesc: 'Délai de 26s. Rang 2 : Durée 8s, repousse et gèle tous les attaquants dans un rayon de 5 cases.'
+    desc: 'ULTIME DE CONTRÔLE : Dôme cinétique de 6s. Chaque impact consume 1.5s de dôme, coûte 25 points de Chrono et déclenche une contre-onde qui élimine les fantômes proches.',
+    tradeoffDesc: 'Délai de 26s. Rang 2 : Durée 8s et contre-onde étendue à 5 cases.'
   },
 
   // ─── BRANCHE CARNAGE ───

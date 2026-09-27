@@ -2241,7 +2241,7 @@ export class Renderer {
       c.font = '7.5px monospace';
       c.fillStyle = '#aa7788';
       c.fillText('Technologie secrète verrouillée.', x + 8, y + 28);
-      c.fillText('Dépensez 10 SP dans cette branche', x + 8, y + 40);
+      c.fillText('Complétez les compétences de l’arbre', x + 8, y + 40);
       c.fillText('pour décrypter cet ultime.', x + 8, y + 52);
 
       c.restore();
