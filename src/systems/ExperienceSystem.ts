@@ -14,156 +14,9 @@ export interface LevelUpEvent {
   surgeActive: boolean;
 }
 
-export interface SkillNode {
-  id: string;
-  branch: 'agility' | 'control' | 'carnage';
-  name: string;
-  icon: string;
-  maxRank: number;
-  costPerRank: number;
-  reqSkillId?: string;
-  reqAccountLevel?: number;
-  desc: string;
-}
-
-export const SKILL_TREE_BRANCHES: Record<string, { name: string; color: string; desc: string }> = {
-  agility: {
-    name: 'VITESSE & AGILITÉ',
-    color: '#00ffff',
-    desc: 'Maîtrise spatiale, cooldowns réduits, intangibilité et dashs multiples'
-  },
-  control: {
-    name: 'CONTRÔLE & TEMPO',
-    color: '#d946ef',
-    desc: 'Domination temporelle, impulsions EMP, freeze prolongé et aspiration magnétique'
-  },
-  carnage: {
-    name: 'PUISSANCE & CARNAGE',
-    color: '#ff0055',
-    desc: 'Durée et résonance des pastilles, brise-Titans et fenêtres de multiplicateurs'
-  }
-};
-
-export const SKILL_NODES: SkillNode[] = [
-  // ─── BRANCHE AGILITÉ ───
-  {
-    id: 'dash_reflex',
-    branch: 'agility',
-    name: 'REFLEX SURGE',
-    icon: 'dash',
-    maxRank: 5,
-    costPerRank: 1,
-    desc: 'Réduit le cooldown du Dash de 12% par rang (jusqu\'à -60%).'
-  },
-  {
-    id: 'multi_dash',
-    branch: 'agility',
-    name: 'MULTI-DASH CHARGES',
-    icon: 'overdrive',
-    maxRank: 3,
-    costPerRank: 2,
-    reqSkillId: 'dash_reflex',
-    desc: 'Confère +1 charge de Dash consécutive par rang.'
-  },
-  {
-    id: 'hyper_nitro',
-    branch: 'agility',
-    name: 'HYPER NITRO',
-    icon: 'nitro',
-    maxRank: 4,
-    costPerRank: 1,
-    desc: 'Accroît la vitesse de pointe du Nitro (+8%/rang) et réduit son cooldown.'
-  },
-  {
-    id: 'phase_shift',
-    branch: 'agility',
-    name: 'PHASE TRANSCENDENCE',
-    icon: 'phase',
-    maxRank: 3,
-    costPerRank: 2,
-    reqSkillId: 'multi_dash',
-    desc: 'Intangibilité de 0.3s (+0.15s/rang) après chaque Dash permettant d\'esquiver les spectres.'
-  },
-
-  // ─── BRANCHE CONTRÔLE ───
-  {
-    id: 'chrono_tank',
-    branch: 'control',
-    name: 'CHRONO TANK',
-    icon: 'chrono',
-    maxRank: 5,
-    costPerRank: 1,
-    desc: 'Augmente le réservoir de Bullet-Time de +20% et accélère sa régénération.'
-  },
-  {
-    id: 'emp_overcharge',
-    branch: 'control',
-    name: 'EMP OVERCHARGE',
-    icon: 'wiggle',
-    maxRank: 4,
-    costPerRank: 1,
-    desc: 'Étend le rayon de l\'onde de choc Wiggle EMP (+25%/rang) et réduit son délai de recharge.'
-  },
-  {
-    id: 'deep_freeze',
-    branch: 'control',
-    name: 'DEEP FROST STUN',
-    icon: 'freeze',
-    maxRank: 3,
-    costPerRank: 2,
-    reqSkillId: 'emp_overcharge',
-    desc: 'Prolonge la durée d\'étourdissement des fantômes affectés par l\'EMP (+1.0s/rang).'
-  },
-  {
-    id: 'magnetic_core',
-    branch: 'control',
-    name: 'MAGNETIC SINGULARITY',
-    icon: 'magnet',
-    maxRank: 3,
-    costPerRank: 2,
-    desc: 'Aspire passivement les pastilles proches dans un rayon de 1 à 3 cases.'
-  },
-
-  // ─── BRANCHE CARNAGE ───
-  {
-    id: 'pellet_resonance',
-    branch: 'carnage',
-    name: 'PELLET RESONANCE',
-    icon: 'super_pellet',
-    maxRank: 5,
-    costPerRank: 1,
-    desc: 'Allonge la durée de vulnérabilité des spectres (+1.2s par rang).'
-  },
-  {
-    id: 'titan_breaker',
-    branch: 'carnage',
-    name: 'TITAN BREAKER',
-    icon: 'titan',
-    maxRank: 3,
-    costPerRank: 2,
-    reqSkillId: 'pellet_resonance',
-    desc: 'Ralentit les Titans de 15%/rang et permet de les percuter avec le Dash en leur infligeant des dégâts massifs.'
-  },
-  {
-    id: 'super_frequency',
-    branch: 'carnage',
-    name: 'COSMIC DROPS',
-    icon: 'nova',
-    maxRank: 4,
-    costPerRank: 1,
-    desc: 'Augmente la fréquence d\'apparition des capsules Super-Items de +25%/rang.'
-  },
-  {
-    id: 'singularity_mastery',
-    branch: 'carnage',
-    name: 'VOID TRANSCENDENCE',
-    icon: 'black_hole',
-    maxRank: 3,
-    costPerRank: 3,
-    reqSkillId: 'titan_breaker',
-    desc: 'Élargit la fenêtre de maintien du multiplicateur de Combo (+0.3s/rang) et active l\'aura cosmique au niveau 100.'
-  }
-];
+export type { SkillNode } from '../config/skillTree';
+export { SKILL_TREE_BRANCHES, SKILL_NODES } from '../config/skillTree';
+import { SKILL_NODES } from '../config/skillTree';
 
 class ExperienceSystem {
   public consecutiveLevelUpsInLife: number = 0;
@@ -193,6 +46,10 @@ class ExperienceSystem {
     return profileManager.profile.skillPoints || 0;
   }
 
+  public getSkillRank(skillId: string): number {
+    return profileManager.profile.skillUpgrades?.[skillId] || 0;
+  }
+
   public onPlayerDeath() {
     this.consecutiveLevelUpsInLife = 0;
   }
@@ -204,6 +61,8 @@ class ExperienceSystem {
   }
 
   public addXp(baseAmount: number, reason: string = ''): LevelUpEvent | null {
+    // Mode Arcade: No XP progression, purely score and intra-game kills!
+    if (profileManager.gameMode !== 'custom') return null;
     if (this.accountLevel >= 100) return null;
 
     // Apply 2x surge multiplier if leveled up consecutively in current life
@@ -250,7 +109,7 @@ class ExperienceSystem {
       const surgeLabel = isSurge ? ` (★ 2x XP SURGE STREAK x${this.consecutiveLevelUpsInLife}!)` : '';
       wobbleBanner.show(
         '▲ LEVEL UP ! ▲',
-        `ACCOUNT LEVEL ${newLevel}${surgeLabel}`,
+        `LEVEL ${newLevel}${surgeLabel}`,
         `+${pointsAwarded} SKILL POINT(S) & +1 LIFE RECOVERED !`,
         'powerup',
         isSurge ? '#ffd700' : '#00f0ff',
@@ -263,13 +122,22 @@ class ExperienceSystem {
     return null;
   }
 
-  public getSkillRank(skillId: string): number {
-    return profileManager.profile.skillUpgrades?.[skillId] || 0;
+  public isUltimateRevealed(skillId: string): boolean {
+    const node = SKILL_NODES.find(n => n.id === skillId);
+    if (!node || !node.isUltimate) return true;
+    const branchNodes = SKILL_NODES.filter(n => n.branch === node.branch && n.id !== node.id);
+    const branchPointsSpent = branchNodes.reduce((acc, n) => acc + (this.getSkillRank(n.id) * n.costPerRank), 0);
+    const prereqRank = node.reqSkillId ? this.getSkillRank(node.reqSkillId) : 0;
+    return prereqRank >= 1 || branchPointsSpent >= 10;
   }
 
   public canUpgradeSkill(skillId: string): { can: boolean; reason?: string } {
     const node = SKILL_NODES.find(n => n.id === skillId);
     if (!node) return { can: false, reason: 'Compétence inconnue' };
+
+    if (node.isUltimate && !this.isUltimateRevealed(skillId)) {
+      return { can: false, reason: 'Ultime secret (10 SP requis dans la branche)' };
+    }
 
     const currentRank = this.getSkillRank(skillId);
     if (currentRank >= node.maxRank) return { can: false, reason: 'Rang maximal atteint' };
@@ -287,7 +155,7 @@ class ExperienceSystem {
     }
 
     if (node.reqAccountLevel && this.accountLevel < node.reqAccountLevel) {
-      return { can: false, reason: `Niveau de compte ${node.reqAccountLevel} requis` };
+      return { can: false, reason: `Niveau ${node.reqAccountLevel} requis` };
     }
 
     return { can: true };
@@ -333,16 +201,29 @@ class ExperienceSystem {
   }
 
   public getNitroSpeedBonus(): number {
-    return this.getSkillRank('hyper_nitro') * 0.08; // up to +32% speed
+    return this.getSkillRank('hyper_nitro') * 0.10; // up to +40% speed
+  }
+
+  public getNitroTrailBonus(): number {
+    return this.getSkillRank('hyper_nitro') * 0.5; // up to +2.0s trail life
   }
 
   public getPhaseIntangibilityDuration(): number {
     const rank = this.getSkillRank('phase_shift');
-    return rank > 0 ? 0.3 + (rank - 1) * 0.15 : 0;
+    return rank > 0 ? 0.35 + (rank - 1) * 0.18 : 0;
+  }
+
+  public getQuantumLaserRank(): number {
+    return this.getSkillRank('quantum_laser');
   }
 
   public getChronoTankMultiplier(): number {
     return 1 + this.getSkillRank('chrono_tank') * 0.20; // up to +100% capacity
+  }
+
+  public getChronoDilationBonus(): number {
+    const rank = this.getSkillRank('chrono_tank');
+    return rank >= 4 ? 0.05 : 0; // extra slowdown for master ranks
   }
 
   public getEmpRadiusMultiplier(): number {
@@ -350,15 +231,34 @@ class ExperienceSystem {
   }
 
   public getFreezeDurationBonus(): number {
-    return this.getSkillRank('deep_freeze') * 1.0; // up to +3.0s stun
+    return this.getSkillRank('deep_freeze') * 1.2; // up to +3.6s stun
+  }
+
+  public getVectorSurgeMaxCran(): number {
+    return this.getSkillRank('vector_surge'); // 0 to 4 crans
   }
 
   public getMagneticRadius(): number {
-    return this.getSkillRank('magnetic_core'); // 0 to 3 tiles
+    const rank = this.getSkillRank('magnetic_core');
+    if (rank === 0) return 0;
+    return 1.8 + (rank - 1) * 1.2; // 1.8, 3.0, 4.2 tiles
+  }
+
+  public getAegisShieldsCount(): number {
+    return this.getSkillRank('aegis_shield'); // 0 to 3 shields
+  }
+
+  public getKineticBastionRank(): number {
+    return this.getSkillRank('kinetic_bastion');
   }
 
   public getPelletDurationBonus(): number {
-    return this.getSkillRank('pellet_resonance') * 1.2; // up to +6.0s
+    return this.getSkillRank('pellet_resonance') * 1.4; // up to +7.0s
+  }
+
+  public getGhostKillScoreMultiplier(): number {
+    const rank = this.getSkillRank('pellet_resonance');
+    return rank >= 4 ? 1.0 + (rank - 3) * 0.25 : 1.0;
   }
 
   public getTitanBreakerRank(): number {
@@ -370,7 +270,15 @@ class ExperienceSystem {
   }
 
   public getComboGraceBonus(): number {
-    return this.getSkillRank('singularity_mastery') * 0.3; // up to +0.9s combo hold
+    return this.getSkillRank('singularity_mastery') * 0.4; // up to +1.2s combo hold
+  }
+
+  public getSingularityKillReduction(): number {
+    return this.getSkillRank('singularity_mastery') * 12; // up to -36 kills (threshold 164)
+  }
+
+  public getSingularityNovaRank(): number {
+    return this.getSkillRank('singularity_nova');
   }
 }
 

@@ -1,16 +1,63 @@
 // ═══════════════════════════════════════════════════════════════
-//  CHROMAVORE — INPUT & MOTION KOMBOS MANAGER
+//  CHROMAVORE — INPUT & SHIFT SEQUENCE KOMBOS MANAGER
 // ═══════════════════════════════════════════════════════════════
 
 import { particles } from '../systems/ParticleSystem';
 import { progression } from '../systems/ProgressionSystem';
 import { experienceSystem } from '../systems/ExperienceSystem';
+import { sounds } from '../audio/SoundManager';
 import { BASE_NITRO_CD, BASE_WIGGLE_CD } from '../config/constants';
 
 export interface MotionRecord {
   dir: string;
   time: number;
 }
+
+export interface SkillComboDef {
+  id: string;
+  name: string;
+  sequence: string[];
+  altSequence?: string[];
+  baseCd: number;
+}
+
+export const SKILL_COMBOS: SkillComboDef[] = [
+  {
+    id: 'wiggle',
+    name: 'WIGGLE EMP SHOCKWAVE',
+    sequence: ['left', 'right', 'left', 'right'],
+    altSequence: ['right', 'left', 'right', 'left'],
+    baseCd: BASE_WIGGLE_CD,
+  },
+  {
+    id: 'nitro',
+    name: 'NITRO FLAME JET',
+    sequence: ['up', 'down', 'up', 'down'],
+    altSequence: ['down', 'up', 'down', 'up'],
+    baseCd: BASE_NITRO_CD,
+  },
+  {
+    id: 'quantum_laser',
+    name: 'QUANTUM LASER MATRIX',
+    sequence: ['right', 'down', 'right', 'down'],
+    altSequence: ['left', 'up', 'right', 'down'],
+    baseCd: 24.0,
+  },
+  {
+    id: 'kinetic_bastion',
+    name: 'KINETIC BASTION SHIELD',
+    sequence: ['down', 'down', 'up', 'up'],
+    altSequence: ['down', 'left', 'down', 'right'],
+    baseCd: 26.0,
+  },
+  {
+    id: 'singularity_nova',
+    name: 'VOID NOVA TRANSCENDENCE',
+    sequence: ['up', 'right', 'down', 'left'],
+    altSequence: ['up', 'up', 'down', 'down'],
+    baseCd: 40.0,
+  }
+];
 
 export class InputManager {
   public keys: Record<string, boolean> = {};
@@ -31,17 +78,223 @@ export class InputManager {
   public isSettingsRequested: boolean = false;
   public isNovaRequested: boolean = false;
 
+  // ─── Shift Double-Tap Sequence Mode ───
+  public isSequenceMode: boolean = false;
+  public sequenceBuffer: string[] = [];
+  public sequenceStatus: 'idle' | 'recording' | 'valid' | 'invalid' | 'cooldown' | 'executed' = 'idle';
+  public sequenceFeedback: string = '';
+  public sequenceFeedbackTimer: number = 0;
+  public sequenceMatchedSkill: string | null = null;
+  public lastShiftPressTime: number = 0;
+  public readonly DOUBLE_TAP_WINDOW_MS: number = 300;
+
+  // External execution callback wired to main.ts
+  public onSkillExecuted?: (skillId: string, lvl: number) => void;
+
+  // ─── Motion & Cooldown State ───
   public motionHistory: MotionRecord[] = [];
   public wiggleCd: number = 0;
   public nitroCd: number = 0;
   public nitroActive: number = 0;
   public nitroTrail: { x: number; y: number; life: number; maxLife: number }[] = [];
+  public laserCd: number = 0;
+  public bastionCd: number = 0;
+  public bastionActive: number = 0;
+  public singularityNovaCd: number = 0;
+
+  public heldDirections: { x: number; y: number; code: string }[] = [];
 
   constructor() {
     this.setupKeyboard();
   }
 
-  public heldDirections: { x: number; y: number; code: string }[] = [];
+  public handleChronoDown() {
+    const now = performance.now();
+    const isDoubleTap = (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
+
+    if (isDoubleTap) {
+      // Enter sequence mode while holding Chrono bullet time!
+      this.isSequenceMode = true;
+      this.sequenceBuffer = [];
+      this.sequenceStatus = 'recording';
+      this.sequenceFeedback = 'SEQUENCE EN COURS... (ZQSD / FLECHES)';
+      this.sequenceMatchedSkill = null;
+      sounds.play('sequence_step', 0);
+    } else {
+      // Standard single-hold Chrono bullet time
+      this.isSequenceMode = false;
+      this.sequenceBuffer = [];
+      this.sequenceStatus = 'idle';
+      this.sequenceFeedback = '';
+    }
+
+    this.lastShiftPressTime = now;
+    this.isChronoKeyHeld = true;
+  }
+
+  public handleChronoUp() {
+    this.isChronoKeyHeld = false;
+    if (this.isSequenceMode) {
+      this.evaluateAndTriggerSequence();
+      this.isSequenceMode = false;
+    }
+    this.heldDirections = [];
+  }
+
+  public addSequenceDirection(dirKey: string) {
+    if (this.sequenceBuffer.length >= 6) return;
+    this.sequenceBuffer.push(dirKey);
+    sounds.play('sequence_step', this.sequenceBuffer.length);
+    this.updateSequencePreview();
+  }
+
+  private matchCombo(seq: string[]): SkillComboDef | null {
+    const seqStr = seq.join('-');
+    for (const combo of SKILL_COMBOS) {
+      if (combo.sequence.join('-') === seqStr || (combo.altSequence && combo.altSequence.join('-') === seqStr)) {
+        return combo;
+      }
+    }
+    return null;
+  }
+
+  public getSkillAvailability(skillId: string): { unlocked: boolean; cd: number; level: number } {
+    switch (skillId) {
+      case 'wiggle': {
+        const lvl = Math.max(progression.getSkillLevel('wiggle'), experienceSystem.getSkillRank('emp_overcharge') > 0 ? 1 : 0);
+        return { unlocked: lvl >= 1, cd: this.wiggleCd, level: lvl };
+      }
+      case 'nitro': {
+        const lvl = Math.max(progression.getSkillLevel('nitro'), experienceSystem.getSkillRank('hyper_nitro') > 0 ? 1 : 0);
+        return { unlocked: lvl >= 1, cd: this.nitroCd, level: lvl };
+      }
+      case 'quantum_laser': {
+        const lvl = experienceSystem.getSkillRank('quantum_laser');
+        return { unlocked: lvl >= 1, cd: this.laserCd, level: lvl };
+      }
+      case 'kinetic_bastion': {
+        const lvl = experienceSystem.getSkillRank('kinetic_bastion');
+        return { unlocked: lvl >= 1, cd: this.bastionCd, level: lvl };
+      }
+      case 'singularity_nova': {
+        const lvl = experienceSystem.getSkillRank('singularity_nova');
+        return { unlocked: lvl >= 1, cd: this.singularityNovaCd, level: lvl };
+      }
+      default:
+        return { unlocked: false, cd: 0, level: 0 };
+    }
+  }
+
+  public updateSequencePreview() {
+    const matched = this.matchCombo(this.sequenceBuffer);
+    if (matched) {
+      this.sequenceMatchedSkill = matched.id;
+      const av = this.getSkillAvailability(matched.id);
+      if (!av.unlocked) {
+        this.sequenceStatus = 'invalid';
+        this.sequenceFeedback = `${matched.name} (VERROUILLE DANS CODEX)`;
+      } else if (av.cd > 0) {
+        this.sequenceStatus = 'cooldown';
+        this.sequenceFeedback = `${matched.name} EN RECHARGE (${av.cd.toFixed(1)}s)`;
+      } else {
+        this.sequenceStatus = 'valid';
+        this.sequenceFeedback = `PRET : ${matched.name} [RELACHEZ SHIFT]`;
+      }
+      return;
+    }
+
+    // Check if current buffer is a prefix of any combo
+    const curStr = this.sequenceBuffer.join('-');
+    const isPrefix = SKILL_COMBOS.some(c =>
+      c.sequence.join('-').startsWith(curStr) || (c.altSequence && c.altSequence.join('-').startsWith(curStr))
+    );
+
+    if (isPrefix) {
+      this.sequenceStatus = 'recording';
+      this.sequenceFeedback = 'SAISIE DE SEQUENCE...';
+      this.sequenceMatchedSkill = null;
+    } else {
+      this.sequenceStatus = 'invalid';
+      this.sequenceFeedback = 'SEQUENCE INCONNUE';
+      this.sequenceMatchedSkill = null;
+    }
+  }
+
+  public evaluateAndTriggerSequence() {
+    if (this.sequenceBuffer.length === 0) {
+      this.sequenceStatus = 'idle';
+      this.sequenceFeedback = '';
+      return;
+    }
+
+    const matched = this.matchCombo(this.sequenceBuffer);
+    if (!matched) {
+      this.sequenceStatus = 'invalid';
+      this.sequenceFeedback = 'SEQUENCE INVALIDE';
+      this.sequenceFeedbackTimer = 0.7;
+      sounds.play('sequence_fail');
+      return;
+    }
+
+    const av = this.getSkillAvailability(matched.id);
+    if (!av.unlocked) {
+      this.sequenceStatus = 'invalid';
+      this.sequenceFeedback = `${matched.name} NON DEBLOQUE !`;
+      this.sequenceFeedbackTimer = 1.0;
+      sounds.play('sequence_fail');
+      return;
+    }
+
+    if (av.cd > 0) {
+      this.sequenceStatus = 'cooldown';
+      this.sequenceFeedback = `${matched.name} EN RECHARGE (${av.cd.toFixed(1)}s)`;
+      this.sequenceFeedbackTimer = 1.0;
+      sounds.play('sequence_fail');
+      return;
+    }
+
+    // Skill is valid, unlocked, and ready: Execute ONCE!
+    this.startSkillCooldown(matched.id, av.level);
+    this.sequenceStatus = 'executed';
+    this.sequenceFeedback = `★ ${matched.name} ACTIVE ! ★`;
+    this.sequenceFeedbackTimer = 1.2;
+    sounds.play('sequence_success');
+
+    if (this.onSkillExecuted) {
+      this.onSkillExecuted(matched.id, av.level);
+    }
+  }
+
+  public startSkillCooldown(skillId: string, lvl: number) {
+    switch (skillId) {
+      case 'wiggle': {
+        const empRank = experienceSystem.getSkillRank('emp_overcharge');
+        const baseCd = lvl >= 2 ? BASE_WIGGLE_CD * 0.75 : BASE_WIGGLE_CD;
+        this.wiggleCd = Math.max(3.5, baseCd * (1.0 - empRank * 0.12));
+        break;
+      }
+      case 'nitro': {
+        const speedBonus = experienceSystem.getNitroSpeedBonus();
+        const baseCd = lvl >= 2 ? BASE_NITRO_CD * 0.75 : BASE_NITRO_CD;
+        this.nitroCd = Math.max(3.0, baseCd * (1.0 - speedBonus));
+        this.nitroActive = (lvl >= 2 ? 4.5 : 3.2) + experienceSystem.getNitroTrailBonus();
+        break;
+      }
+      case 'quantum_laser': {
+        this.laserCd = lvl >= 2 ? 18.0 : 24.0;
+        break;
+      }
+      case 'kinetic_bastion': {
+        this.bastionCd = 26.0;
+        this.bastionActive = lvl >= 2 ? 8.0 : 6.0;
+        break;
+      }
+      case 'singularity_nova': {
+        this.singularityNovaCd = lvl >= 2 ? 32.0 : 40.0;
+        break;
+      }
+    }
+  }
 
   private setupKeyboard() {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -49,26 +302,57 @@ export class InputManager {
 
       const k = e.key ? e.key.toLowerCase() : '';
 
+      // Bullet Time (Chrono-Shift) & Sequence Mode on Shift
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        if (!e.repeat) {
+          this.handleChronoDown();
+        }
+        e.preventDefault();
+        return;
+      }
+
       // Directions: Support ZQSD (AZERTY) as primary, plus WASD and Arrow keys
       let dir: { x: number; y: number } | null = null;
+      let dirKey: string = '';
       if (e.code === 'ArrowUp' || k === 'z' || k === 'w' || e.code === 'KeyW' || e.code === 'KeyZ') {
         dir = { x: 0, y: -1 };
+        dirKey = 'up';
         e.preventDefault();
       } else if (e.code === 'ArrowDown' || k === 's' || e.code === 'KeyS') {
         dir = { x: 0, y: 1 };
+        dirKey = 'down';
         e.preventDefault();
       } else if (e.code === 'ArrowLeft' || k === 'q' || k === 'a' || e.code === 'KeyA' || e.code === 'KeyQ') {
         dir = { x: -1, y: 0 };
+        dirKey = 'left';
         e.preventDefault();
       } else if (e.code === 'ArrowRight' || k === 'd' || e.code === 'KeyD') {
         dir = { x: 1, y: 0 };
+        dirKey = 'right';
         e.preventDefault();
       }
 
-      if (dir) {
-        this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
-        this.heldDirections.push({ x: dir.x, y: dir.y, code: e.code });
-        this.setNextDir(dir.x, dir.y);
+      if (dir && !e.repeat) {
+        if (this.isSequenceMode) {
+          // In sequence mode, directional input composes combo string instead of moving player!
+          this.addSequenceDirection(dirKey);
+          return;
+        } else {
+          this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
+          this.heldDirections.push({ x: dir.x, y: dir.y, code: e.code });
+          this.setNextDir(dir.x, dir.y);
+        }
+      }
+
+      // Backspace removes last sequence step
+      if (this.isSequenceMode && (e.code === 'Backspace' || e.code === 'Delete')) {
+        if (this.sequenceBuffer.length > 0) {
+          this.sequenceBuffer.pop();
+          sounds.play('sequence_step', this.sequenceBuffer.length);
+          this.updateSequencePreview();
+        }
+        e.preventDefault();
+        return;
       }
 
       // Actions
@@ -80,12 +364,15 @@ export class InputManager {
       if (e.code === 'Enter') {
         this.isStartRequested = true;
       }
-      // Bullet Time (Chrono-Shift) on Shift
-      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        this.isChronoKeyHeld = true;
-      }
       if (e.code === 'KeyP' || e.code === 'Escape') {
-        this.isPauseRequested = true;
+        if (this.isSequenceMode) {
+          this.isSequenceMode = false;
+          this.sequenceBuffer = [];
+          this.sequenceStatus = 'idle';
+          this.sequenceFeedback = '';
+        } else {
+          this.isPauseRequested = true;
+        }
       }
       if (k === 'm' || e.code === 'KeyM') {
         this.isAudioToggleRequested = true;
@@ -96,7 +383,6 @@ export class InputManager {
       if (k === 'r' || e.code === 'KeyR') {
         this.isRestartRequested = true;
       }
-      // Codex / Arsenal shortcut on C (Codex) so S is 100% reserved for Down
       if (k === 'c' || e.code === 'KeyC') {
         this.isCodexRequested = true;
       }
@@ -120,10 +406,11 @@ export class InputManager {
     window.addEventListener('keyup', (e: KeyboardEvent) => {
       this.keys[e.code] = false;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        this.isChronoKeyHeld = false;
+        this.handleChronoUp();
+        return;
       }
       this.heldDirections = this.heldDirections.filter(h => h.code !== e.code);
-      if (this.heldDirections.length > 0) {
+      if (this.heldDirections.length > 0 && !this.isSequenceMode) {
         const top = this.heldDirections[this.heldDirections.length - 1];
         this.setNextDir(top.x, top.y);
       }
@@ -142,47 +429,38 @@ export class InputManager {
     if (this.motionHistory.length > 8) this.motionHistory.shift();
   }
 
+  /** Legacy pass-through: retained for backward compatibility */
   public checkKombos(onWiggle: (lvl: number) => void, onNitro: (lvl: number) => void) {
-    const now = performance.now();
-    const recent = this.motionHistory.filter(h => now - h.time < 900);
-    if (recent.length < 4) return;
-    const last4 = recent.map(r => r.dir).slice(-4).join('-');
-
-    // Nitro Kombo: "Bao Bao" = Haut-Bas-Haut-Bas uniquement (up-down-up-down)
-    if (last4 === 'up-down-up-down' && this.nitroCd <= 0) {
-      const lvl = progression.getSkillLevel('nitro');
-      if (lvl >= 1) {
-        const speedBonus = experienceSystem.getNitroSpeedBonus();
-        const baseCd = lvl >= 2 ? BASE_NITRO_CD * 0.75 : BASE_NITRO_CD;
-        this.nitroCd = Math.max(3.0, baseCd * (1.0 - speedBonus));
-        this.nitroActive = lvl >= 2 ? 4.5 : 3.2;
-        this.motionHistory = [];
-        onNitro(lvl);
-        return;
-      }
-    }
-
-    // Wiggle Kombo: Left-Right-Left-Right
-    if ((last4 === 'left-right-left-right' || last4 === 'right-left-right-left') && this.wiggleCd <= 0) {
-      const lvl = progression.getSkillLevel('wiggle');
-      if (lvl >= 1) {
-        const empRank = experienceSystem.getSkillRank('emp_overcharge');
-        const baseCd = lvl >= 2 ? BASE_WIGGLE_CD * 0.75 : BASE_WIGGLE_CD;
-        this.wiggleCd = Math.max(4.0, baseCd * (1.0 - empRank * 0.12));
-        this.motionHistory = [];
-        onWiggle(lvl);
-        return;
-      }
-    }
+    // Kombos now trigger on Shift release in Sequence Mode.
   }
 
   public updateCooldowns(dt: number, plPos: { x: number; y: number }) {
-    if (this.wiggleCd > 0) this.wiggleCd -= dt;
-    if (this.nitroCd > 0) this.nitroCd -= dt;
+    if (this.wiggleCd > 0) this.wiggleCd = Math.max(0, this.wiggleCd - dt);
+    if (this.nitroCd > 0) this.nitroCd = Math.max(0, this.nitroCd - dt);
+    if (this.laserCd > 0) this.laserCd = Math.max(0, this.laserCd - dt);
+    if (this.bastionCd > 0) this.bastionCd = Math.max(0, this.bastionCd - dt);
+    if (this.singularityNovaCd > 0) this.singularityNovaCd = Math.max(0, this.singularityNovaCd - dt);
+
+    if (this.sequenceFeedbackTimer > 0) {
+      this.sequenceFeedbackTimer = Math.max(0, this.sequenceFeedbackTimer - dt);
+      if (this.sequenceFeedbackTimer === 0 && !this.isSequenceMode) {
+        this.sequenceStatus = 'idle';
+        this.sequenceFeedback = '';
+        this.sequenceBuffer = [];
+      }
+    }
+
+    if (this.bastionActive > 0) {
+      this.bastionActive = Math.max(0, this.bastionActive - dt);
+      if (Math.random() < 0.4) {
+        particles.emit(plPos.x + (Math.random() - 0.5) * 24, plPos.y + (Math.random() - 0.5) * 24, 1, '#00ffff', { speed: 40, size: 3.5, life: 0.35 });
+      }
+    }
+
     if (this.nitroActive > 0) {
-      this.nitroActive -= dt;
+      this.nitroActive = Math.max(0, this.nitroActive - dt);
       const isV2 = progression.getSkillLevel('nitro') >= 2;
-      const tLife = isV2 ? 2.5 : 1.6;
+      const tLife = (isV2 ? 2.5 : 1.6) + experienceSystem.getNitroTrailBonus();
       this.nitroTrail.push({ x: plPos.x, y: plPos.y, life: tLife, maxLife: tLife });
       particles.emit(plPos.x, plPos.y, isV2 ? 4 : 2, isV2 ? '#00ffff' : '#ff7700', { speed: 60, size: isV2 ? 4 : 3, life: 0.3 });
     }
@@ -211,6 +489,12 @@ export class InputManager {
         this.isDashRequested = true;
         this.isStartRequested = true;
       }
+      // Left Bumper / Trigger = Chrono Bullet Time
+      if (gp.buttons[4] && gp.buttons[4].pressed) {
+        if (!this.isChronoKeyHeld) this.handleChronoDown();
+      } else if (this.isChronoKeyHeld && !this.keys['ShiftLeft'] && !this.keys['ShiftRight']) {
+        this.handleChronoUp();
+      }
       // Start = Pause
       if (gp.buttons[9] && gp.buttons[9].pressed) {
         this.isPauseRequested = true;
@@ -224,6 +508,15 @@ export class InputManager {
     this.nitroCd = 0;
     this.nitroActive = 0;
     this.nitroTrail = [];
+    this.laserCd = 0;
+    this.bastionCd = 0;
+    this.bastionActive = 0;
+    this.singularityNovaCd = 0;
+    this.isSequenceMode = false;
+    this.sequenceBuffer = [];
+    this.sequenceStatus = 'idle';
+    this.sequenceFeedback = '';
+    this.sequenceFeedbackTimer = 0;
   }
 
   public getVector(): { x: number; y: number } {

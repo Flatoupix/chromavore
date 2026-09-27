@@ -9,14 +9,18 @@ export interface LeaderboardEntry {
   score: number;
   kills?: number;
   streak?: number;
+  mode?: 'arcade' | 'custom';
   date: string;
 }
 
-const STORAGE_KEY = 'chv_leaderboard_v1';
+const STORAGE_ARCADE_KEY = 'chv_leaderboard_arcade_v1';
+const STORAGE_CUSTOM_KEY = 'chv_leaderboard_custom_v1';
+const LEGACY_STORAGE_KEY = 'chv_leaderboard_v1';
 const MAX_ENTRIES = 20;
 
 class LeaderboardManager {
-  private entries: LeaderboardEntry[] = [];
+  private arcadeEntries: LeaderboardEntry[] = [];
+  private customEntries: LeaderboardEntry[] = [];
   public isSyncing: boolean = false;
   public remoteActive: boolean = false;
 
@@ -27,43 +31,68 @@ class LeaderboardManager {
 
   private load() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        this.entries = JSON.parse(raw);
-        this.cleanupEntries();
+      const rawArcade = localStorage.getItem(STORAGE_ARCADE_KEY);
+      if (rawArcade) {
+        this.arcadeEntries = JSON.parse(rawArcade);
+      } else {
+        // Migration from legacy single storage key into arcade
+        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (legacy) {
+          this.arcadeEntries = JSON.parse(legacy);
+        }
       }
+
+      const rawCustom = localStorage.getItem(STORAGE_CUSTOM_KEY);
+      if (rawCustom) {
+        this.customEntries = JSON.parse(rawCustom);
+      }
+
+      this.cleanupEntries('arcade');
+      this.cleanupEntries('custom');
     } catch {
-      this.entries = [];
+      this.arcadeEntries = [];
+      this.customEntries = [];
     }
   }
 
-  public cleanupEntries() {
+  public cleanupEntries(mode: 'arcade' | 'custom' = 'arcade') {
+    const list = mode === 'custom' ? this.customEntries : this.arcadeEntries;
     const map = new Map<string, LeaderboardEntry>();
-    for (const e of this.entries) {
+    for (const e of list) {
       if (!e || !e.pseudo) continue;
       if ((e.kills ?? 0) <= 0) continue;
 
       const key = e.pseudo.trim().toUpperCase();
       const existing = map.get(key);
       if (!existing) {
-        map.set(key, e);
+        map.set(key, { ...e, mode });
       } else {
         const isBetter = (e.kills ?? 0) > (existing.kills ?? 0) || ((e.kills ?? 0) === (existing.kills ?? 0) && e.score > existing.score);
-        if (isBetter) map.set(key, e);
+        if (isBetter) map.set(key, { ...e, mode });
       }
     }
-    this.entries = Array.from(map.values());
-    this.save();
+    if (mode === 'custom') {
+      this.customEntries = Array.from(map.values());
+    } else {
+      this.arcadeEntries = Array.from(map.values());
+    }
+    this.save(mode);
   }
 
-  public save() {
+  public save(mode?: 'arcade' | 'custom') {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.entries));
+      if (!mode || mode === 'arcade') {
+        localStorage.setItem(STORAGE_ARCADE_KEY, JSON.stringify(this.arcadeEntries));
+      }
+      if (!mode || mode === 'custom') {
+        localStorage.setItem(STORAGE_CUSTOM_KEY, JSON.stringify(this.customEntries));
+      }
     } catch {}
   }
 
-  public getEntries(): LeaderboardEntry[] {
-    return this.entries
+  public getEntries(mode: 'arcade' | 'custom' = 'arcade'): LeaderboardEntry[] {
+    const list = mode === 'custom' ? this.customEntries : this.arcadeEntries;
+    return list
       .slice()
       .sort((a, b) => {
         if ((b.kills ?? 0) !== (a.kills ?? 0)) return (b.kills ?? 0) - (a.kills ?? 0);
@@ -72,43 +101,48 @@ class LeaderboardManager {
       .slice(0, MAX_ENTRIES);
   }
 
-  public getTopScore(): number {
-    const list = this.getEntries();
+  public getTopScore(mode: 'arcade' | 'custom' = 'arcade'): number {
+    const list = this.getEntries(mode);
     if (!list.length) return 0;
     return list[0].kills ?? 0;
   }
 
-  public getBestEntry(pseudo: string): LeaderboardEntry | undefined {
-    return this.entries.find(e => e.pseudo.toUpperCase() === pseudo.trim().toUpperCase());
+  public getBestEntry(pseudo: string, mode: 'arcade' | 'custom' = 'arcade'): LeaderboardEntry | undefined {
+    const list = mode === 'custom' ? this.customEntries : this.arcadeEntries;
+    return list.find(e => e.pseudo.toUpperCase() === pseudo.trim().toUpperCase());
   }
 
-  public addEntry(entry: LeaderboardEntry): number {
+  public addEntry(entry: LeaderboardEntry, explicitMode?: 'arcade' | 'custom'): number {
     if ((entry.kills ?? 0) <= 0) return 0;
 
+    const mode = explicitMode || entry.mode || 'arcade';
+    entry.mode = mode;
+    const targetList = mode === 'custom' ? this.customEntries : this.arcadeEntries;
+
     const pseudoKey = entry.pseudo.trim().toUpperCase();
-    const existingIndex = this.entries.findIndex(
+    const existingIndex = targetList.findIndex(
       e => e.pseudo.toUpperCase() === pseudoKey
     );
 
     let recordedEntry = entry;
     if (existingIndex >= 0) {
-      const existing = this.entries[existingIndex];
+      const existing = targetList[existingIndex];
       const isBetter = (entry.kills ?? 0) > (existing.kills ?? 0) || ((entry.kills ?? 0) === (existing.kills ?? 0) && entry.score > existing.score);
 
       if (isBetter) {
-        this.entries[existingIndex] = entry;
+        targetList[existingIndex] = entry;
       } else {
         recordedEntry = existing;
       }
     } else {
-      this.entries.push(entry);
+      targetList.push(entry);
     }
 
-    this.cleanupEntries();
-    this.save();
+    this.cleanupEntries(mode);
+    this.save(mode);
     this.pushRemote(recordedEntry);
 
-    return this.getEntries().findIndex(
+    return this.getEntries(mode).findIndex(
       e => e.pseudo.toUpperCase() === pseudoKey
     ) + 1;
   }
@@ -125,46 +159,14 @@ class LeaderboardManager {
       if (res.ok) {
         const data = await res.json();
         if (data) {
-          const remoteList: LeaderboardEntry[] = [];
-          const source = data.madness || data;
-          for (const item of Object.values(source as Record<string, any>)) {
-            if (item && item.pseudo && typeof item.score === 'number' && (item.kills ?? 0) > 0) {
-              remoteList.push({
-                pseudo: item.pseudo.slice(0, 12).toUpperCase(),
-                score: item.score,
-                kills: item.kills,
-                streak: item.streak,
-                date: item.date || new Date().toISOString()
-              });
-            }
-          }
-          // Merge remote with local
-          for (const r of remoteList) {
-            const idx = this.entries.findIndex(e => e.pseudo.toUpperCase() === r.pseudo.toUpperCase());
-            if (idx >= 0) {
-              const ex = this.entries[idx];
-              const rBetter = (r.kills ?? 0) > (ex.kills ?? 0) || ((r.kills ?? 0) === (ex.kills ?? 0) && r.score > ex.score);
-              if (rBetter) {
-                this.entries[idx] = r;
-              } else {
-                // Local is higher than remote: update remote!
-                this.pushRemote(ex);
-              }
-            } else {
-              this.entries.push(r);
-            }
-          }
+          // 1. Sync Arcade (data.arcade || data.madness || data)
+          const arcadeSource = data.arcade || data.madness || data;
+          this.mergeRemoteList(arcadeSource, 'arcade');
 
-          // Push any local entries not yet on remote
-          for (const e of this.entries) {
-            const onRemote = remoteList.some(r => r.pseudo.toUpperCase() === e.pseudo.toUpperCase());
-            if (!onRemote) {
-              this.pushRemote(e);
-            }
+          // 2. Sync Custom (data.custom)
+          if (data.custom) {
+            this.mergeRemoteList(data.custom, 'custom');
           }
-
-          this.cleanupEntries();
-          this.save();
         }
       }
     } catch (err) {
@@ -174,13 +176,57 @@ class LeaderboardManager {
     }
   }
 
+  private mergeRemoteList(source: Record<string, any>, mode: 'arcade' | 'custom') {
+    const targetList = mode === 'custom' ? this.customEntries : this.arcadeEntries;
+    const remoteList: LeaderboardEntry[] = [];
+    for (const item of Object.values(source as Record<string, any>)) {
+      if (item && item.pseudo && typeof item.score === 'number' && (item.kills ?? 0) > 0) {
+        remoteList.push({
+          pseudo: item.pseudo.slice(0, 12).toUpperCase(),
+          score: item.score,
+          kills: item.kills,
+          streak: item.streak,
+          mode,
+          date: item.date || new Date().toISOString()
+        });
+      }
+    }
+
+    for (const r of remoteList) {
+      const idx = targetList.findIndex(e => e.pseudo.toUpperCase() === r.pseudo.toUpperCase());
+      if (idx >= 0) {
+        const ex = targetList[idx];
+        const rBetter = (r.kills ?? 0) > (ex.kills ?? 0) || ((r.kills ?? 0) === (ex.kills ?? 0) && r.score > ex.score);
+        if (rBetter) {
+          targetList[idx] = r;
+        } else {
+          this.pushRemote(ex);
+        }
+      } else {
+        targetList.push(r);
+      }
+    }
+
+    for (const e of targetList) {
+      const onRemote = remoteList.some(r => r.pseudo.toUpperCase() === e.pseudo.toUpperCase());
+      if (!onRemote) {
+        this.pushRemote(e);
+      }
+    }
+
+    this.cleanupEntries(mode);
+    this.save(mode);
+  }
+
   public async pushRemote(entry: LeaderboardEntry) {
     const dbUrl = (FIREBASE_CONFIG.databaseURL || localStorage.getItem('chv_firebase_url') || '').trim().replace(/\/+$/, '');
     if (!dbUrl) return;
 
+    const mode = entry.mode || 'arcade';
+    const path = mode === 'custom' ? 'custom' : 'arcade';
     const safeKey = encodeURIComponent(entry.pseudo.trim().toUpperCase().replace(/[.#$\[\]\/]/g, '_'));
     try {
-      await fetch(`${dbUrl}/leaderboard/madness/${safeKey}.json`, {
+      await fetch(`${dbUrl}/leaderboard/${path}/${safeKey}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry)
@@ -195,26 +241,30 @@ class LeaderboardManager {
     FIREBASE_CONFIG.databaseURL = url.trim();
     this.syncRemote();
   }
-// ---------- Reset utilities (personal project, no extra guard) ----------
-/** Remove local leaderboard storage */
-public clearLocal(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    this.entries = [];
-  } catch {}
-}
 
-/** Hard reset: clear local and delete remote data */
-public async hardReset(): Promise<void> {
-  this.clearLocal();
-  const dbUrl = (FIREBASE_CONFIG.databaseURL || localStorage.getItem('chv_firebase_url') || '').trim().replace(/\/+$/, '');
-  if (!dbUrl) return;
-  try {
-    await fetch(`${dbUrl}/leaderboard.json`, { method: 'DELETE' });
-  } catch (err) {
-    console.warn('Leaderboard hard reset remote error:', err);
+  // ---------- Reset utilities (personal project, no extra guard) ----------
+  /** Remove local leaderboard storage */
+  public clearLocal(): void {
+    try {
+      localStorage.removeItem(STORAGE_ARCADE_KEY);
+      localStorage.removeItem(STORAGE_CUSTOM_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      this.arcadeEntries = [];
+      this.customEntries = [];
+    } catch {}
   }
-}
+
+  /** Hard reset: clear local and delete remote data */
+  public async hardReset(): Promise<void> {
+    this.clearLocal();
+    const dbUrl = (FIREBASE_CONFIG.databaseURL || localStorage.getItem('chv_firebase_url') || '').trim().replace(/\/+$/, '');
+    if (!dbUrl) return;
+    try {
+      await fetch(`${dbUrl}/leaderboard.json`, { method: 'DELETE' });
+    } catch (err) {
+      console.warn('Leaderboard hard reset remote error:', err);
+    }
+  }
 }
 
 export const leaderboard = new LeaderboardManager();

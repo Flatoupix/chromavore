@@ -1,8 +1,9 @@
 import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, T, getComboTier } from '../config/constants';
 import { MADNESS_LEVELS_16_9, MADNESS_LEVELS_4_3, MazeManager } from '../levels/levels';
 import { chooseBotAction, type BotDirection, type BotGhost, type BotStrategy } from './BotController';
+import { SKILL_NODES } from '../config/skillTree';
 
-export type SimulatedSkillPolicy = 'none' | 'pellet-focus' | 'dash-focus' | 'balanced';
+export type SimulatedSkillPolicy = 'none' | 'mobility' | 'control' | 'defense' | 'singularity' | 'pellet-focus' | 'dash-focus' | 'balanced';
 
 export interface HeadlessProfile {
   careerGhosts: number;
@@ -40,6 +41,10 @@ export interface HeadlessRunMetrics {
   level: number;
   gameOver: boolean;
   dashes: number;
+  empUses: number;
+  bastionUses: number;
+  laserKills: number;
+  novaUses: number;
   singularityTriggered: boolean;
   ghostXpComboCap: number;
   xpGainMultiplier: number;
@@ -71,6 +76,11 @@ export interface HeadlessCampaignMetrics {
   averageMazesCleared: number;
   averageRunDeaths: number;
   averageDotsCollected: number;
+  averageDashes: number;
+  averageEmpUses: number;
+  averageBastionUses: number;
+  averageLaserKills: number;
+  averageNovaUses: number;
   singularityRunRate: number;
   gameOverRate: number;
   timeToLevelSeconds: Record<number, number | null>;
@@ -87,6 +97,8 @@ interface SimGhost extends BotGhost {
   type: 'stalker' | 'rusher' | 'orbiter' | 'phaser';
   frightened: boolean;
   nearMiss: boolean;
+  frozen?: boolean;
+  frozenTimer?: number;
 }
 
 function seededRandom(seed: number): () => number {
@@ -201,9 +213,19 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   let ticks = 0;
   let ghostsSpawned = 0;
   let dashes = 0;
+  let empUses = 0;
+  let bastionUses = 0;
+  let laserKills = 0;
+  let novaUses = 0;
   let mazesCleared = 0;
   let loopCount = 0;
   let dashCooldown = 0;
+  let dashCharges = 1;
+  let dashChargeCooldown = 0;
+  let empCooldown = 0;
+  let bastionCooldown = 0;
+  let laserCooldown = 0;
+  let novaCooldown = 0;
   let invulnerability = 2.0;
   let playerMove = { fromX: player.x, fromY: player.y, x: player.x, y: player.y, progress: 1, dx: 0, dy: 0 };
   let kills = 0;
@@ -219,31 +241,60 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   const accountLevel = options.profile?.accountLevel ?? 1;
   level = accountLevel;
   currentLevelXp = options.profile?.accountXp ?? 0;
+  dashCharges = 1 + (skillRanks.multi_dash ?? 0);
   const ghosts: SimGhost[] = [];
   const fixedDt = 1 / 30;
   const basePlayerSpeed = widescreen ? P_MADNESS_BASE_SPEED + 4.3 : P_SPEED;
   const maxSeconds = options.maxSeconds ?? 300;
-  const playerSpeed = () => basePlayerSpeed * (1 + loopCount * 0.1);
+  const playerSpeed = () => {
+    const nitroBonus = (skillRanks.hyper_nitro ?? 0) * 0.08;
+    return basePlayerSpeed * (1 + loopCount * 0.1) * (1 + nitroBonus);
+  };
+
+  const getNodePriorities = (policy: SimulatedSkillPolicy, count: number): string[] => {
+    switch (policy) {
+      case 'mobility':
+        return ['dash_reflex', 'multi_dash', 'hyper_nitro', 'phase_shift', 'quantum_laser'];
+      case 'control':
+        return ['chrono_tank', 'emp_overcharge', 'deep_freeze', 'magnetic_core', 'kinetic_bastion'];
+      case 'defense':
+        return ['chrono_tank', 'emp_overcharge', 'magnetic_core', 'dash_reflex', 'phase_shift', 'deep_freeze', 'kinetic_bastion'];
+      case 'singularity':
+        return ['pellet_resonance', 'titan_breaker', 'super_frequency', 'singularity_mastery', 'singularity_nova'];
+      case 'dash-focus':
+        return ['dash_reflex', 'multi_dash', 'phase_shift', 'hyper_nitro'];
+      case 'pellet-focus':
+        return ['pellet_resonance', 'titan_breaker', 'super_frequency', 'singularity_mastery'];
+      case 'balanced':
+      default:
+        return count % 3 === 0
+          ? ['dash_reflex', 'pellet_resonance', 'chrono_tank', 'multi_dash', 'emp_overcharge', 'magnetic_core', 'titan_breaker', 'phase_shift', 'deep_freeze', 'super_frequency']
+          : count % 3 === 1
+            ? ['pellet_resonance', 'chrono_tank', 'dash_reflex', 'titan_breaker', 'magnetic_core', 'multi_dash', 'super_frequency', 'emp_overcharge', 'singularity_mastery', 'phase_shift']
+            : ['chrono_tank', 'dash_reflex', 'pellet_resonance', 'emp_overcharge', 'multi_dash', 'magnetic_core', 'deep_freeze', 'phase_shift', 'titan_breaker', 'super_frequency'];
+    }
+  };
+
   const buyAvailableSkill = () => {
     if (skillPolicy === 'none') return;
-    const priorities = skillPolicy === 'pellet-focus'
-      ? ['pellet_resonance', 'dash_reflex', 'phase_shift']
-      : skillPolicy === 'dash-focus'
-        ? ['dash_reflex', 'multi_dash', 'phase_shift', 'pellet_resonance']
-        : (skillsBought % 2 === 0
-          ? ['dash_reflex', 'pellet_resonance', 'multi_dash', 'phase_shift']
-          : ['pellet_resonance', 'dash_reflex', 'phase_shift', 'multi_dash']);
+    const priorities = getNodePriorities(skillPolicy, skillsBought);
     for (const id of priorities) {
+      const node = SKILL_NODES.find(n => n.id === id);
+      if (!node) continue;
       const rank = skillRanks[id] ?? 0;
-      const maxRank = id === 'multi_dash' || id === 'phase_shift' ? 3 : 5;
-      const cost = id === 'multi_dash' || id === 'phase_shift' ? 2 : 1;
-      const requirement = id === 'phase_shift' ? (skillRanks.multi_dash ?? 0) > 0 : id === 'multi_dash' ? (skillRanks.dash_reflex ?? 0) > 0 : true;
-      if (rank < maxRank && requirement && skillPoints >= cost) {
-        skillRanks[id] = rank + 1;
-        skillPoints -= cost;
-        skillsBought++;
-        return;
+      if (rank >= node.maxRank) continue;
+      if (skillPoints < node.costPerRank) continue;
+      if (node.reqSkillId && (skillRanks[node.reqSkillId] ?? 0) === 0) continue;
+      if (node.isUltimate) {
+        const branchNodes = SKILL_NODES.filter(n => n.branch === node.branch && n.id !== node.id);
+        const branchPointsSpent = branchNodes.reduce((acc, n) => acc + ((skillRanks[n.id] ?? 0) * n.costPerRank), 0);
+        const prereqRank = node.reqSkillId ? (skillRanks[node.reqSkillId] ?? 0) : 0;
+        if (prereqRank < 1 && branchPointsSpent < 10) continue;
       }
+      skillRanks[id] = rank + 1;
+      skillPoints -= node.costPerRank;
+      skillsBought++;
+      return;
     }
   };
   const awardXp = (baseAmount: number) => {
@@ -268,7 +319,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     dotCount++;
     const previousMultiplier = comboMultiplier;
     if (collectible === 3) {
-      frightenedTimer = 7 + (skillRanks.pellet_resonance ?? 0) * 1.2;
+      frightenedTimer = 7 + (skillRanks.pellet_resonance ?? 0) * 1.4;
       for (const ghost of ghosts) {
         if (ghost.dangerous) {
           ghost.frightened = true;
@@ -284,23 +335,44 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     if (comboMultiplier < 64) {
       comboMultiplier = CM[getComboTier(comboCount, maze.cols > 21)];
       if (comboMultiplier >= 32 && previousMultiplier < 32) comboTimer = GOD_MODE_DURATION;
-      else if (comboMultiplier < 32) comboTimer = comboDecay;
+      else if (comboMultiplier < 32) comboTimer = comboDecay + (skillRanks.singularity_mastery ?? 0) * 0.4;
+    }
+  };
+  const checkMagneticPull = () => {
+    const magRank = skillRanks.magnetic_core ?? 0;
+    if (magRank <= 0) return;
+    const magRadius = 1.5 + (magRank - 1) * 1.0;
+    const range = Math.ceil(magRadius);
+    for (let dy = -range; dy <= range; dy++) {
+      for (let dx = -range; dx <= range; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        if (Math.hypot(dx, dy) <= magRadius) {
+          const nx = wrap(player.x + dx, maze.cols);
+          const ny = player.y + dy;
+          if (dots[ny]?.[nx]) {
+            collectAt(nx, ny);
+          }
+        }
+      }
     }
   };
   const killGhost = (ghost: SimGhost) => {
     if (!ghost.dangerous && !ghost.frightened) return;
     ghost.dangerous = false;
     ghost.frightened = false;
+    ghost.frozen = false;
     kills++;
     careerGhosts++;
     lifeKills++;
-    if (!singularityTriggered && (lifeKills >= singularityTriggerKills || kills >= singularityTriggerKills)) {
+    const effectiveSingularityKills = Math.max(60, singularityTriggerKills - (skillRanks.singularity_mastery ?? 0) * 12);
+    if (!singularityTriggered && (lifeKills >= effectiveSingularityKills || kills >= effectiveSingularityKills)) {
       singularityTriggered = true;
       singularityIntroTimer = 5;
       comboMultiplier = 64;
-      comboTimer = SINGULARITY_DURATION;
+      comboTimer = SINGULARITY_DURATION + (skillRanks.singularity_mastery ?? 0) * 2;
     }
-    awardXp(Math.round(30 + 10 * Math.min(ghostXpComboCap, Math.max(1, comboMultiplier))));
+    const pelletScoreMult = (skillRanks.pellet_resonance ?? 0) >= 4 ? 1.25 : 1.0;
+    awardXp(Math.round((30 + 10 * Math.min(ghostXpComboCap, Math.max(1, comboMultiplier))) * pelletScoreMult));
   };
   const spawnGhost = (point: { x: number; y: number }, threatIndex: number) => {
     const type = (['stalker', 'rusher', 'orbiter', 'phaser'] as const)[Math.floor(random() * 4)];
@@ -399,7 +471,18 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
       continue;
     }
     invulnerability = Math.max(0, invulnerability - fixedDt);
+    const maxDashCharges = 1 + (skillRanks.multi_dash ?? 0);
+    dashChargeCooldown = Math.max(0, dashChargeCooldown - fixedDt);
+    if (dashCharges < maxDashCharges && dashChargeCooldown <= 0) {
+      dashCharges++;
+      const rechargeTime = 2.0 * Math.max(0.35, 1 - (skillRanks.dash_reflex ?? 0) * 0.12);
+      dashChargeCooldown = rechargeTime;
+    }
     dashCooldown = Math.max(0, dashCooldown - fixedDt);
+    empCooldown = Math.max(0, empCooldown - fixedDt);
+    bastionCooldown = Math.max(0, bastionCooldown - fixedDt);
+    laserCooldown = Math.max(0, laserCooldown - fixedDt);
+    novaCooldown = Math.max(0, novaCooldown - fixedDt);
     if (frightenedTimer > 0) {
       frightenedTimer = Math.max(0, frightenedTimer - fixedDt);
       if (frightenedTimer === 0) {
@@ -425,6 +508,38 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
         comboTimer = 0;
       }
     }
+
+    // Laser trigger check
+    const laserRank = skillRanks.quantum_laser ?? 0;
+    if (laserRank > 0 && laserCooldown <= 0) {
+      const aligned = ghosts.filter(g => (g.dangerous || g.frightened) && (g.x === player.x || g.y === player.y));
+      if (aligned.length >= 2) {
+        laserCooldown = 18 - (laserRank - 1) * 4;
+        for (const g of aligned) {
+          killGhost(g);
+          laserKills++;
+        }
+      }
+    }
+
+    // Singularity nova trigger check
+    const novaRank = skillRanks.singularity_nova ?? 0;
+    if (novaRank > 0 && novaCooldown <= 0) {
+      const dangerousGhosts = ghosts.filter(g => g.dangerous);
+      if (dangerousGhosts.length >= 6) {
+        novaCooldown = 38;
+        novaUses++;
+        let count = 0;
+        for (const g of dangerousGhosts) {
+          killGhost(g);
+          count++;
+          if (count >= 8) break;
+        }
+        comboMultiplier = 64;
+        comboTimer = 8;
+      }
+    }
+
     playerMoveIn -= fixedDt;
 
     if (playerMove.progress >= 1 && playerMoveIn <= 0) {
@@ -435,14 +550,18 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
       }, botStrategy, comboMultiplier >= 32);
       const direction = decision.direction;
       const dashLevel = unlockedDashLevel(careerGhosts);
-      if (decision.useDash && dashLevel > 0 && dashCooldown <= 0 && (direction.x !== 0 || direction.y !== 0)) {
+      if (decision.useDash && dashLevel > 0 && dashCharges > 0 && dashCooldown <= 0 && (direction.x !== 0 || direction.y !== 0)) {
+        dashCharges--;
+        dashes++;
         collectAt(player.x, player.y);
+        checkMagneticPull();
         const dashDistance = 3 + Math.min(4, Math.max(0, dashLevel - 1));
         for (let i = 0; i < dashDistance; i++) {
           const x = wrap(player.x + direction.x, maze.cols), y = player.y + direction.y;
           if (!maze.isWalkable(x, y, false)) break;
           player = { x, y };
           collectAt(x, y);
+          checkMagneticPull();
           for (const ghost of ghosts) {
             if (!ghost.dangerous && !ghost.frightened) continue;
             const pos = actorPosition(ghost, maze.cols);
@@ -454,12 +573,14 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
         }
         if (maze.remainingDots <= 0) advanceMaze();
         playerMove = { fromX: player.x, fromY: player.y, x: player.x, y: player.y, progress: 1, dx: 0, dy: 0 };
-        const cooldownFactor = (dashLevel >= 2 ? 0.75 : 1) * (1 - (skillRanks.dash_reflex ?? 0) * 0.12);
-        dashCooldown = 1.6 * Math.max(0.25, cooldownFactor);
         const phaseRank = skillRanks.phase_shift ?? 0;
         invulnerability = Math.max(invulnerability, 0.35 + (phaseRank > 0 ? 0.3 + (phaseRank - 1) * 0.15 : 0));
         playerMoveIn = 1 / playerSpeed();
-        dashes++;
+        if (dashCharges > 0) {
+          dashCooldown = 0.28;
+        } else {
+          dashCooldown = dashChargeCooldown;
+        }
       } else {
         const x = wrap(player.x + direction.x, maze.cols), y = player.y + direction.y;
         if (maze.isWalkable(x, y, false) && (direction.x !== 0 || direction.y !== 0)) {
@@ -478,7 +599,26 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
         playerMove.dx = 0;
         playerMove.dy = 0;
         collectAt(player.x, player.y);
+        checkMagneticPull();
         if (maze.remainingDots <= 0) advanceMaze();
+      }
+    }
+
+    // EMP Overcharge trigger check
+    const empRank = skillRanks.emp_overcharge ?? 0;
+    if (empRank > 0 && empCooldown <= 0) {
+      const nearDangerous = ghosts.filter(g => g.dangerous && Math.hypot(g.x - player.x, g.y - player.y) < 3.2);
+      if (nearDangerous.length >= 2) {
+        empCooldown = 20;
+        empUses++;
+        const freezeDur = 2.5 + (skillRanks.deep_freeze ?? 0) * 1.2;
+        const empRadius = 3.0 + empRank * 0.8;
+        for (const g of ghosts) {
+          if (Math.hypot(g.x - player.x, g.y - player.y) <= empRadius) {
+            g.frozen = true;
+            g.frozenTimer = freezeDur;
+          }
+        }
       }
     }
 
@@ -504,8 +644,19 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
 
     for (const ghost of ghosts) {
       if (!ghost.dangerous && !ghost.frightened) continue;
+      if (ghost.frozen) {
+        if (ghost.frozenTimer !== undefined && ghost.frozenTimer > 0) {
+          ghost.frozenTimer -= fixedDt;
+          if (ghost.frozenTimer <= 0) {
+            ghost.frozen = false;
+            ghost.frozenTimer = 0;
+          }
+        }
+        continue;
+      }
+      const chronoSlow = (skillRanks.chrono_tank ?? 0) > 0 && Math.hypot(ghost.x - player.x, ghost.y - player.y) < 3.0 ? 0.6 : 1.0;
       if (ghost.progress < 1) {
-        ghost.progress = Math.min(1, ghost.progress + fixedDt * ghost.speed * (ghost.frightened ? 0.55 : 1));
+        ghost.progress = Math.min(1, ghost.progress + fixedDt * ghost.speed * (ghost.frightened ? 0.55 : 1) * chronoSlow);
         if (ghost.progress >= 1) {
           ghost.fromX = ghost.x;
           ghost.fromY = ghost.y;
@@ -538,7 +689,21 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
           killGhost(ghost);
           continue;
         }
+        if (ghost.frozen) continue;
         if (!ghost.dangerous) continue;
+        const bastionRank = skillRanks.kinetic_bastion ?? 0;
+        if (bastionRank > 0 && bastionCooldown <= 0) {
+          bastionCooldown = 32 - (bastionRank - 1) * 8;
+          bastionUses++;
+          invulnerability = 2.0;
+          for (const g of ghosts) {
+            if (Math.hypot(g.x - player.x, g.y - player.y) < 4.0) {
+              g.frozen = true;
+              g.frozenTimer = 3.0;
+            }
+          }
+          continue;
+        }
         diedThisFrame = true;
         break;
       }
@@ -566,7 +731,9 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
 
   return {
     seed: options.seed, simulatedSeconds: elapsed, ticks, dotsCollected: dotCount, ghostsKilled: kills, mazesCleared,
-    xpEarned: xp, deaths, ghostsSpawned, level, gameOver: lives <= 0, dashes, singularityTriggered,
+    xpEarned: xp, deaths, ghostsSpawned, level, gameOver: lives <= 0, dashes,
+    empUses, bastionUses, laserKills, novaUses,
+    singularityTriggered,
     ghostXpComboCap, xpGainMultiplier, xpCurveMultiplier, singularityTriggerKills,
     skillRanks,
     profile: { careerGhosts, accountLevel: level, accountXp: currentLevelXp, skillPoints, skillUpgrades: skillRanks }
@@ -592,6 +759,11 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
   const mazesByRun: number[] = [];
   const deathsByRun: number[] = [];
   const dotsByRun: number[] = [];
+  const dashesByRun: number[] = [];
+  const empByRun: number[] = [];
+  const bastionByRun: number[] = [];
+  const laserByRun: number[] = [];
+  const novaByRun: number[] = [];
   let singularityRuns = 0;
   const milestones: Record<number, number | null> = { 5: null, 10: null, 20: null, 35: null, 50: null, 75: null, 100: null };
   let campaignSeconds = 0;
@@ -614,6 +786,11 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     mazesByRun.push(run.mazesCleared);
     deathsByRun.push(run.deaths);
     dotsByRun.push(run.dotsCollected);
+    dashesByRun.push(run.dashes);
+    empByRun.push(run.empUses);
+    bastionByRun.push(run.bastionUses);
+    laserByRun.push(run.laserKills);
+    novaByRun.push(run.novaUses);
     if (run.singularityTriggered) singularityRuns++;
     campaignSeconds += run.simulatedSeconds;
     if (run.gameOver) gameOvers++;
@@ -648,6 +825,11 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     averageMazesCleared: average(mazesByRun),
     averageRunDeaths: average(deathsByRun),
     averageDotsCollected: average(dotsByRun),
+    averageDashes: average(dashesByRun),
+    averageEmpUses: average(empByRun),
+    averageBastionUses: average(bastionByRun),
+    averageLaserKills: average(laserByRun),
+    averageNovaUses: average(novaByRun),
     singularityRunRate: runCount ? singularityRuns / runCount : 0,
     gameOverRate: runCount ? gameOvers / runCount : 0,
     timeToLevelSeconds: milestones,

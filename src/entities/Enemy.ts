@@ -24,6 +24,7 @@ export interface Ghost {
   fl: number;
   nm: boolean;
   frozen: boolean;
+  frozenTimer?: number;
   frightened: boolean;
   isTitan?: boolean;
   returnTimer?: number;
@@ -219,7 +220,16 @@ export class EnemyManager {
         continue;
       }
 
-      if (e.frozen) continue; // Skip moving when cryo-frozen
+      if (e.frozen) {
+        if (e.frozenTimer !== undefined && e.frozenTimer > 0) {
+          e.frozenTimer -= dt;
+          if (e.frozenTimer <= 0) {
+            e.frozen = false;
+            e.frozenTimer = 0;
+          }
+        }
+        continue; // Skip moving when cryo-frozen
+      }
 
       let spd = e.speed;
       if (e.st === 'flee') spd *= 0.55;

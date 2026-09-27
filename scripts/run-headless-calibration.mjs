@@ -26,7 +26,7 @@ const singularityThresholds = splitNumbers(args['singularity-kills'], [200]);
 const outputPath = resolve(repoRoot, args.out ?? `scripts/reports/headless-${new Date().toISOString().replaceAll(':', '').replaceAll('.', '-')}.json`);
 
 const validBots = new Set(['cautious', 'collector', 'hunter']);
-const validSkills = new Set(['none', 'pellet-focus', 'dash-focus', 'balanced']);
+const validSkills = new Set(['none', 'mobility', 'control', 'defense', 'singularity', 'pellet-focus', 'dash-focus', 'balanced']);
 if (bots.some(value => !validBots.has(value))) throw new Error(`Unknown bot. Choose: ${[...validBots].join(', ')}`);
 if (skills.some(value => !validSkills.has(value))) throw new Error(`Unknown skill policy. Choose: ${[...validSkills].join(', ')}`);
 
@@ -100,7 +100,7 @@ try {
 
   const report = {
     generatedAt: new Date().toISOString(),
-    version: '4.0.7',
+    version: '4.1.0',
     configuration: { gamesPerReplicate: games, replicates, maxSeconds, baseSeed: seed, scenarios },
     metricDefinitions: {
       campaignXpPerMinute: 'XP earned divided by cumulative simulated campaign minutes; meaned across independent campaign replicates.',
@@ -114,7 +114,7 @@ try {
       'Uses production maze layouts and transitions, level-clear XP, loop speed scaling, movement/contact constants, XP awards for dots/pellets/ghost kills/near-misses, combo surge, career-kill dash unlocks, and level-up lives.',
       'Ghost steering and bot decision-making are approximations; the player is an automated policy, not a human skill model.',
       'Does not simulate Vortex sessions, super-item drops/effects, badge XP, or Titans.',
-      'Account skills are auto-purchased at level-up using real node costs/prerequisites for Dash Reflex, Multi-Dash, Phase Shift, and Pellet Resonance; this approximates when a player opens the skill tree. Multi-Dash ranks currently have no active charge behavior in the gameplay runtime, so purchasing them is modeled as a point sink.',
+      'Account skills are auto-purchased at level-up using real node costs/prerequisites across 5 archetypes (mobility, control, defense, singularity, balanced); multi-dash charges, magnetic pull, cryo-freeze EMP, bastion shield, and laser/nova triggers are simulated in the runtime.',
       'The default ghost XP combo cap of 16 matches the current game implementation; cap 64 is available as a candidate comparison.',
       'The default Singularity threshold is the production value; overriding it is a diagnostic acceleration only, not a proposed game change.'
     ],
@@ -133,10 +133,13 @@ try {
     process.stdout.write(`${scenario.botStrategy}/${scenario.skillPolicy} cap=${scenario.ghostXpComboCap} curve=${scenario.xpCurveMultiplier} gain=${scenario.xpGainMultiplier}: ` +
       `Lv ${summary.finalLevel.mean.toFixed(1)}±${summary.finalLevel.sd.toFixed(1)}, ` +
       `${summary.campaignXpPerMinute.mean.toFixed(0)} XP/min, ` +
-      `avg survival ${summary.averageRunSeconds.mean.toFixed(1)}s, ` +
-      `${summary.averageMazesCleared.mean.toFixed(2)} map clears/run, ` +
+      `surv ${summary.averageRunSeconds.mean.toFixed(1)}s, ` +
+      `dashes ${summary.averageDashes?.mean.toFixed(1) ?? '0'}, ` +
+      `emp ${summary.averageEmpUses?.mean.toFixed(1) ?? '0'}, ` +
+      `bastion ${summary.averageBastionUses?.mean.toFixed(1) ?? '0'}, ` +
+      `laserKills ${summary.averageLaserKills?.mean.toFixed(1) ?? '0'}, ` +
       `Singularity ${(summary.singularityRunRate.mean * 100).toFixed(1)}%` +
-      (comparison ? `, ΔXP/min ${comparison.campaignXpPerMinutePercent.mean >= 0 ? '+' : ''}${comparison.campaignXpPerMinutePercent.mean.toFixed(1)}% vs reference` : '') +
+      (comparison ? `, ΔXP/min ${comparison.campaignXpPerMinutePercent.mean >= 0 ? '+' : ''}${comparison.campaignXpPerMinutePercent.mean.toFixed(1)}% vs ref` : '') +
       (skillComparison && scenario.skillPolicy !== 'none' ? `, skills ${skillComparison.campaignXpPerMinutePercent.mean >= 0 ? '+' : ''}${skillComparison.campaignXpPerMinutePercent.mean.toFixed(1)}% XP/min` : '') + '\n');
   }
 } finally {
@@ -221,6 +224,11 @@ function summarize(runs) {
     averageMazesCleared: stat('averageMazesCleared'),
     averageRunDeaths: stat('averageRunDeaths'),
     averageDotsCollected: stat('averageDotsCollected'),
+    averageDashes: stat('averageDashes'),
+    averageEmpUses: stat('averageEmpUses'),
+    averageBastionUses: stat('averageBastionUses'),
+    averageLaserKills: stat('averageLaserKills'),
+    averageNovaUses: stat('averageNovaUses'),
     singularityRunRate: stat('singularityRunRate'),
     gameOverRate: stat('gameOverRate'),
     timeToLevel: milestones
@@ -248,7 +256,9 @@ function toCsv(results, gamesPerReplicate) {
   const columns = [
     'botStrategy', 'skillPolicy', 'ghostXpComboCap', 'xpCurveMultiplier', 'xpGainMultiplier', 'singularityTriggerKills', 'replicate', 'games',
     'finalLevel', 'careerGhosts', 'campaignSeconds', 'campaignXp', 'campaignXpPerMinute', 'averageRunSeconds',
-    'medianRunXp', 'averageRunKills', 'averageMazesCleared', 'averageRunDeaths', 'averageDotsCollected', 'singularityRunRate', 'gameOverRate',
+    'medianRunXp', 'averageRunKills', 'averageMazesCleared', 'averageRunDeaths', 'averageDotsCollected',
+    'averageDashes', 'averageEmpUses', 'averageBastionUses', 'averageLaserKills', 'averageNovaUses',
+    'singularityRunRate', 'gameOverRate',
     'deltaXpPerMinutePctVsNoSkills', 'deltaLevelVsNoSkills',
     'secondsToLevel5', 'secondsToLevel10', 'secondsToLevel20', 'secondsToLevel35', 'secondsToLevel50', 'secondsToLevel75', 'secondsToLevel100'
   ];
@@ -261,7 +271,9 @@ function toCsv(results, gamesPerReplicate) {
         run.finalProfile.accountLevel, run.finalProfile.careerGhosts, run.totalCampaignSeconds, run.totalCampaignXp,
         run.campaignXpPerMinute, run.averageRunSeconds, run.medianRunXp, run.averageRunKills,
         run.averageMazesCleared, run.averageRunDeaths,
-        run.averageDotsCollected, run.singularityRunRate, run.gameOverRate,
+        run.averageDotsCollected,
+        run.averageDashes, run.averageEmpUses, run.averageBastionUses, run.averageLaserKills, run.averageNovaUses,
+        run.singularityRunRate, run.gameOverRate,
         result.deltaVsNoSkills?.campaignXpPerMinutePercent.mean ?? '',
         result.deltaVsNoSkills?.finalLevel.mean ?? '',
         ...[5, 10, 20, 35, 50, 75, 100].map(level => run.timeToLevelSeconds[level] ?? '')
@@ -280,7 +292,7 @@ function printHelp() {
     `--seed N              Base seed (default 20260925)\n` +
     `--max-seconds N       Maximum seconds per game (default 180)\n` +
     `--bots LIST           cautious,collector,hunter (default collector,hunter)\n` +
-    `--skills LIST         none,pellet-focus,dash-focus,balanced (default none,balanced)\n` +
+    `--skills LIST         none,mobility,control,defense,singularity,pellet-focus,dash-focus,balanced (default none,balanced)\n` +
     `--ghost-caps LIST     XP combo caps to compare (default 16; try 16,64)\n` +
     `--xp-curves LIST      Required-XP multipliers (default 1)\n` +
     `--xp-gains LIST       Earned-XP multipliers (default 1)\n` +

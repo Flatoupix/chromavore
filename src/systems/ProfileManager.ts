@@ -12,8 +12,13 @@ export interface PlayerProfile {
   accountXp: number;
   skillPoints: number;
   skillUpgrades: Record<string, number>;
+  gameMode?: 'arcade' | 'custom';
   hiScore: number;
   bestMadnessKills: number;
+  arcadeHiScore?: number;
+  arcadeBestKills?: number;
+  customHiScore?: number;
+  customBestKills?: number;
   badges: Record<string, boolean>;
   updatedAt: string;
 }
@@ -38,6 +43,21 @@ class ProfileManager {
   }
 
   private loadProfile(): PlayerProfile {
+    if (typeof localStorage === 'undefined') {
+      return {
+        pseudo: 'PLAYER1',
+        syncCode: 'CHV-DEMO',
+        careerGhosts: 0,
+        accountLevel: 1,
+        accountXp: 0,
+        skillPoints: 0,
+        skillUpgrades: {},
+        hiScore: 0,
+        bestMadnessKills: 0,
+        badges: {},
+        updatedAt: new Date().toISOString()
+      };
+    }
     try {
       const saved = localStorage.getItem(STORAGE_PROFILE);
       if (saved) {
@@ -54,6 +74,8 @@ class ProfileManager {
     let skillUpgrades = {};
     try { skillUpgrades = JSON.parse(localStorage.getItem('chv_skill_upgrades') || '{}'); } catch {}
 
+    const savedMode = (localStorage.getItem('chv_game_mode') || 'arcade') as 'arcade' | 'custom';
+
     const profile: PlayerProfile = {
       pseudo: lastPseudo,
       syncCode: existingCode,
@@ -62,8 +84,13 @@ class ProfileManager {
       accountXp: parseInt(localStorage.getItem('chv_account_xp') || '0', 10),
       skillPoints: parseInt(localStorage.getItem('chv_skill_points') || '0', 10),
       skillUpgrades,
+      gameMode: savedMode,
       hiScore: parseInt(localStorage.getItem('chv_hi') || '0', 10),
       bestMadnessKills: parseInt(localStorage.getItem('chv_madness_hi') || '0', 10),
+      arcadeHiScore: parseInt(localStorage.getItem('chv_arcade_hi') || localStorage.getItem('chv_hi') || '0', 10),
+      arcadeBestKills: parseInt(localStorage.getItem('chv_arcade_kills') || localStorage.getItem('chv_madness_hi') || '0', 10),
+      customHiScore: parseInt(localStorage.getItem('chv_custom_hi') || '0', 10),
+      customBestKills: parseInt(localStorage.getItem('chv_custom_kills') || '0', 10),
       badges,
       updatedAt: new Date().toISOString()
     };
@@ -83,11 +110,25 @@ class ProfileManager {
       localStorage.setItem('chv_account_xp', this.profile.accountXp.toString());
       localStorage.setItem('chv_skill_points', this.profile.skillPoints.toString());
       localStorage.setItem('chv_skill_upgrades', JSON.stringify(this.profile.skillUpgrades));
+      localStorage.setItem('chv_game_mode', this.profile.gameMode || 'arcade');
       localStorage.setItem('chv_hi', this.profile.hiScore.toString());
       localStorage.setItem('chv_madness_hi', this.profile.bestMadnessKills.toString());
+      localStorage.setItem('chv_arcade_hi', (this.profile.arcadeHiScore || 0).toString());
+      localStorage.setItem('chv_arcade_kills', (this.profile.arcadeBestKills || 0).toString());
+      localStorage.setItem('chv_custom_hi', (this.profile.customHiScore || 0).toString());
+      localStorage.setItem('chv_custom_kills', (this.profile.customBestKills || 0).toString());
       localStorage.setItem('chv_badges', JSON.stringify(this.profile.badges));
     } catch {}
     this.pushRemote();
+  }
+
+  public setGameMode(mode: 'arcade' | 'custom') {
+    this.profile.gameMode = mode;
+    this.saveProfile();
+  }
+
+  public get gameMode(): 'arcade' | 'custom' {
+    return this.profile.gameMode || 'arcade';
   }
 
   public setPseudo(pseudo: string) {

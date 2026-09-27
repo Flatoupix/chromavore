@@ -1,0 +1,1838 @@
+{
+  "generatedAt": "2026-09-27T20:41:32.732Z",
+  "version": "4.1.0",
+  "configuration": {
+    "gamesPerReplicate": 100,
+    "replicates": 3,
+    "maxSeconds": 180,
+    "baseSeed": 20260925,
+    "scenarios": [
+      {
+        "botStrategy": "collector",
+        "skillPolicy": "none",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      },
+      {
+        "botStrategy": "collector",
+        "skillPolicy": "balanced",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      },
+      {
+        "botStrategy": "hunter",
+        "skillPolicy": "none",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      },
+      {
+        "botStrategy": "hunter",
+        "skillPolicy": "balanced",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      }
+    ]
+  },
+  "metricDefinitions": {
+    "campaignXpPerMinute": "XP earned divided by cumulative simulated campaign minutes; meaned across independent campaign replicates.",
+    "timeToLevelSeconds": "Cumulative simulated play time from the supplied starting profile until the target level.",
+    "dispersion": "Replicate standard deviation, minimum, and maximum; replicates share matched seeds across scenarios."
+  },
+  "interpretationWarnings": [],
+  "modelScope": [
+    "Uses production maze layouts and transitions, level-clear XP, loop speed scaling, movement/contact constants, XP awards for dots/pellets/ghost kills/near-misses, combo surge, career-kill dash unlocks, and level-up lives.",
+    "Ghost steering and bot decision-making are approximations; the player is an automated policy, not a human skill model.",
+    "Does not simulate Vortex sessions, super-item drops/effects, badge XP, or Titans.",
+    "Account skills are auto-purchased at level-up using real node costs/prerequisites across 5 archetypes (mobility, control, defense, singularity, balanced); multi-dash charges, magnetic pull, cryo-freeze EMP, bastion shield, and laser/nova triggers are simulated in the runtime.",
+    "The default ghost XP combo cap of 16 matches the current game implementation; cap 64 is available as a candidate comparison.",
+    "The default Singularity threshold is the production value; overriding it is a diagnostic acceleration only, not a proposed game change."
+  ],
+  "results": [
+    {
+      "scenario": {
+        "botStrategy": "collector",
+        "skillPolicy": "none",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      },
+      "summary": {
+        "finalLevel": {
+          "mean": 19,
+          "sd": 0,
+          "min": 19,
+          "median": 19,
+          "max": 19
+        },
+        "finalCareerGhosts": {
+          "mean": 1621,
+          "sd": 83.7615663654877,
+          "min": 1553,
+          "median": 1571,
+          "max": 1739
+        },
+        "totalCampaignSeconds": {
+          "mean": 6337.966666666563,
+          "sd": 80.16126800948216,
+          "min": 6242.799999999903,
+          "median": 6332.199999999894,
+          "max": 6438.89999999989
+        },
+        "totalCampaignXp": {
+          "mean": 253320.33333333334,
+          "sd": 8672.151687377758,
+          "min": 242182,
+          "median": 254444,
+          "max": 263335
+        },
+        "campaignXpPerMinute": {
+          "mean": 2397.4776600870696,
+          "sd": 52.403622472561544,
+          "min": 2327.6286281796993,
+          "median": 2410.9535390543974,
+          "max": 2453.8508130271116
+        },
+        "averageRunSeconds": {
+          "mean": 63.37966666666563,
+          "sd": 0.8016126800948231,
+          "min": 62.42799999999903,
+          "median": 63.321999999998944,
+          "max": 64.3889999999989
+        },
+        "medianRunXp": {
+          "mean": 2390,
+          "sd": 144.05785874663925,
+          "min": 2197,
+          "median": 2430,
+          "max": 2543
+        },
+        "averageRunKills": {
+          "mean": 16.21,
+          "sd": 0.8376156636548773,
+          "min": 15.53,
+          "median": 15.71,
+          "max": 17.39
+        },
+        "averageMazesCleared": {
+          "mean": 0.006666666666666667,
+          "sd": 0.004714045207910317,
+          "min": 0,
+          "median": 0.01,
+          "max": 0.01
+        },
+        "averageRunDeaths": {
+          "mean": 3.18,
+          "sd": 0,
+          "min": 3.18,
+          "median": 3.18,
+          "max": 3.18
+        },
+        "averageDotsCollected": {
+          "mean": 153.03,
+          "sd": 2.381218175640353,
+          "min": 150.59,
+          "median": 152.24,
+          "max": 156.26
+        },
+        "averageDashes": {
+          "mean": 17.096666666666668,
+          "sd": 0.1819035153285632,
+          "min": 16.84,
+          "median": 17.21,
+          "max": 17.24
+        },
+        "averageEmpUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageBastionUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageLaserKills": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageNovaUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "gameOverRate": {
+          "mean": 1,
+          "sd": 0,
+          "min": 1,
+          "median": 1,
+          "max": 1
+        },
+        "timeToLevel": {
+          "5": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 238.17777777777405,
+              "sd": 5.3509662217354155,
+              "min": 234.03333333333154,
+              "median": 234.76666666666358,
+              "max": 245.7333333333271
+            }
+          },
+          "10": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 1192.833333333315,
+              "sd": 32.58926203521621,
+              "min": 1162.8333333333148,
+              "median": 1177.5333333333156,
+              "max": 1238.1333333333146
+            }
+          },
+          "20": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "35": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "50": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "75": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "100": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          }
+        }
+      },
+      "replicates": [
+        {
+          "games": 100,
+          "botStrategy": "collector",
+          "skillPolicy": "none",
+          "averageRunSeconds": 63.321999999998944,
+          "medianRunSeconds": 59.333333333332526,
+          "p90RunSeconds": 83.23333333333117,
+          "medianRunXp": 2430,
+          "p90RunXp": 3647,
+          "averageRunXp": 2544.44,
+          "totalCampaignXp": 254444,
+          "totalCampaignSeconds": 6332.199999999894,
+          "campaignXpPerMinute": 2410.9535390543974,
+          "averageRunKills": 15.71,
+          "averageMazesCleared": 0.01,
+          "averageRunDeaths": 3.18,
+          "averageDotsCollected": 152.24,
+          "averageDashes": 17.21,
+          "averageEmpUses": 0,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 234.03333333333154,
+            "10": 1162.8333333333148,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 1571,
+            "accountLevel": 19,
+            "accountXp": 19399,
+            "skillPoints": 18,
+            "skillUpgrades": {}
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "collector",
+          "skillPolicy": "none",
+          "averageRunSeconds": 64.3889999999989,
+          "medianRunSeconds": 63.13333333333231,
+          "p90RunSeconds": 83.06666666666452,
+          "medianRunXp": 2543,
+          "p90RunXp": 3677,
+          "averageRunXp": 2633.35,
+          "totalCampaignXp": 263335,
+          "totalCampaignSeconds": 6438.89999999989,
+          "campaignXpPerMinute": 2453.8508130271116,
+          "averageRunKills": 17.39,
+          "averageMazesCleared": 0,
+          "averageRunDeaths": 3.18,
+          "averageDotsCollected": 156.26,
+          "averageDashes": 17.24,
+          "averageEmpUses": 0,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 234.76666666666358,
+            "10": 1177.5333333333156,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 1739,
+            "accountLevel": 19,
+            "accountXp": 28290,
+            "skillPoints": 18,
+            "skillUpgrades": {}
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "collector",
+          "skillPolicy": "none",
+          "averageRunSeconds": 62.42799999999903,
+          "medianRunSeconds": 57.666666666665954,
+          "p90RunSeconds": 81.99999999999791,
+          "medianRunXp": 2197,
+          "p90RunXp": 3545,
+          "averageRunXp": 2421.82,
+          "totalCampaignXp": 242182,
+          "totalCampaignSeconds": 6242.799999999903,
+          "campaignXpPerMinute": 2327.6286281796993,
+          "averageRunKills": 15.53,
+          "averageMazesCleared": 0.01,
+          "averageRunDeaths": 3.18,
+          "averageDotsCollected": 150.59,
+          "averageDashes": 16.84,
+          "averageEmpUses": 0,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 245.7333333333271,
+            "10": 1238.1333333333146,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 1553,
+            "accountLevel": 19,
+            "accountXp": 7137,
+            "skillPoints": 18,
+            "skillUpgrades": {}
+          }
+        }
+      ],
+      "deltaVsNoSkills": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunSeconds": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageMazesCleared": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunDeaths": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        }
+      },
+      "deltaVsReference": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunSeconds": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageMazesCleared": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunDeaths": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "scenario": {
+        "botStrategy": "collector",
+        "skillPolicy": "balanced",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      },
+      "summary": {
+        "finalLevel": {
+          "mean": 61.666666666666664,
+          "sd": 3.6817870057290873,
+          "min": 57,
+          "median": 62,
+          "max": 66
+        },
+        "finalCareerGhosts": {
+          "mean": 20093.333333333332,
+          "sd": 1809.1350296635007,
+          "min": 18400,
+          "median": 19279,
+          "max": 22601
+        },
+        "totalCampaignSeconds": {
+          "mean": 13177.222222221726,
+          "sd": 239.65941471538616,
+          "min": 12935.066666666185,
+          "median": 13092.933333332843,
+          "max": 13503.666666666151
+        },
+        "totalCampaignXp": {
+          "mean": 4688201.666666667,
+          "sd": 653648.0092477568,
+          "min": 3847636,
+          "median": 4775362,
+          "max": 5441607
+        },
+        "campaignXpPerMinute": {
+          "mean": 21320.46582615149,
+          "sd": 2736.1593122814957,
+          "min": 17632.271861666497,
+          "median": 22150.772576871965,
+          "max": 24178.353039916008
+        },
+        "averageRunSeconds": {
+          "mean": 131.77222222221727,
+          "sd": 2.3965941471538654,
+          "min": 129.35066666666185,
+          "median": 130.92933333332843,
+          "max": 135.03666666666152
+        },
+        "medianRunXp": {
+          "mean": 11399,
+          "sd": 717.8133462119522,
+          "min": 10529,
+          "median": 11381,
+          "max": 12287
+        },
+        "averageRunKills": {
+          "mean": 200.9333333333333,
+          "sd": 18.091350296635007,
+          "min": 184,
+          "median": 192.79,
+          "max": 226.01
+        },
+        "averageMazesCleared": {
+          "mean": 1.2366666666666666,
+          "sd": 0.16739839372652957,
+          "min": 1.03,
+          "median": 1.24,
+          "max": 1.44
+        },
+        "averageRunDeaths": {
+          "mean": 2.44,
+          "sd": 0.1423610433604174,
+          "min": 2.24,
+          "median": 2.52,
+          "max": 2.56
+        },
+        "averageDotsCollected": {
+          "mean": 712.7233333333334,
+          "sd": 63.449823920603286,
+          "min": 633.06,
+          "median": 716.79,
+          "max": 788.32
+        },
+        "averageDashes": {
+          "mean": 63.57,
+          "sd": 2.2530127977147996,
+          "min": 60.42,
+          "median": 64.73,
+          "max": 65.56
+        },
+        "averageEmpUses": {
+          "mean": 4.423333333333333,
+          "sd": 0.09463379711052279,
+          "min": 4.3,
+          "median": 4.44,
+          "max": 4.53
+        },
+        "averageBastionUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageLaserKills": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageNovaUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0.26,
+          "sd": 0.05099019513592786,
+          "min": 0.21,
+          "median": 0.24,
+          "max": 0.33
+        },
+        "gameOverRate": {
+          "mean": 0.6266666666666667,
+          "sd": 0.04714045207910316,
+          "min": 0.56,
+          "median": 0.66,
+          "max": 0.66
+        },
+        "timeToLevel": {
+          "5": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 244.95555555555063,
+              "sd": 9.81462753140634,
+              "min": 232.33333333332786,
+              "median": 246.2666666666642,
+              "max": 256.26666666665983
+            }
+          },
+          "10": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 954.7444444444214,
+              "sd": 41.72666199191444,
+              "min": 895.9666666666468,
+              "median": 979.5999999999751,
+              "max": 988.6666666666426
+            }
+          },
+          "20": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 4418.222222222092,
+              "sd": 80.75543478251467,
+              "min": 4327.299999999873,
+              "median": 4403.833333333204,
+              "max": 4523.533333333197
+            }
+          },
+          "35": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 9048.58888888857,
+              "sd": 299.78245239744484,
+              "min": 8642.76666666636,
+              "median": 9145.266666666344,
+              "max": 9357.733333333004
+            }
+          },
+          "50": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 11076.833333332928,
+              "sd": 642.1066929920244,
+              "min": 10263.066666666291,
+              "median": 11134.73333333293,
+              "max": 11832.699999999564
+            }
+          },
+          "75": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "100": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          }
+        }
+      },
+      "replicates": [
+        {
+          "games": 100,
+          "botStrategy": "collector",
+          "skillPolicy": "balanced",
+          "averageRunSeconds": 129.35066666666185,
+          "medianRunSeconds": 126.59999999999538,
+          "p90RunSeconds": 180.0333333333257,
+          "medianRunXp": 10529,
+          "p90RunXp": 181123,
+          "averageRunXp": 47753.62,
+          "totalCampaignXp": 4775362,
+          "totalCampaignSeconds": 12935.066666666185,
+          "campaignXpPerMinute": 22150.772576871965,
+          "averageRunKills": 192.79,
+          "averageMazesCleared": 1.24,
+          "averageRunDeaths": 2.52,
+          "averageDotsCollected": 716.79,
+          "averageDashes": 60.42,
+          "averageEmpUses": 4.3,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0.24,
+          "gameOverRate": 0.66,
+          "timeToLevelSeconds": {
+            "5": 246.2666666666642,
+            "10": 988.6666666666426,
+            "20": 4523.533333333197,
+            "35": 9145.266666666344,
+            "50": 11134.73333333293,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 19279,
+            "accountLevel": 62,
+            "accountXp": 149567,
+            "skillPoints": 6,
+            "skillUpgrades": {
+              "dash_reflex": 5,
+              "pellet_resonance": 5,
+              "chrono_tank": 5,
+              "emp_overcharge": 4,
+              "super_frequency": 4,
+              "multi_dash": 3,
+              "magnetic_core": 3,
+              "titan_breaker": 3,
+              "phase_shift": 3,
+              "singularity_mastery": 1,
+              "deep_freeze": 3
+            }
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "collector",
+          "skillPolicy": "balanced",
+          "averageRunSeconds": 130.92933333332843,
+          "medianRunSeconds": 134.53333333332827,
+          "p90RunSeconds": 180.0333333333257,
+          "medianRunXp": 11381,
+          "p90RunXp": 128634,
+          "averageRunXp": 38476.36,
+          "totalCampaignXp": 3847636,
+          "totalCampaignSeconds": 13092.933333332843,
+          "campaignXpPerMinute": 17632.271861666497,
+          "averageRunKills": 184,
+          "averageMazesCleared": 1.03,
+          "averageRunDeaths": 2.56,
+          "averageDotsCollected": 633.06,
+          "averageDashes": 64.73,
+          "averageEmpUses": 4.44,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0.21,
+          "gameOverRate": 0.66,
+          "timeToLevelSeconds": {
+            "5": 256.26666666665983,
+            "10": 979.5999999999751,
+            "20": 4327.299999999873,
+            "35": 9357.733333333004,
+            "50": 11832.699999999564,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 18400,
+            "accountLevel": 57,
+            "accountXp": 99181,
+            "skillPoints": 3,
+            "skillUpgrades": {
+              "dash_reflex": 5,
+              "pellet_resonance": 5,
+              "chrono_tank": 5,
+              "emp_overcharge": 4,
+              "super_frequency": 4,
+              "multi_dash": 3,
+              "magnetic_core": 3,
+              "titan_breaker": 3,
+              "phase_shift": 3,
+              "deep_freeze": 3
+            }
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "collector",
+          "skillPolicy": "balanced",
+          "averageRunSeconds": 135.03666666666152,
+          "medianRunSeconds": 159.96666666666016,
+          "p90RunSeconds": 180.0333333333257,
+          "medianRunXp": 12287,
+          "p90RunXp": 188128,
+          "averageRunXp": 54416.07,
+          "totalCampaignXp": 5441607,
+          "totalCampaignSeconds": 13503.666666666151,
+          "campaignXpPerMinute": 24178.353039916008,
+          "averageRunKills": 226.01,
+          "averageMazesCleared": 1.44,
+          "averageRunDeaths": 2.24,
+          "averageDotsCollected": 788.32,
+          "averageDashes": 65.56,
+          "averageEmpUses": 4.53,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0.33,
+          "gameOverRate": 0.56,
+          "timeToLevelSeconds": {
+            "5": 232.33333333332786,
+            "10": 895.9666666666468,
+            "20": 4403.833333333204,
+            "35": 8642.76666666636,
+            "50": 10263.066666666291,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 22601,
+            "accountLevel": 66,
+            "accountXp": 33353,
+            "skillPoints": 12,
+            "skillUpgrades": {
+              "dash_reflex": 5,
+              "pellet_resonance": 5,
+              "chrono_tank": 5,
+              "emp_overcharge": 4,
+              "super_frequency": 4,
+              "multi_dash": 3,
+              "magnetic_core": 3,
+              "titan_breaker": 3,
+              "phase_shift": 3,
+              "deep_freeze": 3
+            }
+          }
+        }
+      ],
+      "deltaVsNoSkills": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 42.666666666666664,
+          "sd": 3.6817870057290873,
+          "min": 38,
+          "median": 43,
+          "max": 47
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 792.0218677943609,
+          "sd": 132.08069784817874,
+          "min": 618.5551692083118,
+          "median": 818.755679778041,
+          "max": 938.7547543967299
+        },
+        "averageRunSeconds": {
+          "mean": 68.39255555555164,
+          "sd": 2.98854985685574,
+          "min": 66.0286666666629,
+          "median": 66.54033333332953,
+          "max": 72.60866666666249
+        },
+        "averageMazesCleared": {
+          "mean": 1.2299999999999998,
+          "sd": 0.16329931618554516,
+          "min": 1.03,
+          "median": 1.23,
+          "max": 1.43
+        },
+        "averageRunDeaths": {
+          "mean": -0.7400000000000001,
+          "sd": 0.1423610433604174,
+          "min": -0.94,
+          "median": -0.6600000000000001,
+          "max": -0.6200000000000001
+        },
+        "singularityRunRate": {
+          "mean": 0.26,
+          "sd": 0.05099019513592786,
+          "min": 0.21,
+          "median": 0.24,
+          "max": 0.33
+        }
+      },
+      "deltaVsReference": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunSeconds": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageMazesCleared": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunDeaths": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "scenario": {
+        "botStrategy": "hunter",
+        "skillPolicy": "none",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      },
+      "summary": {
+        "finalLevel": {
+          "mean": 17,
+          "sd": 0,
+          "min": 17,
+          "median": 17,
+          "max": 17
+        },
+        "finalCareerGhosts": {
+          "mean": 1705,
+          "sd": 11.343133018115703,
+          "min": 1696,
+          "median": 1698,
+          "max": 1721
+        },
+        "totalCampaignSeconds": {
+          "mean": 3955.055555555578,
+          "sd": 116.04081763769089,
+          "min": 3792.4666666666944,
+          "median": 4017.066666666688,
+          "max": 4055.6333333333523
+        },
+        "totalCampaignXp": {
+          "mean": 194282.66666666666,
+          "sd": 485.18885212072036,
+          "min": 193854,
+          "median": 194033,
+          "max": 194961
+        },
+        "campaignXpPerMinute": {
+          "mean": 2950.1659968228055,
+          "sd": 95.74806306449224,
+          "min": 2867.921985057807,
+          "median": 2898.129646840133,
+          "max": 3084.446358570477
+        },
+        "averageRunSeconds": {
+          "mean": 39.55055555555578,
+          "sd": 1.1604081763769105,
+          "min": 37.924666666666944,
+          "median": 40.17066666666688,
+          "max": 40.55633333333353
+        },
+        "medianRunXp": {
+          "mean": 1807.6666666666667,
+          "sd": 32.70406023042943,
+          "min": 1772,
+          "median": 1800,
+          "max": 1851
+        },
+        "averageRunKills": {
+          "mean": 17.05,
+          "sd": 0.11343133018115713,
+          "min": 16.96,
+          "median": 16.98,
+          "max": 17.21
+        },
+        "averageMazesCleared": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunDeaths": {
+          "mean": 3.16,
+          "sd": 0,
+          "min": 3.16,
+          "median": 3.16,
+          "max": 3.16
+        },
+        "averageDotsCollected": {
+          "mean": 113.67333333333333,
+          "sd": 4.178152169985619,
+          "min": 107.78,
+          "median": 116.25,
+          "max": 116.99
+        },
+        "averageDashes": {
+          "mean": 9.69,
+          "sd": 0.39251326941476306,
+          "min": 9.14,
+          "median": 9.9,
+          "max": 10.03
+        },
+        "averageEmpUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageBastionUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageLaserKills": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageNovaUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "gameOverRate": {
+          "mean": 1,
+          "sd": 0,
+          "min": 1,
+          "median": 1,
+          "max": 1
+        },
+        "timeToLevel": {
+          "5": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 181.61111111111236,
+              "sd": 10.065795890717654,
+              "min": 167.83333333333405,
+              "median": 185.40000000000137,
+              "max": 191.6000000000017
+            }
+          },
+          "10": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 999.3333333333389,
+              "sd": 15.649801797351532,
+              "min": 980.1000000000007,
+              "median": 999.466666666675,
+              "max": 1018.4333333333411
+            }
+          },
+          "20": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "35": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "50": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "75": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "100": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          }
+        }
+      },
+      "replicates": [
+        {
+          "games": 100,
+          "botStrategy": "hunter",
+          "skillPolicy": "none",
+          "averageRunSeconds": 40.17066666666688,
+          "medianRunSeconds": 39.8000000000003,
+          "p90RunSeconds": 49.69999999999974,
+          "medianRunXp": 1800,
+          "p90RunXp": 2820,
+          "averageRunXp": 1940.33,
+          "totalCampaignXp": 194033,
+          "totalCampaignSeconds": 4017.066666666688,
+          "campaignXpPerMinute": 2898.129646840133,
+          "averageRunKills": 16.96,
+          "averageMazesCleared": 0,
+          "averageRunDeaths": 3.16,
+          "averageDotsCollected": 116.99,
+          "averageDashes": 9.9,
+          "averageEmpUses": 0,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 185.40000000000137,
+            "10": 980.1000000000007,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 1696,
+            "accountLevel": 17,
+            "accountXp": 17077,
+            "skillPoints": 16,
+            "skillUpgrades": {}
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "hunter",
+          "skillPolicy": "none",
+          "averageRunSeconds": 37.924666666666944,
+          "medianRunSeconds": 37.86666666666708,
+          "p90RunSeconds": 48.399999999999814,
+          "medianRunXp": 1772,
+          "p90RunXp": 2975,
+          "averageRunXp": 1949.61,
+          "totalCampaignXp": 194961,
+          "totalCampaignSeconds": 3792.4666666666944,
+          "campaignXpPerMinute": 3084.446358570477,
+          "averageRunKills": 16.98,
+          "averageMazesCleared": 0,
+          "averageRunDeaths": 3.16,
+          "averageDotsCollected": 107.78,
+          "averageDashes": 9.14,
+          "averageEmpUses": 0,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 167.83333333333405,
+            "10": 999.466666666675,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 1698,
+            "accountLevel": 17,
+            "accountXp": 18005,
+            "skillPoints": 16,
+            "skillUpgrades": {}
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "hunter",
+          "skillPolicy": "none",
+          "averageRunSeconds": 40.55633333333353,
+          "medianRunSeconds": 41.733333333333526,
+          "p90RunSeconds": 49.19999999999977,
+          "medianRunXp": 1851,
+          "p90RunXp": 2713,
+          "averageRunXp": 1938.54,
+          "totalCampaignXp": 193854,
+          "totalCampaignSeconds": 4055.6333333333523,
+          "campaignXpPerMinute": 2867.921985057807,
+          "averageRunKills": 17.21,
+          "averageMazesCleared": 0,
+          "averageRunDeaths": 3.16,
+          "averageDotsCollected": 116.25,
+          "averageDashes": 10.03,
+          "averageEmpUses": 0,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 191.6000000000017,
+            "10": 1018.4333333333411,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 1721,
+            "accountLevel": 17,
+            "accountXp": 16898,
+            "skillPoints": 16,
+            "skillUpgrades": {}
+          }
+        }
+      ],
+      "deltaVsNoSkills": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunSeconds": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageMazesCleared": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunDeaths": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        }
+      },
+      "deltaVsReference": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunSeconds": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageMazesCleared": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunDeaths": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "scenario": {
+        "botStrategy": "hunter",
+        "skillPolicy": "balanced",
+        "ghostXpComboCap": 16,
+        "xpCurveMultiplier": 1,
+        "xpGainMultiplier": 1,
+        "singularityTriggerKills": 200
+      },
+      "summary": {
+        "finalLevel": {
+          "mean": 21,
+          "sd": 2.8284271247461903,
+          "min": 19,
+          "median": 19,
+          "max": 25
+        },
+        "finalCareerGhosts": {
+          "mean": 2658,
+          "sd": 526.3401941710323,
+          "min": 2167,
+          "median": 2419,
+          "max": 3388
+        },
+        "totalCampaignSeconds": {
+          "mean": 4088.5888888889,
+          "sd": 172.91405772238917,
+          "min": 3898.4000000000215,
+          "median": 4050.566666666677,
+          "max": 4316.8
+        },
+        "totalCampaignXp": {
+          "mean": 334650.3333333333,
+          "sd": 110099.63312785781,
+          "min": 246880,
+          "median": 267157,
+          "max": 489914
+        },
+        "campaignXpPerMinute": {
+          "mean": 4855.4818662817415,
+          "sd": 1383.1299467445822,
+          "min": 3799.7127026472194,
+          "median": 3957.32778129808,
+          "max": 6809.405114899925
+        },
+        "averageRunSeconds": {
+          "mean": 40.88588888888899,
+          "sd": 1.7291405772238906,
+          "min": 38.984000000000215,
+          "median": 40.50566666666677,
+          "max": 43.168
+        },
+        "medianRunXp": {
+          "mean": 2103,
+          "sd": 77.10166448700487,
+          "min": 2046,
+          "median": 2051,
+          "max": 2212
+        },
+        "averageRunKills": {
+          "mean": 26.580000000000002,
+          "sd": 5.263401941710324,
+          "min": 21.67,
+          "median": 24.19,
+          "max": 33.88
+        },
+        "averageMazesCleared": {
+          "mean": 0.0033333333333333335,
+          "sd": 0.004714045207910317,
+          "min": 0,
+          "median": 0,
+          "max": 0.01
+        },
+        "averageRunDeaths": {
+          "mean": 3.1966666666666668,
+          "sd": 0.0235702260395515,
+          "min": 3.18,
+          "median": 3.18,
+          "max": 3.23
+        },
+        "averageDotsCollected": {
+          "mean": 124.95333333333333,
+          "sd": 6.686590228875168,
+          "min": 117.5,
+          "median": 123.64,
+          "max": 133.72
+        },
+        "averageDashes": {
+          "mean": 16.3,
+          "sd": 1.4432140058448255,
+          "min": 14.48,
+          "median": 16.41,
+          "max": 18.01
+        },
+        "averageEmpUses": {
+          "mean": 0.43,
+          "sd": 0.09899494936611668,
+          "min": 0.32,
+          "median": 0.41,
+          "max": 0.56
+        },
+        "averageBastionUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageLaserKills": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageNovaUses": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0.0033333333333333335,
+          "sd": 0.004714045207910317,
+          "min": 0,
+          "median": 0,
+          "max": 0.01
+        },
+        "gameOverRate": {
+          "mean": 0.9966666666666667,
+          "sd": 0.004714045207910321,
+          "min": 0.99,
+          "median": 1,
+          "max": 1
+        },
+        "timeToLevel": {
+          "5": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 177.0444444444449,
+              "sd": 17.411497549424645,
+              "min": 152.46666666666547,
+              "median": 188.03333333333455,
+              "max": 190.63333333333463
+            }
+          },
+          "10": {
+            "reachedReplicates": 3,
+            "reachedFraction": 1,
+            "seconds": {
+              "mean": 939.2555555555559,
+              "sd": 38.963461833167855,
+              "min": 884.1666666666664,
+              "median": 965.7333333333345,
+              "max": 967.866666666667
+            }
+          },
+          "20": {
+            "reachedReplicates": 1,
+            "reachedFraction": 0.3333333333333333,
+            "seconds": {
+              "mean": 3957.6666666666692,
+              "sd": 0,
+              "min": 3957.6666666666692,
+              "median": 3957.6666666666692,
+              "max": 3957.6666666666692
+            }
+          },
+          "35": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "50": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "75": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          },
+          "100": {
+            "reachedReplicates": 0,
+            "reachedFraction": 0,
+            "seconds": {
+              "mean": 0,
+              "sd": 0,
+              "min": 0,
+              "median": 0,
+              "max": 0
+            }
+          }
+        }
+      },
+      "replicates": [
+        {
+          "games": 100,
+          "botStrategy": "hunter",
+          "skillPolicy": "balanced",
+          "averageRunSeconds": 40.50566666666677,
+          "medianRunSeconds": 37.86666666666708,
+          "p90RunSeconds": 56.89999999999933,
+          "medianRunXp": 2051,
+          "p90RunXp": 4776,
+          "averageRunXp": 2671.57,
+          "totalCampaignXp": 267157,
+          "totalCampaignSeconds": 4050.566666666677,
+          "campaignXpPerMinute": 3957.32778129808,
+          "averageRunKills": 24.19,
+          "averageMazesCleared": 0,
+          "averageRunDeaths": 3.18,
+          "averageDotsCollected": 123.64,
+          "averageDashes": 16.41,
+          "averageEmpUses": 0.41,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 188.03333333333455,
+            "10": 884.1666666666664,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 2419,
+            "accountLevel": 19,
+            "accountXp": 32112,
+            "skillPoints": 0,
+            "skillUpgrades": {
+              "dash_reflex": 5,
+              "pellet_resonance": 5,
+              "chrono_tank": 5,
+              "emp_overcharge": 3
+            }
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "hunter",
+          "skillPolicy": "balanced",
+          "averageRunSeconds": 38.984000000000215,
+          "medianRunSeconds": 38.03333333333374,
+          "p90RunSeconds": 52.86666666666623,
+          "medianRunXp": 2046,
+          "p90RunXp": 4150,
+          "averageRunXp": 2468.8,
+          "totalCampaignXp": 246880,
+          "totalCampaignSeconds": 3898.4000000000215,
+          "campaignXpPerMinute": 3799.7127026472194,
+          "averageRunKills": 21.67,
+          "averageMazesCleared": 0,
+          "averageRunDeaths": 3.18,
+          "averageDotsCollected": 117.5,
+          "averageDashes": 14.48,
+          "averageEmpUses": 0.32,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0,
+          "gameOverRate": 1,
+          "timeToLevelSeconds": {
+            "5": 190.63333333333463,
+            "10": 967.866666666667,
+            "20": null,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 2167,
+            "accountLevel": 19,
+            "accountXp": 11835,
+            "skillPoints": 0,
+            "skillUpgrades": {
+              "dash_reflex": 5,
+              "pellet_resonance": 5,
+              "chrono_tank": 5,
+              "emp_overcharge": 3
+            }
+          }
+        },
+        {
+          "games": 100,
+          "botStrategy": "hunter",
+          "skillPolicy": "balanced",
+          "averageRunSeconds": 43.168,
+          "medianRunSeconds": 39.600000000000314,
+          "p90RunSeconds": 59.46666666666585,
+          "medianRunXp": 2212,
+          "p90RunXp": 4874,
+          "averageRunXp": 4899.14,
+          "totalCampaignXp": 489914,
+          "totalCampaignSeconds": 4316.8,
+          "campaignXpPerMinute": 6809.405114899925,
+          "averageRunKills": 33.88,
+          "averageMazesCleared": 0.01,
+          "averageRunDeaths": 3.23,
+          "averageDotsCollected": 133.72,
+          "averageDashes": 18.01,
+          "averageEmpUses": 0.56,
+          "averageBastionUses": 0,
+          "averageLaserKills": 0,
+          "averageNovaUses": 0,
+          "singularityRunRate": 0.01,
+          "gameOverRate": 0.99,
+          "timeToLevelSeconds": {
+            "5": 152.46666666666547,
+            "10": 965.7333333333345,
+            "20": 3957.6666666666692,
+            "35": null,
+            "50": null,
+            "75": null,
+            "100": null
+          },
+          "finalProfile": {
+            "careerGhosts": 3388,
+            "accountLevel": 25,
+            "accountXp": 18072,
+            "skillPoints": 1,
+            "skillUpgrades": {
+              "dash_reflex": 5,
+              "pellet_resonance": 5,
+              "chrono_tank": 5,
+              "emp_overcharge": 4,
+              "super_frequency": 4
+            }
+          }
+        }
+      ],
+      "deltaVsNoSkills": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 4,
+          "sd": 2.8284271247461903,
+          "min": 2,
+          "median": 2,
+          "max": 8
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 65.72350553956572,
+          "sd": 50.99897815939313,
+          "min": 23.189456418630705,
+          "median": 36.547644982439074,
+          "max": 137.43341521762738
+        },
+        "averageRunSeconds": {
+          "mean": 1.3353333333332102,
+          "sd": 0.9497139140385594,
+          "min": 0.33499999999988717,
+          "median": 1.0593333333332708,
+          "max": 2.6116666666664727
+        },
+        "averageMazesCleared": {
+          "mean": 0.0033333333333333335,
+          "sd": 0.004714045207910317,
+          "min": 0,
+          "median": 0,
+          "max": 0.01
+        },
+        "averageRunDeaths": {
+          "mean": 0.036666666666666625,
+          "sd": 0.0235702260395515,
+          "min": 0.020000000000000018,
+          "median": 0.020000000000000018,
+          "max": 0.06999999999999984
+        },
+        "singularityRunRate": {
+          "mean": 0.0033333333333333335,
+          "sd": 0.004714045207910317,
+          "min": 0,
+          "median": 0,
+          "max": 0.01
+        }
+      },
+      "deltaVsReference": {
+        "note": "Paired replicate differences against the matched comparison scenario; same seeds are used in each replicate.",
+        "finalLevel": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "campaignXpPerMinutePercent": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunSeconds": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageMazesCleared": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "averageRunDeaths": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        },
+        "singularityRunRate": {
+          "mean": 0,
+          "sd": 0,
+          "min": 0,
+          "median": 0,
+          "max": 0
+        }
+      }
+    }
+  ]
+}

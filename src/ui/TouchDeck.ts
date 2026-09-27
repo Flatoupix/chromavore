@@ -45,13 +45,13 @@ export class TouchDeckManager {
     }
   }
 
-  public updateDashGauge(dashCd: number, maxCd: number, isOverdrive: boolean) {
+  public updateDashGauge(dashCd: number, maxCd: number, isOverdrive: boolean, dashCharges: number = 1) {
     if (!this.dashRing) {
       this.dashRing = document.getElementById('dash-ring-prog') as unknown as SVGCircleElement;
     }
     if (!this.dashRing) return;
 
-    if (isOverdrive || dashCd <= 0) {
+    if (isOverdrive || dashCharges > 0 || dashCd <= 0) {
       this.dashRing.style.strokeDashoffset = '0';
       this.dashRing.style.stroke = isOverdrive ? '#00ffcc' : '#00f0ff';
     } else {
@@ -95,11 +95,13 @@ export class TouchDeckManager {
       chronoBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        input.handleChronoDown();
         input.isChronoRequested = true;
         chronoBtn.classList.add('active-chrono');
       });
       const releaseChrono = (e: Event) => {
         e.preventDefault();
+        input.handleChronoUp();
         input.isChronoRequested = false;
         chronoBtn.classList.remove('active-chrono');
       };

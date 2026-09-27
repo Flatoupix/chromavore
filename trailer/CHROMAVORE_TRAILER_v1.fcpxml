@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<!--
+  CHROMAVORE — Trailer v1
+  Storyboard FCPXML — Importez dans DaVinci Resolve via File > Import > Timeline...
+  Format : 1920x1080 / 25fps / Durée totale : 1min 20s (2000 frames)
+  ─────────────────────────────────────────────────────────────────────────────
+  ACTE I  : Plans 01–04 | 0:00–0:15 | Labyrinthe & tension
+  ACTE II : Plans 05–08 | 0:15–0:38 | Montée en puissance & God Mode
+  ACTE III: Plans 09–12 | 0:38–1:09 | Singularity
+  ACTE IV : Plans 13–14 | 1:09–1:20 | Title card & CTA
+-->
+<fcpxml version="1.9">
+
+  <resources>
+    <format id="r1"
+            name="FFVideoFormat1080p25"
+            frameDuration="1/25s"
+            width="1920"
+            height="1080"
+            colorSpace="1-1-1 (Rec. 709)"/>
+  </resources>
+
+  <library>
+    <event name="CHROMAVORE Trailer">
+      <project name="CHROMAVORE_TRAILER_v1">
+
+        <sequence format="r1"
+                  duration="80s"
+                  tcStart="0s"
+                  tcFormat="NDF"
+                  audioLayout="stereo"
+                  audioRate="48k">
+          <spine>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!--  ACTE I — LE LABYRINTHE (0:00 → 0:15)                      -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+
+            <gap name="[ACT I] P01 — FADE IN (0:00–0:03)"
+                 offset="0s"
+                 duration="3s">
+              <note>
+                VISUEL : Écran noir total. Un pixel jaune clignote au centre.
+                Zoom arrière progressif — le labyrinthe néon se révèle.
+                SON : Silence → bourdonnement électronique grave montant.
+                TEXTE : aucun.
+                CUT VERS : P02 — le pixel devient le joueur en mouvement.
+              </note>
+              <marker start="0s" duration="1/25s" value="▶ DÉBUT TRAILER" completed="0"/>
+            </gap>
+
+            <gap name="[ACT I] P02 — EXPLORATION (0:03–0:07)"
+                 offset="3s"
+                 duration="4s">
+              <note>
+                VISUEL : Vue top-down. Joueur avale des dots en ligne, sillage lumineux derrière lui.
+                Murs brillent en violet/cyan. Ambiance rétro-futuriste.
+                SON : BGM synthwave démarre — basses répétitives, 8-bit mélodique.
+                TEXTE : "CHROMAVORE" en petit, fond d'écran.
+              </note>
+              <marker start="0s" duration="1/25s" value="🎵 BGM START" completed="0"/>
+            </gap>
+
+            <gap name="[ACT I] P03 — SPECTRES ARRIVENT (0:07–0:11)"
+                 offset="7s"
+                 duration="4s">
+              <note>
+                VISUEL : Deux spectres surgissent d'un couloir sombre, yeux brillants en rouge.
+                Le joueur les aperçoit — micro-pause de tension. Il fait volte-face.
+                SON : Stinger dissonant. BGM se densifie.
+                TEXTE FLASH : "SURVIVE."
+              </note>
+            </gap>
+
+            <gap name="[ACT I] P04 — POURSUITE (0:11–0:15)"
+                 offset="11s"
+                 duration="4s">
+              <note>
+                VISUEL : Shot serré — joueur sprint dans les couloirs.
+                Spectres à 2 cases derrière. Particules d'urgence autour du joueur.
+                MADNESS TIMER (barre HUD) quasi à zéro.
+                SON : BGM s'accélère — hi-hat en triples.
+              </note>
+            </gap>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!--  ACTE II — MONTÉE EN PUISSANCE (0:15 → 0:38)              -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+
+            <gap name="[ACT II] P05 — PELLET POWER (0:15–0:19)"
+                 offset="15s"
+                 duration="4s">
+              <note>
+                VISUEL : Joueur avale un super-pellet → flash blanc → spectres virent bleu/mauve (état flee).
+                Montage rapide : kill 1, kill 2, kill 3. Chaque kill = flash + pop score.
+                SON : Son "pellet" — montée électronique aiguë.
+                TEXTE HUD : "x2 → x4 → x8"
+              </note>
+            </gap>
+
+            <gap name="[ACT II] P06 — GOD MODE x32 (0:19–0:24)"
+                 offset="19s"
+                 duration="5s">
+              <note>
+                VISUEL : Icône flamme s'embrase dans le HUD. Counter monte : x12 → x24 → x32.
+                Murs du labyrinthe vibrent légèrement. Halo doré autour du joueur.
+                Le joueur fonce sur un spectre qui explose au contact.
+                SON : Stinger "GOD MODE".
+                TEXTE : "x32 GOD MODE" — grand, centré, flash.
+              </note>
+              <marker start="0s" duration="1/25s" value="⚡ GOD MODE x32" completed="0"/>
+            </gap>
+
+            <gap name="[ACT II] P07 — KILLS S'ACCUMULENT (0:24–0:35)"
+                 offset="24s"
+                 duration="11s">
+              <note>
+                VISUEL : MONTAGE CUT RAPIDE —
+                  (1) NITRO ↑↓↑↓ : traîne de feu derrière le joueur, spectre touché en plein vol.
+                  (2) WIGGLE EMP : onde radiale repousse 3 spectres, explosion de pixels.
+                  (3) CHRONO-SHIFT : le monde ralentit, spectres figés, joueur slalome en slow-mo (particules bleues).
+                  (4) Gros plan HUD counter : 148 → 172 → 199...
+                SON : BGM en montée d'intensité. Chaque kill = son percussif sec.
+                TEXTE clignotant bas de l'écran : "200 KILLS TO SINGULARITY"
+              </note>
+              <marker start="0s"       duration="1/25s" value="Nitro ↑↓↑↓" completed="0"/>
+              <marker start="3s"       duration="1/25s" value="Wiggle EMP" completed="0"/>
+              <marker start="6s"       duration="1/25s" value="Chrono-Shift slow-mo" completed="0"/>
+              <marker start="200/25s"  duration="1/25s" value="Counter 148→199" completed="0"/>
+            </gap>
+
+            <gap name="[ACT II] P08 — 200e KILL / FREEZE FRAME (0:35–0:38)"
+                 offset="35s"
+                 duration="3s">
+              <note>
+                VISUEL : Ralenti extrême. Joueur touche le 200e spectre. Contact.
+                L'écran entier se FIGE — freeze-frame absolu.
+                SON : SILENCE TOTAL. Puis grondement sourd et grave qui monte.
+                TEXTE : "« SINGULARITY AWAKENS »" — lettre par lettre, doré, vibre légèrement.
+              </note>
+              <marker start="0s"      duration="1/25s" value="🔴 FREEZE FRAME" completed="0"/>
+              <marker start="50/25s"  duration="1/25s" value="SILENCE TOTAL" completed="0"/>
+            </gap>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!--  ACTE III — SINGULARITY (0:38 → 1:09)                     -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+
+            <gap name="[ACT III] P09 — SHOCKWAVE DORÉE (0:38–0:44)"
+                 offset="38s"
+                 duration="6s">
+              <note>
+                VISUEL : Du centre du joueur éclate une VAGUE DORÉE qui s'étend en cercle parfait.
+                Tout ce qu'elle touche vire au gold puis s'éteint. Spectres VAPORIZED en particules dorées.
+                L'écran tremble continuellement. Timer visible : 5... 4... 3...
+                SON : MP3 SINGULARITY DÉMARRE — intro atmosphérique lente.
+                TEXTE : Timer 5→4→3 affiché.
+              </note>
+              <marker start="0s" duration="1/25s" value="🎵 SINGULARITY MP3 START" completed="0"/>
+              <marker start="0s" duration="1/25s" value="🌊 SHOCKWAVE EXPAND" completed="0"/>
+            </gap>
+
+            <gap name="[ACT III] P10 — NOVA FINALE (0:44–0:48)"
+                 offset="44s"
+                 duration="4s">
+              <note>
+                VISUEL : Vague atteint les bords de l'écran.
+                EXPLOSION TOTALE — flash blanc aveuglant (0.5s plein écran).
+                Tous les spectres restants explosent simultanément en or.
+                L'image revient. Le labyrinthe est vide. Silence des fantômes.
+                SON : Impact massif + longue réverbération. Musique Singularity monte en puissance.
+                TEXTE : "NOVA" — lettres énormes, pendant 1s.
+              </note>
+              <marker start="0s"      duration="1/25s" value="💥 NOVA — FLASH BLANC" completed="0"/>
+              <marker start="12/25s"  duration="1/25s" value="LABYRINTHE VIDE" completed="0"/>
+            </gap>
+
+            <gap name="[ACT III] P11 — SINGULARITY ACTIVE 30s (0:48–1:05)"
+                 offset="48s"
+                 duration="17s">
+              <note>
+                VISUEL : Joueur reprend le contrôle. x64 dans le HUD. Aura intense dorée.
+                MONTAGE :
+                  → Spectre frôlé → explosion instantanée, pop "x64 ANNIHILATION!"
+                  → Joueur traverse le labyrinthe comme une comète (traîne gold)
+                  → Gros plan HUD timer Singularity : 28... 27...
+                  → Vue large labyrinthe vu du dessus : comète dorée qui ravage tout
+                SON : MP3 Singularity en plein développement — synths larges, basse puissante.
+                TEXTE : "30 SECONDS OF ABSOLUTE POWER"
+              </note>
+              <marker start="0s"       duration="1/25s" value="▶ JOUEUR REPREND" completed="0"/>
+              <marker start="5s"       duration="1/25s" value="x64 ANNIHILATION pops" completed="0"/>
+              <marker start="10s"      duration="1/25s" value="Vue large — comète dorée" completed="0"/>
+            </gap>
+
+            <gap name="[ACT III] P12 — SINGULARITY EXPIRE (1:05–1:09)"
+                 offset="65s"
+                 duration="4s">
+              <note>
+                VISUEL : HUD : "SINGULARITY EXPIRED". La lueur dorée s'éteint progressivement.
+                Score défile : 148 920 pts. Le labyrinthe se recouvre d'ombres.
+                SON : Fin Singularity music. Silence relatif.
+                TEXTE : Score en grand + en petit "YOUR LEGACY REMAINS".
+              </note>
+              <marker start="0s" duration="1/25s" value="SINGULARITY EXPIRED" completed="0"/>
+            </gap>
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!--  ACTE IV — TITLE CARD (1:09 → 1:20)                       -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+
+            <gap name="[ACT IV] P13 — LOGO CHROMAVORE (1:09–1:15)"
+                 offset="69s"
+                 duration="6s">
+              <note>
+                VISUEL : Fond noir total. "CHROMAVORE" apparaît lettre par lettre en néon.
+                Effet glitch/scanline sur chaque lettre à l'apparition.
+                Sous le logo : "SYNTHWAVE ARCADE".
+                Version v3.13 en petit coin bas-droit.
+                SON : Drop BGM en loop court. Dernier arpège synthwave.
+              </note>
+              <marker start="0s" duration="1/25s" value="🏁 LOGO FINAL" completed="0"/>
+            </gap>
+
+            <gap name="[ACT IV] P14 — CTA PLAY NOW (1:15–1:20)"
+                 offset="75s"
+                 duration="5s">
+              <note>
+                VISUEL : Logo CHROMAVORE reste affiché. Fade in de "PLAY NOW" + URL/QR code.
+                SON : Fade out musique progressif.
+                TEXTE : "PLAY NOW" + lien.
+              </note>
+              <marker start="0s"     duration="1/25s" value="PLAY NOW + URL" completed="0"/>
+              <marker start="100/25s" duration="1/25s" value="▶ FIN TRAILER" completed="0"/>
+            </gap>
+
+          </spine>
+        </sequence>
+
+      </project>
+    </event>
+  </library>
+
+</fcpxml>

@@ -448,6 +448,54 @@ class SoundManager {
           });
           break;
         }
+        case 'sequence_step': {
+          const step = param || 0;
+          const osc = this.actx.createOscillator();
+          const g = this.actx.createGain();
+          osc.type = 'triangle';
+          const baseFreq = 480 + step * 90;
+          osc.frequency.setValueAtTime(baseFreq, t);
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, t + 0.045);
+          g.gain.setValueAtTime(0.04, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+          osc.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + 0.05);
+          break;
+        }
+        case 'sequence_success': {
+          const freqs = [700, 950, 1400];
+          freqs.forEach((f, i) => {
+            if (!this.actx) return;
+            const osc = this.actx.createOscillator();
+            const g = this.actx.createGain();
+            osc.type = 'sine';
+            const st = t + i * 0.035;
+            osc.frequency.setValueAtTime(f, st);
+            g.gain.setValueAtTime(0.05, st);
+            g.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
+            osc.connect(g);
+            g.connect(this.actx.destination);
+            osc.start(st);
+            osc.stop(st + 0.12);
+          });
+          break;
+        }
+        case 'sequence_fail': {
+          const osc = this.actx.createOscillator();
+          const g = this.actx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, t);
+          osc.frequency.exponentialRampToValueAtTime(110, t + 0.14);
+          g.gain.setValueAtTime(0.05, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+          osc.connect(g);
+          g.connect(this.actx.destination);
+          osc.start(t);
+          osc.stop(t + 0.15);
+          break;
+        }
       }
     } catch {}
   }

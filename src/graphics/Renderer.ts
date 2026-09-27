@@ -349,6 +349,92 @@ export class Renderer {
     }
   }
 
+  public drawSequenceModeOverlay(input: import('../core/InputManager').InputManager, time: number) {
+    if (!input.isSequenceMode && input.sequenceFeedbackTimer <= 0) return;
+    const c = this.ctx;
+    c.save();
+
+    const isExec = input.sequenceStatus === 'executed';
+    const isInvalid = input.sequenceStatus === 'invalid' || input.sequenceStatus === 'cooldown';
+    const isValid = input.sequenceStatus === 'valid';
+
+    const panelW = Math.min(380, this.cw - 32);
+    const panelH = 58;
+    const panelX = this.cw / 2 - panelW / 2;
+    const panelY = 56;
+
+    // Glowing cyber card
+    const borderColor = isExec ? '#00ffaa' : (isInvalid ? '#ff0055' : (isValid ? '#ffd700' : '#00f0ff'));
+    c.fillStyle = 'rgba(10, 16, 30, 0.94)';
+    c.strokeStyle = borderColor;
+    c.lineWidth = 1.8;
+    c.shadowColor = borderColor;
+    c.shadowBlur = 12;
+    c.beginPath();
+    c.roundRect(panelX, panelY, panelW, panelH, 8);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Title Header
+    c.font = 'bold 9px monospace';
+    c.textAlign = 'center';
+    c.fillStyle = borderColor;
+    const headerTitle = isExec
+      ? '★ COMPETENCE DECLENCHEE ★'
+      : (isInvalid
+        ? '✕ SEQUENCE ANNULEE / INVALIDE ✕'
+        : (isValid ? '▲ SEQUENCE VALIDE : RELACHEZ SHIFT ▲' : '▲ MODE SEQUENCE [BULLET-TIME] ▲'));
+    c.fillText(headerTitle, this.cw / 2, panelY + 14);
+
+    // Sequence Slots
+    const maxSlots = 4;
+    const slotW = 26, slotH = 20, slotGap = 8;
+    const totalSlotsW = maxSlots * slotW + (maxSlots - 1) * slotGap;
+    const startX = this.cw / 2 - totalSlotsW / 2;
+    const slotY = panelY + 20;
+
+    const arrowSymbols: Record<string, string> = {
+      up: '▲',
+      down: '▼',
+      left: '◄',
+      right: '►'
+    };
+
+    for (let i = 0; i < maxSlots; i++) {
+      const sx = startX + i * (slotW + slotGap);
+      const dirKey = input.sequenceBuffer[i];
+
+      c.fillStyle = dirKey ? 'rgba(0, 240, 255, 0.22)' : 'rgba(255, 255, 255, 0.05)';
+      c.strokeStyle = dirKey ? borderColor : 'rgba(255, 255, 255, 0.2)';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.roundRect(sx, slotY, slotW, slotH, 4);
+      c.fill();
+      c.stroke();
+
+      if (dirKey) {
+        c.font = 'bold 12px monospace';
+        c.fillStyle = '#ffffff';
+        c.textAlign = 'center';
+        c.fillText(arrowSymbols[dirKey] || dirKey, sx + slotW / 2, slotY + 14);
+      } else {
+        c.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        c.beginPath();
+        c.arc(sx + slotW / 2, slotY + slotH / 2, 2.5, 0, Math.PI * 2);
+        c.fill();
+      }
+    }
+
+    // Feedback Subtitle
+    c.font = 'bold 8.5px monospace';
+    c.fillStyle = isInvalid ? '#ff7799' : (isValid ? '#ffd700' : '#88e5ff');
+    c.textAlign = 'center';
+    c.fillText(input.sequenceFeedback || 'Entrez les directions pour composer', this.cw / 2, panelY + 50);
+
+    c.restore();
+  }
+
   public drawEffectTimers(effects: EffectTimer[]) {
     const visible = effects.filter(effect => effect.timer > 0);
     if (visible.length === 0) return;
@@ -549,7 +635,9 @@ export class Renderer {
     chronoLevel: number = 1,
     dotStreak: number = 0,
     dotStreakTimer: number = 0,
-    killStreakTimer: number = 0
+    killStreakTimer: number = 0,
+    dashCharges: number = 1,
+    dashMaxCharges: number = 1
   ) {
     const isMadness = true;
     const c = this.ctx;
@@ -641,7 +729,10 @@ export class Renderer {
         const dashLevel = progression.getSkillLevel('dash');
         c.font = 'bold 8px monospace';
         c.fillStyle = dashLevel > 0 ? '#00ffff' : '#ffaa00';
-        c.fillText(dashLevel > 0 ? 'DASH [SPACE]' : `DASH ${progression.totalGhosts}/${dashThreshold}`, 10, 41);
+        const dashText = dashLevel > 0
+          ? (dashMaxCharges > 1 ? `DASH (${dashCharges}/${dashMaxCharges})` : 'DASH [SPACE]')
+          : `DASH ${progression.totalGhosts}/${dashThreshold}`;
+        c.fillText(dashText, 10, 41);
       }
 
       // 4. Level & Account XP in Center
@@ -658,25 +749,43 @@ export class Renderer {
         21
       );
 
-      // Account Level & XP Gauge in Center HUD
-      const accLvl = experienceSystem.accountLevel;
-      const curXp = experienceSystem.accountXp;
-      const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
-      const xpRatio = reqXp === Infinity ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
+      // Center HUD: Level & Progression (XP in Custom, Kills/Goal in Arcade)
+      const isCustomMode = profileManager.gameMode === 'custom';
       const xpW = isWide ? 96 : 70;
       const xpH = 3.5;
       const xpX = tmX - xpW / 2;
       const xpY = 32;
 
-      c.fillStyle = 'rgba(255, 255, 255, 0.12)';
-      c.fillRect(xpX, xpY, xpW, xpH);
-      c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#00ffaa';
-      c.fillRect(xpX, xpY, xpW * xpRatio, xpH);
+      if (isCustomMode) {
+        const accLvl = experienceSystem.accountLevel;
+        const curXp = experienceSystem.accountXp;
+        const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
+        const xpRatio = reqXp === Infinity ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
 
-      c.font = 'bold 7.5px monospace';
-      c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#88ffcc';
-      const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
-      c.fillText(`ACC LVL ${accLvl}${surgeTag}`, tmX, 44);
+        c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        c.fillRect(xpX, xpY, xpW, xpH);
+        c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#00ffaa';
+        c.fillRect(xpX, xpY, xpW * xpRatio, xpH);
+
+        c.font = 'bold 7.5px monospace';
+        c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#88ffcc';
+        const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
+        c.fillText(`LVL ${accLvl}${surgeTag} • [CUSTOM]`, tmX, 44);
+      } else {
+        // Arcade mode: Pure kill-based intra-game milestone
+        const nextSkill = progression.getNextUnlock().skill;
+        const targetKills = nextSkill ? nextSkill.threshold : 164;
+        const killProgress = Math.max(0, Math.min(1, progression.totalGhosts / targetKills));
+
+        c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        c.fillRect(xpX, xpY, xpW, xpH);
+        c.fillStyle = '#00ffff';
+        c.fillRect(xpX, xpY, xpW * killProgress, xpH);
+
+        c.font = 'bold 7.5px monospace';
+        c.fillStyle = '#00e5ff';
+        c.fillText(`KILLS : ${progression.totalGhosts} • [ARCADE]`, tmX, 44);
+      }
 
       // 5. Chrono-Shift (Bullet Time) Gauge
       const chW = isWide ? 68 : 48;
@@ -873,7 +982,7 @@ export class Renderer {
       c.fillText(`PREY ${predTimer.toFixed(1)}s`, dX + dW / 2, dY + dH / 2);
     } else if (isMadness) {
       const isOverdrive = overdriveTimer > 0;
-      const isReady = dashCd <= 0 || isOverdrive;
+      const isReady = dashCharges > 0 || dashCd <= 0 || isOverdrive;
       const cdProg = isReady ? 1 : Math.max(0, 1 - dashCd / 2.8);
       c.fillStyle = isOverdrive ? '#003828' : '#0c1322';
       c.strokeStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : '#223350');
@@ -889,7 +998,12 @@ export class Renderer {
       c.shadowBlur = 0;
       c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillStyle = isReady ? '#050a14' : '#ffffff';
-      c.fillText(isOverdrive ? `NO-CD (${overdriveTimer.toFixed(1)}s)` : (isReady ? 'DASH [SPACE]' : 'DASH ' + dashCd.toFixed(1) + 's'), dX + dW / 2, dY + dH / 2);
+      const label = isOverdrive
+        ? `NO-CD (${overdriveTimer.toFixed(1)}s)`
+        : (isReady
+          ? (dashMaxCharges > 1 ? `DASH (${dashCharges}/${dashMaxCharges})` : 'DASH [SPACE]')
+          : 'DASH ' + dashCd.toFixed(1) + 's');
+      c.fillText(label, dX + dW / 2, dY + dH / 2);
     }
 
     // Hi-Score & Level
@@ -1056,46 +1170,88 @@ export class Renderer {
       c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 240, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // --- CARTE ÉPURÉE : LET'S HUNT (Centrée verticalement) ---
-    const madW = 340, madH = 68;
-    const madX = this.cw / 2 - madW / 2;
-    const madY = 310;
+    // --- SÉLECTION DU MODE DE JEU (ARCADE vs CUSTOM) ---
+    const isCustom = profileManager.gameMode === 'custom';
+    const totalW = Math.min(540, this.cw - 24);
+    const cardW = Math.floor((totalW - 14) / 2);
+    const cardH = 76;
+    const startX = this.cw / 2 - totalW / 2;
+    const cardY = 305;
 
+    const playPulse = 0.55 + 0.45 * Math.sin(time * 3.5);
+
+    // 1. CARTE ARCADE (Plat tout prêt / Route classique)
+    const arcX = startX;
+    const arcActive = !isCustom;
     c.save();
-    const cardBg = this.chromaTier === 0
-      ? 'rgba(255, 255, 255, 0.04)'
-      : (this.chromaTier <= 2 ? 'rgba(80, 140, 200, 0.12)' : 'rgba(255, 0, 127, 0.22)');
-    const cardBorder = this.chromaTier === 0
-      ? '#555555'
-      : (this.chromaTier <= 2 ? '#5588aa' : '#ff007f');
-    c.fillStyle = cardBg;
-    c.strokeStyle = cardBorder;
-    c.lineWidth = 2;
-    c.shadowColor = this.chromaTier === 0 ? 'transparent' : cardBorder;
-    c.shadowBlur = this.getChromaBlur(14);
+    c.fillStyle = arcActive ? 'rgba(0, 240, 255, 0.16)' : 'rgba(255, 255, 255, 0.03)';
+    c.strokeStyle = arcActive ? '#00ffff' : 'rgba(255, 255, 255, 0.18)';
+    c.lineWidth = arcActive ? 2 : 1;
+    c.shadowColor = arcActive ? '#00ffff' : 'transparent';
+    c.shadowBlur = arcActive ? this.getChromaBlur(12) : 0;
     c.beginPath();
-    c.roundRect(madX, madY, madW, madH, 8);
+    c.roundRect(arcX, cardY, cardW, cardH, 7);
     c.fill();
     c.stroke();
-    c.shadowBlur = 0;
 
-    // Header : LET'S HUNT
     c.textAlign = 'center';
-    c.font = 'bold 16px monospace';
-    c.fillStyle = '#ffffff';
-    c.shadowColor = cardBorder;
-    c.shadowBlur = this.getChromaBlur(10);
-    c.fillText("LET'S HUNT", this.cw / 2, madY + 27);
-    c.shadowBlur = 0;
+    c.font = 'bold 13px monospace';
+    c.fillStyle = arcActive ? '#ffffff' : '#8899aa';
+    c.fillText('🕹️ MODE ARCADE', arcX + cardW / 2, cardY + 22);
 
-    // Prompt à l'intérieur de la carte avec pulsation
-    const playPulse = 0.55 + 0.45 * Math.sin(time * 3.5);
-    c.font = 'bold 11px monospace';
-    c.fillStyle = this.chromaTier === 0 ? `rgba(210, 210, 210, ${playPulse})` : `rgba(255, 255, 255, ${playPulse})`;
-    c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff007f';
-    c.shadowBlur = this.getChromaBlur(8 * playPulse);
-    c.fillText('▶ PRESS SPACEBAR TO PLAY ◀', this.cw / 2, madY + 50);
-    c.shadowBlur = 0;
+    c.font = '9px monospace';
+    c.fillStyle = arcActive ? '#00ffff' : '#556677';
+    c.fillText('Super-Items & Route Prévue', arcX + cardW / 2, cardY + 36);
+    const arcBest = profileManager.profile.arcadeBestKills || 0;
+    const arcPts = (profileManager.profile.arcadeHiScore || 0).toLocaleString();
+    c.fillText(arcBest > 0 ? `Record: ${arcBest} Kills (${arcPts} pts)` : 'Singularité x64 • God Mode x32', arcX + cardW / 2, cardY + 49);
+
+    if (arcActive) {
+      c.font = 'bold 9px monospace';
+      c.fillStyle = `rgba(0, 255, 255, ${playPulse})`;
+      c.fillText('▶ [ESPACE] JOUER ◀', arcX + cardW / 2, cardY + 66);
+    } else {
+      c.font = '8.5px monospace';
+      c.fillStyle = '#667788';
+      c.fillText('CLIQUER POUR CHOISIR', arcX + cardW / 2, cardY + 66);
+    }
+    c.restore();
+
+    // 2. CARTE CUSTOM (Plat composé / Arbre de compétences & builds libres)
+    const custX = startX + cardW + 14;
+    const custActive = isCustom;
+    c.save();
+    c.fillStyle = custActive ? 'rgba(255, 0, 127, 0.18)' : 'rgba(255, 255, 255, 0.03)';
+    c.strokeStyle = custActive ? '#ff007f' : 'rgba(255, 255, 255, 0.18)';
+    c.lineWidth = custActive ? 2 : 1;
+    c.shadowColor = custActive ? '#ff007f' : 'transparent';
+    c.shadowBlur = custActive ? this.getChromaBlur(12) : 0;
+    c.beginPath();
+    c.roundRect(custX, cardY, cardW, cardH, 7);
+    c.fill();
+    c.stroke();
+
+    c.textAlign = 'center';
+    c.font = 'bold 13px monospace';
+    c.fillStyle = custActive ? '#ffffff' : '#8899aa';
+    c.fillText('⚡ MODE CUSTOM', custX + cardW / 2, cardY + 22);
+
+    c.font = '9px monospace';
+    c.fillStyle = custActive ? '#ff00a0' : '#556677';
+    c.fillText('Arbre de Talents & Builds Libres', custX + cardW / 2, cardY + 36);
+    const custBest = profileManager.profile.customBestKills || 0;
+    const custPts = (profileManager.profile.customHiScore || 0).toLocaleString();
+    c.fillText(custBest > 0 ? `Record: ${custBest} Kills (${custPts} pts)` : 'Aegis Shield • Surge • Aspiration', custX + cardW / 2, cardY + 49);
+
+    if (custActive) {
+      c.font = 'bold 9px monospace';
+      c.fillStyle = `rgba(255, 0, 127, ${playPulse})`;
+      c.fillText('▶ [ESPACE] JOUER ◀', custX + cardW / 2, cardY + 66);
+    } else {
+      c.font = '8.5px monospace';
+      c.fillStyle = '#667788';
+      c.fillText('CLIQUER POUR CHOISIR', custX + cardW / 2, cardY + 66);
+    }
     c.restore();
 
     // CRT Scanlines
@@ -1557,7 +1713,8 @@ export class Renderer {
     entries: import('../systems/Leaderboard').LeaderboardEntry[],
     time: number,
     playerRank: number = 0,
-    playerDate: string = ''
+    playerDate: string = '',
+    activeMode: 'arcade' | 'custom' = 'arcade'
   ) {
     const c = this.ctx;
     c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
@@ -1575,32 +1732,68 @@ export class Renderer {
     c.save();
     c.textAlign = 'center';
     if (this.chromaTier === 0) {
-      c.font = 'bold 22px monospace';
+      c.font = 'bold 20px monospace';
       c.fillStyle = '#ffffff';
       c.shadowBlur = 0;
     } else {
-      const titleGrad = c.createLinearGradient(this.cw / 2, 20, this.cw / 2, 60);
+      const titleGrad = c.createLinearGradient(this.cw / 2, 10, this.cw / 2, 42);
       titleGrad.addColorStop(0, '#ffffff');
       titleGrad.addColorStop(0.5, '#00f0ff');
       titleGrad.addColorStop(1, '#ff007f');
-      c.font = 'bold 22px monospace';
+      c.font = 'bold 20px monospace';
       c.fillStyle = titleGrad;
       c.shadowColor = '#00f0ff';
-      c.shadowBlur = 16;
+      c.shadowBlur = 14;
     }
-    spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 - 100, 42, 18);
-    c.fillText('LEADERBOARD', this.cw / 2 + 10, 42);
+    spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 - 95, 30, 16);
+    c.fillText('LEADERBOARDS', this.cw / 2 + 10, 30);
     c.shadowBlur = 0;
     c.restore();
 
-    // Mode tab
-    const modeLabel = 'LET\'S HUNT — KILL RANKINGS';
+    // Mode Selector Tabs: [ ARCADE ] vs [ CUSTOM ]
+    const tabW = Math.min(180, Math.floor((this.cw - 48) / 2));
+    const tabH = 26;
+    const tabY = 46;
+    const totalTabsW = tabW * 2 + 12;
+    const tab1X = this.cw / 2 - totalTabsW / 2;
+    const tab2X = tab1X + tabW + 12;
+
+    // Tab 1: Arcade
+    const isArcade = activeMode === 'arcade';
+    c.save();
+    c.fillStyle = isArcade ? 'rgba(0, 240, 255, 0.22)' : 'rgba(255, 255, 255, 0.04)';
+    c.strokeStyle = isArcade ? '#00ffff' : 'rgba(255, 255, 255, 0.15)';
+    c.lineWidth = isArcade ? 2 : 1;
+    c.beginPath();
+    c.roundRect(tab1X, tabY, tabW, tabH, 5);
+    c.fill();
+    c.stroke();
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
     c.font = 'bold 11px monospace';
-    c.fillStyle = this.chromaTier === 0 ? '#888888' : '#ff007f';
-    c.fillText(modeLabel, this.cw / 2, 62);
+    c.fillStyle = isArcade ? '#ffffff' : '#778899';
+    c.fillText('🕹️ ARCADE PUR', tab1X + tabW / 2, tabY + tabH / 2);
+    c.restore();
+
+    // Tab 2: Custom
+    const isCustom = activeMode === 'custom';
+    c.save();
+    c.fillStyle = isCustom ? 'rgba(255, 0, 127, 0.22)' : 'rgba(255, 255, 255, 0.04)';
+    c.strokeStyle = isCustom ? '#ff007f' : 'rgba(255, 255, 255, 0.15)';
+    c.lineWidth = isCustom ? 2 : 1;
+    c.beginPath();
+    c.roundRect(tab2X, tabY, tabW, tabH, 5);
+    c.fill();
+    c.stroke();
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = 'bold 11px monospace';
+    c.fillStyle = isCustom ? '#ffffff' : '#778899';
+    c.fillText('⚡ CUSTOM (TALENTS)', tab2X + tabW / 2, tabY + tabH / 2);
+    c.restore();
 
     // Column headers
-    const startY = 86;
+    const startY = 88;
     c.font = 'bold 9px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#555555' : '#445566';
     c.textAlign = 'center';
@@ -1834,7 +2027,7 @@ export class Renderer {
       c.font = 'bold 11px monospace';
       c.fillStyle = '#ffffff';
       c.textAlign = 'left';
-      c.fillText(`NIVEAU DE COMPTE : ${accLvl} / 100`, barX, 72);
+      c.fillText(`NIVEAU : ${accLvl} / 100`, barX, 72);
       c.textAlign = 'right';
       c.fillText(reqXp === Infinity ? 'MAX LEVEL' : `XP: ${curXp.toLocaleString()} / ${reqXp.toLocaleString()} PTS`, barX + barW, 72);
 
@@ -1865,7 +2058,7 @@ export class Renderer {
         const bKey = branchKeys[bi];
         const bInfo = SKILL_TREE_BRANCHES[bKey];
         const bx = branchGap + bi * (branchColW + branchGap);
-        const by = 126;
+        const by = 118;
 
         // Branch Header Card
         c.fillStyle = 'rgba(20, 24, 40, 0.85)';
@@ -1873,19 +2066,19 @@ export class Renderer {
         c.lineWidth = 1.5;
         c.shadowColor = bInfo.color;
         c.shadowBlur = 6;
-        c.beginPath(); c.roundRect(bx, by, branchColW, 26, 4); c.fill(); c.stroke();
+        c.beginPath(); c.roundRect(bx, by, branchColW, 22, 4); c.fill(); c.stroke();
         c.shadowBlur = 0;
 
-        c.font = 'bold 10px monospace';
+        c.font = 'bold 9.5px monospace';
         c.fillStyle = bInfo.color;
         c.textAlign = 'center';
-        c.fillText(bInfo.name, bx + branchColW / 2, by + 17);
+        c.fillText(bInfo.name, bx + branchColW / 2, by + 15);
 
         // Render Nodes in this branch
         const branchNodes = SKILL_NODES.filter(n => n.branch === bKey);
-        const nodeStartY = by + 34;
-        const nodeH = 92;
-        const nodeGap = 8;
+        const nodeStartY = by + 28;
+        const nodeH = 70;
+        const nodeGap = 5;
 
         for (let ni = 0; ni < branchNodes.length; ni++) {
           const node = branchNodes[ni];
@@ -2020,79 +2213,121 @@ export class Renderer {
   }
 
   private drawSkillTreeNode(c: CanvasRenderingContext2D, node: import('../systems/ExperienceSystem').SkillNode, x: number, y: number, w: number, h: number) {
+    const isUlt = !!node.isUltimate;
+    const isRevealed = experienceSystem.isUltimateRevealed(node.id);
     const rank = experienceSystem.getSkillRank(node.id);
     const check = experienceSystem.canUpgradeSkill(node.id);
     const isMax = rank >= node.maxRank;
     const canBuy = check.can;
 
     c.save();
-    c.fillStyle = isMax ? 'rgba(0, 255, 170, 0.12)' : (canBuy ? 'rgba(0, 240, 255, 0.08)' : 'rgba(15, 20, 35, 0.6)');
-    c.strokeStyle = isMax ? '#00ffaa' : (canBuy ? '#00ffff' : '#334455');
-    c.lineWidth = isMax ? 1.8 : (canBuy ? 1.4 : 1);
+    if (isUlt && !isRevealed) {
+      c.fillStyle = 'rgba(25, 12, 22, 0.85)';
+      c.strokeStyle = '#662244';
+      c.lineWidth = 1;
+      c.beginPath(); c.roundRect(x, y, w, h, 6); c.fill(); c.stroke();
+
+      c.textAlign = 'left';
+      c.font = 'bold 9px monospace';
+      c.fillStyle = '#ff4477';
+      c.fillText('🔒 ??? [ULTIME VERROUILLÉ]', x + 8, y + 13);
+
+      c.textAlign = 'right';
+      c.font = 'bold 8px monospace';
+      c.fillStyle = '#885566';
+      c.fillText(`${node.costPerRank} SP`, x + w - 8, y + 13);
+
+      c.textAlign = 'left';
+      c.font = '7.5px monospace';
+      c.fillStyle = '#aa7788';
+      c.fillText('Technologie secrète verrouillée.', x + 8, y + 28);
+      c.fillText('Dépensez 10 SP dans cette branche', x + 8, y + 40);
+      c.fillText('pour décrypter cet ultime.', x + 8, y + 52);
+
+      c.restore();
+      return;
+    }
+
+    const borderColor = isUlt
+      ? (isMax ? '#ffd700' : (canBuy ? '#00ffff' : '#ff0055'))
+      : (isMax ? '#00ffaa' : (canBuy ? '#00ffff' : '#334455'));
+
+    c.fillStyle = isUlt
+      ? (isMax ? 'rgba(255, 215, 0, 0.14)' : (canBuy ? 'rgba(0, 240, 255, 0.10)' : 'rgba(30, 15, 25, 0.7)'))
+      : (isMax ? 'rgba(0, 255, 170, 0.12)' : (canBuy ? 'rgba(0, 240, 255, 0.08)' : 'rgba(15, 20, 35, 0.6)'));
+    c.strokeStyle = borderColor;
+    c.lineWidth = isUlt ? 1.8 : (isMax ? 1.6 : (canBuy ? 1.3 : 1));
     c.beginPath(); c.roundRect(x, y, w, h, 6); c.fill(); c.stroke();
 
     // Node Header: Icon + Name + Cost / Max
     c.textAlign = 'left';
-    c.font = 'bold 10px monospace';
-    c.fillStyle = isMax ? '#00ffaa' : (canBuy ? '#ffffff' : '#8899aa');
-    spriteAtlas.drawIcon(c, node.icon, x + 12, y + 14, 12);
-    c.fillText(node.name, x + 24, y + 14);
+    c.font = 'bold 9px monospace';
+    c.fillStyle = isUlt ? '#ffd700' : (isMax ? '#00ffaa' : (canBuy ? '#ffffff' : '#8899aa'));
+    spriteAtlas.drawIcon(c, node.icon, x + 10, y + 12, 10);
+    const title = (isUlt ? '★ ' : '') + node.name;
+    c.fillText(title, x + 20, y + 13);
 
     c.textAlign = 'right';
-    c.font = 'bold 9px monospace';
+    c.font = 'bold 8.5px monospace';
     c.fillStyle = isMax ? '#00ffaa' : (canBuy ? '#ffd700' : '#667788');
-    c.fillText(isMax ? 'MAXED' : `${node.costPerRank} SP`, x + w - 8, y + 14);
+    c.fillText(isMax ? 'MAX' : `${node.costPerRank} SP`, x + w - 8, y + 13);
 
-    // Rank gauge dots
-    const dotW = 8, dotGap = 4;
-    const totalDotsW = node.maxRank * dotW + (node.maxRank - 1) * dotGap;
+    // Rank gauge dots & combo hint
+    const dotW = 7, dotGap = 3;
     const dotsStartX = x + 8;
-    const dotsY = y + 24;
+    const dotsY = y + 21;
 
     for (let r = 0; r < node.maxRank; r++) {
       const rx = dotsStartX + r * (dotW + dotGap);
-      c.fillStyle = r < rank ? '#00ffaa' : 'rgba(255, 255, 255, 0.15)';
-      c.beginPath(); c.roundRect(rx, dotsY, dotW, 4, 1.5); c.fill();
+      c.fillStyle = r < rank ? (isUlt ? '#ffd700' : '#00ffaa') : 'rgba(255, 255, 255, 0.15)';
+      c.beginPath(); c.roundRect(rx, dotsY, dotW, 3, 1); c.fill();
     }
 
-    // Rank text
-    c.textAlign = 'right';
-    c.font = '8px monospace';
-    c.fillStyle = '#8899aa';
-    c.fillText(`RANG ${rank}/${node.maxRank}`, x + w - 8, dotsY + 5);
+    if (node.comboHint) {
+      c.textAlign = 'right';
+      c.font = 'bold 7.5px monospace';
+      c.fillStyle = isUlt ? '#ffd700' : '#00ffff';
+      c.fillText(node.comboHint, x + w - 8, dotsY + 4);
+    } else {
+      c.textAlign = 'right';
+      c.font = '7.5px monospace';
+      c.fillStyle = '#8899aa';
+      c.fillText(`RANG ${rank}/${node.maxRank}`, x + w - 8, dotsY + 4);
+    }
 
-    // Description (auto line break)
+    // Description & Tradeoff (compact 2 lines)
     c.textAlign = 'left';
-    c.font = '8px monospace';
+    c.font = '7.5px monospace';
     c.fillStyle = isMax ? '#d0f0e0' : (canBuy ? '#cccccc' : '#778899');
 
-    const maxCharsPerLine = Math.floor((w - 16) / 5.2);
-    const words = node.desc.split(' ');
+    const maxCharsPerLine = Math.floor((w - 16) / 4.8);
+    const words = (node.tradeoffDesc || node.desc).split(' ');
     let line = '';
     let lineIdx = 0;
     for (const wd of words) {
       if ((line + ' ' + wd).length > maxCharsPerLine) {
-        c.fillText(line.trim(), x + 8, y + 43 + lineIdx * 12);
+        c.fillText(line.trim(), x + 8, y + 36 + lineIdx * 10);
         line = wd + ' ';
         lineIdx++;
+        if (lineIdx >= 2) break;
       } else {
         line += wd + ' ';
       }
     }
-    if (line.trim().length > 0 && lineIdx < 3) {
-      c.fillText(line.trim(), x + 8, y + 43 + lineIdx * 12);
+    if (line.trim().length > 0 && lineIdx < 2) {
+      c.fillText(line.trim(), x + 8, y + 36 + lineIdx * 10);
     }
 
     // Upgrade CTA / Warning
     if (!isMax) {
       c.textAlign = 'center';
-      c.font = 'bold 8px monospace';
+      c.font = 'bold 7.5px monospace';
       if (canBuy) {
-        c.fillStyle = '#00ffff';
-        c.fillText(`▶ CLIC POUR AMÉLIORER (-${node.costPerRank} SP) ◀`, x + w / 2, y + h - 8);
+        c.fillStyle = isUlt ? '#ffd700' : '#00ffff';
+        c.fillText(`▶ CLIC POUR AMÉLIORER (-${node.costPerRank} SP) ◀`, x + w / 2, y + h - 5);
       } else if (check.reason) {
         c.fillStyle = '#ff5577';
-        c.fillText(`[ ${check.reason.toUpperCase()} ]`, x + w / 2, y + h - 8);
+        c.fillText(`[ ${check.reason.toUpperCase()} ]`, x + w / 2, y + h - 5);
       }
     }
 

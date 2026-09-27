@@ -8,6 +8,7 @@ import { particles } from '../systems/ParticleSystem';
 import { MazeManager } from '../levels/levels';
 import { progression } from '../systems/ProgressionSystem';
 import { experienceSystem } from '../systems/ExperienceSystem';
+import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
 
 export function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
@@ -39,9 +40,22 @@ export class Player {
   public trail: { x: number; y: number }[] = [];
 
   public dashCd: number = 0;
+  public dashChargeCooldown: number = 0;
+  public dashCharges: number = 1;
+  public dashMaxCharges: number = 1;
+  public consecutiveDashCount: number = 0;
+  public consecutiveDashTimer: number = 0;
   public dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number; singularity?: boolean }[] = [];
   public invuln: number = 2;
   public currentCols: number = COLS;
+
+  // Aegis Orbital Shields & Vector Surge
+  public aegisShields: number = 0;
+  public maxAegisShields: number = 0;
+  public vectorSurgeCran: number = 0;
+  public vectorSurgeTimer: number = 0;
+  public lastDirectionTapTime: number = 0;
+  public lastTapDir: { x: number; y: number } = { x: 0, y: 0 };
 
   public addDotSpeed(comboMultiplier: number = 1) {
     // Strictly disabled in 4/3 version (early game)!
@@ -92,8 +106,20 @@ export class Player {
       this.speed = calculatedSpeed * speedMult;
     }
     this.invuln = 2.0;
+    this.dashCharges = experienceSystem.getDashCharges();
+    this.dashMaxCharges = this.dashCharges;
+    this.consecutiveDashCount = 0;
+    this.consecutiveDashTimer = 0;
     this.dashCd = 0;
+    this.dashChargeCooldown = 0;
     this.dashStreaks = [];
+    const isCustomMode = profileManager.gameMode === 'custom';
+    this.aegisShields = isCustomMode ? experienceSystem.getAegisShieldsCount() : 0;
+    this.maxAegisShields = this.aegisShields;
+    this.vectorSurgeCran = 0;
+    this.vectorSurgeTimer = 0;
+    this.lastDirectionTapTime = 0;
+    this.lastTapDir = { x: 0, y: 0 };
   }
 
   public getPos(): { x: number; y: number } {
@@ -181,21 +207,59 @@ export class Player {
       s.life -= dt;
       if (s.life <= 0) this.dashStreaks.splice(i, 1);
     }
-    if (this.dashCd > 0) this.dashCd -= dt;
+
+    const maxCharges = experienceSystem.getDashCharges();
+    this.dashMaxCharges = maxCharges;
+    // Keep dash charges clamped and synchronize when skill tree rank increases
+    if (this.dashCharges < maxCharges && this.dashCd <= 0 && this.dashChargeCooldown <= 0) {
+      const cdMult = progression.getSkillLevel('dash') >= 2 ? 0.75 : 1.0;
+      const skillReduction = experienceSystem.getDashCdReduction();
+      this.dashChargeCooldown = Math.max(0.25, DASH_MADNESS_CD * cdMult * (1.0 - skillReduction));
+    }
+
+    if (this.dashChargeCooldown > 0) {
+      this.dashChargeCooldown -= dt;
+      if (this.dashChargeCooldown <= 0 && this.dashCharges < maxCharges) {
+        this.dashCharges++;
+        if (this.dashCharges < maxCharges) {
+          const cdMult = progression.getSkillLevel('dash') >= 2 ? 0.75 : 1.0;
+          const skillReduction = experienceSystem.getDashCdReduction();
+          this.dashChargeCooldown = Math.max(0.25, DASH_MADNESS_CD * cdMult * (1.0 - skillReduction));
+        }
+      }
+    }
+
+    if (this.dashCd > 0) {
+      this.dashCd -= dt;
+    }
+
+    if (this.consecutiveDashTimer > 0) {
+      this.consecutiveDashTimer -= dt;
+      if (this.consecutiveDashTimer <= 0) {
+        this.consecutiveDashCount = 0;
+      }
+    }
     if (this.invuln > 0) this.invuln -= dt * chronoScale;
 
-    // Movement interpolation
-    this.st += (1 - this.st) * 0.12;
-    this.sq += (1 - this.sq) * 0.12;
+    // Vector Surge decay
+    if (this.vectorSurgeTimer > 0) {
+      this.vectorSurgeTimer -= dt * chronoScale;
+      if (this.vectorSurgeTimer <= 0) {
+        this.vectorSurgeCran = 0;
+      }
+    }
 
     // Dynamic speed ramp: strictly disabled in 4/3 version (early game)!
     // In 4/3, speed increase is NOT possible (strictly authentic P_SPEED)
     // Speed increase only arrives in 16/9 widescreen mode (cols > 21)
     const isWide = maze ? maze.cols > 21 : false;
+    const isCustomMode = profileManager.gameMode === 'custom';
+    const surgeBonus = (isCustomMode && this.vectorSurgeTimer > 0) ? (this.vectorSurgeCran * 0.20) : 0;
+
     if (!isWide) {
       this.pelletSpeedBonus = 0;
       this.superPelletBoostTimer = 0;
-      this.speed = P_SPEED * speedMult * chronoScale;
+      this.speed = (P_SPEED * (1 + surgeBonus)) * speedMult * chronoScale;
     } else {
       if (this.superPelletBoostTimer > 0) this.superPelletBoostTimer -= dt * chronoScale;
       if (this.pelletSpeedBonus > 0) {
@@ -205,11 +269,29 @@ export class Player {
       const progressionBoost = 4.3;
       const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
       const baseSpeed = isNitro ? madnessCalculatedSpeed * 1.30 : madnessCalculatedSpeed;
-      this.speed = (baseSpeed + pelletSurge) * speedMult * chronoScale;
+      this.speed = ((baseSpeed * (1 + surgeBonus)) + pelletSurge) * speedMult * chronoScale;
     }
 
-    // Accept input direction
+    // Accept input direction & Vector Surge double-tap detection
     if (inputDir.x !== 0 || inputDir.y !== 0) {
+      const now = performance.now();
+      const isSameDir = (inputDir.x === this.lastTapDir.x && inputDir.y === this.lastTapDir.y);
+      const isDoubleTap = isSameDir && (now - this.lastDirectionTapTime) <= 320 && (now - this.lastDirectionTapTime) >= 40;
+
+      if (isDoubleTap && isCustomMode) {
+        const maxCran = experienceSystem.getVectorSurgeMaxCran();
+        if (maxCran > 0) {
+          this.vectorSurgeCran = Math.min(maxCran, this.vectorSurgeCran + 1);
+          this.vectorSurgeTimer = 2.5;
+          sounds.play('dash');
+          const pp = this.getPos();
+          particles.emit(pp.x, pp.y, 12, '#00ffff', { speed: 120, size: 3.5, life: 0.35 });
+          particles.addPop(pp.x, pp.y - 18, `SURGE x${this.vectorSurgeCran} (+${this.vectorSurgeCran * 20}%)`, '#00ffff', 14);
+        }
+      }
+
+      this.lastTapDir = { x: inputDir.x, y: inputDir.y };
+      this.lastDirectionTapTime = now;
       this.ndx = inputDir.x;
       this.ndy = inputDir.y;
     }
@@ -302,7 +384,7 @@ export class Player {
     isSingularity: boolean = false,
     isShiftHeld: boolean = false
   ): boolean {
-    if (this.dashCd > 0 && !isOverdrive) return false;
+    if (this.dashCharges <= 0 && this.dashCd > 0 && !isOverdrive) return false;
 
     const dashLvl = progression.getSkillLevel('dash');
     if (dashLvl === 0) {
@@ -317,16 +399,23 @@ export class Player {
     if (!dx && !dy) { dx = this.ndx; dy = this.ndy; }
     if (!dx && !dy) { dx = this.lastDx || 1; dy = this.lastDy || 0; }
 
+    const startPos = this.getPos();
+    const origFx = this.fx;
+    const origFy = this.fy;
+    const origX = this.x;
+    const origY = this.y;
+
     if (this.t < 1) {
       this.fx = this.x;
       this.fy = this.y;
       this.t = 1;
     }
 
-    // Ensure the current origin tile's dot is collected so no dot is skipped at dash start
+    // Ensure both origin tiles (previous and current) are collected so no dot is skipped at dash start
+    onCollectDot(origFx, origFy);
+    onCollectDot(origX, origY);
     onCollectDot(this.x, this.y);
 
-    const startPos = this.getPos();
     let dashed = 0;
     let wallsBroken = 0;
 
@@ -334,6 +423,8 @@ export class Player {
     const maxDist = isSingularityDash
       ? (dx !== 0 ? this.currentCols : ROWS)
       : (DASH_DIST + Math.min(4, Math.max(0, dashLvl - 1)));
+
+    const phaseRank = experienceSystem.getSkillRank('phase_shift');
 
     for (let i = 0; i < maxDist; i++) {
       let nx = this.wrapX(this.x + dx);
@@ -352,6 +443,11 @@ export class Player {
           maze.smashWall(nx, ny);
           wallsBroken++;
           if (onSmashWall) onSmashWall(nx, ny);
+        } else if (phaseRank >= 3 && wallsBroken < 1 && !maze.isInGhostHouse(nx, ny)) {
+          // Phase Shift Rank 3: phase through 1 thin interior barrier
+          wallsBroken++;
+          particles.emit(nx * T + HALF, ny * T + HALF, 16, '#ff00ff', { speed: 120, size: 4, life: 0.4 });
+          particles.addPop(nx * T + HALF, ny * T + HALF - 10, 'PHASE SHIFT !', '#ff00ff', 14);
         } else {
           break;
         }
@@ -390,11 +486,55 @@ export class Player {
       return false;
     }
 
+    // Maintain dash direction so player cleanly continues running after dash without stopping
+    this.dx = dx;
+    this.dy = dy;
+    this.lastDx = dx;
+    this.lastDy = dy;
+    this.t = 1;
+    this.fx = this.x;
+    this.fy = this.y;
+
     const endPos = this.getPos();
-    const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
-    const skillReduction = experienceSystem.getDashCdReduction();
-    const finalCdMult = Math.max(0.25, cdMult * (1.0 - skillReduction));
-    this.dashCd = isOverdrive ? 0 : DASH_MADNESS_CD * finalCdMult;
+
+    // Swept corridor cleanup along dash trajectory:
+    // Ensures that any dot crossed or grazed along the path (even across mid-tile triggers) is 100% collected
+    if (Math.abs(startPos.x - endPos.x) < this.currentCols * T * 0.75) {
+      const minCol = Math.max(0, Math.floor(Math.min(startPos.x, endPos.x) / T) - 1);
+      const maxCol = Math.min(this.currentCols - 1, Math.ceil(Math.max(startPos.x, endPos.x) / T) + 1);
+      const minRow = Math.max(0, Math.floor(Math.min(startPos.y, endPos.y) / T) - 1);
+      const maxRow = Math.min(ROWS - 1, Math.ceil(Math.max(startPos.y, endPos.y) / T) + 1);
+
+      for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+          const dotPx = c * T + HALF;
+          const dotPy = r * T + HALF;
+          if (distToSegment(dotPx, dotPy, startPos.x, startPos.y, endPos.x, endPos.y) <= T * 0.85) {
+            onCollectDot(c, r);
+          }
+        }
+      }
+    }
+    if (!isOverdrive) {
+      this.dashCharges = Math.max(0, this.dashCharges - 1);
+      const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
+      const skillReduction = experienceSystem.getDashCdReduction();
+      const rechargeTime = Math.max(0.25, DASH_MADNESS_CD * cdMult * (1.0 - skillReduction));
+
+      if (this.dashCharges > 0) {
+        // Multi-dash: responsive micro-cooldown between consecutive charges (0.16s)
+        this.dashCd = 0.16;
+        if (this.dashChargeCooldown <= 0) {
+          this.dashChargeCooldown = rechargeTime;
+        }
+      } else {
+        // Last charge spent: full recharge cooldown
+        this.dashCd = rechargeTime;
+        this.dashChargeCooldown = rechargeTime;
+      }
+    }
+    this.consecutiveDashCount++;
+    this.consecutiveDashTimer = 1.2;
 
     if (dx !== 0) { this.st = 1.9; this.sq = 0.52; }
     else { this.st = 0.52; this.sq = 1.9; }
@@ -406,13 +546,31 @@ export class Player {
       singularity: isSingularityDash
     });
 
-    // Offensive Dash: Slay all ghosts in dash trajectory!
+    // Multi-dash consecutive chain shockwave boost (+25% per chain dash)
+    const chainShockMultiplier = this.consecutiveDashCount > 1 ? (1.0 + 0.25 * Math.min(3, this.consecutiveDashCount - 1)) : 1.0;
+
+    // Offensive Dash: Slay or stun ghosts in dash trajectory!
+    const titanBreakerRank = experienceSystem.getTitanBreakerRank();
     for (const e of enemies) {
       if (e.st !== 'dead' && e.st !== 'return') {
         const ep = { x: (e.fx + (e.x - e.fx) * e.t) * T + HALF, y: (e.fy + (e.y - e.fy) * e.t) * T + HALF };
         const d = distToSegment(ep.x, ep.y, startPos.x, startPos.y, endPos.x, endPos.y);
-        if (d < T * (isSingularityDash ? 2.5 : 1.2)) {
-          onKillGhost(e, ep.x, ep.y);
+        if (d < T * (isSingularityDash ? 2.5 : 1.2) * chainShockMultiplier) {
+          if (e.isTitan) {
+            if (titanBreakerRank >= 3 || isSingularityDash) {
+              onKillGhost(e, ep.x, ep.y);
+              particles.addPop(ep.x, ep.y - 18, 'TITAN BREAKER OBLITERATION !', '#ff0055', 20);
+              particles.shake(10, 0.3);
+            } else if (titanBreakerRank >= 1) {
+              e.frozen = true;
+              e.frozenTimer = 3.5;
+              particles.emit(ep.x, ep.y, 25, '#00ffff', { speed: 160, size: 5, life: 0.5 });
+              particles.addPop(ep.x, ep.y - 18, 'TITAN STUNNED !', '#00ffff', 18);
+              particles.shake(6, 0.2);
+            }
+          } else {
+            onKillGhost(e, ep.x, ep.y);
+          }
         }
       }
     }
@@ -428,7 +586,7 @@ export class Player {
       sounds.play('dash');
     } else if (dashLvl >= 2) {
       const shockCol = dashLvl >= 5 ? '#ff007f' : '#00ffff';
-      particles.emit(endPos.x, endPos.y, dashLvl >= 5 ? 45 : 30, shockCol, { speed: 180, size: 5.5, life: 0.5 });
+      particles.emit(endPos.x, endPos.y, Math.round((dashLvl >= 5 ? 45 : 30) * chainShockMultiplier), shockCol, { speed: 180 * chainShockMultiplier, size: 5.5, life: 0.5 });
       if (dashLvl >= 5) {
         particles.emit(endPos.x, endPos.y, 20, '#ffd700', { speed: 140, size: 4, life: 0.4 });
       }
@@ -436,8 +594,13 @@ export class Player {
       for (const e of enemies) {
         if (e.st !== 'dead' && e.st !== 'return') {
           const ep = { x: (e.fx + (e.x - e.fx) * e.t) * T + HALF, y: (e.fy + (e.y - e.fy) * e.t) * T + HALF };
-          if (Math.hypot(ep.x - endPos.x, ep.y - endPos.y) < T * (dashLvl >= 5 ? 2.4 : 1.8)) {
-            onKillGhost(e, ep.x, ep.y);
+          if (Math.hypot(ep.x - endPos.x, ep.y - endPos.y) < T * (dashLvl >= 5 ? 2.4 : 1.8) * chainShockMultiplier) {
+            if (e.isTitan) {
+              if (titanBreakerRank >= 3) onKillGhost(e, ep.x, ep.y);
+              else if (titanBreakerRank >= 1) { e.frozen = true; e.frozenTimer = 3.0; }
+            } else {
+              onKillGhost(e, ep.x, ep.y);
+            }
           }
         }
       }
@@ -452,6 +615,11 @@ export class Player {
       particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'CYBER OVERDRIVE !' : dashName, dashLvl >= 5 ? '#ff007f' : '#00ffff', dashLvl >= 5 ? 18 : 16);
     } else {
       particles.addPop(endPos.x, endPos.y - 20, isOverdrive ? 'HYPER DASH !' : 'DASH !', isOverdrive ? '#00ffcc' : '#00ffff', 16);
+    }
+
+    if (this.consecutiveDashCount > 1) {
+      const shockBonusPct = Math.round((chainShockMultiplier - 1) * 100);
+      particles.addPop(endPos.x, endPos.y - 34, `MULTI-DASH x${this.consecutiveDashCount} (+${shockBonusPct}% ONDE) !`, '#00ffea', 16);
     }
 
     particles.emit(startPos.x, startPos.y, 16, isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff')), { speed: 130, size: 4, life: 0.45 });
@@ -709,6 +877,49 @@ export class Player {
           c.stroke();
           c.restore();
         }
+      }
+
+      // Aegis Orbital Shields
+      if (this.aegisShields > 0) {
+        c.save();
+        const orbitR = P_RAD + 9;
+        const shieldCount = this.aegisShields;
+        for (let i = 0; i < shieldCount; i++) {
+          const angle = time * 3.2 + (i * PI2) / shieldCount;
+          const sx = Math.cos(angle) * orbitR;
+          const sy = Math.sin(angle) * orbitR;
+
+          // Shield crystal orb
+          c.fillStyle = '#00ffff';
+          c.shadowColor = '#00ffff';
+          c.shadowBlur = 10;
+          c.beginPath();
+          c.arc(sx, sy, 3.2, 0, PI2);
+          c.fill();
+
+          // Orbital arc connector
+          c.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+          c.lineWidth = 1.2;
+          c.beginPath();
+          c.arc(0, 0, orbitR, angle - 0.25, angle + 0.25);
+          c.stroke();
+        }
+        c.restore();
+      }
+
+      // Vector Surge Aura
+      if (this.vectorSurgeCran > 0 && this.vectorSurgeTimer > 0) {
+        c.save();
+        const surgePulse = 1 + Math.sin(time * 24) * 0.12;
+        c.strokeStyle = '#00ffff';
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 12;
+        c.lineWidth = 1.5;
+        c.setLineDash([3, 3]);
+        c.beginPath();
+        c.arc(0, 0, (P_RAD + 5) * surgePulse, time * 8, time * 8 + PI2);
+        c.stroke();
+        c.restore();
       }
 
       // Invulnerability shield
