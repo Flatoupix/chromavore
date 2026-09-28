@@ -1206,7 +1206,7 @@ class Game {
     }
   }
 
-  private onKillGhost(e: Ghost, ex: number, ey: number) {
+  private onKillGhost(e: Ghost, ex: number, ey: number, countForStreak = true) {
     const wasFrozen = e.frozen;
     e.st = 'return';
     // A frozen ghost that has been shattered must be allowed to travel back
@@ -1244,20 +1244,21 @@ class Game {
     if (this.lifeKills > this.maxLifeKills) {
       this.maxLifeKills = this.lifeKills;
     }
-    this.madnessStreak++;
-    this.killStreakTimer = KILL_STREAK_DECAY_WINDOW;
-    if (this.madnessStreak > this.maxMadnessStreak) {
-      this.maxMadnessStreak = this.madnessStreak;
-    }
+    if (countForStreak) {
+      this.madnessStreak++;
+      this.killStreakTimer = KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus();
+      if (this.madnessStreak > this.maxMadnessStreak) {
+        this.maxMadnessStreak = this.madnessStreak;
+      }
 
-    // Singularity is a run-kill milestone; the short-lived kill streak is separate.
-    const effectiveSingularityThreshold = experienceSystem.getSingularityRunKillTarget();
-    if (this.madnessKills >= effectiveSingularityThreshold && !this.singularityTriggered) {
-      this.triggerSingularitySequence();
+      // The flame counter itself must reach x200; total run kills do not qualify.
+      if (this.madnessStreak >= experienceSystem.getSingularityStreakTarget() && !this.singularityTriggered) {
+        this.triggerSingularitySequence();
+      }
     }
 
     // Bonus de points tous les 10 spectres dans la streak !
-    if (this.madnessStreak % 10 === 0) {
+    if (countForStreak && this.madnessStreak % 10 === 0) {
       const milestoneTier = (this.madnessStreak / 10);
       const ghostStreakBonus = 2500 * milestoneTier * (this.combo.m || 1);
       this.score += ghostStreakBonus;
@@ -1265,7 +1266,7 @@ class Game {
       sounds.play('streak');
     }
 
-    this.checkRampageMilestone(this.madnessStreak);
+    if (countForStreak) this.checkRampageMilestone(this.madnessStreak);
     this.checkSwarmMilestone(this.madnessKills);
 
     if (this.madnessKills >= 50) badges.unlock('madness50');
@@ -2554,8 +2555,11 @@ class Game {
     // These deadlines must keep advancing through hit-stop and Chrono.
     // Pause still freezes them because only active play enters this block.
     if (this.state === 'playing') {
-      this.killStreakTimer = Math.max(0, this.killStreakTimer - dt);
-      if (this.killStreakTimer === 0) this.madnessStreak = 0;
+      // Preserve the earned x200 through the five-second Singularity intro.
+      if (this.singularityIntroTimer <= 0) {
+        this.killStreakTimer = Math.max(0, this.killStreakTimer - dt);
+        if (this.killStreakTimer === 0) this.madnessStreak = 0;
+      }
       this.dotStreakTimer = Math.max(0, this.dotStreakTimer - dt);
       if (this.dotStreakTimer === 0) this.dotStreak = 0;
     }
@@ -2594,12 +2598,8 @@ class Game {
               if (dist <= this.singularityShockwaveRadius) {
                 particles.emit(ep.x, ep.y, 25, '#ffd700', { speed: 180, size: 5, life: 0.6 });
                 particles.addPop(ep.x, ep.y - 12, 'VAPORIZED !', '#ffd700', 16);
-                // Kill ghost but bypass streak inflation during intro cinematic
-                const savedStreak = this.madnessStreak;
-                const savedStreakTimer = this.killStreakTimer;
-                this.onKillGhost(e, ep.x, ep.y);
-                this.madnessStreak = savedStreak;
-                this.killStreakTimer = savedStreakTimer;
+                // Cinematic kills count for the run, not for the player's earned streak.
+                this.onKillGhost(e, ep.x, ep.y, false);
               }
             }
           }
@@ -2619,11 +2619,7 @@ class Game {
                 const ep = this.enemyManager.getPos(e);
                 particles.emit(ep.x, ep.y, 30, '#ffd700', { speed: 220, size: 5, life: 0.7 });
                 particles.addPop(ep.x, ep.y - 12, 'NOVA !', '#ffd700', 14);
-                const savedStreak = this.madnessStreak;
-                const savedStreakTimer = this.killStreakTimer;
-                this.onKillGhost(e, ep.x, ep.y);
-                this.madnessStreak = savedStreak;
-                this.killStreakTimer = savedStreakTimer;
+                this.onKillGhost(e, ep.x, ep.y, false);
               }
               // Returning eyes are also removed by the full-screen finale.
               e.st = 'dead';
@@ -2632,10 +2628,6 @@ class Game {
             }
             this.hitlag = 0;
             this.madnessSpawnTimer = this.enemyManager.getSwarmProfile(this.madnessKills).interval;
-
-            // Reset streak cleanly before entering active Singularity
-            this.madnessStreak = 0;
-            this.killStreakTimer = 0;
 
             this.combo.m = 64;
             this.combo.t = SINGULARITY_DURATION;

@@ -214,7 +214,7 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'titan_breaker',
-    desc: 'Extends combo grace by 0.4s per rank and lowers the Singularity threshold from 200 to 164 run kills.',
+    desc: 'Extends combo and ghost-streak grace by 0.4s per rank. Reach a x200 ghost streak to trigger Singularity.',
     tradeoffDesc: 'Rank 3 extends cosmic Singularity from 30s to 35s.'
   },
   {

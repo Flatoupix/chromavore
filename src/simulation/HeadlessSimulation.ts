@@ -1,4 +1,4 @@
-import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, T, getComboTier } from '../config/constants';
+import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, KILL_STREAK_DECAY_WINDOW, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, SINGULARITY_DURATION, SINGULARITY_TRIGGER_STREAK, T, getComboTier } from '../config/constants';
 import { MADNESS_LEVELS_16_9, MADNESS_LEVELS_4_3, MazeManager } from '../levels/levels';
 import { chooseBotAction, type BotDirection, type BotGhost, type BotStrategy } from './BotController';
 import { SKILL_NODES } from '../config/skillTree';
@@ -23,7 +23,7 @@ export interface HeadlessRunOptions {
   ghostXpComboCap?: number;
   xpGainMultiplier?: number;
   xpCurveMultiplier?: number;
-  /** Diagnostic override; the default uses the production 200-kill threshold. */
+  /** Diagnostic override; the default uses the production x200 ghost-streak threshold. */
   singularityTriggerKills?: number;
   profile?: Partial<HeadlessProfile>;
 }
@@ -207,7 +207,8 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   let singularityIntroTimer = 0;
   let singularityTimer = 0;
   let singularityTriggered = false;
-  let lifeKills = 0;
+  let killStreak = 0;
+  let killStreakTimer = 0;
   let dotCount = 0;
   let decisionIndex = 0;
   let ticks = 0;
@@ -236,7 +237,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
   const ghostXpComboCap = Math.max(1, options.ghostXpComboCap ?? 16);
   const xpGainMultiplier = Math.max(0, options.xpGainMultiplier ?? 1);
   const xpCurveMultiplier = Math.max(0.01, options.xpCurveMultiplier ?? 1);
-  const singularityTriggerKills = Math.max(1, Math.floor(options.singularityTriggerKills ?? SINGULARITY_TRIGGER_KILLS));
+  const singularityTriggerKills = Math.max(1, Math.floor(options.singularityTriggerKills ?? SINGULARITY_TRIGGER_STREAK));
   let skillsBought = 0;
   const accountLevel = options.profile?.accountLevel ?? 1;
   level = accountLevel;
@@ -356,20 +357,22 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
       }
     }
   };
-  const killGhost = (ghost: SimGhost) => {
+  const killGhost = (ghost: SimGhost, countForStreak = true) => {
     if (!ghost.dangerous && !ghost.frightened) return;
     ghost.dangerous = false;
     ghost.frightened = false;
     ghost.frozen = false;
     kills++;
     careerGhosts++;
-    lifeKills++;
-    const effectiveSingularityKills = Math.max(60, singularityTriggerKills - (skillRanks.singularity_mastery ?? 0) * 12);
-    if (!singularityTriggered && (lifeKills >= effectiveSingularityKills || kills >= effectiveSingularityKills)) {
-      singularityTriggered = true;
-      singularityIntroTimer = 5;
-      comboMultiplier = 64;
-      comboTimer = SINGULARITY_DURATION + (skillRanks.singularity_mastery ?? 0) * 2;
+    if (countForStreak) {
+      killStreak++;
+      killStreakTimer = KILL_STREAK_DECAY_WINDOW + (skillRanks.singularity_mastery ?? 0) * 0.4;
+      if (!singularityTriggered && killStreak >= singularityTriggerKills) {
+        singularityTriggered = true;
+        singularityIntroTimer = 5;
+        comboMultiplier = 64;
+        comboTimer = SINGULARITY_DURATION + (skillRanks.singularity_mastery ?? 0) * 2;
+      }
     }
     const pelletScoreMult = (skillRanks.pellet_resonance ?? 0) >= 4 ? 1.25 : 1.0;
     awardXp(Math.round((30 + 10 * Math.min(ghostXpComboCap, Math.max(1, comboMultiplier))) * pelletScoreMult));
@@ -443,7 +446,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     if (singularityIntroTimer > 0) {
       singularityIntroTimer = Math.max(0, singularityIntroTimer - fixedDt);
       if (singularityIntroTimer === 0) {
-        for (const ghost of ghosts) killGhost(ghost);
+        for (const ghost of ghosts) killGhost(ghost, false);
         singularityTimer = SINGULARITY_DURATION;
         comboMultiplier = 64;
         comboTimer = SINGULARITY_DURATION;
@@ -459,7 +462,8 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
         playerMoveIn = 0;
         invulnerability = 2.0;
         levelUpsThisLife = 0;
-        lifeKills = 0;
+        killStreak = 0;
+        killStreakTimer = 0;
         comboCount = 0;
         comboMultiplier = 1;
         comboTimer = 0;
@@ -470,6 +474,8 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
       }
       continue;
     }
+    killStreakTimer = Math.max(0, killStreakTimer - fixedDt);
+    if (killStreakTimer === 0) killStreak = 0;
     invulnerability = Math.max(0, invulnerability - fixedDt);
     const maxDashCharges = 1 + (skillRanks.multi_dash ?? 0);
     dashChargeCooldown = Math.max(0, dashChargeCooldown - fixedDt);
@@ -719,7 +725,8 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
       deaths++;
       lives--;
       levelUpsThisLife = 0;
-      lifeKills = 0;
+      killStreak = 0;
+      killStreakTimer = 0;
       comboCount = 0;
       comboMultiplier = 1;
       comboTimer = 0;

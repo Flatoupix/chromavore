@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET } from '../config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, KILL_STREAK_DECAY_WINDOW, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -687,7 +687,7 @@ export class Renderer {
         c.shadowBlur = 0;
 
         // Kill streak timer gauge (countdown between ghost kills)
-        const sProg = Math.max(0, Math.min(1, killStreakTimer / 2.0));
+        const sProg = Math.max(0, Math.min(1, killStreakTimer / (KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus())));
         const sBarW = isWide ? 44 : 34;
         c.fillStyle = 'rgba(255, 255, 255, 0.15)';
         c.fillRect(stX - 18, 33, sBarW, 2.5);
@@ -761,9 +761,9 @@ export class Renderer {
         21
       );
 
-      // Center HUD: account XP in Chromamancer, Singularity run kills in Arcade.
+      // Center HUD: account XP in Chromamancer, Singularity ghost streak in Arcade.
       const isCustomMode = profileManager.gameMode === 'custom';
-      const singularityTarget = experienceSystem.getSingularityRunKillTarget();
+      const singularityTarget = experienceSystem.getSingularityStreakTarget();
       const xpW = isWide ? 96 : 70;
       const xpH = 3.5;
       const xpX = tmX - xpW / 2;
@@ -785,7 +785,7 @@ export class Renderer {
         const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
         c.fillText(`LVL ${accLvl}${surgeTag} • [CUSTOM]`, tmX, 44);
       } else {
-        const killProgress = Math.max(0, Math.min(1, madnessKills / singularityTarget));
+        const killProgress = Math.max(0, Math.min(1, madnessStreak / singularityTarget));
 
         c.fillStyle = 'rgba(255, 255, 255, 0.12)';
         c.fillRect(xpX, xpY, xpW, xpH);
@@ -794,7 +794,7 @@ export class Renderer {
 
         c.font = 'bold 7.5px monospace';
         c.fillStyle = '#ffd700';
-        c.fillText(`RUN KILLS ${madnessKills}/${singularityTarget}`, tmX, 44);
+        c.fillText(`STREAK x${madnessStreak}/${singularityTarget}`, tmX, 44);
       }
 
       // 5. Chrono-Shift (Bullet Time) Gauge
@@ -882,13 +882,13 @@ export class Renderer {
         c.font = '8px monospace'; c.fillStyle = '#00ffff';
         c.fillText(`READY TO COLLECT • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
       } else if (isCustomMode) {
-        const runProgress = Math.max(0, Math.min(1, madnessKills / singularityTarget));
+        const runProgress = Math.max(0, Math.min(1, madnessStreak / singularityTarget));
         c.font = 'bold 9px monospace';
         c.fillStyle = '#ffd700';
         c.fillText('SINGULARITY', this.cw - rightPad, 18);
         c.font = '8px monospace';
         c.fillStyle = '#e8d6a0';
-        c.fillText(`RUN KILLS ${madnessKills}/${singularityTarget}`, this.cw - rightPad, 34);
+        c.fillText(`STREAK x${madnessStreak}/${singularityTarget}`, this.cw - rightPad, 34);
         c.fillStyle = 'rgba(255, 255, 255, 0.12)';
         c.fillRect(this.cw - rightPad - 80, 39, 80, 3);
         c.fillStyle = '#ffd700';

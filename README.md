@@ -129,9 +129,10 @@ npm run simulate:headless -- --games 100 --replicates 5 \
   --out scripts/reports/progression-candidates.json
 ```
 
-Pour isoler rapidement l'effet du plafond de combo sans attendre 200 kills,
-`--singularity-kills 20` peut servir à un test accéléré. Cette valeur est un
-outil de diagnostic uniquement ; le jeu conserve son seuil réel de 200.
+Pour isoler rapidement l'effet du plafond de combo sans attendre un streak de
+200 fantômes, `--singularity-kills 20` peut servir à un test accéléré. Cette
+valeur est un outil de diagnostic uniquement ; le jeu conserve son seuil réel
+de x200 kills consécutifs (avec remise à zéro après 2 secondes sans kill).
 
 Le rapport donne les moyennes, médianes, écarts-types, min/max entre répétitions,
 les taux d'atteinte des niveaux cibles, l'XP par minute simulée, les kills, la

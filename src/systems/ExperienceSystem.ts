@@ -6,7 +6,7 @@ import { profileManager } from './ProfileManager';
 import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { wobbleBanner } from '../graphics/WobbleBanner';
-import { SINGULARITY_TRIGGER_KILLS } from '../config/constants';
+import { SINGULARITY_TRIGGER_STREAK } from '../config/constants';
 
 export interface LevelUpEvent {
   newLevel: number;
@@ -277,12 +277,12 @@ class ExperienceSystem {
     return this.getSkillRank('singularity_mastery') * 0.4; // up to +1.2s combo hold
   }
 
-  public getSingularityKillReduction(): number {
-    return this.getSkillRank('singularity_mastery') * 12; // up to -36 kills (threshold 164)
+  public getKillStreakGraceBonus(): number {
+    return this.getSkillRank('singularity_mastery') * 0.4; // up to +1.2s between ghost kills
   }
 
-  public getSingularityRunKillTarget(): number {
-    return Math.max(150, SINGULARITY_TRIGGER_KILLS - this.getSingularityKillReduction());
+  public getSingularityStreakTarget(): number {
+    return SINGULARITY_TRIGGER_STREAK;
   }
 
   public getSingularityNovaRank(): number {
