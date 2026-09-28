@@ -2,7 +2,7 @@
 //  CHROMAVORE — MAIN GAME ORCHESTRATOR & GAMELOOP
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, COMBO_DECAY_WIDE, STREAK_DECAY_WINDOW, KILL_STREAK_DECAY_WINDOW, GOD_MODE_DURATION, SINGULARITY_DURATION, SINGULARITY_TRIGGER_KILLS, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
+import { CW, CH, HUD_H, T, ROWS, COLS, BASE_COLS, MADNESS_COLS, HALF, DASH_MADNESS_CD, HIT_DIST, NM_DIST, CM, DASH_BTN, CC, C_DOT, C_PELLET, COMBO_DECAY, COMBO_DECAY_WIDE, STREAK_DECAY_WINDOW, KILL_STREAK_DECAY_WINDOW, GOD_MODE_DURATION, SINGULARITY_DURATION, getComboTier, GAME_VERSION, P_SPEED, P_MADNESS_SPEED, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, BONUS_SWARM_MAX, MADNESS_UNLOCK_KILLS, HD_AUDIO_UNLOCK_KILLS, CHRONO_MAX, CHRONO_DRAIN, CHRONO_TIMESCALE, CHRONO_TIMESCALE_V2, CHRONO_PASSIVE_RECHARGE, CHRONO_DOT_RECHARGE, CHRONO_NM_RECHARGE, getChromaTier } from './config/constants';
 import { sounds } from './audio/SoundManager';
 import { MazeManager, MADNESS_LEVELS_4_3, MADNESS_LEVELS_16_9 } from './levels/levels';
 import { particles } from './systems/ParticleSystem';
@@ -686,6 +686,10 @@ class Game {
                 return;
               case 'home':
                 this.state = 'menu';
+                input.isStartRequested = false;
+                input.isDashRequested = false;
+                input.isPauseRequested = false;
+                input.cancelChronoInput();
                 sounds.play('click');
                 sounds.stopBgm();
                 return;
@@ -1246,9 +1250,9 @@ class Game {
       this.maxMadnessStreak = this.madnessStreak;
     }
 
-    // Check Singularity Mode trigger with mastery reduction
-    const effectiveSingularityThreshold = Math.max(150, SINGULARITY_TRIGGER_KILLS - experienceSystem.getSingularityKillReduction());
-    if ((this.lifeKills >= effectiveSingularityThreshold || this.madnessKills >= effectiveSingularityThreshold) && !this.singularityTriggered) {
+    // Singularity is a run-kill milestone; the short-lived kill streak is separate.
+    const effectiveSingularityThreshold = experienceSystem.getSingularityRunKillTarget();
+    if (this.madnessKills >= effectiveSingularityThreshold && !this.singularityTriggered) {
       this.triggerSingularitySequence();
     }
 
@@ -2525,8 +2529,8 @@ class Game {
     if (input.isStartRequested) {
       if (this.state === 'menu' || this.state === 'gameover') {
         this.startGame();
-        input.isStartRequested = false;
       }
+      input.isStartRequested = false;
     }
 
     const isSingularity = this.combo.m >= 64;

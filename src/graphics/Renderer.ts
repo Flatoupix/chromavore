@@ -761,8 +761,9 @@ export class Renderer {
         21
       );
 
-      // Center HUD: Level & Progression (XP in Custom, Kills/Goal in Arcade)
+      // Center HUD: account XP in Chromamancer, Singularity run kills in Arcade.
       const isCustomMode = profileManager.gameMode === 'custom';
+      const singularityTarget = experienceSystem.getSingularityRunKillTarget();
       const xpW = isWide ? 96 : 70;
       const xpH = 3.5;
       const xpX = tmX - xpW / 2;
@@ -784,19 +785,16 @@ export class Renderer {
         const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
         c.fillText(`LVL ${accLvl}${surgeTag} • [CUSTOM]`, tmX, 44);
       } else {
-        // Arcade mode: Pure kill-based intra-game milestone
-        const nextSkill = progression.getNextUnlock().skill;
-        const targetKills = nextSkill ? nextSkill.threshold : 164;
-        const killProgress = Math.max(0, Math.min(1, progression.totalGhosts / targetKills));
+        const killProgress = Math.max(0, Math.min(1, madnessKills / singularityTarget));
 
         c.fillStyle = 'rgba(255, 255, 255, 0.12)';
         c.fillRect(xpX, xpY, xpW, xpH);
-        c.fillStyle = '#00ffff';
+        c.fillStyle = '#ffd700';
         c.fillRect(xpX, xpY, xpW * killProgress, xpH);
 
         c.font = 'bold 7.5px monospace';
-        c.fillStyle = '#00e5ff';
-      c.fillText(`KILLS: ${progression.totalGhosts} • [ARCADE]`, tmX, 44);
+        c.fillStyle = '#ffd700';
+        c.fillText(`RUN KILLS ${madnessKills}/${singularityTarget}`, tmX, 44);
       }
 
       // 5. Chrono-Shift (Bullet Time) Gauge
@@ -883,6 +881,18 @@ export class Renderer {
         c.shadowBlur = 0;
         c.font = '8px monospace'; c.fillStyle = '#00ffff';
         c.fillText(`READY TO COLLECT • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
+      } else if (isCustomMode) {
+        const runProgress = Math.max(0, Math.min(1, madnessKills / singularityTarget));
+        c.font = 'bold 9px monospace';
+        c.fillStyle = '#ffd700';
+        c.fillText('SINGULARITY', this.cw - rightPad, 18);
+        c.font = '8px monospace';
+        c.fillStyle = '#e8d6a0';
+        c.fillText(`RUN KILLS ${madnessKills}/${singularityTarget}`, this.cw - rightPad, 34);
+        c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        c.fillRect(this.cw - rightPad - 80, 39, 80, 3);
+        c.fillStyle = '#ffd700';
+        c.fillRect(this.cw - rightPad - 80, 39, 80 * runProgress, 3);
       } else {
         const nextUnlock = progression.getNextUnlock();
         if (nextUnlock.skill) {
@@ -2737,7 +2747,7 @@ export class Renderer {
     if (isMadness) {
       c.font = '10px monospace';
       c.fillStyle = this.getChromaAccent('#ffd700', '#666666');
-      c.fillText(`CHROMAVORE MODE • Kills: ${kills} • Streak: x${streak}`, this.cw / 2, cardY + cardH - 12);
+      c.fillText(`RUN ${kills} KILLS • STREAK x${streak}`, this.cw / 2, cardY + cardH - 12);
     }
 
     c.font = '8.5px monospace';
