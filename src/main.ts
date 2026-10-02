@@ -21,6 +21,7 @@ import { progression } from './systems/ProgressionSystem';
 import { experienceSystem, SKILL_NODES } from './systems/ExperienceSystem';
 import { profileManager } from './systems/ProfileManager';
 import { wobbleBanner } from './graphics/WobbleBanner';
+import { SingularityBoss } from './entities/SingularityBoss';
 if (import.meta.env.DEV) {
   import('./utils/adminReset');
 }
@@ -31,12 +32,14 @@ class Game {
   private player: Player;
   private enemyManager: EnemyManager;
   private touchDeck: TouchDeckManager;
+  public boss: SingularityBoss;
 
   // Game state
   public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' | 'debug' = 'menu';
   public previousStateBeforeDebug: 'playing' | 'paused' | 'bonus' = 'playing';
   public playerRank: number = 0;
   public playerDate: string = '';
+  public waveTransTimer: number = 0;
 
   // Singularity 64x cinematic intro sequence & mechanics
   public singularityIntroTimer: number = 0; // 5.0s intro
@@ -104,6 +107,10 @@ class Game {
   public chronoEnergy: number = CHRONO_MAX;
   public isChronoActive: boolean = false;
 
+  // Mana Economy for Chromamancer (RPG mode)
+  public mana: number = 50;
+  public readonly MAX_MANA: number = 100;
+
   // Pending game over snapshot
   public pendingScore: number = 0;
   public pendingKills: number = 0;
@@ -117,6 +124,7 @@ class Game {
     this.player = new Player();
     this.enemyManager = new EnemyManager();
     this.touchDeck = new TouchDeckManager();
+    this.boss = new SingularityBoss();
 
     this.setupNameModal();
     this.setupProfileModals();
@@ -126,8 +134,8 @@ class Game {
     if (vOverlay) vOverlay.textContent = GAME_VERSION;
     setupFullscreen();
     this.bindInputs();
-    input.onSkillExecuted = (skillId: string, lvl: number) => {
-      this.executeSkillCombo(skillId, lvl);
+    input.onSkillExecuted = (skillId: string, lvl: number, manaCost: number = 0) => {
+      this.executeSkillCombo(skillId, lvl, manaCost);
     };
     this.startLoop();
   }
@@ -277,6 +285,26 @@ class Game {
     if (wipeModal) wipeModal.style.display = 'flex';
   }
 
+  private navigateTreeSkills(direction: number) {
+    const curNode = SKILL_NODES.find(n => n.id === this.renderer.selectedSkillId) || SKILL_NODES[0];
+    const branchNodes = SKILL_NODES.filter(n => n.branch === curNode.branch);
+    const idx = branchNodes.findIndex(n => n.id === curNode.id);
+    const nextIdx = (idx + direction + branchNodes.length) % branchNodes.length;
+    this.renderer.selectedSkillId = branchNodes[nextIdx].id;
+    sounds.play('click');
+  }
+
+  private navigateTreeBranches(direction: number) {
+    const branches: Array<'agility' | 'control' | 'carnage'> = ['agility', 'control', 'carnage'];
+    const curNode = SKILL_NODES.find(n => n.id === this.renderer.selectedSkillId) || SKILL_NODES[0];
+    const bIdx = branches.indexOf(curNode.branch);
+    const nextBIdx = (bIdx + direction + branches.length) % branches.length;
+    const nextBranch = branches[nextBIdx];
+    const branchNodes = SKILL_NODES.filter(n => n.branch === nextBranch);
+    this.renderer.selectedSkillId = branchNodes[0].id;
+    sounds.play('click');
+  }
+
   private showNameModal(val: number) {
     const modal = document.getElementById('name-modal');
     const titleEl = document.getElementById('name-modal-title');
@@ -351,6 +379,11 @@ class Game {
       const cx = (e.clientX - rect.left) * (curCw / rect.width);
       const cy = (e.clientY - rect.top) * (CH / rect.height);
 
+      if (this.state === 'waveTrans') {
+        this.waveTransTimer = 0;
+        return;
+      }
+
       if (this.state === 'instructions') {
         this.state = 'menu';
         sounds.play('click');
@@ -358,6 +391,44 @@ class Game {
       }
 
       if (this.state === 'menu') {
+        // 1. Mode Cards Click: CHROMAVORE vs CHROMAMANCER
+        const totalW = Math.min(540, curCw - 24);
+        const cardW = Math.floor((totalW - 14) / 2);
+        const cardH = 76;
+        const startX = curCw / 2 - totalW / 2;
+        const cardY = 306;
+
+        const arcX = startX;
+        const custX = startX + cardW + 14;
+
+        // Card 1: CHROMAVORE (Arcade)
+        if (cy >= cardY && cy <= cardY + cardH && cx >= arcX && cx <= arcX + cardW) {
+          if (profileManager.gameMode !== 'arcade') {
+            profileManager.setGameMode('arcade');
+            sounds.play('click');
+            particles.flash('#00f0ff', 0.2);
+          }
+          return;
+        }
+
+        // Card 2: CHROMAMANCER (Roguelite)
+        if (cy >= cardY && cy <= cardY + cardH && cx >= custX && cx <= custX + cardW) {
+          if (!profileManager.isChromamancerUnlocked()) {
+            sounds.play('click');
+            const cg = profileManager.profile.careerGhosts || 0;
+            const left = MADNESS_UNLOCK_KILLS - cg;
+            particles.addPop(custX + cardW / 2, cardY + cardH / 2, `LOCKED: ${left.toLocaleString()} GHOSTS LEFT FOR 16:9!`, '#ff007f', 12);
+            particles.flash('#ff007f', 0.15);
+            return;
+          }
+          if (profileManager.gameMode !== 'custom') {
+            profileManager.setGameMode('custom');
+            sounds.play('click');
+            particles.flash('#ff007f', 0.2);
+          }
+          return;
+        }
+
         // Dynamic navigation links click at bottom:
         if (this.renderer?.menuLinks) {
           for (const link of this.renderer.menuLinks) {
@@ -369,6 +440,11 @@ class Game {
               } else if (link.id === 'arsenal') {
                 this.state = 'codex';
                 this.codexTab = 'skills';
+                sounds.play('click');
+                return;
+              } else if (link.id === 'tree') {
+                this.state = 'codex';
+                this.codexTab = 'tree';
                 sounds.play('click');
                 return;
               } else if (link.id === 'settings') {
@@ -393,48 +469,25 @@ class Game {
           }
         }
 
-        // Copy sync code if tapping player line (y: ~480)
+        // Copy sync code if tapping player line (y: ~465..495)
         if (cy >= 465 && cy <= 495) {
           navigator.clipboard?.writeText(profileManager.profile.syncCode);
-          particles.addPop(curCw / 2, 480, 'SYNC ID COPIED!', '#00ffff', 14);
+          particles.addPop(curCw / 2, 478, 'SYNC ID COPIED!', '#00ffff', 14);
           sounds.play('click');
           return;
         }
 
-        const totalW = Math.min(540, curCw - 24);
-        const cardW = Math.floor((totalW - 14) / 2);
-        const cardH = 76;
-        const startX = curCw / 2 - totalW / 2;
-        const cardY = 306;
-        const arcX = startX;
-        const custX = startX + cardW + 14;
-
-        // Click on Arcade card
-        if (cx >= arcX && cx <= arcX + cardW && cy >= cardY && cy <= cardY + cardH) {
-          if (profileManager.gameMode !== 'arcade') {
-            profileManager.setGameMode('arcade');
-            sounds.play('click');
-          } else {
-            this.startGame();
-            sounds.play('start');
-          }
+        // Big Play Action Button / Space area (y: 395..440)
+        const playW = Math.min(360, curCw - 48);
+        const playX = curCw / 2 - playW / 2;
+        if (cx >= playX && cx <= playX + playW && cy >= 395 && cy <= 440) {
+          this.startGame();
+          sounds.play('start');
           return;
         }
 
-        // Click on Custom card
-        if (cx >= custX && cx <= custX + cardW && cy >= cardY && cy <= cardY + cardH) {
-          if (profileManager.gameMode !== 'custom') {
-            profileManager.setGameMode('custom');
-            sounds.play('click');
-          } else {
-            this.startGame();
-            sounds.play('start');
-          }
-          return;
-        }
-
-        // Tap title / banner to start
-        if (cy > 60 && cy < 160) {
+        // Tap title / sun / preview to start (y: 80..270)
+        if (cy >= 80 && cy <= 270) {
           this.startGame();
           sounds.play('start');
           return;
@@ -470,49 +523,101 @@ class Game {
           return;
         }
 
-        // Tree interactions (Upgrade Node or Respec)
-        if (this.codexTab === 'tree' && profileManager.gameMode === 'custom') {
-          // Check Respec Button: cx around curCw / 2 + 35, w: 150, y: 94..116
-          if (cx >= curCw / 2 + 35 && cx <= curCw / 2 + 185 && cy >= 94 && cy <= 116) {
-            experienceSystem.respecSkills();
-            particles.flash('#00ffaa', 0.25);
-            particles.shake(4, 0.15);
-            return;
+        // Tree interactions (Upgrade Node, Respec, or Switch Mode)
+        if (this.codexTab === 'tree') {
+          // 1. Check Respec Button
+          if (this.renderer.treeRespecBtnBounds) {
+            const b = this.renderer.treeRespecBtnBounds;
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+              experienceSystem.respecSkills();
+              particles.flash('#00ffaa', 0.25);
+              particles.shake(4, 0.15);
+              return;
+            }
           }
 
-          // Check click on any skill node
-          const branchKeys: Array<'agility' | 'control' | 'carnage'> = ['agility', 'control', 'carnage'];
-          const branchColW = Math.min(270, Math.floor((curCw - 48) / 3));
-          const branchGap = Math.floor((curCw - branchColW * 3) / 4);
+          // 2. Check Switch to Chromamancer Button
+          if (this.renderer.treeSwitchModeBtnBounds) {
+            const b = this.renderer.treeSwitchModeBtnBounds;
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+              if (!profileManager.isChromamancerUnlocked()) {
+                sounds.play('click');
+                const cg = profileManager.profile.careerGhosts || 0;
+                const left = MADNESS_UNLOCK_KILLS - cg;
+                particles.addPop(curCw / 2, 108, `LOCKED: ${left.toLocaleString()} GHOSTS LEFT FOR 16:9!`, '#ff007f', 11);
+                return;
+              }
+              profileManager.setGameMode('custom');
+              sounds.play('start');
+              particles.flash('#ff007f', 0.25);
+              particles.shake(4, 0.15);
+              particles.addPop(curCw / 2, 108, 'SWITCHED TO CHROMAMANCER!', '#ff007f', 12);
+              return;
+            }
+          }
 
-          for (let bi = 0; bi < branchKeys.length; bi++) {
-            const bKey = branchKeys[bi];
-            const bx = branchGap + bi * (branchColW + branchGap);
-            const by = 118;
-            const branchNodes = SKILL_NODES.filter(n => n.branch === bKey);
-            const nodeStartY = by + 28;
-            const nodeH = 70;
-            const nodeGap = 5;
-
-            for (let ni = 0; ni < branchNodes.length; ni++) {
-              const node = branchNodes[ni];
-              const ny = nodeStartY + ni * (nodeH + nodeGap);
-              if (cx >= bx && cx <= bx + branchColW && cy >= ny && cy <= ny + nodeH) {
-                const upgraded = experienceSystem.upgradeSkill(node.id);
+          // 3. Check Inspector Upgrade / Action Button
+          if (this.renderer.inspectorUpgradeBtnBounds) {
+            const b = this.renderer.inspectorUpgradeBtnBounds;
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+              if (profileManager.gameMode !== 'custom') {
+                if (!profileManager.isChromamancerUnlocked()) {
+                  sounds.play('click');
+                  particles.addPop(cx, cy, 'LOCKED: UNLOCK 16:9 ARENA FIRST!', '#ff007f', 11);
+                } else {
+                  profileManager.setGameMode('custom');
+                  sounds.play('start');
+                  particles.flash('#ff007f', 0.25);
+                  particles.addPop(cx, cy, 'SWITCHED TO CHROMAMANCER!', '#ff007f', 11);
+                }
+                return;
+              }
+              const targetId = this.renderer.selectedSkillId;
+              if (targetId) {
+                const upgraded = experienceSystem.upgradeSkill(targetId);
                 if (upgraded) {
                   particles.flash('#00ffaa', 0.25);
                   particles.shake(4, 0.15);
                 } else {
                   sounds.play('click');
                 }
-                return;
               }
+              return;
             }
           }
+
+          // 4. Check Click on Any Skill Node in the Grid
+          for (const [skillId, b] of this.renderer.skillNodeBounds.entries()) {
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+              if (this.renderer.selectedSkillId === skillId && profileManager.gameMode === 'custom') {
+                // Clicking an already selected node attempts upgrade!
+                const upgraded = experienceSystem.upgradeSkill(skillId);
+                if (upgraded) {
+                  particles.flash('#00ffaa', 0.25);
+                  particles.shake(4, 0.15);
+                } else {
+                  sounds.play('click');
+                }
+              } else {
+                // Select the clicked node to inspect it in the right panel!
+                this.renderer.selectedSkillId = skillId;
+                sounds.play('click');
+              }
+              return;
+            }
+          }
+
+          // In tree tab, clicking near the bottom footer returns to menu
+          if (cy >= CH - 35) {
+            this.state = 'menu';
+            sounds.play('click');
+            return;
+          }
+          return;
         }
 
         // If in badges and clicking bottom pagination
-        if (this.codexTab === 'badges' && cy >= CH - 45) {
+        if (this.codexTab === 'badges' && cy >= CH - 45 && cy < CH - 15) {
           if (cx > curCw * 0.25 && cx < curCw * 0.75) {
             const maxPages = BADGE_MAX_PAGES;
             if (cx < curCw / 2) {
@@ -525,17 +630,21 @@ class Game {
           }
         }
 
-        this.state = 'menu';
-        sounds.play('click');
-        return;
+        // Clicking bottom footer in other tabs returns to menu
+        if (cy >= CH - 35) {
+          this.state = 'menu';
+          sounds.play('click');
+          return;
+        }
       }
 
       if (this.state === 'gameover') {
-        const cyBase = CH * 0.30;
+        const cyBase = CH * 0.16;
         const btnW = 160, btnH = 34, btnGap = 16;
         const totalBtnW = btnW * 2 + btnGap;
         const startBtnX = curCw / 2 - totalBtnW / 2;
-        const btnY = cyBase + 185;
+        const isLevel10 = this.maze.currentLevel >= 9 || this.loopCount > 0;
+        const btnY = cyBase + (isLevel10 ? 250 : 230);
 
         const replayX = startBtnX;
         const menuX = startBtnX + btnW + btnGap;
@@ -555,7 +664,7 @@ class Game {
         }
 
         // Navigation secondaire : Leaderboard & Codex
-        if (cy >= cyBase + 225 && cy <= cyBase + 250) {
+        if (cy >= btnY + 40 && cy <= btnY + 68) {
           if (cx < curCw / 2) {
             this.state = 'leaderboard';
             this.leaderboardTab = this.pendingMode || profileManager.gameMode || 'arcade';
@@ -751,6 +860,7 @@ class Game {
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      const k = e.key ? e.key.toLowerCase() : '';
       // Toggle Debug Mode with F2 or ² (Backquote)
       if (e.code === 'F2' || e.code === 'Backquote') {
         this.toggleDebugMode();
@@ -825,7 +935,12 @@ class Game {
           e.preventDefault();
         }
       } else if (this.state === 'codex') {
-        if (e.code === 'Digit1' || e.code === 'Numpad1') {
+        if (e.code === 'Escape' || e.code === 'Space') {
+          this.state = 'menu';
+          sounds.play('click');
+          e.preventDefault();
+          return;
+        } else if (e.code === 'Digit1' || e.code === 'Numpad1') {
           this.codexTab = 'skills';
           sounds.play('click');
           e.preventDefault();
@@ -838,9 +953,20 @@ class Game {
           sounds.play('click');
           e.preventDefault();
         } else if (e.code === 'KeyR' && this.codexTab === 'tree') {
-          experienceSystem.respecSkills();
-          particles.flash('#00ffaa', 0.25);
-          particles.shake(4, 0.15);
+          if (profileManager.gameMode === 'custom') {
+            experienceSystem.respecSkills();
+            particles.flash('#00ffaa', 0.25);
+            particles.shake(4, 0.15);
+          } else if (profileManager.isChromamancerUnlocked()) {
+            profileManager.setGameMode('custom');
+            sounds.play('start');
+            particles.flash('#ff007f', 0.25);
+          } else {
+            sounds.play('click');
+            const cg = profileManager.profile.careerGhosts || 0;
+            const left = MADNESS_UNLOCK_KILLS - cg;
+            particles.addPop(this.renderer.cw / 2, 108, `LOCKED: ${left.toLocaleString()} GHOSTS LEFT FOR 16:9!`, '#ff007f', 11);
+          }
           e.preventDefault();
         } else if (e.code === 'Tab') {
           if (this.codexTab === 'tree') this.codexTab = 'skills';
@@ -848,18 +974,106 @@ class Game {
           else this.codexTab = 'tree';
           sounds.play('click');
           e.preventDefault();
-        } else if (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD' || e.code === 'PageDown') {
-          if (this.codexTab === 'badges') {
+        } else if (e.code === 'Enter' || e.code === 'Space') {
+          if (this.codexTab === 'tree') {
+            if (profileManager.gameMode !== 'custom') {
+              if (profileManager.isChromamancerUnlocked()) {
+                profileManager.setGameMode('custom');
+                sounds.play('start');
+                particles.flash('#ff007f', 0.25);
+              }
+            } else {
+              const targetId = this.renderer.selectedSkillId;
+              if (targetId) {
+                const upgraded = experienceSystem.upgradeSkill(targetId);
+                if (upgraded) {
+                  particles.flash('#00ffaa', 0.25);
+                  particles.shake(4, 0.15);
+                } else {
+                  sounds.play('click');
+                }
+              }
+            }
+            e.preventDefault();
+          }
+        } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+          if (this.codexTab === 'tree') {
+            this.navigateTreeSkills(1);
+            e.preventDefault();
+          }
+        } else if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+          if (this.codexTab === 'tree') {
+            this.navigateTreeSkills(-1);
+            e.preventDefault();
+          }
+        } else if (e.code === 'ArrowRight' || e.code === 'KeyD' || e.code === 'PageDown') {
+          if (this.codexTab === 'tree') {
+            this.navigateTreeBranches(1);
+            e.preventDefault();
+          } else if (this.codexTab === 'badges') {
             this.badgePage = (this.badgePage + 1) % BADGE_MAX_PAGES;
             sounds.play('click');
             e.preventDefault();
           }
-        } else if (e.code === 'ArrowLeft' || e.code === 'ArrowUp' || e.code === 'KeyA' || e.code === 'KeyQ' || e.code === 'PageUp') {
-          if (this.codexTab === 'badges') {
+        } else if (e.code === 'ArrowLeft' || e.code === 'KeyA' || e.code === 'KeyQ' || e.code === 'PageUp') {
+          if (this.codexTab === 'tree') {
+            this.navigateTreeBranches(-1);
+            e.preventDefault();
+          } else if (this.codexTab === 'badges') {
             this.badgePage = (this.badgePage - 1 + BADGE_MAX_PAGES) % BADGE_MAX_PAGES;
             sounds.play('click');
             e.preventDefault();
           }
+        }
+      } else if (this.state === 'menu') {
+        const isUnlocked = profileManager.isChromamancerUnlocked();
+        if (e.code === 'ArrowLeft' || k === 'q' || k === 'a' || e.code === 'KeyA' || e.code === 'KeyQ') {
+          // Select CHROMAVORE (Arcade)
+          if (profileManager.gameMode !== 'arcade') {
+            profileManager.setGameMode('arcade');
+            sounds.play('click');
+            particles.flash('#00f0ff', 0.2);
+          }
+          e.preventDefault();
+        } else if (e.code === 'ArrowRight' || k === 'd' || e.code === 'KeyD') {
+          // Select CHROMAMANCER (Roguelite)
+          if (!isUnlocked) {
+            sounds.play('click');
+            const cg = profileManager.profile.careerGhosts || 0;
+            const left = MADNESS_UNLOCK_KILLS - cg;
+            particles.addPop(this.renderer.cw / 2, 350, `LOCKED: ${left.toLocaleString()} GHOSTS LEFT FOR 16:9!`, '#ff007f', 12);
+            particles.flash('#ff007f', 0.15);
+          } else if (profileManager.gameMode !== 'custom') {
+            profileManager.setGameMode('custom');
+            sounds.play('click');
+            particles.flash('#ff007f', 0.2);
+          }
+          e.preventDefault();
+        } else if (e.code === 'ArrowUp' || e.code === 'ArrowDown' || e.code === 'Tab' || e.code === 'KeyM') {
+          // Toggle mode
+          if (!isUnlocked) {
+            sounds.play('click');
+            const cg = profileManager.profile.careerGhosts || 0;
+            const left = MADNESS_UNLOCK_KILLS - cg;
+            particles.addPop(this.renderer.cw / 2, 350, `LOCKED: ${left.toLocaleString()} GHOSTS LEFT FOR 16:9!`, '#ff007f', 12);
+            e.preventDefault();
+            return;
+          }
+          const nextMode = profileManager.gameMode === 'arcade' ? 'custom' : 'arcade';
+          profileManager.setGameMode(nextMode);
+          sounds.play('click');
+          particles.flash(nextMode === 'arcade' ? '#00f0ff' : '#ff007f', 0.2);
+          e.preventDefault();
+        } else if (e.code === 'KeyT') {
+          this.state = 'codex';
+          this.codexTab = 'tree';
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'KeyR' && profileManager.gameMode === 'custom') {
+          experienceSystem.respecSkills();
+          particles.flash('#ff007f', 0.25);
+          particles.shake(4, 0.15);
+          e.preventDefault();
         }
       }
     });
@@ -911,6 +1125,9 @@ class Game {
 
     this.chronoEnergy = CHRONO_MAX;
     this.isChronoActive = false;
+    this.mana = 50;
+    input.currentMana = 50;
+    this.boss.reset();
     sounds.setChronoActive(false);
     sounds.resetDotStreak();
 
@@ -950,6 +1167,13 @@ class Game {
     this.maze.renderOffscreen(this.renderer.chromaTier);
     this.renderer.updateCanvasSize(this.maze.cols, this.maze.rows);
     this.touchDeck.resize();
+
+    // Singularity Core Boss in Level 10 (index 9)
+    if (lvlIndex === 9) {
+      this.boss.init(this.maze.cols, this.maze.rows);
+    } else {
+      this.boss.reset();
+    }
 
     // Reposition player only if trapped inside a wall in the new layout, preserving direction and motion!
     if (!this.maze.isWalkable(this.player.x, this.player.y, false)) {
@@ -1032,8 +1256,10 @@ class Game {
     if (prevCareer < MADNESS_UNLOCK_KILLS && profileManager.profile.careerGhosts >= MADNESS_UNLOCK_KILLS) {
       badges.unlock('arena16_9');
       sounds.play('powerup');
-      particles.flash('#00f0ff', 0.5);
-      particles.shake(12, 0.4);
+      sounds.play('nova');
+      particles.flash('#ff007f', 0.65);
+      particles.shake(14, 0.45);
+      particles.addPop(this.renderer.cw / 2, HUD_H + 45, '16:9 ARENA & CHROMAMANCER UNLOCKED!', '#ff007f', 24);
     }
   }
 
@@ -1066,6 +1292,7 @@ class Game {
 
   private executeDash() {
     const isSingularity = this.combo.m >= 64;
+    const startPos = this.player.getPos();
     const ok = this.player.triggerDash(
       this.maze,
       this.enemyManager.enemies,
@@ -1077,14 +1304,34 @@ class Game {
       isSingularity,
       input.isChronoKeyHeld
     );
-    if (ok && this.player.consecutiveDashCount > 1) {
-      this.chronoEnergy = Math.max(0, this.chronoEnergy - 8.0);
+    if (ok) {
+      if (this.boss.active) {
+        this.boss.handleDashTrajectory(startPos, this.player.getPos(), this.player);
+      }
+      if (this.player.consecutiveDashCount > 1 && profileManager.gameMode === 'custom') {
+        this.chronoEnergy = Math.max(0, this.chronoEnergy - 8.0);
+      }
     }
   }
 
-  private executeSkillCombo(skillId: string, lvl: number) {
+  private executeSkillCombo(skillId: string, lvl: number, manaCost: number = 0) {
     if (this.state !== 'playing' && this.state !== 'bonus') return;
+    if (this.currentGameMode === 'custom') {
+      this.mana = Math.max(0, this.mana - manaCost);
+      input.currentMana = this.mana;
+    }
     const pp = this.player.getPos();
+
+    // Damage against exposed Singularity Boss Core
+    if (this.boss.active && !this.boss.shieldActive && this.boss.exposedTimer > 0) {
+      if (skillId === 'wiggle') {
+        this.boss.takeDamage(400);
+      } else if (skillId === 'quantum_laser') {
+        this.boss.takeDamage(600);
+      } else if (skillId === 'singularity_nova') {
+        this.boss.takeDamage(1200);
+      }
+    }
 
     switch (skillId) {
       case 'wiggle': {
@@ -1095,10 +1342,15 @@ class Game {
         particles.addPop(pp.x, pp.y - 26, isV2 ? 'GIGA EMP V2 !' : 'WIGGLE EMP BLAST !', '#00ffff', 20);
         particles.emit(pp.x, pp.y, isV2 ? 35 : 16, isV2 ? '#00e5ff' : '#00ffff', { speed: isV2 ? 240 : 180, size: 5, life: 0.6 });
         const blastRad = (isV2 ? T * 8.5 : T * 4.8) * experienceSystem.getEmpRadiusMultiplier();
+        const freezeBonus = experienceSystem.getFreezeDurationBonus();
         for (const e of this.enemyManager.enemies) {
           if (e.st !== 'dead' && e.st !== 'return') {
             const ep = this.enemyManager.getPos(e);
             if (Math.hypot(ep.x - pp.x, ep.y - pp.y) < blastRad) {
+              if (freezeBonus > 0) {
+                e.frozen = true;
+                e.frozenTimer = (isV2 ? 4.0 : 2.5) + freezeBonus;
+              }
               if (isV2) e.st = 'flee';
               this.onKillGhost(e, ep.x, ep.y);
             }
@@ -1297,7 +1549,20 @@ class Game {
       particles.addPop(ex, ey - 35, '+1 LIFE!', '#00ffaa', 22);
     }
 
-    particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
+    if (this.currentGameMode === 'custom') {
+      const manaGain = (e.isTitan ? 12.0 : 4.0) * (1 + (experienceSystem.getAetherHarvestBonus() || 0));
+      this.mana = Math.min(this.MAX_MANA, this.mana + manaGain);
+      input.currentMana = this.mana;
+    }
+
+    if (this.maze.currentLevel >= 9) {
+      // Terminal cellular collapse at Level 10: antibodies dissolve into serene white crystals
+      particles.emit(ex, ey, 24, '#ffffff', { speed: 65, size: 3.5, life: 0.85, gravity: -35 });
+      particles.emit(ex, ey, 14, '#cce0ff', { speed: 45, size: 2.5, life: 0.7, gravity: -25 });
+      particles.addPop(ex, ey - 20, 'CELL COLLAPSE', '#dbeafe', 13);
+    } else {
+      particles.emit(ex, ey, 25, '#00ffff', { speed: 130, size: 4, life: 0.5 });
+    }
     particles.shake(3, 0.12);
     if (settingsManager.settings.freezeFrame && this.combo.m < 64) {
       this.hitlag = Math.max(this.hitlag, 0.035);
@@ -1337,7 +1602,7 @@ class Game {
     this.singularityShockwaveRadius = 0;
     // Set the 64x combo for the Singularity bonus phase.
     this.combo.m = 64;
-    this.combo.t = SINGULARITY_DURATION;
+    this.combo.t = SINGULARITY_DURATION + (profileManager.gameMode === 'custom' ? experienceSystem.getSingularityDurationBonus() : 0);
 
     // Flash screen in cosmic gold & shake
     particles.flash('#ffd700', 0.5);
@@ -1357,6 +1622,7 @@ class Game {
     experienceSystem.onPlayerDeath();
     this.madnessStreak = 0;
     this.killStreakTimer = 0;
+    this.singularityTriggered = false;
     this.dotStreak = 0;
     this.dotStreakTimer = 0;
     const pp = this.player.getPos();
@@ -2043,22 +2309,29 @@ class Game {
 
         // Kinetic Bastion Absorption!
         if (input.bastionActive > 0) {
-          input.bastionActive = Math.max(0, input.bastionActive - 1.5);
-          this.chronoEnergy = Math.max(0, this.chronoEnergy - 25);
-          this.player.invuln = 1.6;
-          particles.shake(14, 0.35);
+          const hasChrono = this.chronoEnergy >= 15;
+          if (hasChrono) {
+            input.bastionActive = Math.max(0, input.bastionActive - 1.5);
+            this.chronoEnergy = Math.max(0, this.chronoEnergy - 20);
+          } else {
+            // Deplete bastion if Chrono is drained
+            input.bastionActive = 0;
+          }
+          this.player.invuln = 1.4;
+          particles.shake(12, 0.3);
           particles.flash('#00ffff', 0.35);
           sounds.play('nova');
-          particles.addPop(pp.x, pp.y - 28, '★ BASTION COUNTER-SHOCKWAVE ! ★', '#00ffea', 20);
-          particles.emit(pp.x, pp.y, 45, '#00ffff', { speed: 200, size: 5, life: 0.5 });
-          // Knockback & freeze all nearby enemies in 5-tile radius!
+          particles.addPop(pp.x, pp.y - 28, hasChrono ? '★ BASTION COUNTER-SHOCKWAVE ! ★' : '★ BASTION DEPLETED ! ★', '#00ffea', 18);
+          particles.emit(pp.x, pp.y, 35, '#00ffff', { speed: 180, size: 5, life: 0.45 });
+          const bastionRadius = (experienceSystem.getKineticBastionRank() >= 2 ? 5.0 : 3.5) * T;
+          // Stun nearby enemies in blast radius
           for (const other of this.enemyManager.enemies) {
             if (other.st !== 'dead' && other.st !== 'return') {
               const op = this.enemyManager.getPos(other);
-              if (Math.hypot(op.x - pp.x, op.y - pp.y) < T * 5.0) {
+              if (Math.hypot(op.x - pp.x, op.y - pp.y) < bastionRadius) {
                 other.frozen = true;
-                other.frozenTimer = 4.0;
-                this.onKillGhost(other, op.x, op.y);
+                other.frozenTimer = 3.5;
+                other.st = 'flee';
               }
             }
           }
@@ -2089,23 +2362,24 @@ class Game {
         } else if (e.st === 'flee' || e.frozen) {
           this.onKillGhost(e, ep.x, ep.y);
         } else {
-          // Aegis Orbital Shield Absorption!
+          // Aegis Orbital Barrier Absorption!
           if (this.player.aegisShields > 0) {
-            this.player.aegisShields--;
-            this.player.invuln = 1.8;
-            particles.shake(12, 0.35);
-            particles.flash('#00ffff', 0.4);
+            this.player.aegisShields = 0;
+            this.player.aegisPelletCounter = 0;
+            this.player.invuln = 1.4;
+            particles.shake(10, 0.3);
+            particles.flash('#00ffff', 0.35);
             sounds.play('nova');
-            particles.addPop(pp.x, pp.y - 28, `★ AEGIS SHIELD BROKEN ! (${this.player.aegisShields} LEFT) ★`, '#00ffff', 18);
-            particles.emit(pp.x, pp.y, 40, '#00ffff', { speed: 190, size: 5, life: 0.5 });
-            // Repel / freeze nearby threats in 4.5 tiles
+            particles.addPop(pp.x, pp.y - 28, '★ AEGIS BARRIER BROKEN ! ★', '#00ffff', 16);
+            particles.emit(pp.x, pp.y, 30, '#00ffff', { speed: 170, size: 4.5, life: 0.45 });
+            // Repel / freeze nearby threats in 3.0 tiles
             for (const other of this.enemyManager.enemies) {
               if (other.st !== 'dead' && other.st !== 'return') {
                 const op = this.enemyManager.getPos(other);
-                if (Math.hypot(op.x - pp.x, op.y - pp.y) < T * 4.5) {
+                if (Math.hypot(op.x - pp.x, op.y - pp.y) < T * 3.0) {
                   other.frozen = true;
-                  other.frozenTimer = 3.5;
-                  this.onKillGhost(other, op.x, op.y);
+                  other.frozenTimer = 2.5;
+                  other.st = 'flee';
                 }
               }
             }
@@ -2147,11 +2421,29 @@ class Game {
       const px = c * T + HALF, py = r * T + HALF;
 
       const isWide = this.maze.cols > 21;
-      const decayDuration = isWide ? COMBO_DECAY_WIDE : COMBO_DECAY;
+      const decayDuration = (isWide ? COMBO_DECAY_WIDE : COMBO_DECAY) + (profileManager.gameMode === 'custom' ? experienceSystem.getComboGraceBonus() : 0);
+      const aetherBonus = profileManager.gameMode === 'custom' ? experienceSystem.getAetherHarvestBonus() : 0;
+
+      // Aegis Shield Pellet Recharge
+      if (profileManager.gameMode === 'custom') {
+        const shieldRank = experienceSystem.getAegisShieldsCount();
+        if (shieldRank > 0 && this.player.aegisShields < 1) {
+          this.player.aegisPelletCounter = (this.player.aegisPelletCounter || 0) + (isPellet ? 5 : 1);
+          const targetDots = shieldRank >= 3 ? 60 : (shieldRank >= 2 ? 80 : 100);
+          if (this.player.aegisPelletCounter >= targetDots) {
+            this.player.aegisShields = 1;
+            this.player.aegisPelletCounter = 0;
+            sounds.play('powerup');
+            particles.flash('#00ffff', 0.2);
+            particles.addPop(px, py - 32, '★ AEGIS SHIELD RECHARGED ! ★', '#00ffff', 18);
+            particles.emit(px, py, 30, '#00ffff', { speed: 150, size: 4.5, life: 0.45 });
+          }
+        }
+      }
 
       if (isPellet) {
         const isSuperPellet = progression.getSkillLevel('super_pellet') >= 1;
-        const pts = 50 * this.combo.m;
+        const pts = Math.round(50 * this.combo.m * (1 + aetherBonus));
         this.score += pts;
         particles.addPop(px, py - 15, '+' + pts, '#ff5555', 18);
         particles.emit(px, py, 20, C_PELLET, { speed: 100, size: 4, life: 0.6 });
@@ -2185,7 +2477,12 @@ class Game {
         const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
-        const lvlUpPellet = experienceSystem.addXp(15, 'pellet');
+        if (this.currentGameMode === 'custom') {
+          this.mana = Math.min(this.MAX_MANA, this.mana + 15.0);
+          input.currentMana = this.mana;
+        }
+
+        const lvlUpPellet = experienceSystem.addXp(Math.round(15 * (1 + aetherBonus)), 'pellet');
         if (lvlUpPellet) {
           this.lives = Math.min(5, this.lives + 1);
           particles.addPop(px, py - 35, '+1 LIFE!', '#00ffaa', 22);
@@ -2198,6 +2495,10 @@ class Game {
       } else {
         const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
+        if (this.currentGameMode === 'custom') {
+          this.mana = Math.min(this.MAX_MANA, this.mana + 1.0);
+          input.currentMana = this.mana;
+        }
         this.player.addDotSpeed(this.combo.m);
         this.combo.n++;
         const oldM = this.combo.m;
@@ -2215,10 +2516,10 @@ class Game {
           }
         }
 
-        const pts = 10 * this.combo.m;
+        const pts = Math.round(10 * this.combo.m * (1 + aetherBonus));
         this.score += pts;
 
-        const lvlUpDot = experienceSystem.addXp(2, 'dot');
+        const lvlUpDot = experienceSystem.addXp(Math.round(2 * (1 + aetherBonus)), 'dot');
         if (lvlUpDot) {
           this.lives = Math.min(5, this.lives + 1);
           particles.addPop(px, py - 35, '+1 LIFE!', '#00ffaa', 22);
@@ -2281,6 +2582,8 @@ class Game {
 
         const nextLvl = (completedLvl + 1) % list.length;
         this.warpToLevel(nextLvl);
+        this.state = 'waveTrans';
+        this.waveTransTimer = 2.2;
       }
     }
   }
@@ -2530,6 +2833,8 @@ class Game {
     if (input.isStartRequested) {
       if (this.state === 'menu' || this.state === 'gameover') {
         this.startGame();
+      } else if (this.state === 'waveTrans') {
+        this.waveTransTimer = 0;
       }
       input.isStartRequested = false;
     }
@@ -2559,6 +2864,9 @@ class Game {
       if (this.singularityIntroTimer <= 0) {
         this.killStreakTimer = Math.max(0, this.killStreakTimer - dt);
         if (this.killStreakTimer === 0) this.madnessStreak = 0;
+        if (this.madnessStreak < experienceSystem.getSingularityStreakTarget() && this.combo.m < 64) {
+          this.singularityTriggered = false;
+        }
       }
       this.dotStreakTimer = Math.max(0, this.dotStreakTimer - dt);
       if (this.dotStreakTimer === 0) this.dotStreak = 0;
@@ -2630,7 +2938,7 @@ class Game {
             this.madnessSpawnTimer = this.enemyManager.getSwarmProfile(this.madnessKills).interval;
 
             this.combo.m = 64;
-            this.combo.t = SINGULARITY_DURATION;
+            this.combo.t = SINGULARITY_DURATION + (profileManager.gameMode === 'custom' ? experienceSystem.getSingularityDurationBonus() : 0);
             this.singularityNovaUsed = false;
             // Give player brief invincibility so no ghost can kill them right as they unfreeze
             this.player.invuln = Math.max(this.player.invuln, 1.5);
@@ -2671,6 +2979,15 @@ class Game {
           input.isChronoRequested = false;
         }
         sounds.setChronoActive(this.isChronoActive);
+
+        // Chromamancer Mana passive regen & sync to inputManager
+        if (this.currentGameMode === 'custom') {
+          const manaRegen = 3.0 + (experienceSystem.getAetherHarvestBonus() || 0) * 1.5;
+          this.mana = Math.min(this.MAX_MANA, this.mana + manaRegen * dt);
+        } else {
+          this.mana = this.MAX_MANA;
+        }
+        input.currentMana = this.mana;
 
         const baseChronoScale = chronoLevel === 2 ? CHRONO_TIMESCALE_V2 : CHRONO_TIMESCALE;
         const activeChronoScale = Math.max(0.10, baseChronoScale - experienceSystem.getChronoDilationBonus());
@@ -2922,6 +3239,7 @@ class Game {
             this.combo.n = 0;
             this.combo.m = 1;
             this.combo.t = 0;
+            this.singularityTriggered = false;
             this.player.pelletSpeedBonus = 0;
             sounds.resetDotStreak();
             const pp = this.player.getPos();
@@ -2947,6 +3265,22 @@ class Game {
           }
         }
 
+        // Singularity Boss update (Level 10)
+        if (this.boss.active) {
+          const bossResult = this.boss.update(dt * chronoScale, this.player, this.enemyManager, this.maze, this.time);
+          if (bossResult.bossDefeated) {
+            this.score += bossResult.scoreBonus;
+            particles.addPop(CW / 2, HUD_H + 50, '★ BOSS ANNIHILATED: +50,000 PTS! ★', '#ffd700', 26);
+            this.loopCount++;
+            badges.unlock('loop1');
+            if (this.loopCount >= 2) badges.unlock('loop2');
+            this.wave++;
+            this.warpToLevel(0);
+            this.state = 'waveTrans';
+            this.waveTransTimer = 2.5;
+          }
+        }
+
         this.checkCollisions();
         break;
       }
@@ -2967,7 +3301,10 @@ class Game {
         break;
 
       case 'waveTrans':
-        this.state = 'playing';
+        this.waveTransTimer = Math.max(0, this.waveTransTimer - dt);
+        if (this.waveTransTimer <= 0) {
+          this.state = 'playing';
+        }
         break;
 
       case 'bonus':
@@ -3237,6 +3574,7 @@ class Game {
       if (this.bonusTallyTimer > 0) {
         this.renderer.drawBonusTally(this.bonusKills, this.bonusScore, this.time);
       }
+      this.renderer.drawBottomExpBar(this.time);
       return;
     }
 
@@ -3274,6 +3612,8 @@ class Game {
       this.renderer.ctx.save();
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
+      this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
+      this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
 
       // Electrified supercharged maze walls in 32x God Mode
       const is32xGod = this.combo.m >= 32;
@@ -3284,7 +3624,8 @@ class Game {
       this.renderer.drawDots(this.maze, this.time);
       powerups.draw(this.renderer.ctx, this.time);
       superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
-      this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
+      this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT, this.maze.currentLevel);
+      if (this.boss.active) this.boss.draw(this.renderer.ctx, this.time);
       this.player.draw(
         this.renderer.ctx,
         this.time,
@@ -3314,8 +3655,13 @@ class Game {
         progression.getSkillLevel('chrono'),
         this.dotStreak,
         this.dotStreakTimer,
-        this.killStreakTimer
+        this.killStreakTimer,
+        this.player.dashCharges,
+        this.player.dashMaxCharges,
+        this.mana,
+        this.MAX_MANA
       );
+      this.renderer.drawBottomExpBar(this.time);
       this.renderer.drawEffectTimers(this.getEffectTimers());
       // Onboarding skill progress is now directly integrated into the HUD (Section 6)
       this.renderer.drawPause(true, this.madnessKills, this.madnessStreak, this.time);
@@ -3326,6 +3672,8 @@ class Game {
       this.renderer.ctx.save();
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
+      this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
+      this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
 
       const is32xGod = this.combo.m >= 32;
       if (is32xGod) {
@@ -3335,7 +3683,8 @@ class Game {
       this.renderer.drawDots(this.maze, this.time);
       powerups.draw(this.renderer.ctx, this.time);
       superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
-      this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
+      this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT, this.maze.currentLevel);
+      if (this.boss.active) this.boss.draw(this.renderer.ctx, this.time);
       this.player.draw(
         this.renderer.ctx,
         this.time,
@@ -3365,8 +3714,13 @@ class Game {
         progression.getSkillLevel('chrono'),
         this.dotStreak,
         this.dotStreakTimer,
-        this.killStreakTimer
+        this.killStreakTimer,
+        this.player.dashCharges,
+        this.player.dashMaxCharges,
+        this.mana,
+        this.MAX_MANA
       );
+      this.renderer.drawBottomExpBar(this.time);
       this.renderer.drawEffectTimers(this.getEffectTimers());
       this.renderer.drawDebugMenu(this.getDebugButtons(), this.time);
       return;
@@ -3376,6 +3730,8 @@ class Game {
     this.renderer.ctx.save();
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
     this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
+    this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
+    this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
 
     // Electrified supercharged maze walls in 32x God Mode & 64x Singularity
     const isSingularity = this.combo.m >= 64;
@@ -3398,7 +3754,8 @@ class Game {
     // Super-Item visuals (Lasers, Vortex, Tsunami)
     superItems.draw(this.renderer.ctx, this.player.getPos(), this.time);
 
-    this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT);
+    this.enemyManager.draw(this.renderer.ctx, this.time, powerups.pred.warn, this.isChronoActive, powerups.pred.t, powerups.pred.maxT, this.maze.currentLevel);
+    if (this.boss.active) this.boss.draw(this.renderer.ctx, this.time);
     this.player.draw(
       this.renderer.ctx,
       this.time,
@@ -3453,8 +3810,11 @@ class Game {
       this.dotStreakTimer,
       this.killStreakTimer,
       this.player.dashCharges,
-      this.player.dashMaxCharges
+      this.player.dashMaxCharges,
+      this.mana,
+      this.MAX_MANA
     );
+    this.renderer.drawBottomExpBar(this.time);
     this.renderer.drawEffectTimers(this.getEffectTimers());
     this.renderer.drawSequenceModeOverlay(input, this.time);
     // Onboarding skill progress is now directly integrated into the HUD (Section 6)
@@ -3469,7 +3829,7 @@ class Game {
       const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore());
       this.renderer.drawGameOver(
         this.pendingScore, isNewHi, this.pendingKills, this.pendingStreak, topMadness, bCount, this.time,
-        this.loopCount
+        this.loopCount, this.maze.currentLevel
       );
     }
 

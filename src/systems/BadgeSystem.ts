@@ -92,7 +92,8 @@ export const BADGES: Record<string, BadgeDef> = {
   wide_lvl7:    { id: 'wide_lvl7',    name: '16:9 FLUID ARTERY',    desc: 'Conquer Level 7 in 16:9 Widescreen (Fluid Artery)',   icon: 'lightning', category: 'feat' },
   wide_lvl8:    { id: 'wide_lvl8',    name: '16:9 SPEED RING',      desc: 'Conquer Level 8 in 16:9 Widescreen (Speed Ring)',     icon: 'vortex', category: 'feat' },
   wide_lvl9:    { id: 'wide_lvl9',    name: '16:9 TITAN HIGHWAY',   desc: 'Conquer Level 9 in 16:9 Widescreen (Titan Highway)',  icon: 'crown', category: 'feat' },
-  wide_lvl10:   { id: 'wide_lvl10',   name: '16:9 INFINITY APEX',   desc: 'Conquer Level 10 in 16:9 Widescreen (Infinity Apex)', icon: 'crown', category: 'feat' }
+  wide_lvl10:   { id: 'wide_lvl10',   name: '16:9 INFINITY APEX',   desc: 'Conquer Level 10 in 16:9 Widescreen (Infinity Apex)', icon: 'crown', category: 'feat' },
+  boss_slayer:  { id: 'boss_slayer',  name: 'SINGULARITY SLAYER',   desc: 'Overload all 4 relays and destroy the Singularity Core Boss in Level 10', icon: 'crown', category: 'feat' }
 };
 
 export const BADGE_PAGE_SIZE = 14;

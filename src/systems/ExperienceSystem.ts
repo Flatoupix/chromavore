@@ -127,19 +127,25 @@ class ExperienceSystem {
   public isUltimateRevealed(skillId: string): boolean {
     const node = SKILL_NODES.find(n => n.id === skillId);
     if (!node || !node.isUltimate) return true;
-    const coreNodes = SKILL_NODES.filter(n => !n.isUltimate);
-    return coreNodes.every(coreNode => this.getSkillRank(coreNode.id) >= coreNode.maxRank);
+    if (node.reqSkillId) {
+      const parentNode = SKILL_NODES.find(n => n.id === node.reqSkillId);
+      if (parentNode) {
+        return this.getSkillRank(parentNode.id) >= parentNode.maxRank;
+      }
+    }
+    const branchNodes = SKILL_NODES.filter(n => n.branch === node.branch && !n.isUltimate);
+    return branchNodes.every(coreNode => this.getSkillRank(coreNode.id) >= coreNode.maxRank);
   }
 
   public canUpgradeSkill(skillId: string): { can: boolean; reason?: string } {
-    if (profileManager.gameMode !== 'custom') {
-      return { can: false, reason: 'The Skill Tree is only available in Chromamancer' };
+    if (profileManager.gameMode !== 'custom' || !profileManager.isChromamancerUnlocked()) {
+      return { can: false, reason: 'The Skill Tree unlocks with the 16:9 Arena in Chromamancer' };
     }
     const node = SKILL_NODES.find(n => n.id === skillId);
     if (!node) return { can: false, reason: 'Unknown skill' };
 
     if (node.isUltimate && !this.isUltimateRevealed(skillId)) {
-      return { can: false, reason: 'Secret ultimate: max out every core skill' };
+      return { can: false, reason: 'Branch ultimate: master the predecessor node first' };
     }
 
     const currentRank = this.getSkillRank(skillId);
@@ -158,7 +164,7 @@ class ExperienceSystem {
     }
 
     if (node.reqAccountLevel && this.accountLevel < node.reqAccountLevel) {
-      return { can: false, reason: `Requires account level ${node.reqAccountLevel}` };
+      return { can: false, reason: `Requires level ${node.reqAccountLevel}` };
     }
 
     return { can: true };
@@ -270,7 +276,19 @@ class ExperienceSystem {
   }
 
   public getSuperItemFrequencyBonus(): number {
-    return this.getSkillRank('super_frequency') * 0.25; // up to +100% spawn rate
+    return this.getAetherHarvestBonus();
+  }
+
+  public getAetherHarvestBonus(): number {
+    return this.getSkillRank('super_frequency') * 0.15; // up to +60% XP/Score bonus
+  }
+
+  public getSpellCooldownMultiplier(): number {
+    return Math.max(0.68, 1.0 - this.getSkillRank('super_frequency') * 0.08); // up to -32% CD
+  }
+
+  public getSingularityDurationBonus(): number {
+    return this.getSkillRank('singularity_mastery') >= 3 ? 5.0 : 0; // +5.0s at rank 3
   }
 
   public getComboGraceBonus(): number {

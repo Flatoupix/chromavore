@@ -367,7 +367,7 @@ export class PowerupManager {
         sounds.play('near');
         particles.shake(5, 0.25);
         particles.flash('#ff0055', 0.3);
-        particles.addPop(CW / 2, 70, 'RELIQUE DU VIDE APPARUE !', '#ff0055', 18);
+        particles.addPop(CW / 2, 70, 'VOID RELIC SPAWNED !', '#ff0055', 18);
       }
     } else {
       // Wall safety check for Void Relic: relocate if inside decor or ghost house

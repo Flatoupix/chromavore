@@ -5,6 +5,7 @@
 import { particles } from '../systems/ParticleSystem';
 import { progression } from '../systems/ProgressionSystem';
 import { experienceSystem } from '../systems/ExperienceSystem';
+import { profileManager } from '../systems/ProfileManager';
 import { sounds } from '../audio/SoundManager';
 import { BASE_NITRO_CD, BASE_WIGGLE_CD } from '../config/constants';
 
@@ -19,6 +20,7 @@ export interface SkillComboDef {
   sequence: string[];
   altSequence?: string[];
   baseCd: number;
+  manaCost: number;
 }
 
 export const SKILL_COMBOS: SkillComboDef[] = [
@@ -28,6 +30,7 @@ export const SKILL_COMBOS: SkillComboDef[] = [
     sequence: ['left', 'right', 'left', 'right'],
     altSequence: ['right', 'left', 'right', 'left'],
     baseCd: BASE_WIGGLE_CD,
+    manaCost: 25,
   },
   {
     id: 'nitro',
@@ -35,6 +38,7 @@ export const SKILL_COMBOS: SkillComboDef[] = [
     sequence: ['up', 'down', 'up', 'down'],
     altSequence: ['down', 'up', 'down', 'up'],
     baseCd: BASE_NITRO_CD,
+    manaCost: 20,
   },
   {
     id: 'quantum_laser',
@@ -42,6 +46,7 @@ export const SKILL_COMBOS: SkillComboDef[] = [
     sequence: ['right', 'down', 'right', 'down'],
     altSequence: ['left', 'up', 'right', 'down'],
     baseCd: 24.0,
+    manaCost: 40,
   },
   {
     id: 'kinetic_bastion',
@@ -49,6 +54,7 @@ export const SKILL_COMBOS: SkillComboDef[] = [
     sequence: ['down', 'down', 'up', 'up'],
     altSequence: ['down', 'left', 'down', 'right'],
     baseCd: 26.0,
+    manaCost: 35,
   },
   {
     id: 'singularity_nova',
@@ -56,6 +62,7 @@ export const SKILL_COMBOS: SkillComboDef[] = [
     sequence: ['up', 'right', 'down', 'left'],
     altSequence: ['up', 'up', 'down', 'down'],
     baseCd: 40.0,
+    manaCost: 50,
   }
 ];
 
@@ -90,10 +97,11 @@ export class InputManager {
   public sequenceMatchedSkill: string | null = null;
   public lastShiftPressTime: number = 0;
   public readonly DOUBLE_TAP_WINDOW_MS: number = 300;
-  private heldShiftKeys = new Set<string>();
+  public heldShiftKeys: Set<string> = new Set<string>();
+  public currentMana: number = 100;
 
   // External execution callback wired to main.ts
-  public onSkillExecuted?: (skillId: string, lvl: number) => void;
+  public onSkillExecuted?: (skillId: string, lvl: number, manaCost: number) => void;
 
   // ─── Motion & Cooldown State ───
   public motionHistory: MotionRecord[] = [];
@@ -203,30 +211,34 @@ export class InputManager {
     return null;
   }
 
-  public getSkillAvailability(skillId: string): { unlocked: boolean; cd: number; level: number } {
+  public getSkillAvailability(skillId: string): { unlocked: boolean; cd: number; level: number; manaCost: number; hasMana: boolean } {
+    const combo = SKILL_COMBOS.find(c => c.id === skillId);
+    const manaCost = combo ? combo.manaCost : 0;
+    const hasMana = profileManager.gameMode !== 'custom' || this.currentMana >= manaCost;
+
     switch (skillId) {
       case 'wiggle': {
         const lvl = Math.max(progression.getSkillLevel('wiggle'), experienceSystem.getSkillRank('emp_overcharge') > 0 ? 1 : 0);
-        return { unlocked: lvl >= 1, cd: this.wiggleCd, level: lvl };
+        return { unlocked: lvl >= 1, cd: this.wiggleCd, level: lvl, manaCost, hasMana };
       }
       case 'nitro': {
         const lvl = Math.max(progression.getSkillLevel('nitro'), experienceSystem.getSkillRank('hyper_nitro') > 0 ? 1 : 0);
-        return { unlocked: lvl >= 1, cd: this.nitroCd, level: lvl };
+        return { unlocked: lvl >= 1, cd: this.nitroCd, level: lvl, manaCost, hasMana };
       }
       case 'quantum_laser': {
         const lvl = experienceSystem.getSkillRank('quantum_laser');
-        return { unlocked: lvl >= 1, cd: this.laserCd, level: lvl };
+        return { unlocked: lvl >= 1, cd: this.laserCd, level: lvl, manaCost, hasMana };
       }
       case 'kinetic_bastion': {
         const lvl = experienceSystem.getSkillRank('kinetic_bastion');
-        return { unlocked: lvl >= 1, cd: this.bastionCd, level: lvl };
+        return { unlocked: lvl >= 1, cd: this.bastionCd, level: lvl, manaCost, hasMana };
       }
       case 'singularity_nova': {
         const lvl = experienceSystem.getSkillRank('singularity_nova');
-        return { unlocked: lvl >= 1, cd: this.singularityNovaCd, level: lvl };
+        return { unlocked: lvl >= 1, cd: this.singularityNovaCd, level: lvl, manaCost, hasMana };
       }
       default:
-        return { unlocked: false, cd: 0, level: 0 };
+        return { unlocked: false, cd: 0, level: 0, manaCost: 0, hasMana: true };
     }
   }
 
@@ -241,9 +253,12 @@ export class InputManager {
       } else if (av.cd > 0) {
         this.sequenceStatus = 'cooldown';
         this.sequenceFeedback = `${matched.name} ON COOLDOWN (${av.cd.toFixed(1)}s)`;
+      } else if (!av.hasMana) {
+        this.sequenceStatus = 'invalid';
+        this.sequenceFeedback = `NEED ${av.manaCost} MANA (HAVE ${Math.floor(this.currentMana)})`;
       } else {
         this.sequenceStatus = 'valid';
-        this.sequenceFeedback = `READY: ${matched.name} [RELEASE SHIFT]`;
+        this.sequenceFeedback = `READY: ${matched.name} [${av.manaCost} MP]`;
       }
       return;
     }
@@ -298,44 +313,54 @@ export class InputManager {
       return;
     }
 
+    if (!av.hasMana) {
+      this.sequenceStatus = 'invalid';
+      this.sequenceFeedback = `NOT ENOUGH MANA (${Math.floor(this.currentMana)}/${av.manaCost})`;
+      this.sequenceFeedbackTimer = 1.0;
+      sounds.play('sequence_fail');
+      return;
+    }
+
     // Skill is valid, unlocked, and ready: Execute ONCE!
     this.startSkillCooldown(matched.id, av.level);
     this.sequenceStatus = 'executed';
     this.sequenceFeedback = `★ ${matched.name} ACTIVATED! ★`;
-    this.sequenceFeedbackTimer = 1.2;
+    this.sequenceFeedbackTimer = 0;
+    this.isSequenceMode = false;
+    this.sequenceBuffer = [];
     sounds.play('sequence_success');
 
     if (this.onSkillExecuted) {
-      this.onSkillExecuted(matched.id, av.level);
+      this.onSkillExecuted(matched.id, av.level, av.manaCost);
     }
   }
 
   public startSkillCooldown(skillId: string, lvl: number) {
+    const cdMult = experienceSystem.getSpellCooldownMultiplier();
     switch (skillId) {
       case 'wiggle': {
         const empRank = experienceSystem.getSkillRank('emp_overcharge');
         const baseCd = lvl >= 2 ? BASE_WIGGLE_CD * 0.75 : BASE_WIGGLE_CD;
-        this.wiggleCd = Math.max(3.5, baseCd * (1.0 - empRank * 0.12));
+        this.wiggleCd = Math.max(3.0, baseCd * (1.0 - empRank * 0.10) * cdMult);
         break;
       }
       case 'nitro': {
-        const speedBonus = experienceSystem.getNitroSpeedBonus();
         const baseCd = lvl >= 2 ? BASE_NITRO_CD * 0.75 : BASE_NITRO_CD;
-        this.nitroCd = Math.max(3.0, baseCd * (1.0 - speedBonus));
+        this.nitroCd = Math.max(3.0, baseCd * cdMult);
         this.nitroActive = (lvl >= 2 ? 4.5 : 3.2) + experienceSystem.getNitroTrailBonus();
         break;
       }
       case 'quantum_laser': {
-        this.laserCd = lvl >= 2 ? 18.0 : 24.0;
+        this.laserCd = (lvl >= 2 ? 18.0 : 24.0) * cdMult;
         break;
       }
       case 'kinetic_bastion': {
-        this.bastionCd = 26.0;
+        this.bastionCd = 26.0 * cdMult;
         this.bastionActive = lvl >= 2 ? 8.0 : 6.0;
         break;
       }
       case 'singularity_nova': {
-        this.singularityNovaCd = lvl >= 2 ? 32.0 : 40.0;
+        this.singularityNovaCd = (lvl >= 2 ? 32.0 : 40.0) * cdMult;
         break;
       }
     }

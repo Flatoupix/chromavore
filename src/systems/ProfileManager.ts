@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { FIREBASE_CONFIG } from '../config/firebase';
+import { MADNESS_UNLOCK_KILLS } from '../config/constants';
 
 export interface PlayerProfile {
   pseudo: string;
@@ -122,12 +123,25 @@ class ProfileManager {
     this.pushRemote();
   }
 
-  public setGameMode(mode: 'arcade' | 'custom') {
+  public isChromamancerUnlocked(): boolean {
+    return (this.profile.careerGhosts || 0) >= MADNESS_UNLOCK_KILLS;
+  }
+
+  public setGameMode(mode: 'arcade' | 'custom'): boolean {
+    if (mode === 'custom' && !this.isChromamancerUnlocked()) {
+      this.profile.gameMode = 'arcade';
+      this.saveProfile();
+      return false;
+    }
     this.profile.gameMode = mode;
     this.saveProfile();
+    return true;
   }
 
   public get gameMode(): 'arcade' | 'custom' {
+    if (this.profile.gameMode === 'custom' && !this.isChromamancerUnlocked()) {
+      return 'arcade';
+    }
     return this.profile.gameMode || 'arcade';
   }
 

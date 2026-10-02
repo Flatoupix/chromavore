@@ -52,8 +52,10 @@ export class Player {
   // Aegis Orbital Shields & Vector Surge
   public aegisShields: number = 0;
   public maxAegisShields: number = 0;
+  public aegisPelletCounter: number = 0;
   public vectorSurgeCran: number = 0;
   public vectorSurgeTimer: number = 0;
+  public vectorSurgeCd: number = 0;
   public lastDirectionTapTime: number = 0;
   public lastTapDir: { x: number; y: number } = { x: 0, y: 0 };
 
@@ -114,10 +116,12 @@ export class Player {
     this.dashChargeCooldown = 0;
     this.dashStreaks = [];
     const isCustomMode = profileManager.gameMode === 'custom';
-    this.aegisShields = isCustomMode ? experienceSystem.getAegisShieldsCount() : 0;
-    this.maxAegisShields = this.aegisShields;
+    this.aegisShields = (isCustomMode && experienceSystem.getAegisShieldsCount() > 0) ? 1 : 0;
+    this.maxAegisShields = 1;
+    this.aegisPelletCounter = 0;
     this.vectorSurgeCran = 0;
     this.vectorSurgeTimer = 0;
+    this.vectorSurgeCd = 0;
     this.lastDirectionTapTime = 0;
     this.lastTapDir = { x: 0, y: 0 };
   }
@@ -239,11 +243,14 @@ export class Player {
         this.consecutiveDashCount = 0;
       }
     }
-    if (this.invuln > 0) this.invuln -= dt * chronoScale;
+    if (this.invuln > 0) this.invuln -= dt;
 
-    // Vector Surge decay
+    // Vector Surge decay & cooldown
+    if (this.vectorSurgeCd > 0) {
+      this.vectorSurgeCd -= dt;
+    }
     if (this.vectorSurgeTimer > 0) {
-      this.vectorSurgeTimer -= dt * chronoScale;
+      this.vectorSurgeTimer -= dt;
       if (this.vectorSurgeTimer <= 0) {
         this.vectorSurgeCran = 0;
       }
@@ -254,7 +261,7 @@ export class Player {
     // Speed increase only arrives in 16/9 widescreen mode (cols > 21)
     const isWide = maze ? maze.cols > 21 : false;
     const isCustomMode = profileManager.gameMode === 'custom';
-    const surgeBonus = (isCustomMode && this.vectorSurgeTimer > 0) ? (this.vectorSurgeCran * 0.20) : 0;
+    const surgeBonus = (isCustomMode && this.vectorSurgeTimer > 0) ? (this.vectorSurgeCran * 0.05) : 0;
 
     if (!isWide) {
       this.pelletSpeedBonus = 0;
@@ -268,7 +275,8 @@ export class Player {
       const pelletSurge = (this.superPelletBoostTimer > 0 ? 1.8 : 0) + this.pelletSpeedBonus;
       const progressionBoost = 4.3;
       const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
-      const baseSpeed = isNitro ? madnessCalculatedSpeed * 1.30 : madnessCalculatedSpeed;
+      const nitroBonus = (isCustomMode && isNitro) ? experienceSystem.getNitroSpeedBonus() : 0;
+      const baseSpeed = isNitro ? madnessCalculatedSpeed * (1.30 + nitroBonus) : madnessCalculatedSpeed;
       this.speed = ((baseSpeed * (1 + surgeBonus)) + pelletSurge) * speedMult * chronoScale;
     }
 
@@ -278,15 +286,16 @@ export class Player {
       const isSameDir = (inputDir.x === this.lastTapDir.x && inputDir.y === this.lastTapDir.y);
       const isDoubleTap = isSameDir && (now - this.lastDirectionTapTime) <= 320 && (now - this.lastDirectionTapTime) >= 40;
 
-      if (isDoubleTap && isCustomMode) {
+      if (isDoubleTap && isCustomMode && this.vectorSurgeCd <= 0) {
         const maxCran = experienceSystem.getVectorSurgeMaxCran();
         if (maxCran > 0) {
           this.vectorSurgeCran = Math.min(maxCran, this.vectorSurgeCran + 1);
           this.vectorSurgeTimer = 2.5;
+          this.vectorSurgeCd = 3.5;
           sounds.play('dash');
           const pp = this.getPos();
           particles.emit(pp.x, pp.y, 12, '#00ffff', { speed: 120, size: 3.5, life: 0.35 });
-          particles.addPop(pp.x, pp.y - 18, `SURGE x${this.vectorSurgeCran} (+${this.vectorSurgeCran * 20}%)`, '#00ffff', 14);
+          particles.addPop(pp.x, pp.y - 18, `SURGE x${this.vectorSurgeCran} (+${this.vectorSurgeCran * 5}%)`, '#00ffff', 14);
         }
       }
 
@@ -561,12 +570,18 @@ export class Player {
               onKillGhost(e, ep.x, ep.y);
               particles.addPop(ep.x, ep.y - 18, 'TITAN BREAKER OBLITERATION !', '#ff0055', 20);
               particles.shake(10, 0.3);
+            } else if (titanBreakerRank >= 2) {
+              e.frozen = true;
+              e.frozenTimer = 4.5;
+              particles.emit(ep.x, ep.y, 25, '#00ffff', { speed: 160, size: 5, life: 0.5 });
+              particles.addPop(ep.x, ep.y - 18, 'TITAN CRUSHED & SLOWED !', '#00ffff', 18);
+              particles.shake(7, 0.22);
             } else if (titanBreakerRank >= 1) {
               e.frozen = true;
-              e.frozenTimer = 3.5;
-              particles.emit(ep.x, ep.y, 25, '#00ffff', { speed: 160, size: 5, life: 0.5 });
-              particles.addPop(ep.x, ep.y - 18, 'TITAN STUNNED !', '#00ffff', 18);
-              particles.shake(6, 0.2);
+              e.frozenTimer = 3.0;
+              particles.emit(ep.x, ep.y, 20, '#00ffff', { speed: 140, size: 4.5, life: 0.45 });
+              particles.addPop(ep.x, ep.y - 18, 'TITAN STUNNED !', '#00ffff', 16);
+              particles.shake(5, 0.18);
             }
           } else {
             onKillGhost(e, ep.x, ep.y);
@@ -597,6 +612,7 @@ export class Player {
           if (Math.hypot(ep.x - endPos.x, ep.y - endPos.y) < T * (dashLvl >= 5 ? 2.4 : 1.8) * chainShockMultiplier) {
             if (e.isTitan) {
               if (titanBreakerRank >= 3) onKillGhost(e, ep.x, ep.y);
+              else if (titanBreakerRank >= 2) { e.frozen = true; e.frozenTimer = 4.5; }
               else if (titanBreakerRank >= 1) { e.frozen = true; e.frozenTimer = 3.0; }
             } else {
               onKillGhost(e, ep.x, ep.y);
@@ -606,7 +622,7 @@ export class Player {
       }
       let dashName = 'CYBER DASH V2 !';
       if (dashLvl >= 5) {
-        dashName = wallsBroken > 0 ? `QUANTUM BURST (${wallsBroken} MUR${wallsBroken > 1 ? 'S' : ''}) !` : 'QUANTUM DASH BURST V5 !';
+        dashName = wallsBroken > 0 ? `QUANTUM BURST (${wallsBroken} WALL${wallsBroken > 1 ? 'S' : ''}) !` : 'QUANTUM DASH BURST V5 !';
       } else if (dashLvl >= 4) {
         dashName = 'QUANTUM DASH V4 !';
       } else if (dashLvl >= 3) {
@@ -619,7 +635,7 @@ export class Player {
 
     if (this.consecutiveDashCount > 1) {
       const shockBonusPct = Math.round((chainShockMultiplier - 1) * 100);
-      particles.addPop(endPos.x, endPos.y - 34, `MULTI-DASH x${this.consecutiveDashCount} (+${shockBonusPct}% ONDE) !`, '#00ffea', 16);
+      particles.addPop(endPos.x, endPos.y - 34, `MULTI-DASH x${this.consecutiveDashCount} (+${shockBonusPct}% SHOCKWAVE) !`, '#00ffea', 16);
     }
 
     particles.emit(startPos.x, startPos.y, 16, isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff')), { speed: 130, size: 4, life: 0.45 });
@@ -628,7 +644,8 @@ export class Player {
     particles.flash(isSingularityDash ? '#ffd700' : (isOverdrive ? '#00ffcc' : (dashLvl >= 5 ? '#ff007f' : '#00e5ff')), 0.22);
     sounds.play('dash');
     const phaseBonus = experienceSystem.getPhaseIntangibilityDuration();
-    this.invuln = Math.max(this.invuln, (isSingularityDash ? 0.8 : (dashLvl >= 5 ? 0.5 : 0.35)) + phaseBonus);
+    const maxDashInvuln = isSingularityDash ? 0.85 : 0.75;
+    this.invuln = Math.min(maxDashInvuln, Math.max(this.invuln, (isSingularityDash ? 0.6 : (dashLvl >= 5 ? 0.4 : 0.25)) + phaseBonus));
     return true;
   }
 

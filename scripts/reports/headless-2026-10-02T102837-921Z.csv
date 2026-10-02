@@ -1,0 +1,5 @@
+botStrategy,skillPolicy,ghostXpComboCap,xpCurveMultiplier,xpGainMultiplier,singularityTriggerKills,replicate,games,finalLevel,careerGhosts,campaignSeconds,campaignXp,campaignXpPerMinute,averageRunSeconds,medianRunXp,averageRunKills,averageMazesCleared,averageRunDeaths,averageDotsCollected,averageDashes,averageEmpUses,averageBastionUses,averageLaserKills,averageNovaUses,singularityRunRate,gameOverRate,deltaXpPerMinutePctVsNoSkills,deltaLevelVsNoSkills,secondsToLevel5,secondsToLevel10,secondsToLevel20,secondsToLevel35,secondsToLevel50,secondsToLevel75,secondsToLevel100
+collector,none,16,1,1,200,1,2,3,6,55.66666666666775,2175,2344.311377245463,27.833333333333876,839,3,0,2.5,74,0,0,0,0,0,0,0.5,0,0,,,,,,,
+collector,balanced,16,1,1,200,1,2,3,6,55.66666666666775,2175,2344.311377245463,27.833333333333876,839,3,0,2.5,74,0,0,0,0,0,0,0.5,0,0,,,,,,,
+hunter,none,16,1,1,200,1,2,3,18,55.40000000000107,2650,2870.036101082977,27.700000000000536,1220,9,0,4,82,1,0,0,0,0,0,1,0,0,,,,,,,
+hunter,balanced,16,1,1,200,1,2,3,18,55.40000000000107,2650,2870.036101082977,27.700000000000536,1220,9,0,4,82,1,0,0,0,0,0,1,0,0,,,,,,,

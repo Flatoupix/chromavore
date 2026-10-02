@@ -67,8 +67,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 4,
     costPerRank: 2,
     reqSkillId: 'dash_reflex',
-    desc: 'Double-tap your current direction for a burst of speed (+20% per rank, up to 4 ranks).',
-    tradeoffDesc: 'Each burst lasts 2.5s; high speed makes tight turns harder to control.'
+    desc: 'Double-tap current direction for a responsive speed surge (+5% per rank, up to +20%).',
+    tradeoffDesc: 'Surge lasts 2.5s with a 3.5s cooldown. High velocity requires clean cornering.'
   },
   {
     id: 'hyper_nitro',
@@ -151,13 +151,13 @@ export const SKILL_NODES: SkillNode[] = [
   {
     id: 'aegis_shield',
     branch: 'control',
-    name: 'AEGIS ORBITAL SHIELDS',
+    name: 'AEGIS ORBITAL BARRIER',
     icon: 'shield',
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'deep_freeze',
-    desc: 'Start each life with one orbital shield per rank (up to 3). Each shield absorbs a fatal hit and releases a shockwave.',
-    tradeoffDesc: 'Consumed shields can be restored by collecting a Super-Item or 80 consecutive pellets.'
+    desc: 'Emergency barrier. Absorbs a fatal hit, triggers a protective shockwave, and grants 1.4s invulnerability.',
+    tradeoffDesc: 'Max 1 active barrier. Recharges after collecting pellets (Rank 1: 100, Rank 2: 80, Rank 3: 60).'
   },
   {
     id: 'kinetic_bastion',
@@ -170,8 +170,8 @@ export const SKILL_NODES: SkillNode[] = [
     isUltimate: true,
     comboSequence: ['down', 'down', 'up', 'up'],
     comboHint: '[DOUBLE-SHIFT] + [↓ ↓ ↑ ↑]',
-    desc: 'CONTROL ULTIMATE: A 6s kinetic dome. Each impact consumes 1.5s, costs 25 Chrono, and triggers a counterwave that destroys nearby ghosts.',
-    tradeoffDesc: '26s cooldown. Rank 2 lasts 8s and expands the counterwave to 5 tiles.'
+    desc: 'CONTROL ULTIMATE: A 6s kinetic dome. Absorbs hits with Chrono energy and triggers a counterwave.',
+    tradeoffDesc: '26s cooldown. Rank 2 lasts 8s and expands the counterwave from 3.5 to 5.0 tiles.'
   },
 
   // ─── BRANCHE CARNAGE ───
@@ -193,18 +193,18 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'pellet_resonance',
-    desc: 'Anti-Titan upgrade: slows Titans and lets you ram them.',
-    tradeoffDesc: 'Rank 1 breaks a Titan’s armor and stuns it on impact. Rank 3 destroys it (+2,500 pts).'
+    desc: 'Breaks Titan armor. Rank 1 stuns on Dash impact. Rank 2 slows all Titans by 35%. Rank 3 executes (+2,500 pts).',
+    tradeoffDesc: 'Direct collision without Dash or Singularity remains lethal.'
   },
   {
     id: 'super_frequency',
     branch: 'carnage',
-    name: 'COSMIC DROPS',
+    name: 'AETHER HARVEST',
     icon: 'nova',
     maxRank: 4,
     costPerRank: 1,
-    desc: 'Increases Super-Item spawn frequency by 25% per rank.',
-    tradeoffDesc: 'Collecting a Super-Item grants 1.8s of invulnerability and instantly restores 30% Chrono energy.'
+    desc: 'Increases XP and score gained from pellets and streaks by +15% per rank.',
+    tradeoffDesc: 'Reduces Shift sequence spell cooldowns by 8% per rank.'
   },
   {
     id: 'singularity_mastery',
@@ -214,8 +214,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'titan_breaker',
-    desc: 'Extends combo and ghost-streak grace by 0.4s per rank. Reach a x200 ghost streak to trigger Singularity.',
-    tradeoffDesc: 'Rank 3 extends cosmic Singularity from 30s to 35s.'
+    desc: 'Extends combo decay window and streak grace by +0.4s per rank. At rank 3, extends Singularity to 35s.',
+    tradeoffDesc: 'Singularity triggers at x200 ghost streak or when entering God Mode.'
   },
   {
     id: 'singularity_nova',
@@ -229,6 +229,6 @@ export const SKILL_NODES: SkillNode[] = [
     comboSequence: ['up', 'right', 'down', 'left'],
     comboHint: '[DOUBLE-SHIFT] + [↑ → ↓ ←]',
     desc: 'CARNAGE ULTIMATE: Triggers a micro-Singularity that pulls in and disintegrates every ghost.',
-    tradeoffDesc: '40s cooldown (one use per run). Triggers an x64 multiplier surge for 8s.'
+    tradeoffDesc: '40s cooldown (32s at rank 2). Triggers an x64 multiplier surge for 8s.'
   }
 ];

@@ -7,6 +7,7 @@ import { sounds } from '../audio/SoundManager';
 import { particles } from './ParticleSystem';
 import { progression } from './ProgressionSystem';
 import { experienceSystem } from './ExperienceSystem';
+import { profileManager } from './ProfileManager';
 import { MazeManager } from '../levels/levels';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
 
@@ -200,11 +201,12 @@ export class SuperItemManager {
     const cols = this.currentCols;
     const cw = cols * T;
 
-    if (!this.boardDrop && !this.isRunning() && maze) {
+    // Board drops only occur in Chromavore (Arcade mode).
+    // In Chromamancer (RPG mode), abilities are exclusively sequence-activated skills!
+    if (!this.boardDrop && !this.isRunning() && maze && profileManager.gameMode !== 'custom') {
       const unlockedPool = progression.getUnlockedSuperItems();
       if (unlockedPool.length > 0) {
-        const freqBonus = experienceSystem.getSuperItemFrequencyBonus();
-        this.spawnTimer -= dt * (1.0 + freqBonus);
+        this.spawnTimer -= dt;
         if (this.spawnTimer <= 0) this.spawnRandomOnBoard(maze);
       }
     }

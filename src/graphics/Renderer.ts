@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, KILL_STREAK_DECAY_WINDOW, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET } from '../config/constants';
+import { CW, CH, HUD_H, BOTTOM_BAR_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, KILL_STREAK_DECAY_WINDOW, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET, CHROMA_TIERS } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -32,6 +32,11 @@ export class Renderer {
   public ch: number = CH;
   public chromaTier: ChromaTier = 0; // Chroma Awakening — mis à jour par main.ts chaque frame
   public menuLinks: { id: string; label: string; x: number; y: number; w: number }[] = [];
+  public selectedSkillId: string = 'dash_reflex';
+  public skillNodeBounds: Map<string, { x: number; y: number; w: number; h: number }> = new Map();
+  public inspectorUpgradeBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
+  public treeRespecBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
+  public treeSwitchModeBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
   private ghostStamps: Map<string, HTMLCanvasElement[]> = new Map();
 
   /** Retourne une couleur adaptée au tier chromatique (monochrome/grayscale au tier 0, progressive ensuite) */
@@ -60,7 +65,7 @@ export class Renderer {
 
   public updateCanvasSize(cols: number, rows: number) {
     this.cw = cols * T;
-    this.ch = rows * T + HUD_H;
+    this.ch = rows * T + HUD_H + BOTTOM_BAR_H;
     if (this.canvas.width !== this.cw || this.canvas.height !== this.ch) {
       this.canvas.width = this.cw;
       this.canvas.height = this.ch;
@@ -350,11 +355,11 @@ export class Renderer {
   }
 
   public drawSequenceModeOverlay(input: import('../core/InputManager').InputManager, time: number) {
-    if (!input.isSequenceMode && input.sequenceFeedbackTimer <= 0) return;
+    if (!input.isSequenceMode || input.sequenceStatus === 'executed') return;
     const c = this.ctx;
     c.save();
 
-    const isExec = input.sequenceStatus === 'executed';
+    const isExec = false;
     const isInvalid = input.sequenceStatus === 'invalid' || input.sequenceStatus === 'cooldown';
     const isValid = input.sequenceStatus === 'valid';
 
@@ -649,7 +654,9 @@ export class Renderer {
     dotStreakTimer: number = 0,
     killStreakTimer: number = 0,
     dashCharges: number = 1,
-    dashMaxCharges: number = 1
+    dashMaxCharges: number = 1,
+    currentMana: number = 100,
+    maxMana: number = 100
   ) {
     const isMadness = true;
     const c = this.ctx;
@@ -761,6 +768,11 @@ export class Renderer {
         21
       );
 
+      // Biological Host Vital Telemetry (Heart rate & ECG monitor)
+      if (isWide) {
+        this.drawHostVitalTelemetry(c, Math.round(this.cw * 0.385), 28, currentLevel, time, loopCount, isWide);
+      }
+
       // Center HUD: account XP in Chromamancer, Singularity ghost streak in Arcade.
       const isCustomMode = profileManager.gameMode === 'custom';
       const singularityTarget = experienceSystem.getSingularityStreakTarget();
@@ -783,7 +795,7 @@ export class Renderer {
         c.font = 'bold 7.5px monospace';
         c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#88ffcc';
         const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
-        c.fillText(`LVL ${accLvl}${surgeTag} • [CUSTOM]`, tmX, 44);
+        c.fillText(`LVL ${accLvl}${surgeTag} • [CHROMAMANCER]`, tmX, 44);
       } else {
         const killProgress = Math.max(0, Math.min(1, madnessStreak / singularityTarget));
 
@@ -882,17 +894,47 @@ export class Renderer {
         c.font = '8px monospace'; c.fillStyle = '#00ffff';
         c.fillText(`READY TO COLLECT • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
       } else if (isCustomMode) {
+        // Chromamancer Mana bar and Singularity streak
+        const manaRatio = Math.max(0, Math.min(1, currentMana / maxMana));
+        const barW = isWide ? 84 : 64;
+        const barH = 5;
+        const barX = this.cw - rightPad - barW;
+        const barY = 19;
+
+        c.font = isWide ? 'bold 8.5px monospace' : 'bold 7.5px monospace';
+        c.fillStyle = '#f472b6';
+        c.shadowColor = '#d946ef';
+        c.shadowBlur = 6;
+        c.fillText(`MANA ${Math.floor(currentMana)}/${maxMana}`, this.cw - rightPad, 12);
+        c.shadowBlur = 0;
+
+        c.fillStyle = 'rgba(25, 10, 35, 0.85)';
+        c.strokeStyle = '#a855f7';
+        c.lineWidth = 1;
+        c.strokeRect(barX, barY, barW, barH);
+        c.fillRect(barX, barY, barW, barH);
+
+        if (manaRatio > 0) {
+          const fillW = Math.max(2, (barW - 2) * manaRatio);
+          const grad = c.createLinearGradient(barX, barY, barX + fillW, barY);
+          grad.addColorStop(0, '#9333ea');
+          grad.addColorStop(0.5, '#c084fc');
+          grad.addColorStop(1, '#f472b6');
+          c.fillStyle = grad;
+          c.shadowColor = '#d946ef';
+          c.shadowBlur = 6;
+          c.fillRect(barX + 1, barY + 1, fillW, barH - 2);
+          c.shadowBlur = 0;
+        }
+
         const runProgress = Math.max(0, Math.min(1, madnessStreak / singularityTarget));
-        c.font = 'bold 9px monospace';
+        c.font = '7.5px monospace';
         c.fillStyle = '#ffd700';
-        c.fillText('SINGULARITY', this.cw - rightPad, 18);
-        c.font = '8px monospace';
-        c.fillStyle = '#e8d6a0';
-        c.fillText(`STREAK x${madnessStreak}/${singularityTarget}`, this.cw - rightPad, 34);
+        c.fillText(`STREAK x${madnessStreak}/${singularityTarget}`, this.cw - rightPad, 33);
         c.fillStyle = 'rgba(255, 255, 255, 0.12)';
-        c.fillRect(this.cw - rightPad - 80, 39, 80, 3);
+        c.fillRect(this.cw - rightPad - barW, 37, barW, 2.5);
         c.fillStyle = '#ffd700';
-        c.fillRect(this.cw - rightPad - 80, 39, 80 * runProgress, 3);
+        c.fillRect(this.cw - rightPad - barW, 37, barW * runProgress, 2.5);
       } else {
         const nextUnlock = progression.getNextUnlock();
         if (nextUnlock.skill) {
@@ -1075,45 +1117,288 @@ export class Renderer {
     c.fillText('[M]', this.cw - 18, HUD_H - 6);
   }
 
-  public drawMenu(time: number, bestMadnessKills: number) {
+  public drawBottomExpBar(time: number) {
+    const c = this.ctx;
+    const isCustom = profileManager.gameMode === 'custom';
+    const barH = BOTTOM_BAR_H;
+    const barY = this.ch - barH;
+
+    c.save();
+
+    if (isCustom) {
+      // ═══════════════════════════════════════════════════════════════
+      //  CHROMAMANCER — PROMINENT EXP BAR
+      // ═══════════════════════════════════════════════════════════════
+      const accLvl = experienceSystem.accountLevel;
+      const curXp = experienceSystem.accountXp;
+      const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
+      const isMax = accLvl >= 100;
+      const xpRatio = isMax ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
+      const sp = experienceSystem.skillPoints;
+      const isSurge = experienceSystem.consecutiveLevelUpsInLife > 1;
+
+      // 1. Dark Glass Background
+      c.fillStyle = 'rgba(7, 2, 16, 0.94)';
+      c.fillRect(0, barY, this.cw, barH);
+
+      // 2. XP Fill Bar
+      const fillW = Math.round(this.cw * xpRatio);
+      if (fillW > 0) {
+        const grad = c.createLinearGradient(0, barY, Math.max(10, fillW), barY);
+        if (isSurge) {
+          grad.addColorStop(0, '#ff8800');
+          grad.addColorStop(0.7, '#ffd700');
+          grad.addColorStop(1, '#ffffff');
+        } else if (isMax) {
+          grad.addColorStop(0, '#ffd700');
+          grad.addColorStop(0.5, '#00ffff');
+          grad.addColorStop(1, '#ff00aa');
+        } else {
+          grad.addColorStop(0, '#8800cc');
+          grad.addColorStop(0.45, '#ff007f');
+          grad.addColorStop(0.85, '#00ffaa');
+          grad.addColorStop(1, '#00ffff');
+        }
+        c.fillStyle = grad;
+        c.fillRect(0, barY + 1, fillW, barH - 1);
+
+        // Leading edge pulse line
+        if (!isMax && fillW < this.cw - 2) {
+          c.fillStyle = '#ffffff';
+          c.shadowColor = isSurge ? '#ffd700' : '#00ffff';
+          c.shadowBlur = 6;
+          c.fillRect(fillW - 2, barY + 1, 2, barH - 1);
+          c.shadowBlur = 0;
+        }
+      }
+
+      // 3. Top Glowing Border
+      c.strokeStyle = isSurge ? '#ffd700' : (isMax ? '#00ffff' : '#ff007f');
+      c.lineWidth = 1;
+      c.shadowColor = isSurge ? '#ffd700' : '#ff007f';
+      c.shadowBlur = 4;
+      c.beginPath();
+      c.moveTo(0, barY);
+      c.lineTo(this.cw, barY);
+      c.stroke();
+      c.shadowBlur = 0;
+
+      // 4. Content Text
+      c.textBaseline = 'middle';
+      const textY = barY + barH / 2 + 0.5;
+
+      // Left: Level Badge
+      c.textAlign = 'left';
+      c.font = 'bold 9.5px monospace';
+      c.fillStyle = isSurge ? '#ffd700' : '#ffffff';
+      c.shadowColor = isSurge ? '#ffd700' : '#00ffaa';
+      c.shadowBlur = 4;
+      c.fillText(`★ LVL ${accLvl} / 100`, 10, textY);
+      c.shadowBlur = 0;
+
+      // Center: XP Numbers
+      c.textAlign = 'center';
+      c.font = 'bold 8.5px monospace';
+      c.fillStyle = '#ffffff';
+      if (isMax) {
+        c.fillText('MAX LEVEL 100  •  ASCENDED CHROMAMANCER', this.cw / 2, textY);
+      } else {
+        const pct = (xpRatio * 100).toFixed(1);
+        c.fillText(`EXP: ${curXp.toLocaleString()} / ${reqXp.toLocaleString()} PTS  (${pct}%)`, this.cw / 2, textY);
+      }
+
+      // Right: Skill Points or Surge or Next Level
+      c.textAlign = 'right';
+      c.font = 'bold 8.5px monospace';
+      if (sp > 0) {
+        const pulse = Math.sin(time * 6) > 0;
+        c.fillStyle = pulse ? '#ffd700' : '#00ffaa';
+        c.shadowColor = pulse ? '#ffd700' : '#00ffaa';
+        c.shadowBlur = 6;
+        c.fillText(`✦ +${sp} SKILL POINT${sp > 1 ? 'S' : ''} DISPO !`, this.cw - 10, textY);
+        c.shadowBlur = 0;
+      } else if (isSurge) {
+        c.fillStyle = '#ffd700';
+        c.fillText('⚡ SURGE 2x XP !', this.cw - 10, textY);
+      } else {
+        c.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        c.fillText(`NEXT: LVL ${accLvl + 1}`, this.cw - 10, textY);
+      }
+
+    } else {
+      // ═══════════════════════════════════════════════════════════════
+      //  CHROMAVORE (ARCADE) — 16:9 / ARSENAL PROGRESSION BAR
+      // ═══════════════════════════════════════════════════════════════
+      const careerGhosts = profileManager.profile.careerGhosts || 0;
+      const isWideUnlocked = profileManager.isChromamancerUnlocked();
+
+      // 1. Dark Glass Background
+      c.fillStyle = 'rgba(4, 8, 16, 0.94)';
+      c.fillRect(0, barY, this.cw, barH);
+
+      c.textBaseline = 'middle';
+      const textY = barY + barH / 2 + 0.5;
+
+      if (!isWideUnlocked) {
+        // Locked: Progress towards 16:9 Arena & Chromamancer mode
+        const prog = Math.min(1, careerGhosts / MADNESS_UNLOCK_KILLS);
+        const fillW = Math.round(this.cw * prog);
+        if (fillW > 0) {
+          const grad = c.createLinearGradient(0, barY, Math.max(10, fillW), barY);
+          grad.addColorStop(0, '#003355');
+          grad.addColorStop(0.7, '#0099bb');
+          grad.addColorStop(1, '#00ffff');
+          c.fillStyle = grad;
+          c.fillRect(0, barY + 1, fillW, barH - 1);
+        }
+
+        // Top Border
+        c.strokeStyle = '#00f0ff';
+        c.lineWidth = 1;
+        c.shadowColor = '#00f0ff';
+        c.shadowBlur = 4;
+        c.beginPath();
+        c.moveTo(0, barY);
+        c.lineTo(this.cw, barY);
+        c.stroke();
+        c.shadowBlur = 0;
+
+        // Left
+        c.textAlign = 'left';
+        c.font = 'bold 8.5px monospace';
+        c.fillStyle = '#00ffff';
+        c.fillText('🔒 16:9 & CHROMAMANCER', 10, textY);
+
+        // Center
+        c.textAlign = 'center';
+        c.font = 'bold 8.5px monospace';
+        c.fillStyle = '#ffffff';
+        const pct = (prog * 100).toFixed(1);
+        c.fillText(`PROGRESSION 16:9 : ${careerGhosts.toLocaleString()} / ${MADNESS_UNLOCK_KILLS.toLocaleString()} GHOSTS (${pct}%)`, this.cw / 2, textY);
+
+        // Right
+        c.textAlign = 'right';
+        c.font = 'bold 8.5px monospace';
+        const left = MADNESS_UNLOCK_KILLS - careerGhosts;
+        c.fillStyle = '#ffaaee';
+        c.fillText(`ENCORE ${left.toLocaleString()} GHOSTS`, this.cw - 10, textY);
+
+      } else {
+        // Unlocked: 16:9 Hyper-Arena active, tracking Next Arsenal Skill
+        const nxt = progression.getNextUnlock();
+        const fillW = Math.round(this.cw * nxt.progress);
+        if (fillW > 0) {
+          const grad = c.createLinearGradient(0, barY, Math.max(10, fillW), barY);
+          grad.addColorStop(0, '#005544');
+          grad.addColorStop(0.7, '#00bb88');
+          grad.addColorStop(1, '#00ffaa');
+          c.fillStyle = grad;
+          c.fillRect(0, barY + 1, fillW, barH - 1);
+        }
+
+        // Top Border
+        c.strokeStyle = '#00ffaa';
+        c.lineWidth = 1;
+        c.shadowColor = '#00ffaa';
+        c.shadowBlur = 4;
+        c.beginPath();
+        c.moveTo(0, barY);
+        c.lineTo(this.cw, barY);
+        c.stroke();
+        c.shadowBlur = 0;
+
+        // Left
+        c.textAlign = 'left';
+        c.font = 'bold 8.5px monospace';
+        c.fillStyle = '#00ffaa';
+        c.fillText('✦ 16:9 HYPER-ARENA ACTIVE', 10, textY);
+
+        // Center
+        c.textAlign = 'center';
+        c.font = 'bold 8.5px monospace';
+        c.fillStyle = '#ffffff';
+        if (nxt.skill) {
+          c.fillText(`NEXT ARSENAL: ${nxt.skill.name} (${progression.totalGhosts}/${nxt.skill.threshold})`, this.cw / 2, textY);
+        } else {
+          c.fillText(`CAREER TOTAL: ${progression.totalGhosts.toLocaleString()} GHOSTS PURGED`, this.cw / 2, textY);
+        }
+
+        // Right
+        c.textAlign = 'right';
+        c.font = 'bold 8.5px monospace';
+        c.fillStyle = '#ff00aa';
+        c.fillText('⚡ CHROMAMANCER DÉBLOQUÉ !', this.cw - 10, textY);
+      }
+    }
+
+    c.restore();
+  }
+
+  public drawMenu(time: number, _bestMadnessKills: number) {
     const c = this.ctx;
     const tier = this.chromaTier;
+    const isCustom = profileManager.gameMode === 'custom';
 
-    // Background by Chroma tier
-    c.fillStyle = tier === 0 ? '#050505' : tier === 1 ? '#060610' : '#080114';
-    c.fillRect(0, 0, this.cw, CH);
+    // 1. Background
+    if (isCustom) {
+      c.fillStyle = '#090014';
+      c.fillRect(0, 0, this.cw, CH);
+      // Magenta cosmic glow
+      const radGrad = c.createRadialGradient(this.cw / 2, 245, 10, this.cw / 2, 245, 300);
+      radGrad.addColorStop(0, 'rgba(217, 70, 239, 0.16)');
+      radGrad.addColorStop(0.5, 'rgba(255, 0, 127, 0.06)');
+      radGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      c.fillStyle = radGrad;
+      c.fillRect(0, 0, this.cw, CH);
+    } else {
+      c.fillStyle = tier === 0 ? '#050505' : tier === 1 ? '#060610' : '#080114';
+      c.fillRect(0, 0, this.cw, CH);
+    }
     c.textAlign = 'center';
 
-    // Perspective synthwave grid — hidden at tier 0, subdued at higher tiers
-    if (tier >= 1) {
-      const horizonY = 245;
-      c.save();
-      const gridAlpha = tier === 1 ? 0.04 : tier === 2 ? 0.08 : 0.14;
-      const gridColor = tier <= 2 ? `rgba(180,180,200,${gridAlpha})` : `rgba(255,0,128,${gridAlpha})`;
-      c.strokeStyle = gridColor;
+    // 2. Perspective synthwave grid
+    const horizonY = 245;
+    c.save();
+    if (isCustom) {
+      c.strokeStyle = 'rgba(255, 0, 127, 0.16)';
       c.lineWidth = 1.2;
-
       for (let i = 1; i <= 12; i++) {
         const lineY = horizonY + Math.pow(i / 12, 2.2) * (CH - horizonY);
-        c.beginPath();
-        c.moveTo(0, lineY);
-        c.lineTo(this.cw, lineY);
-        c.stroke();
+        c.beginPath(); c.moveTo(0, lineY); c.lineTo(this.cw, lineY); c.stroke();
       }
       const vpX = this.cw / 2;
       for (let x = -this.cw * 0.5; x <= this.cw * 1.5; x += 40) {
-        c.beginPath();
-        c.moveTo(vpX, horizonY);
-        c.lineTo(x, CH);
-        c.stroke();
+        c.beginPath(); c.moveTo(vpX, horizonY); c.lineTo(x, CH); c.stroke();
       }
-      c.restore();
+    } else if (tier >= 1) {
+      const gridAlpha = tier === 1 ? 0.04 : tier === 2 ? 0.08 : 0.14;
+      const gridColor = tier <= 2 ? `rgba(180,180,200,${gridAlpha})` : `rgba(0, 240, 255, ${gridAlpha})`;
+      c.strokeStyle = gridColor;
+      c.lineWidth = 1.2;
+      for (let i = 1; i <= 12; i++) {
+        const lineY = horizonY + Math.pow(i / 12, 2.2) * (CH - horizonY);
+        c.beginPath(); c.moveTo(0, lineY); c.lineTo(this.cw, lineY); c.stroke();
+      }
+      const vpX = this.cw / 2;
+      for (let x = -this.cw * 0.5; x <= this.cw * 1.5; x += 40) {
+        c.beginPath(); c.moveTo(vpX, horizonY); c.lineTo(x, CH); c.stroke();
+      }
     }
+    c.restore();
 
-    // OutRun sun — grayscale at tiers 0–1, colored at higher tiers
+    // 3. OutRun Sun on horizon
     const sunX = this.cw / 2, sunY = 245, sunR = 48;
     c.save();
-    if (tier <= 1) {
+    if (isCustom) {
+      const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
+      sunGrad.addColorStop(0, '#ffffff');
+      sunGrad.addColorStop(0.3, '#ff00aa');
+      sunGrad.addColorStop(0.7, '#d946ef');
+      sunGrad.addColorStop(1, '#5500aa');
+      c.fillStyle = sunGrad;
+      c.shadowColor = '#ff00aa';
+      c.shadowBlur = 24;
+    } else if (tier <= 1) {
       const sunGrad = c.createLinearGradient(sunX, sunY - sunR, sunX, sunY + sunR);
       sunGrad.addColorStop(0, tier === 0 ? '#555555' : '#888899');
       sunGrad.addColorStop(1, tier === 0 ? '#222222' : '#444455');
@@ -1134,7 +1419,7 @@ export class Renderer {
     c.fill();
     c.shadowBlur = 0;
 
-    const bgSlice = tier === 0 ? '#050505' : tier === 1 ? '#060610' : '#080114';
+    const bgSlice = isCustom ? '#090014' : (tier === 0 ? '#050505' : tier === 1 ? '#060610' : '#080114');
     c.fillStyle = bgSlice;
     for (let s = 1; s <= 5; s++) {
       const sliceY = sunY - sunR * 0.7 + s * 8;
@@ -1143,24 +1428,36 @@ export class Renderer {
     }
     c.restore();
 
-    // CHROMAVORE title — monochrome to neon by tier
+    // 4. Title: CHROMAVORE vs CHROMAMANCER
     const ty = 105, p = 1 + Math.sin(time * 2) * 0.03;
     c.save();
-    c.font = `bold ${38 * p}px monospace`;
     c.textAlign = 'center';
 
-    if (tier === 0) {
+    if (isCustom) {
+      c.font = `bold ${35 * p}px monospace`;
+      c.shadowColor = '#ff007f';
+      c.shadowBlur = 24;
+      const titleGrad = c.createLinearGradient(this.cw / 2, ty - 24, this.cw / 2, ty + 10);
+      titleGrad.addColorStop(0, '#ffffff');
+      titleGrad.addColorStop(0.35, '#ff00aa');
+      titleGrad.addColorStop(0.7, '#d946ef');
+      titleGrad.addColorStop(1, '#ffd700');
+      c.fillStyle = titleGrad;
+      c.fillText('CHROMAMANCER', this.cw / 2, ty);
+    } else if (tier === 0) {
+      c.font = `bold ${38 * p}px monospace`;
       c.fillStyle = '#cccccc';
       c.shadowBlur = 0;
       c.fillText('CHROMAVORE', this.cw / 2, ty);
     } else if (tier <= 2) {
+      c.font = `bold ${38 * p}px monospace`;
       c.fillStyle = tier === 1 ? '#aaaacc' : '#ddeeff';
       c.shadowColor = tier === 1 ? '#446688' : '#6688aa';
       c.shadowBlur = tier * 6;
       c.fillText('CHROMAVORE', this.cw / 2, ty);
-      c.shadowBlur = 0;
     } else {
-      c.shadowColor = '#ff007f';
+      c.font = `bold ${38 * p}px monospace`;
+      c.shadowColor = '#00f0ff';
       c.shadowBlur = 24;
       const titleGrad = c.createLinearGradient(this.cw / 2, ty - 24, this.cw / 2, ty + 10);
       titleGrad.addColorStop(0, '#ffffff');
@@ -1169,42 +1466,42 @@ export class Renderer {
       titleGrad.addColorStop(1, '#ffd700');
       c.fillStyle = titleGrad;
       c.fillText('CHROMAVORE', this.cw / 2, ty);
-      c.shadowBlur = 0;
     }
+    c.shadowBlur = 0;
 
-    // Version Tag
+    // Subtitle & Version
     c.font = 'bold 9px monospace';
-    c.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    c.fillText(GAME_VERSION, this.cw / 2, ty + 22);
+    c.fillStyle = isCustom ? 'rgba(255, 100, 200, 0.75)' : 'rgba(0, 240, 255, 0.75)';
+    const subText = isCustom
+      ? `ROGUELITE  •  PERSISTENT XP & SKILLS  •  ${GAME_VERSION}`
+      : `ARCADE RUN  •  KILL UNLOCKS  •  ${GAME_VERSION}`;
+    c.fillText(subText, this.cw / 2, ty + 22);
     c.restore();
-    c.textAlign = 'center';
-    c.textBaseline = 'alphabetic';
 
-    // Hero & Dots Preview — Chromavore sur l'horizon du soleil
+    // 5. Hero & Dots Preview on horizon
     const ma = Math.abs(Math.sin(time * 4)) * 0.6;
     c.save();
     c.translate(this.cw / 2 - 34, 240);
-    Player.drawChromavore(c, 13, time, ma, false, false, 1, this.chromaTier);
+    Player.drawChromavore(c, 13, time, ma, false, false, 1, isCustom ? 5 : this.chromaTier);
     c.restore();
     for (let i = 0; i < 4; i++) {
-      const dotC = CHROMA_DOT[this.chromaTier] || C_DOT;
+      const dotC = isCustom ? '#ff00aa' : (CHROMA_DOT[this.chromaTier] || C_DOT);
       c.fillStyle = dotC; c.shadowColor = dotC; c.shadowBlur = 8;
       c.beginPath(); c.arc(this.cw / 2 - 4 + i * 16, 240, 3, 0, PI2); c.fill(); c.shadowBlur = 0;
     }
 
-    // --- MODE SELECTION: CHROMAVORE ARCADE vs CHROMAMANCER ---
-    const isCustom = profileManager.gameMode === 'custom';
+    // 6. Mode Selection Cards: CHROMAVORE vs CHROMAMANCER
     const totalW = Math.min(540, this.cw - 24);
     const cardW = Math.floor((totalW - 14) / 2);
     const cardH = 76;
     const startX = this.cw / 2 - totalW / 2;
     const cardY = 306;
 
-    // CHROMAVORE: score-focused arcade runs with kill-based unlocks.
+    // Card 1: CHROMAVORE (Arcade)
     const arcX = startX;
     const arcActive = !isCustom;
     c.save();
-    c.fillStyle = arcActive ? 'rgba(0, 240, 255, 0.16)' : 'rgba(255, 255, 255, 0.03)';
+    c.fillStyle = arcActive ? 'rgba(0, 240, 255, 0.18)' : 'rgba(255, 255, 255, 0.03)';
     c.strokeStyle = arcActive ? '#00ffff' : 'rgba(255, 255, 255, 0.18)';
     c.lineWidth = arcActive ? 2 : 1;
     c.shadowColor = arcActive ? '#00ffff' : 'transparent';
@@ -1216,23 +1513,27 @@ export class Renderer {
 
     c.textAlign = 'center';
     c.font = 'bold 15px monospace';
-    c.fillStyle = arcActive ? '#ffffff' : '#d3e1ec';
+    c.fillStyle = arcActive ? '#ffffff' : '#88aacc';
     c.fillText('CHROMAVORE', arcX + cardW / 2, cardY + 25);
-
     c.font = 'bold 10px monospace';
-    c.fillStyle = arcActive ? '#00ffff' : '#9fb5c5';
+    c.fillStyle = arcActive ? '#00ffff' : '#557788';
     c.fillText('ARCADE', arcX + cardW / 2, cardY + 45);
     c.font = '9px monospace';
-    c.fillStyle = arcActive ? '#d9f8ff' : '#b8c9d2';
+    c.fillStyle = arcActive ? '#d9f8ff' : '#668899';
     c.fillText('KILL UNLOCKS', arcX + cardW / 2, cardY + 63);
     c.restore();
 
-    // CHROMAMANCER: persistent XP, skill points, and player-built loadouts.
+    // Card 2: CHROMAMANCER (Roguelite)
     const custX = startX + cardW + 14;
-    const custActive = isCustom;
+    const isUnlocked = profileManager.isChromamancerUnlocked();
+    const custActive = isCustom && isUnlocked;
     c.save();
-    c.fillStyle = custActive ? 'rgba(255, 0, 127, 0.18)' : 'rgba(255, 255, 255, 0.03)';
-    c.strokeStyle = custActive ? '#ff007f' : 'rgba(255, 255, 255, 0.18)';
+    c.fillStyle = isUnlocked
+      ? (custActive ? 'rgba(255, 0, 127, 0.22)' : 'rgba(255, 255, 255, 0.03)')
+      : 'rgba(25, 10, 25, 0.45)';
+    c.strokeStyle = isUnlocked
+      ? (custActive ? '#ff007f' : 'rgba(255, 255, 255, 0.18)')
+      : 'rgba(120, 50, 90, 0.35)';
     c.lineWidth = custActive ? 2 : 1;
     c.shadowColor = custActive ? '#ff007f' : 'transparent';
     c.shadowBlur = custActive ? this.getChromaBlur(12) : 0;
@@ -1242,24 +1543,53 @@ export class Renderer {
     c.stroke();
 
     c.textAlign = 'center';
-    c.font = 'bold 15px monospace';
-    c.fillStyle = custActive ? '#ffffff' : '#d3e1ec';
-    c.fillText('CHROMAMANCER', custX + cardW / 2, cardY + 25);
+    if (!isUnlocked) {
+      const cg = profileManager.profile.careerGhosts || 0;
+      const prog = Math.min(1, cg / MADNESS_UNLOCK_KILLS);
+      c.font = 'bold 13px monospace';
+      c.fillStyle = '#aa7799';
+      c.fillText('🔒 CHROMAMANCER', custX + cardW / 2, cardY + 23);
+      c.font = 'bold 8.5px monospace';
+      c.fillStyle = '#885577';
+      c.fillText('ROGUELITE (16:9 REQUIS)', custX + cardW / 2, cardY + 39);
 
-    c.font = 'bold 10px monospace';
-    c.fillStyle = custActive ? '#ff00a0' : '#c08aa7';
-    c.fillText('ROGUELITE', custX + cardW / 2, cardY + 45);
-    c.font = '9px monospace';
-    c.fillStyle = custActive ? '#ffd0e8' : '#d0bdca';
-    c.fillText('XP  •  SKILL TREE', custX + cardW / 2, cardY + 63);
+      // Mini gauge
+      const gw = cardW - 36;
+      const gx = custX + 18;
+      const gy = cardY + 47;
+      c.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      c.fillRect(gx, gy, gw, 4);
+      c.fillStyle = '#ff007f';
+      c.fillRect(gx, gy, Math.round(gw * prog), 4);
+
+      c.font = 'bold 8px monospace';
+      c.fillStyle = '#cc88aa';
+      c.fillText(`${cg.toLocaleString()} / ${MADNESS_UNLOCK_KILLS.toLocaleString()} GHOSTS`, custX + cardW / 2, cardY + 65);
+    } else {
+      c.font = 'bold 15px monospace';
+      c.fillStyle = custActive ? '#ffffff' : '#c088a8';
+      c.fillText('CHROMAMANCER', custX + cardW / 2, cardY + 25);
+      c.font = 'bold 10px monospace';
+      c.fillStyle = custActive ? '#ff00a0' : '#885577';
+      c.fillText('ROGUELITE', custX + cardW / 2, cardY + 45);
+      c.font = '9px monospace';
+      c.fillStyle = custActive ? '#ffd0e8' : '#886677';
+      c.fillText('XP  •  SKILL TREE', custX + cardW / 2, cardY + 63);
+    }
     c.restore();
 
-    c.font = 'bold 10px monospace';
-    c.fillStyle = this.chromaTier === 0 ? '#c0c0c0' : '#a9bdcc';
+    // 7. Space to play
+    c.font = 'bold 11px monospace';
+    c.fillStyle = isCustom ? '#ff55aa' : (this.chromaTier === 0 ? '#c0c0c0' : '#a9bdcc');
     c.textAlign = 'center';
-    c.fillText('SPACE TO PLAY', this.cw / 2, 410);
+    c.fillText('SPACE TO PLAY', this.cw / 2, 412);
 
-    // CRT Scanlines
+    // 8. Player Profile & Sync code
+    c.font = 'bold 10.5px monospace';
+    c.fillStyle = isCustom ? '#d999bb' : (this.chromaTier === 0 ? '#c0c0c0' : '#e0f4ff');
+    c.fillText(`PLAYER: ${profileManager.profile.pseudo}   •   SYNC ID: ${profileManager.profile.syncCode}`, this.cw / 2, 478);
+
+    // 9. CRT Scanlines
     if (settingsManager.settings.crtScanlines) {
       c.save();
       c.fillStyle = 'rgba(0, 0, 0, 0.12)';
@@ -1267,14 +1597,11 @@ export class Renderer {
       c.restore();
     }
 
-    // Player Profile & Sync ID Card
-    c.font = 'bold 11px monospace';
-    c.fillStyle = this.chromaTier === 0 ? '#c0c0c0' : '#e0f4ff';
-    c.textAlign = 'center';
-    c.fillText(`PLAYER: ${profileManager.profile.pseudo}   •   SYNC ID: ${profileManager.profile.syncCode}`, this.cw / 2, 480);
+    // 10. Menu Navigation Links (including SKILL TREE!)
+    this.drawMenuLinks(c, isCustom);
+  }
 
-    // Navigation links unlocked progressively
-    const unlockedCount = SKILL_TREE.filter(s => progression.isSkillUnlocked(s.id)).length;
+  private drawMenuLinks(c: CanvasRenderingContext2D, isCustom: boolean) {
     const unlockedBadges = badges.getUnlockedCount();
 
     interface MenuLinkItem {
@@ -1284,16 +1611,15 @@ export class Renderer {
 
     const availableLinks: MenuLinkItem[] = [
       { id: 'help', label: 'HOW TO PLAY' },
+      { id: 'arsenal', label: 'ARSENAL' },
     ];
 
-    // ARSENAL appears only if at least one skill or kill is achieved
-    if (unlockedCount > 0 || progression.totalGhosts > 0) {
-      availableLinks.push({ id: 'arsenal', label: 'ARSENAL' });
+    if (isCustom) {
+      availableLinks.push({ id: 'tree', label: 'SKILL TREE' });
     }
 
     availableLinks.push({ id: 'settings', label: 'SETTINGS' });
 
-    // BADGES appears only if at least one badge is unlocked
     if (unlockedBadges > 0) {
       availableLinks.push({ id: 'badges', label: 'BADGES' });
     }
@@ -1302,53 +1628,29 @@ export class Renderer {
     availableLinks.push({ id: 'sync', label: 'SYNC' });
 
     this.menuLinks = [];
-    c.font = 'bold 11px monospace';
-    c.fillStyle = this.getChromaAccent('#00f0ff', '#d0d0d0');
-    c.shadowColor = c.fillStyle;
+    c.save();
+    c.font = 'bold 9.5px monospace';
+    const accentCol = isCustom ? '#ff33aa' : this.getChromaAccent('#00f0ff', '#d0d0d0');
+    c.fillStyle = accentCol;
+    c.shadowColor = accentCol;
     c.shadowBlur = this.getChromaBlur(6);
 
-    if (availableLinks.length <= 4) {
-      // 1 seule ligne centrée
-      const rowY = 545;
-      const totalWidth = availableLinks.reduce((sum, l) => sum + c.measureText(l.label).width, 0) + (availableLinks.length - 1) * 28;
-      let curX = this.cw / 2 - totalWidth / 2;
-      for (let i = 0; i < availableLinks.length; i++) {
-        const item = availableLinks[i];
-        const w = c.measureText(item.label).width;
-        c.fillText(item.label, curX + w / 2, rowY);
-        this.menuLinks.push({ id: item.id, label: item.label, x: curX + w / 2, y: rowY, w });
-        curX += w;
-        if (i < availableLinks.length - 1) {
-          c.fillText('•', curX + 14, rowY);
-          curX += 28;
-        }
+    const rowY = 534;
+    const totalWidth = availableLinks.reduce((sum, l) => sum + c.measureText(l.label).width, 0) + (availableLinks.length - 1) * 16;
+    let curX = this.cw / 2 - totalWidth / 2;
+
+    for (let i = 0; i < availableLinks.length; i++) {
+      const item = availableLinks[i];
+      const w = c.measureText(item.label).width;
+      c.fillText(item.label, curX + w / 2, rowY);
+      this.menuLinks.push({ id: item.id, label: item.label, x: curX + w / 2, y: rowY, w });
+      curX += w;
+      if (i < availableLinks.length - 1) {
+        c.fillText('•', curX + 8, rowY);
+        curX += 16;
       }
-    } else {
-      // 2 lignes centrées
-      const half = Math.ceil(availableLinks.length / 2);
-      const row1 = availableLinks.slice(0, half);
-      const row2 = availableLinks.slice(half);
-
-      const renderRow = (rowItems: MenuLinkItem[], rowY: number) => {
-        const totalW = rowItems.reduce((sum, l) => sum + c.measureText(l.label).width, 0) + (rowItems.length - 1) * 24;
-        let curX = this.cw / 2 - totalW / 2;
-        for (let i = 0; i < rowItems.length; i++) {
-          const item = rowItems[i];
-          const w = c.measureText(item.label).width;
-          c.fillText(item.label, curX + w / 2, rowY);
-          this.menuLinks.push({ id: item.id, label: item.label, x: curX + w / 2, y: rowY, w });
-          curX += w;
-          if (i < rowItems.length - 1) {
-            c.fillText('•', curX + 12, rowY);
-            curX += 24;
-          }
-        }
-      };
-
-      renderRow(row1, 532);
-      renderRow(row2, 560);
     }
-    c.shadowBlur = 0;
+    c.restore();
   }
 
   public drawInstructions(time: number) {
@@ -1568,12 +1870,12 @@ export class Renderer {
     c.restore();
   }
 
-  public drawGameOver(score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number, loopCount: number = 0) {
+  public drawGameOver(score: number, hi: boolean, madnessKills: number, madnessStreak: number, bestMadnessKills: number, badgesUnlocked: number, time: number, loopCount: number = 0, currentLevel: number = 0) {
     const isMadness = true;
     const c = this.ctx;
     c.fillStyle = this.chromaTier === 0 ? 'rgba(0,0,0,0.92)' : 'rgba(5,5,10,0.85)';
     c.fillRect(0, 0, this.cw, CH);
-    const cy = CH * 0.30;
+    const cy = CH * 0.16;
 
     const overCol = this.getChromaAccent('#ff3344', '#ffffff');
     c.font = 'bold 36px monospace';
@@ -1585,45 +1887,45 @@ export class Renderer {
     c.shadowBlur = 0;
 
     if (isMadness) {
-      c.font = 'bold 22px monospace';
+      c.font = 'bold 20px monospace';
       c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
-      c.fillText('GHOSTS PURGED: ' + madnessKills, this.cw / 2, cy + 48);
-      c.font = 'bold 16px monospace';
+      c.fillText('GHOSTS PURGED: ' + madnessKills, this.cw / 2, cy + 42);
+      c.font = 'bold 15px monospace';
       c.fillStyle = this.getChromaAccent('#ff5533', '#cccccc');
-      c.fillText('MAX STREAK: x' + madnessStreak, this.cw / 2, cy + 78);
-      c.font = '14px monospace';
+      c.fillText('MAX STREAK: x' + madnessStreak, this.cw / 2, cy + 68);
+      c.font = '13px monospace';
       c.fillStyle = '#888';
-      c.fillText('CAREER BEST KILLS: ' + bestMadnessKills, this.cw / 2, cy + 106);
+      c.fillText('CAREER BEST KILLS: ' + bestMadnessKills, this.cw / 2, cy + 92);
     } else {
       c.font = 'bold 20px monospace';
       c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
-      c.fillText('SCORE: ' + score, this.cw / 2, cy + 48);
+      c.fillText('SCORE: ' + score, this.cw / 2, cy + 42);
       if (loopCount > 0) {
         c.font = 'bold 13px monospace';
         c.fillStyle = this.getChromaAccent('#00ffcc', '#aaaaaa');
-        c.fillText(`LOOP REACHED: ${loopCount + 1} (+${loopCount * 10}% SPEED)`, this.cw / 2, cy + 74);
+        c.fillText(`LOOP REACHED: ${loopCount + 1} (+${loopCount * 10}% SPEED)`, this.cw / 2, cy + 68);
       }
       if (hi) {
         c.font = 'bold 16px monospace';
         c.fillStyle = this.getChromaAccent('#ff44ff', '#ffffff');
         c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ff44ff';
         c.shadowBlur = this.getChromaBlur(10);
-        if (Math.sin(time * 6) > 0) c.fillText('NEW HIGH SCORE!', this.cw / 2, cy + (loopCount > 0 ? 98 : 76));
+        if (Math.sin(time * 6) > 0) c.fillText('NEW HIGH SCORE!', this.cw / 2, cy + (loopCount > 0 ? 92 : 68));
         c.shadowBlur = 0;
       }
     }
 
     c.fillStyle = this.getChromaAccent('#ffd700', '#888888');
-    c.font = '12px monospace';
+    c.font = '11.5px monospace';
     const bTxt = 'Badges & Achievements: ' + badgesUnlocked + '/' + badges.getTotalCount() + ' Unlocked';
     const btw = c.measureText(bTxt).width;
-    spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 - btw / 2 - 12, cy + 130, 14);
-    c.fillText(bTxt, this.cw / 2 + 8, cy + 130);
+    spriteAtlas.drawIcon(c, 'trophy', this.cw / 2 - btw / 2 - 12, cy + 114, 14);
+    c.fillText(bTxt, this.cw / 2 + 8, cy + 114);
 
     // Career Progression Bar
     const nxt = progression.getNextUnlock();
     const barW = 320, barH = 10;
-    const barX = this.cw / 2 - barW / 2, barY = cy + 158;
+    const barX = this.cw / 2 - barW / 2, barY = cy + 138;
     c.fillStyle = this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.9)' : 'rgba(15, 20, 35, 0.85)';
     c.strokeStyle = this.getChromaAccent('#00ffff', '#555555');
     c.lineWidth = 1.5;
@@ -1642,7 +1944,7 @@ export class Renderer {
     c.fill();
     c.shadowBlur = 0;
 
-    c.font = 'bold 10px monospace';
+    c.font = 'bold 9.5px monospace';
     c.fillStyle = '#ffffff';
     if (nxt.skill) {
       c.fillText(`CAREER: ${progression.totalGhosts.toLocaleString()} KILLS >> NEXT: ${nxt.skill.name} (${nxt.remaining.toLocaleString()} KILLS)`, this.cw / 2, barY - 6);
@@ -1650,12 +1952,59 @@ export class Renderer {
       c.fillText(`MAX CAREER: ${progression.totalGhosts.toLocaleString()} KILLS (ALL UNLOCKED)`, this.cw / 2, barY - 6);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  CLINICAL EPILOGUE & BIOLOGICAL REVELATION DOSSIER
+    // ═══════════════════════════════════════════════════════════════
+    const isLevel10 = currentLevel >= 9 || loopCount > 0;
+    const info = this.getInfectionData(currentLevel, loopCount);
+
+    const dossierW = Math.min(480, this.cw - 24);
+    const dossierH = isLevel10 ? 74 : 54;
+    const dossierX = this.cw / 2 - dossierW / 2;
+    const dossierY = cy + 162;
+
+    c.save();
+    c.fillStyle = 'rgba(6, 4, 14, 0.94)';
+    c.strokeStyle = isLevel10 ? '#778899' : info.ecgColor;
+    c.lineWidth = 1.4;
+    c.shadowColor = isLevel10 ? '#778899' : info.ecgColor;
+    c.shadowBlur = 6;
+    c.beginPath();
+    c.roundRect(dossierX, dossierY, dossierW, dossierH, 6);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    c.font = 'bold 9px monospace';
+    c.fillStyle = isLevel10 ? '#8899aa' : info.ecgColor;
+    c.textAlign = 'center';
+    const statusHeader = isLevel10
+      ? '☣ CLINICAL REPORT • NECROPSY RECORD #CV-84'
+      : `☣ HOST SYSTEM TELEMETRY • ${info.stageCode}`;
+    c.fillText(statusHeader, this.cw / 2, dossierY + 16);
+
+    c.font = '8px monospace';
+    c.fillStyle = '#b0c4de';
+    if (isLevel10) {
+      c.fillText('STATUS: ASYSTOLE (00 BPM)  •  IMMUNE DEFENSES COLLAPSED', this.cw / 2, dossierY + 31);
+      c.font = 'italic 8.5px monospace';
+      c.fillStyle = '#e2e8f0';
+      c.fillText('“The specters never attacked you... they were fleeing your hunger.', this.cw / 2, dossierY + 47);
+      c.fillText('  You were not the savior. You were the Gangrene.”', this.cw / 2, dossierY + 62);
+    } else {
+      c.fillText(`HEART RATE: ${info.bpm} BPM  •  RESPONSE: ${info.stageName}`, this.cw / 2, dossierY + 31);
+      c.font = '8px monospace';
+      c.fillStyle = '#94a3b8';
+      c.fillText('THE HOST DEPLOYS SENTINEL DEFENDERS TO PURGE THE INFECTION...', this.cw / 2, dossierY + 44);
+    }
+    c.restore();
+
     // Interactive Action Buttons : REPLAY & RETOUR MENU
     const btnW = 160, btnH = 34;
     const btnGap = 16;
     const totalBtnW = btnW * 2 + btnGap;
     const startBtnX = this.cw / 2 - totalBtnW / 2;
-    const btnY = cy + 185;
+    const btnY = cy + (isLevel10 ? 250 : 230);
 
     // 1. Bouton REPLAY
     const replayX = startBtnX;
@@ -1700,7 +2049,7 @@ export class Renderer {
     c.fillStyle = this.getChromaAccent('#ffd700', '#777777');
     c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#ffd700';
     c.shadowBlur = this.getChromaBlur(6);
-    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] LEADERBOARD   •   [ C ] ARSENAL & SKILLS', this.cw / 2, cy + 236);
+    if (Math.sin(time * 2.5) > 0) c.fillText('[ L ] LEADERBOARD   •   [ C ] ARSENAL & SKILLS', this.cw / 2, btnY + 50);
     c.shadowBlur = 0;
 
     // Version Tag
@@ -1773,7 +2122,7 @@ export class Renderer {
     c.textBaseline = 'middle';
     c.font = 'bold 11px monospace';
     c.fillStyle = isArcade ? '#ffffff' : '#778899';
-    c.fillText('CHROMAVORE • ARCADE', tab1X + tabW / 2, tabY + tabH / 2);
+    c.fillText('✦ CHROMAVORE', tab1X + tabW / 2, tabY + tabH / 2);
     c.restore();
 
     // Tab 2: Custom
@@ -1790,7 +2139,7 @@ export class Renderer {
     c.textBaseline = 'middle';
     c.font = 'bold 11px monospace';
     c.fillStyle = isCustom ? '#ffffff' : '#778899';
-    c.fillText('CHROMAMANCER', tab2X + tabW / 2, tabY + tabH / 2);
+    c.fillText('⚡ CHROMAMANCER', tab2X + tabW / 2, tabY + tabH / 2);
     c.restore();
 
     // Column headers
@@ -2004,43 +2353,24 @@ export class Renderer {
       // ═══════════════════════════════════════════════════════════════
       //  CHROMAMANCER — SKILL TREE & SKILL POINTS
       // ═══════════════════════════════════════════════════════════════
-      if (profileManager.gameMode !== 'custom') {
-        const panelW = Math.min(420, this.cw - 48);
-        const panelX = (this.cw - panelW) / 2;
-        const panelY = 220;
-        c.fillStyle = 'rgba(20, 12, 30, 0.92)';
-        c.strokeStyle = '#ff007f';
-        c.lineWidth = 1.5;
-        c.beginPath(); c.roundRect(panelX, panelY, panelW, 118, 8); c.fill(); c.stroke();
-        c.textAlign = 'center';
-        c.font = 'bold 14px monospace';
-        c.fillStyle = '#ff66bb';
-        c.fillText('CHROMAMANCER SKILL TREE', this.cw / 2, panelY + 31);
-        c.font = '10px monospace';
-        c.fillStyle = '#c8b8c8';
-        c.fillText('Persistent XP and Skill Points belong to Chromamancer.', this.cw / 2, panelY + 57);
-        c.fillText('Switch modes from the main menu to spend Skill Points.', this.cw / 2, panelY + 77);
-        c.font = 'bold 10px monospace';
-        c.fillStyle = '#00ffff';
-        c.fillText('[ESC] BACK TO MODE SELECT', this.cw / 2, panelY + 101);
-      } else {
+      const isArcade = profileManager.gameMode !== 'custom';
       const sp = experienceSystem.skillPoints;
       const accLvl = experienceSystem.accountLevel;
       const curXp = experienceSystem.accountXp;
       const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
       const xpRatio = reqXp === Infinity ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
 
-      // Header Banner with Account Level, XP Bar & Available SP
+      // Header Banner with Level, XP Bar & Available SP
       const barW = Math.min(this.cw - 60, 680), barH = 10;
       const barX = this.cw / 2 - barW / 2, barY = 80;
 
       c.fillStyle = 'rgba(15, 20, 35, 0.9)';
-      c.strokeStyle = '#00ffaa';
+      c.strokeStyle = isArcade ? '#ff007f' : '#00ffaa';
       c.lineWidth = 1;
       c.beginPath(); c.roundRect(barX, barY, barW, barH, 4); c.fill(); c.stroke();
 
-      c.fillStyle = '#00ffaa';
-      c.shadowColor = '#00ffaa';
+      c.fillStyle = isArcade ? '#ff007f' : '#00ffaa';
+      c.shadowColor = isArcade ? '#ff007f' : '#00ffaa';
       c.shadowBlur = 8;
       c.beginPath(); c.roundRect(barX, barY, barW * xpRatio, barH, 4); c.fill();
       c.shadowBlur = 0;
@@ -2048,49 +2378,82 @@ export class Renderer {
       c.font = 'bold 11px monospace';
       c.fillStyle = '#ffffff';
       c.textAlign = 'left';
-      c.fillText(`ACCOUNT LEVEL: ${accLvl} / 100`, barX, 72);
+      c.fillText(`LEVEL: ${accLvl} / 100`, barX, 72);
       c.textAlign = 'right';
       c.fillText(reqXp === Infinity ? 'MAX LEVEL' : `XP: ${curXp.toLocaleString()} / ${reqXp.toLocaleString()} PTS`, barX + barW, 72);
 
-      // SP Pill and Respec Button
+      // SP Pill and Action/Respec Button
       c.textAlign = 'center';
       c.font = 'bold 12px monospace';
-      c.fillStyle = '#ffd700';
-      c.shadowColor = '#ffd700';
+      c.fillStyle = isArcade ? '#ff66bb' : '#ffd700';
+      c.shadowColor = isArcade ? '#ff66bb' : '#ffd700';
       c.shadowBlur = 10;
-      c.fillText(`AVAILABLE: ${sp} SKILL POINTS`, this.cw / 2 - 80, 108);
+      const isWideUnlocked = profileManager.isChromamancerUnlocked();
+      if (isArcade) {
+        c.fillText(isWideUnlocked ? `CHROMAMANCER SKILL TREE [PREVIEW]` : `CHROMAMANCER SKILL TREE [LOCKED 16:9]`, this.cw / 2 - 80, 108);
+      } else {
+        c.fillText(`AVAILABLE: ${sp} SKILL POINTS`, this.cw / 2 - 80, 108);
+      }
       c.shadowBlur = 0;
 
-      // Reset / Respec Pill (Clickable)
-      c.fillStyle = 'rgba(255, 0, 85, 0.2)';
-      c.strokeStyle = '#ff0055';
-      c.lineWidth = 1.2;
-      c.beginPath(); c.roundRect(this.cw / 2 + 35, 94, 150, 22, 4); c.fill(); c.stroke();
-      c.font = 'bold 9.5px monospace';
-      c.fillStyle = '#ff6699';
-      c.fillText('[R] RESPEC (FREE)', this.cw / 2 + 110, 108);
+      if (isArcade) {
+        // Switch to Chromamancer Mode Button (Clickable if unlocked!)
+        const btnX = this.cw / 2 + 35, btnY = 94, btnW = 180, btnH = 22;
+        this.treeSwitchModeBtnBounds = { x: btnX, y: btnY, w: btnW, h: btnH };
+        c.fillStyle = isWideUnlocked ? 'rgba(255, 0, 127, 0.22)' : 'rgba(50, 20, 40, 0.35)';
+        c.strokeStyle = isWideUnlocked ? '#ff007f' : '#663344';
+        c.lineWidth = 1.2;
+        c.beginPath(); c.roundRect(btnX, btnY, btnW, btnH, 4); c.fill(); c.stroke();
+        c.font = 'bold 9px monospace';
+        c.fillStyle = isWideUnlocked ? '#ff66bb' : '#885566';
+        c.fillText(isWideUnlocked ? '[⚡ SWITCH TO CHROMAMANCER]' : '[🔒 LOCKED • REQUIRES 16:9]', btnX + btnW / 2, 108);
+      } else {
+        // Reset / Respec Pill (Clickable)
+        const btnX = this.cw / 2 + 35, btnY = 94, btnW = 150, btnH = 22;
+        this.treeRespecBtnBounds = { x: btnX, y: btnY, w: btnW, h: btnH };
+        c.fillStyle = 'rgba(255, 0, 85, 0.2)';
+        c.strokeStyle = '#ff0055';
+        c.lineWidth = 1.2;
+        c.beginPath(); c.roundRect(btnX, btnY, btnW, btnH, 4); c.fill(); c.stroke();
+        c.font = 'bold 9.5px monospace';
+        c.fillStyle = '#ff6699';
+        c.fillText('[R] RESPEC (FREE)', btnX + btnW / 2, 108);
+      }
 
-      // Three skill branches: Agility, Control, and Carnage.
+      // Reset interaction bounds
+      this.skillNodeBounds.clear();
+      this.inspectorUpgradeBtnBounds = null;
+
+      // Ensure valid selected node
+      if (!this.selectedSkillId || !SKILL_NODES.some(n => n.id === this.selectedSkillId)) {
+        this.selectedSkillId = 'dash_reflex';
+      }
+      const selectedNode = SKILL_NODES.find(n => n.id === this.selectedSkillId) || SKILL_NODES[0];
+
+      // Layout split: Left Overview Grid 62% + Right Inspector Panel 35%
+      const isWideLayout = this.cw >= 720;
+      const gridW = isWideLayout ? Math.min(570, Math.floor((this.cw - 48) * 0.63)) : (this.cw - 40);
+      const gridStartX = 20;
+      const branchColW = Math.floor((gridW - 16) / 3);
+      const branchGap = 8;
       const branchKeys: Array<'agility' | 'control' | 'carnage'> = ['agility', 'control', 'carnage'];
-      const branchColW = Math.min(270, Math.floor((this.cw - 48) / 3));
-      const branchGap = Math.floor((this.cw - branchColW * 3) / 4);
 
       for (let bi = 0; bi < branchKeys.length; bi++) {
         const bKey = branchKeys[bi];
         const bInfo = SKILL_TREE_BRANCHES[bKey];
-        const bx = branchGap + bi * (branchColW + branchGap);
+        const bx = gridStartX + bi * (branchColW + branchGap);
         const by = 118;
 
         // Branch Header Card
-        c.fillStyle = 'rgba(20, 24, 40, 0.85)';
+        c.fillStyle = 'rgba(18, 22, 36, 0.9)';
         c.strokeStyle = bInfo.color;
-        c.lineWidth = 1.5;
+        c.lineWidth = 1.4;
         c.shadowColor = bInfo.color;
         c.shadowBlur = 6;
         c.beginPath(); c.roundRect(bx, by, branchColW, 22, 4); c.fill(); c.stroke();
         c.shadowBlur = 0;
 
-        c.font = 'bold 9.5px monospace';
+        c.font = 'bold 9px monospace';
         c.fillStyle = bInfo.color;
         c.textAlign = 'center';
         c.fillText(bInfo.name, bx + branchColW / 2, by + 15);
@@ -2098,23 +2461,43 @@ export class Renderer {
         // Render Nodes in this branch
         const branchNodes = SKILL_NODES.filter(n => n.branch === bKey);
         const nodeStartY = by + 28;
-        const nodeH = 70;
-        const nodeGap = 5;
+        const nodeH = 46;
+        const nodeGap = 6;
 
         for (let ni = 0; ni < branchNodes.length; ni++) {
           const node = branchNodes[ni];
           const ny = nodeStartY + ni * (nodeH + nodeGap);
-          this.drawSkillTreeNode(c, node, bx, ny, branchColW, nodeH);
+          this.drawSkillTreeNode(c, node, bx, ny, branchColW, nodeH, time);
+          this.skillNodeBounds.set(node.id, { x: bx, y: ny, w: branchColW, h: nodeH });
+        }
+      }
+
+      // Draw Persistent Right Inspector Panel
+      if (isWideLayout) {
+        const inspectorX = gridStartX + gridW + 16;
+        const inspectorW = this.cw - 20 - inspectorX;
+        const inspectorY = 118;
+        const inspectorH = CH - 24 - inspectorY - 14;
+        this.drawSkillTreeInspectorPanel(c, selectedNode, inspectorX, inspectorY, inspectorW, inspectorH, time);
+      } else {
+        const inspectorX = gridStartX;
+        const inspectorW = gridW;
+        const inspectorY = 118 + 28 + 6 * (46 + 6) + 4;
+        const inspectorH = CH - 24 - inspectorY - 14;
+        if (inspectorH >= 110) {
+          this.drawSkillTreeInspectorPanel(c, selectedNode, inspectorX, inspectorY, inspectorW, inspectorH, time);
         }
       }
 
       // Footer
       c.font = 'bold 10px monospace';
-      c.fillStyle = '#00ffaa';
+      c.fillStyle = isArcade ? '#ff66bb' : '#00ffaa';
       c.textAlign = 'center';
-      c.fillText('[CLICK A NODE TO UPGRADE]  •  [R] RESPEC  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] BACK', this.cw / 2, CH - 14);
+      if (isArcade) {
+        c.fillText('[CLICK NODE TO PREVIEW / SWITCH]  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] BACK', this.cw / 2, CH - 14);
+      } else {
+        c.fillText('[CLICK A NODE TO UPGRADE]  •  [R] RESPEC  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] BACK', this.cw / 2, CH - 14);
       }
-
     } else if (isSkills) {
       // Career Progress Bar Header
       const nxt = progression.getNextUnlock();
@@ -2234,123 +2617,442 @@ export class Renderer {
     }
   }
 
-  private drawSkillTreeNode(c: CanvasRenderingContext2D, node: import('../systems/ExperienceSystem').SkillNode, x: number, y: number, w: number, h: number) {
+  public getSkillEffectDetails(node: import('../config/skillTree').SkillNode, rank: number): { current: string; next: string } {
+    const isMax = rank >= node.maxRank;
+    switch (node.id) {
+      case 'dash_reflex':
+        return {
+          current: rank > 0 ? `-${rank * 12}% Dash Cooldown` : 'Standard Dash Cooldown (1.0x)',
+          next: isMax ? 'Maximized (-60% CD)' : `-${(rank + 1) * 12}% Dash Cooldown (Gain: -12%)`
+        };
+      case 'multi_dash':
+        return {
+          current: `${1 + rank} Dash charge(s) available`,
+          next: isMax ? 'Maximized (4 charges)' : `+1 Consecutive Dash charge (${1 + rank + 1} charges)`
+        };
+      case 'vector_surge':
+        return {
+          current: rank > 0 ? `+${rank * 5}% Speed surge on double-tap (2.5s duration)` : 'Double-tap surge inactive',
+          next: isMax ? 'Maximized (+20% surge)' : `+${(rank + 1) * 5}% Speed surge (Gain: +5%)`
+        };
+      case 'hyper_nitro':
+        return {
+          current: rank > 0 ? `+${rank * 10}% Nitro speed, +${(rank * 0.5).toFixed(1)}s plasma trail` : 'Standard Nitro boost',
+          next: isMax ? 'Maximized (+40% speed)' : `+${(rank + 1) * 10}% Nitro speed, +${((rank + 1) * 0.5).toFixed(1)}s trail`
+        };
+      case 'phase_shift':
+        return {
+          current: rank > 0 ? `${(0.35 + (rank - 1) * 0.18).toFixed(2)}s Dash intangibility` : 'Normal Dash vulnerability',
+          next: isMax ? 'Maximized (0.71s i-frames + ghost phasing)' : `${(0.35 + rank * 0.18).toFixed(2)}s Dash intangibility`
+        };
+      case 'quantum_laser':
+        return {
+          current: rank > 0 ? `${rank >= 2 ? '18s' : '24s'} Cooldown, 4-Way Cardinal Lasers` : 'Locked (Requires Phase Shift)',
+          next: isMax ? 'Maximized (18s Cooldown)' : 'Cooldown reduced to 18s & pierces portals'
+        };
+      case 'chrono_tank':
+        return {
+          current: rank > 0 ? `+${rank * 20}% Chrono pool capacity${rank >= 4 ? ' (12% Bullet-Time slowdown)' : ''}` : 'Standard Chrono pool (100 units)',
+          next: isMax ? 'Maximized (+100% pool)' : `+${(rank + 1) * 20}% Chrono capacity${rank + 1 >= 4 ? ' (Dilation to 12%)' : ''}`
+        };
+      case 'emp_overcharge':
+        return {
+          current: rank > 0 ? `+${rank * 25}% Wiggle EMP blast radius` : 'Standard EMP blast',
+          next: isMax ? 'Maximized (+100% radius)' : `+${(rank + 1) * 25}% Blast radius (Gain: +25%)`
+        };
+      case 'deep_freeze':
+        return {
+          current: rank > 0 ? `+${(rank * 1.2).toFixed(1)}s Freeze stun${rank >= 2 ? ' & Frost Shards on devour' : ''}` : 'Base freeze duration',
+          next: isMax ? 'Maximized (+3.6s stun)' : `+${((rank + 1) * 1.2).toFixed(1)}s Stun${rank + 1 >= 2 ? ' + Frost Shards on devour' : ''}`
+        };
+      case 'magnetic_core':
+        return {
+          current: rank > 0 ? `${(1.8 + (rank - 1) * 1.2).toFixed(1)} tiles pellet attraction` : 'No magnetic pull',
+          next: isMax ? 'Maximized (4.2 tiles)' : `${(1.8 + rank * 1.2).toFixed(1)} tiles pellet attraction`
+        };
+      case 'aegis_shield':
+        return {
+          current: rank > 0 ? `Active: Recharges after ${rank === 3 ? 60 : (rank === 2 ? 80 : 100)} pellets` : 'No emergency barrier',
+          next: isMax ? 'Maximized (60 pellets)' : `Recharge threshold reduced to ${rank + 1 === 3 ? 60 : 80} pellets`
+        };
+      case 'kinetic_bastion':
+        return {
+          current: rank > 0 ? `${rank >= 2 ? '8s' : '6s'} Kinetic dome, ${rank >= 2 ? '5.0' : '3.5'} tiles counterwave` : 'Locked (Requires Aegis Barrier)',
+          next: isMax ? 'Maximized (8s dome, 5.0 tiles counterwave)' : 'Duration to 8s, Counterwave expanded to 5.0 tiles'
+        };
+      case 'pellet_resonance':
+        return {
+          current: rank > 0 ? `+${(rank * 1.4).toFixed(1)}s Ghost vulnerability${rank >= 4 ? ' & +25% XP/Score' : ''}` : 'Standard Power Pellet duration',
+          next: isMax ? 'Maximized (+7.0s duration)' : `+${((rank + 1) * 1.4).toFixed(1)}s Vulnerability${rank + 1 >= 4 ? ' + 25% XP/Score' : ''}`
+        };
+      case 'titan_breaker':
+        return {
+          current: rank >= 3 ? 'Direct Dash execution (+2,500 pts)' : (rank === 2 ? 'Dash heavy stun (4.5s) & 35% Titan slow' : (rank === 1 ? 'Dash stun (3.0s) & armor break' : 'Titans immune to Dash')),
+          next: isMax ? 'Maximized (Instant execution)' : (rank === 2 ? 'Direct Dash execution (+2,500 pts)' : (rank === 1 ? '35% Titan movement slow & heavy stun' : 'Stun Titans on Dash impact'))
+        };
+      case 'super_frequency':
+        return {
+          current: rank > 0 ? `+${rank * 15}% Pellet XP & Score, -${rank * 8}% Spell Cooldowns` : 'Standard XP & cooldowns',
+          next: isMax ? 'Maximized (+60% XP, -32% CDs)' : `+${(rank + 1) * 15}% XP/Score, -${(rank + 1) * 8}% Spell CDs`
+        };
+      case 'singularity_mastery':
+        return {
+          current: rank > 0 ? `+${(rank * 0.4).toFixed(1)}s Combo & kill streak hold${rank >= 3 ? ', 35s Singularity' : ''}` : 'Standard combo decay window',
+          next: isMax ? 'Maximized (35s Singularity)' : `+${((rank + 1) * 0.4).toFixed(1)}s Combo hold${rank + 1 >= 3 ? ', 35s Singularity duration' : ''}`
+        };
+      case 'singularity_nova':
+        return {
+          current: rank > 0 ? `${rank >= 2 ? '32s' : '40s'} Cooldown, Void Nova Transcendence` : 'Locked (Requires Void Transcendence)',
+          next: isMax ? 'Maximized (32s Cooldown)' : 'Cooldown reduced from 40s to 32s'
+        };
+      default:
+        return { current: `Rank ${rank}`, next: isMax ? 'Max rank' : `Rank ${rank + 1}` };
+    }
+  }
+
+  private drawSkillTreeNode(
+    c: CanvasRenderingContext2D,
+    node: import('../config/skillTree').SkillNode,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    _time: number
+  ) {
     const isUlt = !!node.isUltimate;
     const isRevealed = experienceSystem.isUltimateRevealed(node.id);
     const rank = experienceSystem.getSkillRank(node.id);
     const check = experienceSystem.canUpgradeSkill(node.id);
     const isMax = rank >= node.maxRank;
     const canBuy = check.can;
+    const isSelected = this.selectedSkillId === node.id;
 
     c.save();
-    if (isUlt && !isRevealed) {
-      c.fillStyle = 'rgba(25, 12, 22, 0.85)';
-      c.strokeStyle = '#662244';
-      c.lineWidth = 1;
-      c.beginPath(); c.roundRect(x, y, w, h, 6); c.fill(); c.stroke();
 
+    if (isUlt && !isRevealed) {
+      c.fillStyle = isSelected ? 'rgba(40, 15, 30, 0.95)' : 'rgba(20, 12, 22, 0.85)';
+      c.strokeStyle = isSelected ? '#ff007f' : '#552238';
+      c.lineWidth = isSelected ? 2 : 1;
+      c.beginPath();
+      c.roundRect(x, y, w, h, 6);
+      c.fill();
+      c.stroke();
+
+      spriteAtlas.drawIcon(c, 'lock', x + 16, y + h / 2, 14);
       c.textAlign = 'left';
-      c.font = 'bold 9px monospace';
-      c.fillStyle = '#ff4477';
-      c.fillText('🔒 ??? [ULTIMATE LOCKED]', x + 8, y + 13);
+      c.font = 'bold 8.5px monospace';
+      c.fillStyle = isSelected ? '#ff66aa' : '#885566';
+      c.fillText('??? [SEALED]', x + 30, y + 26);
 
       c.textAlign = 'right';
       c.font = 'bold 8px monospace';
-      c.fillStyle = '#885566';
-      c.fillText(`${node.costPerRank} SP`, x + w - 8, y + 13);
-
-      c.textAlign = 'left';
-      c.font = '7.5px monospace';
-      c.fillStyle = '#aa7788';
-      c.fillText('Secret technology remains sealed.', x + 8, y + 28);
-      c.fillText('Max out every core skill to reveal', x + 8, y + 40);
-      c.fillText('this ultimate ability.', x + 8, y + 52);
-
+      c.fillStyle = '#664455';
+      c.fillText(`${node.costPerRank} SP`, x + w - 8, y + 26);
       c.restore();
       return;
     }
 
-    const borderColor = isUlt
-      ? (isMax ? '#ffd700' : (canBuy ? '#00ffff' : '#ff0055'))
-      : (isMax ? '#00ffaa' : (canBuy ? '#00ffff' : '#334455'));
+    const bInfo = SKILL_TREE_BRANCHES[node.branch];
+    const borderColor = isSelected
+      ? '#00ffff'
+      : (isUlt
+        ? (isMax ? '#ffd700' : (canBuy ? '#ff00aa' : '#552238'))
+        : (isMax ? '#00ffaa' : (canBuy ? bInfo.color : '#253045')));
 
-    c.fillStyle = isUlt
-      ? (isMax ? 'rgba(255, 215, 0, 0.14)' : (canBuy ? 'rgba(0, 240, 255, 0.10)' : 'rgba(30, 15, 25, 0.7)'))
-      : (isMax ? 'rgba(0, 255, 170, 0.12)' : (canBuy ? 'rgba(0, 240, 255, 0.08)' : 'rgba(15, 20, 35, 0.6)'));
+    c.fillStyle = isSelected
+      ? (isUlt ? 'rgba(255, 0, 170, 0.22)' : 'rgba(0, 240, 255, 0.16)')
+      : (isMax
+        ? 'rgba(0, 255, 170, 0.08)'
+        : (canBuy ? 'rgba(0, 240, 255, 0.06)' : 'rgba(12, 16, 28, 0.75)'));
+
     c.strokeStyle = borderColor;
-    c.lineWidth = isUlt ? 1.8 : (isMax ? 1.6 : (canBuy ? 1.3 : 1));
-    c.beginPath(); c.roundRect(x, y, w, h, 6); c.fill(); c.stroke();
+    c.lineWidth = isSelected ? 2.2 : (canBuy || isMax ? 1.4 : 1.0);
 
-    // Node Header: Icon + Name + Cost / Max
+    if (isSelected) {
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 8;
+    }
+    c.beginPath();
+    c.roundRect(x, y, w, h, 6);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Selection indicator accent on left
+    if (isSelected) {
+      c.fillStyle = '#00ffff';
+      c.beginPath();
+      c.roundRect(x + 2, y + 4, 3, h - 8, 1.5);
+      c.fill();
+    }
+
+    // Left Icon Container
+    const iconX = x + 18;
+    const iconY = y + h / 2;
+    spriteAtlas.drawIcon(c, node.icon, iconX, iconY, 15);
+
+    // Node Title (clean & legible)
     c.textAlign = 'left';
     c.font = 'bold 9px monospace';
     c.fillStyle = isUlt ? '#ffd700' : (isMax ? '#00ffaa' : (canBuy ? '#ffffff' : '#8899aa'));
-    spriteAtlas.drawIcon(c, node.icon, x + 10, y + 12, 10);
-    const title = (isUlt ? '★ ' : '') + node.name;
-    c.fillText(title, x + 20, y + 13);
+    c.fillText(node.name, x + 34, y + 18);
 
+    // Rank Pips (circles)
+    const pipStartY = y + 31;
+    const pipStartX = x + 34;
+    const pipRadius = 2.5;
+    const pipGap = 7;
+    for (let r = 0; r < node.maxRank; r++) {
+      const px = pipStartX + r * pipGap;
+      c.fillStyle = r < rank
+        ? (isUlt ? '#ffd700' : '#00ffaa')
+        : 'rgba(255, 255, 255, 0.15)';
+      c.beginPath();
+      c.arc(px, pipStartY, pipRadius, 0, PI2);
+      c.fill();
+    }
+
+    // Right Cost / Max Badge
     c.textAlign = 'right';
     c.font = 'bold 8.5px monospace';
-    c.fillStyle = isMax ? '#00ffaa' : (canBuy ? '#ffd700' : '#667788');
-    c.fillText(isMax ? 'MAX' : `${node.costPerRank} SP`, x + w - 8, y + 13);
+    c.fillStyle = isMax ? '#00ffaa' : (canBuy ? '#ffd700' : '#64748b');
+    const costText = isMax ? 'MAX' : `${node.costPerRank} SP`;
+    c.fillText(costText, x + w - 8, y + 25);
 
-    // Rank gauge dots & combo hint
-    const dotW = 7, dotGap = 3;
-    const dotsStartX = x + 8;
-    const dotsY = y + 21;
+    c.restore();
+  }
 
-    for (let r = 0; r < node.maxRank; r++) {
-      const rx = dotsStartX + r * (dotW + dotGap);
-      c.fillStyle = r < rank ? (isUlt ? '#ffd700' : '#00ffaa') : 'rgba(255, 255, 255, 0.15)';
-      c.beginPath(); c.roundRect(rx, dotsY, dotW, 3, 1); c.fill();
-    }
+  private drawSkillTreeInspectorPanel(
+    c: CanvasRenderingContext2D,
+    node: import('../config/skillTree').SkillNode,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    time: number
+  ) {
+    const bInfo = SKILL_TREE_BRANCHES[node.branch];
+    const isUlt = !!node.isUltimate;
+    const isRevealed = experienceSystem.isUltimateRevealed(node.id);
+    const rank = experienceSystem.getSkillRank(node.id);
+    const check = experienceSystem.canUpgradeSkill(node.id);
+    const isMax = rank >= node.maxRank;
+    const canBuy = check.can;
+    const isArcade = profileManager.gameMode !== 'custom';
+    const costStr = isMax ? 'MAX' : `${node.costPerRank} SP`;
 
-    if (node.comboHint) {
-      c.textAlign = 'right';
-      c.font = 'bold 7.5px monospace';
-      c.fillStyle = isUlt ? '#ffd700' : '#00ffff';
-      c.fillText(node.comboHint, x + w - 8, dotsY + 4);
-    } else {
-      c.textAlign = 'right';
-      c.font = '7.5px monospace';
-      c.fillStyle = '#8899aa';
-      c.fillText(`RANG ${rank}/${node.maxRank}`, x + w - 8, dotsY + 4);
-    }
+    c.save();
 
-    // Description & Tradeoff (compact 2 lines)
+    // 1. Panel Container Glassmorphism
+    c.fillStyle = 'rgba(10, 14, 26, 0.94)';
+    c.strokeStyle = isUlt ? '#ffd700' : bInfo.color;
+    c.lineWidth = 1.6;
+    c.shadowColor = isUlt ? '#ffd700' : bInfo.color;
+    c.shadowBlur = 8;
+    c.beginPath();
+    c.roundRect(x, y, w, h, 8);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    const pad = 16;
+    let curY = y + 16;
+
+    // 2. Branch Tag & Ultimate Tag
+    c.font = 'bold 8.5px monospace';
     c.textAlign = 'left';
-    c.font = '7.5px monospace';
-    c.fillStyle = isMax ? '#d0f0e0' : (canBuy ? '#cccccc' : '#778899');
+    c.fillStyle = bInfo.color;
+    const tagText = isUlt ? `[${bInfo.name} • ULTIMATE SPEC]` : `[${bInfo.name}]`;
+    c.fillText(tagText, x + pad, curY);
+    curY += 16;
 
-    const maxCharsPerLine = Math.floor((w - 16) / 4.8);
-    const words = node.desc.split(' ');
-    let line = '';
-    let lineIdx = 0;
-    for (const wd of words) {
-      if ((line + ' ' + wd).length > maxCharsPerLine) {
-        c.fillText(line.trim(), x + 8, y + 36 + lineIdx * 10);
-        line = wd + ' ';
-        lineIdx++;
-        if (lineIdx >= 2) break;
-      } else {
-        line += wd + ' ';
+    // 3. Header: Large Icon + Skill Name
+    const iconBoxSize = 36;
+    c.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    c.strokeStyle = isUlt ? '#ffd700' : (isMax ? '#00ffaa' : bInfo.color);
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.roundRect(x + pad, curY, iconBoxSize, iconBoxSize, 6);
+    c.fill();
+    c.stroke();
+    spriteAtlas.drawIcon(c, node.icon, x + pad + iconBoxSize / 2, curY + iconBoxSize / 2, 20);
+
+    c.textAlign = 'left';
+    c.font = 'bold 12.5px monospace';
+    c.fillStyle = isUlt ? '#ffd700' : '#ffffff';
+    c.fillText(node.name, x + pad + iconBoxSize + 10, curY + 16);
+
+    c.font = 'bold 9px monospace';
+    c.fillStyle = isMax ? '#00ffaa' : (canBuy ? '#00ffff' : '#94a3b8');
+    c.fillText(`RANK ${rank}/${node.maxRank}   •   COST: ${costStr}`, x + pad + iconBoxSize + 10, curY + 31);
+    curY += iconBoxSize + 16;
+
+    // 4. Subtle Divider
+    c.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(x + pad, curY);
+    c.lineTo(x + w - pad, curY);
+    c.stroke();
+    curY += 14;
+
+    // 5. Core Role & Description
+    c.font = 'bold 8.5px monospace';
+    c.fillStyle = '#64748b';
+    c.fillText('TACTICAL ROLE & PURPOSE', x + pad, curY);
+    curY += 13;
+
+    c.font = '10px monospace';
+    c.fillStyle = '#e2e8f0';
+    const descLines = this.wrapText(c, isUlt && !isRevealed ? 'Secret branch specialization. Master predecessor in this tree to reveal.' : node.desc, w - pad * 2);
+    for (const line of descLines) {
+      c.fillText(line, x + pad, curY);
+      curY += 13;
+    }
+    curY += 6;
+
+    // 6. Effect Breakdown (Current vs Next)
+    if (isRevealed) {
+      const details = this.getSkillEffectDetails(node, rank);
+      
+      // Current Effect Box
+      c.fillStyle = 'rgba(0, 255, 170, 0.05)';
+      c.strokeStyle = 'rgba(0, 255, 170, 0.2)';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(x + pad, curY, w - pad * 2, 42, 4);
+      c.fill();
+      c.stroke();
+
+      c.font = 'bold 8px monospace';
+      c.fillStyle = '#00ffaa';
+      c.fillText(`CURRENT EFFECT (RANK ${rank}):`, x + pad + 8, curY + 14);
+      c.font = '9.5px monospace';
+      c.fillStyle = '#f8fafc';
+      c.fillText(details.current, x + pad + 8, curY + 29);
+      curY += 48;
+
+      // Next Rank Gain Box
+      if (!isMax) {
+        c.fillStyle = 'rgba(255, 215, 0, 0.05)';
+        c.strokeStyle = 'rgba(255, 215, 0, 0.2)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.roundRect(x + pad, curY, w - pad * 2, 42, 4);
+        c.fill();
+        c.stroke();
+
+        c.font = 'bold 8px monospace';
+        c.fillStyle = '#ffd700';
+        c.fillText(`NEXT RANK GAIN (RANK ${rank + 1}):`, x + pad + 8, curY + 14);
+        c.font = '9.5px monospace';
+        c.fillStyle = '#fef08a';
+        c.fillText(details.next, x + pad + 8, curY + 29);
+        curY += 48;
       }
     }
-    if (line.trim().length > 0 && lineIdx < 2) {
-      c.fillText(line.trim(), x + 8, y + 36 + lineIdx * 10);
+
+    // 7. Active Spell Sequence (if sequence skill)
+    if (node.comboHint && isRevealed) {
+      c.fillStyle = 'rgba(0, 240, 255, 0.08)';
+      c.strokeStyle = '#00f0ff';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(x + pad, curY, w - pad * 2, 34, 4);
+      c.fill();
+      c.stroke();
+
+      c.font = 'bold 8px monospace';
+      c.fillStyle = '#00f0ff';
+      c.fillText('INVOCATION SEQUENCE:', x + pad + 8, curY + 13);
+      c.font = 'bold 10px monospace';
+      c.fillStyle = '#ffffff';
+      c.fillText(node.comboHint, x + pad + 8, curY + 26);
+      curY += 40;
     }
 
-    // Upgrade CTA / Warning
-    if (!isMax) {
+    // 8. Tradeoff & Notes
+    if (node.tradeoffDesc && isRevealed) {
+      c.font = 'bold 8px monospace';
+      c.fillStyle = '#f59e0b';
+      c.fillText('BALANCE TRADEOFF & SYNERGY:', x + pad, curY);
+      curY += 12;
+
+      c.font = '9px monospace';
+      c.fillStyle = '#fed7aa';
+      const tradeLines = this.wrapText(c, node.tradeoffDesc, w - pad * 2);
+      for (const line of tradeLines) {
+        c.fillText(line, x + pad, curY);
+        curY += 12;
+      }
+    }
+
+    // 9. Tactile Upgrade Button at bottom
+    const btnH = 38;
+    const btnY = y + h - btnH - 14;
+    const btnW = w - pad * 2;
+    const btnX = x + pad;
+    this.inspectorUpgradeBtnBounds = { x: btnX, y: btnY, w: btnW, h: btnH };
+
+    if (isArcade) {
+      const isWideUnlocked = profileManager.isChromamancerUnlocked();
+      c.fillStyle = isWideUnlocked ? 'rgba(255, 0, 127, 0.25)' : 'rgba(50, 20, 40, 0.4)';
+      c.strokeStyle = isWideUnlocked ? '#ff007f' : '#663344';
+      c.lineWidth = 1.4;
+      c.beginPath();
+      c.roundRect(btnX, btnY, btnW, btnH, 6);
+      c.fill();
+      c.stroke();
+
       c.textAlign = 'center';
-      c.font = 'bold 7.5px monospace';
-      if (canBuy) {
-        c.fillStyle = isUlt ? '#ffd700' : '#00ffff';
-        c.fillText(`▶ UPGRADE (-${node.costPerRank} SP) ◀`, x + w / 2, y + h - 5);
-      } else if (check.reason) {
-        c.fillStyle = '#ff5577';
-        c.fillText(`[ ${check.reason.toUpperCase()} ]`, x + w / 2, y + h - 5);
-      }
+      c.font = 'bold 10px monospace';
+      c.fillStyle = isWideUnlocked ? '#ff66bb' : '#885566';
+      c.fillText(isWideUnlocked ? '[⚡ SWITCH TO CHROMAMANCER]' : '[🔒 REQUIRES 16:9 ARENA]', btnX + btnW / 2, btnY + 23);
+    } else if (isMax) {
+      c.fillStyle = 'rgba(255, 215, 0, 0.12)';
+      c.strokeStyle = '#ffd700';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.roundRect(btnX, btnY, btnW, btnH, 6);
+      c.fill();
+      c.stroke();
+
+      c.textAlign = 'center';
+      c.font = 'bold 10.5px monospace';
+      c.fillStyle = '#ffd700';
+      c.fillText('★ FULLY MASTERED ★', btnX + btnW / 2, btnY + 23);
+    } else if (canBuy) {
+      const pulse = 0.5 + 0.5 * Math.sin(time * 6);
+      c.fillStyle = `rgba(0, 255, 170, ${0.18 + pulse * 0.1})`;
+      c.strokeStyle = '#00ffaa';
+      c.lineWidth = 1.8;
+      c.shadowColor = '#00ffaa';
+      c.shadowBlur = 8;
+      c.beginPath();
+      c.roundRect(btnX, btnY, btnW, btnH, 6);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+
+      c.textAlign = 'center';
+      c.font = 'bold 10.5px monospace';
+      c.fillStyle = '#ffffff';
+      c.fillText(`[ENTER / CLICK] UPGRADE (-${node.costPerRank} SP)`, btnX + btnW / 2, btnY + 23);
+    } else {
+      c.fillStyle = 'rgba(30, 41, 59, 0.4)';
+      c.strokeStyle = '#475569';
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(btnX, btnY, btnW, btnH, 6);
+      c.fill();
+      c.stroke();
+
+      c.textAlign = 'center';
+      c.font = 'bold 9.5px monospace';
+      c.fillStyle = '#94a3b8';
+      let lockMsg = check.reason ? check.reason.toUpperCase() : 'LOCKED';
+      if (lockMsg.length > 34) lockMsg = lockMsg.slice(0, 33) + '…';
+      c.fillText(`🔒 ${lockMsg}`, btnX + btnW / 2, btnY + 23);
     }
 
     c.restore();
@@ -2762,15 +3464,85 @@ export class Renderer {
     const c = this.ctx;
     const list = isMadness ? MADNESS_LEVELS : LEVELS;
     const lvl = list[currentLevel % list.length];
-    c.font = 'bold 36px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 25;
-    c.textAlign = 'center'; c.fillText('LEVEL ' + (currentLevel + 1), this.cw / 2, CH / 2 - 12); c.shadowBlur = 0;
-    c.font = 'bold 18px monospace'; c.fillStyle = '#ffffff'; c.fillText(lvl.name, this.cw / 2, CH / 2 + 20);
-    c.font = '13px monospace'; c.fillStyle = '#888'; c.fillText('+' + (1000 * (wave - 1)) + ' WAVE BONUS', this.cw / 2, CH / 2 + 46);
+    const info = this.getInfectionData(currentLevel, loopCount);
+
+    c.save();
+    // Glass card
+    const cardW = Math.min(460, this.cw - 24);
+    const cardH = 204;
+    const cardX = this.cw / 2 - cardW / 2;
+    const cardY = CH / 2 - cardH / 2;
+
+    c.fillStyle = 'rgba(6, 3, 14, 0.94)';
+    c.strokeStyle = lvl.glowColor;
+    c.lineWidth = 2;
+    c.shadowColor = lvl.glowColor;
+    c.shadowBlur = 18;
+    c.beginPath();
+    c.roundRect(cardX, cardY, cardW, cardH, 10);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Header badge
+    c.textAlign = 'center';
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#ffd700';
+    c.fillText('★ SECTOR PURIFIED ★', this.cw / 2, cardY + 28);
+
+    // Level Title
+    c.font = 'bold 28px monospace';
+    c.fillStyle = lvl.glowColor;
+    c.shadowColor = lvl.glowColor;
+    c.shadowBlur = 14;
+    c.fillText('LEVEL ' + (currentLevel + 1), this.cw / 2, cardY + 62);
+    c.shadowBlur = 0;
+
+    // Sector Name
+    c.font = 'bold 15px monospace';
+    c.fillStyle = '#ffffff';
+    c.fillText(lvl.name, this.cw / 2, cardY + 86);
+
+    // Biological Host Telemetry Bar inside transition
+    const bioBoxW = cardW - 36;
+    const bioBoxH = 32;
+    const bioX = this.cw / 2 - bioBoxW / 2;
+    const bioY = cardY + 102;
+
+    c.fillStyle = 'rgba(15, 20, 32, 0.9)';
+    c.strokeStyle = info.ecgColor;
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(bioX, bioY, bioBoxW, bioBoxH, 5);
+    c.fill();
+    c.stroke();
+
+    c.font = 'bold 9px monospace';
+    c.fillStyle = info.ecgColor;
+    c.fillText(`TÉLÉMÉTRIE DU SYSTÈME HÔTE • ${info.stageCode} (${info.bpm} BPM)`, this.cw / 2, bioY + 13);
+    c.font = '8px monospace';
+    c.fillStyle = '#94a3b8';
+    c.fillText(info.stageDetail, this.cw / 2, bioY + 24);
+
+    // Rewards & Wave Bonus
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#00ffaa';
+    c.fillText(`+${1000 * Math.max(1, wave - 1)} PTS WAVE BONUS  •  +400 EXP`, this.cw / 2, cardY + 156);
+
     if (loopCount > 0) {
-      c.font = 'bold 15px monospace'; c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 10;
-      c.fillText(`LOOP ${loopCount + 1}: SPEED +${loopCount * 10}%!`, this.cw / 2, CH / 2 + 72);
+      c.font = 'bold 12px monospace';
+      c.fillStyle = '#ffd700';
+      c.shadowColor = '#ffd700';
+      c.shadowBlur = 8;
+      c.fillText(`LOOP ${loopCount + 1}: SPEED +${loopCount * 10}%!`, this.cw / 2, cardY + 180);
       c.shadowBlur = 0;
+    } else {
+      c.font = 'bold 9.5px monospace';
+      c.fillStyle = '#778899';
+      c.fillText('INITIALISATION DU PROCHAIN SECTEUR...', this.cw / 2, cardY + 180);
     }
+
+    c.restore();
   }
 
   public drawMaze32xSupercharge(_mOff: HTMLCanvasElement, time: number, isSingularity: boolean = false) {
@@ -2781,6 +3553,375 @@ export class Renderer {
     const pulse = 0.40 + 0.12 * Math.sin(time * 6);
     c.fillStyle = isSingularity ? `rgba(255, 215, 0, ${pulse + 0.1})` : `rgba(0, 240, 255, ${pulse})`;
     c.fillRect(0, 0, this.cw, ROWS * T);
+    c.restore();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  //  BIOLOGICAL INFECTION & HOST IMMUNOLOGICAL VITAL MONITOR
+  //  Chromavore est une infection pathogène qui détruit l'organisme hôte
+  // ═══════════════════════════════════════════════════════════════
+  public getInfectionData(currentLevel: number, loopCount: number = 0) {
+    const effectiveLvl = currentLevel + 1;
+    let stage: 1 | 2 | 3 | 4 = 1;
+    let stageName = 'HOMEOSTASIS';
+    let stageCode = 'STAGE 1';
+    let stageDetail = 'ACTIVE SENTINELS • CELLULAR INTEGRITY';
+    let bpm = 72;
+    let ecgColor = '#00ffaa';
+    let isFlatline = false;
+
+    if (loopCount > 0 || effectiveLvl >= 10) {
+      stage = 4;
+      stageName = 'ASYSTOLE';
+      stageCode = 'STAGE 4';
+      stageDetail = 'ORGANIC COLLAPSE • CARDIAC ARREST';
+      bpm = 0;
+      ecgColor = '#778899';
+      isFlatline = true;
+    } else if (effectiveLvl >= 7) {
+      stage = 3;
+      stageName = 'NECROSIS';
+      stageCode = 'STAGE 3';
+      stageDetail = 'ARRHYTHMIA • IMMUNE BREAKDOWN';
+      bpm = 148;
+      ecgColor = '#ff0055';
+    } else if (effectiveLvl >= 4) {
+      stage = 2;
+      stageName = 'INFLAMMATION';
+      stageCode = 'STAGE 2';
+      stageDetail = 'FEBRILE TACHYCARDIA • HOST MOBILIZATION';
+      bpm = 126;
+      ecgColor = '#ffaa00';
+    } else {
+      stage = 1;
+      stageName = 'HOMEOSTASIS';
+      stageCode = 'STAGE 1';
+      stageDetail = 'HEALTHY SINUS RHYTHM • INTEGRITY';
+      bpm = 72;
+      ecgColor = '#00ffaa';
+    }
+
+    return { stage, stageName, stageCode, stageDetail, bpm, ecgColor, isFlatline, effectiveLvl };
+  }
+
+  public drawBiologicalHostPulse(time: number, currentLevel: number, loopCount: number = 0) {
+    const c = this.ctx;
+    const info = this.getInfectionData(currentLevel, loopCount);
+    c.save();
+
+    if (info.stage === 1) {
+      // Stade 1 : Homéostasie (pulsation douce et régulière ~72 BPM)
+      const pulse = 0.03 + 0.025 * Math.sin(time * (72 / 60) * Math.PI * 2);
+      c.fillStyle = `rgba(0, 255, 170, ${pulse})`;
+      c.fillRect(0, 0, this.cw, ROWS * T);
+    } else if (info.stage === 2) {
+      // Stade 2 : Réaction inflammatoire / Fièvre (~126 BPM)
+      const fever = 0.06 + 0.04 * Math.sin(time * (126 / 60) * Math.PI * 2);
+      c.fillStyle = `rgba(255, 90, 10, ${fever})`;
+      c.fillRect(0, 0, this.cw, ROWS * T);
+
+      // Micro-tension vasculaire en périphérie
+      const capPulse = 0.08 + 0.06 * Math.sin(time * 4);
+      c.strokeStyle = `rgba(255, 50, 10, ${capPulse})`;
+      c.lineWidth = 1.8;
+      c.strokeRect(2, 2, this.cw - 4, ROWS * T - 4);
+    } else if (info.stage === 3) {
+      // Stade 3 : Arythmie & Nécrose (soubresauts irréguliers et plaques violacées)
+      const irregular = Math.sin(time * 7.2) * Math.sin(time * 2.8);
+      const spasm = irregular > 0.3;
+      const alpha = spasm ? 0.14 : 0.06;
+      c.fillStyle = `rgba(140, 0, 190, ${alpha})`;
+      c.fillRect(0, 0, this.cw, ROWS * T);
+
+      // Spasme ischémique nécrotique intermittent
+      if (Math.sin(time * 11) > 0.6) {
+        c.fillStyle = 'rgba(25, 0, 40, 0.22)';
+        c.fillRect(0, 0, this.cw, ROWS * T);
+      }
+    } else {
+      // Stade 4 : Asystolie / Arrêt (Level 10)
+      // Dévitalisé, terne, froid, aucune pulsation vitale
+      c.fillStyle = 'rgba(15, 23, 42, 0.32)';
+      c.fillRect(0, 0, this.cw, ROWS * T);
+
+      // Faint mourir tremblotant
+      if ((time % 3.8) < 0.15) {
+        c.fillStyle = 'rgba(148, 163, 184, 0.08)';
+        c.fillRect(0, 0, this.cw, ROWS * T);
+      }
+    }
+
+    c.restore();
+  }
+
+  /**
+   * Visualisation chirurgicale & biologique de la corruption tissulaire de l'organisme hôte.
+   * L'arène n'est pas un labyrinthe mécanique, mais les cavités d'un être vivant dévoré
+   * par le Chromavore (pathogène gangréneux).
+   */
+  public drawOrganicTissueNecrosis(maze: MazeManager, time: number, currentLevel: number, loopCount: number = 0) {
+    if (!maze || !maze.map) return;
+    const c = this.ctx;
+    const info = this.getInfectionData(currentLevel, loopCount);
+    const cols = maze.cols;
+    const rows = maze.rows;
+    const stage = info.stage;
+
+    c.save();
+
+    // ─────────────────────────────────────────────────────────────
+    // 1. Dégénérescence des parois & réseaux vasculaires sur les murs
+    // ─────────────────────────────────────────────────────────────
+    for (let r = 0; r < rows; r++) {
+      const row = maze.map[r];
+      if (!row) continue;
+      for (let col = 0; col < cols; col++) {
+        if (row[col] !== 1) continue; // WALL
+
+        const x = col * T;
+        const y = r * T;
+        // Hash déterministe par tuile pour une distribution organique stable
+        const h = Math.abs(Math.sin(col * 12.9898 + r * 78.233) * 43758.5453) % 1;
+
+        if (stage === 1) {
+          // STADE 1 : Homéostasie — Noeuds bioluminescents sains (72 BPM)
+          if (h > 0.72) {
+            const pulse = (Math.sin(time * 7.54 + h * 6.28) + 1) * 0.5;
+            const nodeR = 2.2 + pulse * 1.5;
+            c.fillStyle = `rgba(0, 255, 170, ${0.35 + pulse * 0.45})`;
+            c.shadowColor = '#00ffaa';
+            c.shadowBlur = 6;
+            c.beginPath();
+            c.arc(x + T / 2, y + T / 2, nodeR, 0, PI2);
+            c.fill();
+            c.shadowBlur = 0;
+          }
+        } else if (stage === 2) {
+          // STADE 2 : Inflammation / Fièvre — Capillaires gorgés de sang chaud (126 BPM)
+          if (h > 0.40) {
+            const febPulse = (Math.sin(time * 13.2 + h * 5.0) + 1) * 0.5;
+            c.strokeStyle = `rgba(255, 60, 20, ${0.4 + febPulse * 0.45})`;
+            c.lineWidth = 1.6;
+            c.beginPath();
+            c.moveTo(x + 2, y + T * (0.2 + h * 0.6));
+            c.quadraticCurveTo(x + T * 0.5, y + T * (0.5 + (h - 0.5) * 0.4), x + T - 2, y + T * (0.3 + (1 - h) * 0.5));
+            c.stroke();
+
+            // Bourgeonnement inflammatoire
+            if (h > 0.8) {
+              c.fillStyle = `rgba(255, 140, 0, ${0.5 + febPulse * 0.4})`;
+              c.beginPath();
+              c.arc(x + T * 0.5, y + T * 0.5, 2.5, 0, PI2);
+              c.fill();
+            }
+          }
+        } else if (stage === 3) {
+          // STADE 3 : Gangrène & Nécrose — Lésions noircies, fissures suintantes, arythmie
+          if (h > 0.30) {
+            // Lésion nécrotique purulente
+            const lesionW = T * (0.4 + h * 0.45);
+            const lesionH = T * (0.35 + (1 - h) * 0.4);
+            const lx = x + (T - lesionW) * 0.5;
+            const ly = y + (T - lesionH) * 0.5;
+
+            c.fillStyle = h > 0.65 ? 'rgba(32, 0, 42, 0.78)' : 'rgba(56, 0, 28, 0.72)';
+            c.beginPath();
+            c.roundRect(lx, ly, lesionW, lesionH, 3);
+            c.fill();
+
+            // Veines thrombosées & nécrotiques violet-noir
+            const arrhSpasm = Math.sin(time * 19.0 + h * 10) * Math.cos(time * 6.5);
+            const veinAlpha = arrhSpasm > 0.2 ? 0.85 : 0.45;
+            c.strokeStyle = `rgba(180, 0, 90, ${veinAlpha})`;
+            c.lineWidth = 1.8;
+            c.beginPath();
+            c.moveTo(x + 1, y + 1);
+            c.lineTo(x + T * 0.4, y + T * 0.6);
+            c.lineTo(x + T - 1, y + T * 0.85);
+            c.stroke();
+
+            // Fissure de décomposition
+            if (h > 0.75) {
+              c.strokeStyle = 'rgba(255, 0, 100, 0.65)';
+              c.lineWidth = 1.0;
+              c.beginPath();
+              c.moveTo(x + T * 0.2, y + T * 0.8);
+              c.lineTo(x + T * 0.8, y + T * 0.2);
+              c.stroke();
+            }
+          }
+        } else {
+          // STADE 4 : Asystolie & Mort (Lvl 10) — Momification gris cendre, fibres dévitalisées
+          if (h > 0.25) {
+            // Plaque de dévitalisation grisâtre
+            c.fillStyle = h > 0.6 ? 'rgba(51, 65, 85, 0.55)' : 'rgba(30, 41, 59, 0.65)';
+            c.fillRect(x + 2, y + 2, T - 4, T - 4);
+
+            // Fissures cadavériques calcifiées
+            c.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+            c.lineWidth = 1.2;
+            c.beginPath();
+            c.moveTo(x + T * 0.15, y + T * 0.85);
+            c.lineTo(x + T * 0.5, y + T * 0.4);
+            c.lineTo(x + T * 0.85, y + T * 0.15);
+            c.stroke();
+          }
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 2. Coeur biologique central (Ghost House Seed)
+    // ─────────────────────────────────────────────────────────────
+    const centerCol = Math.floor(cols / 2);
+    const heartX = centerCol * T + T / 2;
+    const heartY = 10 * T + T / 2;
+
+    if (stage === 1) {
+      // Coeur sain qui pulse à 72 BPM
+      const hp = (Math.sin(time * 7.54) + 1) * 0.5;
+      c.fillStyle = `rgba(0, 255, 170, ${0.12 + hp * 0.15})`;
+      c.shadowColor = '#00ffaa';
+      c.shadowBlur = 12;
+      c.beginPath();
+      c.arc(heartX, heartY, 20 + hp * 6, 0, PI2);
+      c.fill();
+      c.shadowBlur = 0;
+    } else if (stage === 2) {
+      // Coeur en tachycardie fébrile à 126 BPM
+      const hp = (Math.sin(time * 13.2) + 1) * 0.5;
+      c.fillStyle = `rgba(255, 80, 0, ${0.18 + hp * 0.22})`;
+      c.shadowColor = '#ff4400';
+      c.shadowBlur = 16;
+      c.beginPath();
+      c.arc(heartX, heartY, 22 + hp * 8, 0, PI2);
+      c.fill();
+      c.shadowBlur = 0;
+    } else if (stage === 3) {
+      // Coeur en arythmie, gangréné et spasmodique
+      const irregular = (Math.sin(time * 18.0) * Math.sin(time * 6.0) + 1) * 0.5;
+      c.fillStyle = `rgba(140, 0, 70, ${0.22 + irregular * 0.25})`;
+      c.shadowColor = '#ff0055';
+      c.shadowBlur = 18;
+      c.beginPath();
+      c.arc(heartX, heartY, 24 + irregular * 10, 0, PI2);
+      c.fill();
+      c.shadowBlur = 0;
+
+      // Spasme fibrillaire
+      c.strokeStyle = 'rgba(255, 0, 100, 0.6)';
+      c.lineWidth = 1.5;
+      c.strokeRect(heartX - 25, heartY - 18, 50, 36);
+    } else {
+      // Coeur en asystolie terminale : noyau froid, inerte, gris, fissuré
+      c.fillStyle = 'rgba(30, 41, 59, 0.7)';
+      c.strokeStyle = 'rgba(100, 116, 139, 0.6)';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.arc(heartX, heartY, 22, 0, PI2);
+      c.fill();
+      c.stroke();
+
+      // Fissure de rupture cardiaque au centre
+      c.strokeStyle = '#94a3b8';
+      c.beginPath();
+      c.moveTo(heartX - 10, heartY - 14);
+      c.lineTo(heartX + 2, heartY);
+      c.lineTo(heartX - 4, heartY + 12);
+      c.stroke();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 3. Débris apoptotiques / Poussière de décomposition (Stade 4)
+    // ─────────────────────────────────────────────────────────────
+    if (stage === 4) {
+      const flakeCount = 28;
+      const arenaH = rows * T;
+      c.fillStyle = 'rgba(203, 213, 225, 0.45)';
+      for (let i = 0; i < flakeCount; i++) {
+        const seedX = ((i * 37) % cols) * T + ((i * 19) % T);
+        const speedY = 22 + (i % 5) * 8;
+        const driftX = Math.sin(time * 1.5 + i) * 12;
+        const flakeY = (time * speedY + i * 43) % arenaH;
+        const flakeX = (seedX + driftX + cols * T) % (cols * T);
+        c.beginPath();
+        c.arc(flakeX, flakeY, 1.2 + (i % 3) * 0.6, 0, PI2);
+        c.fill();
+      }
+    }
+
+    c.restore();
+  }
+
+  public drawHostVitalTelemetry(c: CanvasRenderingContext2D, x: number, y: number, currentLevel: number, time: number, loopCount: number = 0, isWide: boolean = true) {
+    const info = this.getInfectionData(currentLevel, loopCount);
+    const boxW = isWide ? 66 : 52;
+    const boxH = 20;
+    const bx = Math.round(x - boxW / 2);
+    const by = Math.round(y - boxH / 2);
+
+    c.save();
+    // Glass card
+    c.fillStyle = 'rgba(6, 8, 16, 0.85)';
+    c.strokeStyle = info.ecgColor;
+    c.lineWidth = 1;
+    c.shadowColor = info.ecgColor;
+    c.shadowBlur = info.stage === 4 ? 2 : 5;
+    c.beginPath();
+    c.roundRect(bx, by, boxW, boxH, 4);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Mini ECG waveform display inside the box
+    const traceW = isWide ? 30 : 22;
+    const traceH = 10;
+    const tx = bx + 4;
+    const ty = by + Math.round(boxH / 2);
+
+    c.strokeStyle = info.ecgColor;
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.moveTo(tx, ty);
+
+    if (info.stage === 4) {
+      // Flatline (Asystole)
+      const artifact = Math.sin(time * 3) > 0.95 ? (Math.random() - 0.5) * 1.5 : 0;
+      c.lineTo(tx + traceW, ty + artifact);
+    } else {
+      // Pulsing sinus wave moving across traceW
+      const freq = info.stage === 2 ? 8 : (info.stage === 3 ? 12 : 5);
+      const phase = time * freq;
+      for (let i = 0; i <= traceW; i += 2) {
+        const p = (i / traceW) * Math.PI * 2 + phase;
+        let dy = 0;
+        const cycle = p % (Math.PI * 2);
+        if (cycle > 2.0 && cycle < 2.5) {
+          // Sharp QRS complex peak
+          dy = -Math.sin((cycle - 2.0) * (Math.PI / 0.5)) * (traceH * 0.45);
+        } else if (cycle > 3.2 && cycle < 4.0) {
+          // Soft T-wave bump
+          dy = -Math.sin((cycle - 3.2) * (Math.PI / 0.8)) * (traceH * 0.2);
+        }
+        c.lineTo(tx + i, ty + dy);
+      }
+    }
+    c.stroke();
+
+    // Text reading
+    c.textAlign = 'left';
+    c.textBaseline = 'middle';
+    c.font = 'bold 7px monospace';
+    c.fillStyle = info.ecgColor;
+    c.fillText(info.isFlatline ? '00' : `${info.bpm}`, tx + traceW + 4, by + 6);
+    c.font = '6.5px monospace';
+    c.fillStyle = '#8899aa';
+    c.fillText('BPM', tx + traceW + 18, by + 6);
+
+    c.font = 'bold 6.5px monospace';
+    c.fillStyle = info.ecgColor;
+    c.fillText(info.stageCode, tx + traceW + 4, by + 14);
+
     c.restore();
   }
 

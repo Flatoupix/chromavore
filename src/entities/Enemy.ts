@@ -6,6 +6,8 @@ import { T, HALF, COLS, ROWS, CW, EC, PI, PI2, E_SPEED, DOOR, GHOST } from '../c
 import { MazeManager } from '../levels/levels';
 import { superItems } from '../systems/SuperItems';
 import { progression } from '../systems/ProgressionSystem';
+import { experienceSystem } from '../systems/ExperienceSystem';
+import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from '../graphics/SpriteAtlas';
 import { powerups } from './Powerups';
 
@@ -240,6 +242,9 @@ export class EnemyManager {
         e.returnTimer = 0;
       }
       if (timewarp > 0) spd *= 0.45;
+      if (e.isTitan && profileManager.gameMode === 'custom' && experienceSystem.getTitanBreakerRank() >= 2) {
+        spd *= 0.65; // Titan Breaker Rank 2: 35% movement slow
+      }
 
       if (e.t < 1) {
         e.t += dt * spd;
@@ -456,8 +461,10 @@ export class EnemyManager {
     predWarn: boolean,
     isChronoActive: boolean = false,
     predTimer: number = 0,
-    predMaxTimer: number = 7.0
+    predMaxTimer: number = 7.0,
+    currentLevel: number = 0
   ) {
+    const isExhaustedHost = currentLevel >= 9;
     for (const e of this.enemies) {
       if (e.st === 'dead') continue;
       const ep = this.getPos(e);
@@ -466,7 +473,7 @@ export class EnemyManager {
       let alpha = 1;
 
       if (e.st === 'flee') {
-        col = predWarn ? '#6366f1' : '#2563eb';
+        col = predWarn ? '#6366f1' : (isExhaustedHost ? '#64748b' : '#2563eb');
       }
       if (ret) alpha = 0.5;
       if (e.type === 'phaser' && !ret) alpha = 0.7 + Math.sin(time * 6) * 0.15;
@@ -477,9 +484,9 @@ export class EnemyManager {
       const r = T * (e.isTitan ? 0.48 : 0.38);
 
       const renderGhost = (ox: number = 0) => {
-        // Panic shiver tremor when fleeing
-        const shiverX = e.st === 'flee' ? Math.sin(time * 36 + e.x * 5) * 1.5 : 0;
-        const shiverY = e.st === 'flee' ? Math.cos(time * 36 + e.y * 5) * 1.5 : 0;
+        // Panic shiver tremor when fleeing, or terminal immune exhaustion quiver at Level 10
+        const shiverX = e.st === 'flee' ? Math.sin(time * 36 + e.x * 5) * 1.5 : (isExhaustedHost ? Math.sin(time * 24 + e.x * 2) * 0.7 : 0);
+        const shiverY = e.st === 'flee' ? Math.cos(time * 36 + e.y * 5) * 1.5 : (isExhaustedHost ? Math.cos(time * 24 + e.y * 2) * 0.7 : 0);
         const gx = ep.x + ox + shiverX;
         const gy = ep.y + shiverY;
 
@@ -555,44 +562,7 @@ export class EnemyManager {
         );
         c.restore();
 
-        // Radial Countdown Circular Gauge around Frightened Ghosts
-        if (e.st === 'flee' && predTimer > 0) {
-          const ratio = Math.max(0, Math.min(1, predTimer / Math.max(predMaxTimer, 0.01)));
-          const ringR = r * 1.5;
-          const startAngle = -Math.PI / 2;
-          const endAngle = startAngle + PI2 * ratio;
 
-          c.save();
-          // Faint background guide track
-          c.strokeStyle = 'rgba(0, 240, 255, 0.2)';
-          c.lineWidth = 1.8;
-          c.beginPath();
-          c.arc(gx, gy, ringR, 0, PI2);
-          c.stroke();
-
-          // Active depleting arc
-          const ringCol = predWarn ? (Math.sin(time * 16) > 0 ? '#ff0055' : '#ffffff') : '#00f0ff';
-          c.strokeStyle = ringCol;
-          c.shadowColor = ringCol;
-          c.shadowBlur = predWarn ? 12 : 7;
-          c.lineWidth = 2.0;
-          c.beginPath();
-          c.arc(gx, gy, ringR, startAngle, endAngle);
-          c.stroke();
-
-          // Bright glowing spark at leading edge
-          if (ratio > 0.02) {
-            const sparkX = gx + Math.cos(endAngle) * ringR;
-            const sparkY = gy + Math.sin(endAngle) * ringR;
-            c.fillStyle = '#ffffff';
-            c.shadowColor = ringCol;
-            c.shadowBlur = 8;
-            c.beginPath();
-            c.arc(sparkX, sparkY, 1.8, 0, PI2);
-            c.fill();
-          }
-          c.restore();
-        }
 
         // Chrono Stasis / Temporal Refraction Aura
         if (isChronoActive && e.st === 'active') {
