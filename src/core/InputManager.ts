@@ -84,6 +84,7 @@ export class InputManager {
   public isInstructionsRequested: boolean = false;
   public isSettingsRequested: boolean = false;
   public isNovaRequested: boolean = false;
+  public isInputBlocked: boolean = false;
 
   // ─── Gamepad Extended State & Edge Triggering ───
   public isGamepadConnected: boolean = false;
@@ -385,9 +386,41 @@ export class InputManager {
     }
   }
 
+  public clearAllInputs() {
+    this.keys = {};
+    this.dir = { x: 0, y: 0 };
+    this.nextDir = { x: 0, y: 0 };
+    this.heldDirections = [];
+    this.isDashRequested = false;
+    this.isChronoRequested = false;
+    this.isChronoKeyHeld = false;
+    this.isPauseRequested = false;
+    this.isAudioToggleRequested = false;
+    this.isStartRequested = false;
+    this.isRestartRequested = false;
+    this.isCodexRequested = false;
+    this.isBadgesRequested = false;
+    this.isRestoreRequested = false;
+    this.isLeaderboardRequested = false;
+    this.isInstructionsRequested = false;
+    this.isSettingsRequested = false;
+    this.isNovaRequested = false;
+    this.heldShiftKeys.clear();
+    this.cancelChronoInput();
+    for (const k in this.gpJustPressed) {
+      this.gpJustPressed[k] = false;
+    }
+  }
+
   private setupKeyboard() {
     window.addEventListener('blur', () => this.cancelChronoInput());
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (this.isInputBlocked) return;
+
       this.keys[e.code] = true;
 
       const k = e.key ? e.key.toLowerCase() : '';
@@ -498,6 +531,12 @@ export class InputManager {
     });
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (this.isInputBlocked) return;
+
       this.keys[e.code] = false;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         this.heldShiftKeys.delete(e.code);
@@ -570,6 +609,7 @@ export class InputManager {
     for (const k in this.gpJustPressed) {
       this.gpJustPressed[k] = false;
     }
+    if (this.isInputBlocked) return;
 
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     let gp: Gamepad | null = null;

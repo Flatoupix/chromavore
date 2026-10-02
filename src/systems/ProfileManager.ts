@@ -21,6 +21,7 @@ export interface PlayerProfile {
   customHiScore?: number;
   customBestKills?: number;
   badges: Record<string, boolean>;
+  discoveredSkills?: string[];
   updatedAt: string;
 }
 
@@ -74,6 +75,8 @@ class ProfileManager {
     try { badges = JSON.parse(localStorage.getItem('chv_badges') || '{}'); } catch {}
     let skillUpgrades = {};
     try { skillUpgrades = JSON.parse(localStorage.getItem('chv_skill_upgrades') || '{}'); } catch {}
+    let discoveredSkills: string[] = [];
+    try { discoveredSkills = JSON.parse(localStorage.getItem('chv_discovered_skills') || '[]'); } catch {}
 
     const savedMode = (localStorage.getItem('chv_game_mode') || 'arcade') as 'arcade' | 'custom';
 
@@ -93,6 +96,7 @@ class ProfileManager {
       customHiScore: parseInt(localStorage.getItem('chv_custom_hi') || '0', 10),
       customBestKills: parseInt(localStorage.getItem('chv_custom_kills') || '0', 10),
       badges,
+      discoveredSkills,
       updatedAt: new Date().toISOString()
     };
     this.saveProfile(profile);
@@ -119,8 +123,23 @@ class ProfileManager {
       localStorage.setItem('chv_custom_hi', (this.profile.customHiScore || 0).toString());
       localStorage.setItem('chv_custom_kills', (this.profile.customBestKills || 0).toString());
       localStorage.setItem('chv_badges', JSON.stringify(this.profile.badges));
+      localStorage.setItem('chv_discovered_skills', JSON.stringify(this.profile.discoveredSkills || []));
     } catch {}
     this.pushRemote();
+  }
+
+  public isSkillDiscovered(skillId: string): boolean {
+    return Array.isArray(this.profile.discoveredSkills) && this.profile.discoveredSkills.includes(skillId);
+  }
+
+  public markSkillDiscovered(skillId: string) {
+    if (!Array.isArray(this.profile.discoveredSkills)) {
+      this.profile.discoveredSkills = [];
+    }
+    if (!this.profile.discoveredSkills.includes(skillId)) {
+      this.profile.discoveredSkills.push(skillId);
+      this.saveProfile();
+    }
   }
 
   public isChromamancerUnlocked(): boolean {

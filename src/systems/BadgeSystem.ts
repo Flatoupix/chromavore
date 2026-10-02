@@ -33,7 +33,7 @@ export const BADGES: Record<string, BadgeDef> = {
   kills950:     { id: 'kills950',     name: 'CRYO SHATTER',         desc: 'Reach 950 ghosts (Unlocks Cryo Freeze V1)',           icon: 'cryo', category: 'kill', killsRequired: 950 },
   kills1250:    { id: 'kills1250',    name: 'LIGHT TSUNAMI',        desc: 'Reach 1,250 ghosts (Unlocks Royal Wave V1)',          icon: 'tsunami', category: 'kill', killsRequired: 1250 },
   kills1600:    { id: 'kills1600',    name: 'CYBER DASH V2',        desc: 'Reach 1,600 ghosts (16:9 Arena & 4-Tile Dash)',       icon: 'screen', category: 'kill', killsRequired: 1600 },
-  kills2000:    { id: 'kills2000',    name: 'SUPER PELLET',         desc: 'Reach 2,000 ghosts (Frightens reinforcements too)',   icon: 'super_pellet', category: 'kill', killsRequired: 2000 },
+  kills2000:    { id: 'kills2000',    name: 'SUPER PELLET',         desc: 'Reach 550 ghosts (Frightens reinforcements too)',     icon: 'super_pellet', category: 'kill', killsRequired: 550 },
   kills2400:    { id: 'kills2400',    name: 'GIGA EMP V2',          desc: 'Reach 2,400 ghosts (Unlocks Giga EMP V2)',            icon: 'wiggle', category: 'kill', killsRequired: 2400 },
   kills2800:    { id: 'kills2800',    name: 'QUANTUM DILATION V2',  desc: 'Reach 2,800 ghosts (Unlocks TimeShift V2)',           icon: 'chrono', category: 'kill', killsRequired: 2800 },
   kills3000:    { id: 'kills3000',    name: 'HD DARKSYNTH OST',     desc: 'Reach 3,000 ghosts (Unlocks Studio HD Soundtrack)',   icon: 'music', category: 'kill', killsRequired: 3000 },

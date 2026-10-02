@@ -382,6 +382,76 @@ export class Player {
     if (this.trail.length > 8) this.trail.pop();
   }
 
+  /**
+   * Controlled spatial knockback / repulsion that respects tile grid and walls.
+   * Finds the farthest walkable tile along the angle vector up to distanceTiles.
+   */
+  public applyRepulsion(angle: number, distanceTiles: number, maze: MazeManager): boolean {
+    const startTileX = this.x;
+    const startTileY = this.y;
+
+    let bestX = startTileX;
+    let bestY = startTileY;
+
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    for (let step = 1; step <= Math.ceil(distanceTiles); step++) {
+      const candidateX = this.wrapX(Math.round(startTileX + cos * step));
+      const candidateY = Math.round(startTileY + sin * step);
+
+      if (candidateY < 1 || candidateY >= maze.rows - 1) break;
+      if (!maze.isWalkable(candidateX, candidateY, false)) break;
+
+      bestX = candidateX;
+      bestY = candidateY;
+    }
+
+    if (bestX !== startTileX || bestY !== startTileY) {
+      this.x = bestX;
+      this.y = bestY;
+      this.fx = bestX;
+      this.fy = bestY;
+      this.t = 1;
+      this.dx = 0;
+      this.dy = 0;
+      this.ndx = 0;
+      this.ndy = 0;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Controlled gravitational pull that maintains grid integrity without floating offsets.
+   * If player is stationary or moving away from vortex, nudges or slows player towards pull direction.
+   */
+  public applyGravitationalPull(pullAngle: number, pullDistancePx: number, maze: MazeManager) {
+    const pullCos = Math.cos(pullAngle);
+    const pullSin = Math.sin(pullAngle);
+
+    // If stationary, check if an open walkable corridor leads towards the pull direction
+    if (this.dx === 0 && this.dy === 0) {
+      const wantDx = Math.abs(pullCos) > 0.4 ? Math.sign(pullCos) : 0;
+      const wantDy = Math.abs(pullSin) > 0.4 ? Math.sign(pullSin) : 0;
+      if (wantDx !== 0 && maze.isWalkable(this.wrapX(this.x + wantDx), this.y, false)) {
+        this.doMove(wantDx, 0, maze);
+      } else if (wantDy !== 0 && maze.isWalkable(this.x, this.y + wantDy, false)) {
+        this.doMove(0, wantDy, maze);
+      }
+    } else {
+      // If moving along the corridor, pull affects speed (boost when towards vortex, drag when away)
+      const dotProduct = this.dx * pullCos + this.dy * pullSin;
+      if (dotProduct < -0.3) {
+        // Drag when fleeing vortex
+        this.speed = Math.max(P_SPEED * 0.65, this.speed - pullDistancePx * 0.12);
+      } else if (dotProduct > 0.3) {
+        // Pull forward when moving towards vortex
+        this.speed += pullDistancePx * 0.15;
+      }
+    }
+  }
+
   public triggerDash(
     maze: MazeManager,
     enemies: any[],

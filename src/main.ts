@@ -22,6 +22,8 @@ import { experienceSystem, SKILL_NODES, type LevelUpEvent } from './systems/Expe
 import { profileManager } from './systems/ProfileManager';
 import { wobbleBanner } from './graphics/WobbleBanner';
 import { SingularityBoss } from './entities/SingularityBoss';
+import { formatScoreCompact } from './utils/format';
+import { SKILL_COMBOS } from './core/InputManager';
 if (import.meta.env.DEV) {
   import('./utils/adminReset');
 }
@@ -68,6 +70,10 @@ class Game {
   public bonusTsunamiX: number = -1;
   public bonusVortex: { x: number; y: number; life: number; maxLife: number } | null = null;
   public bonusNovaRing: { x: number; y: number; radius: number; life: number } | null = null;
+  public bonusVortexKillXp: number = 0;
+  public bonusVortexMilestoneXp: number = 0;
+  public bonusVortexMilestonesHit: Set<number> = new Set();
+  public skillDiscoveryQueue: string[] = [];
   public score: number = 0;
   public dScore: number = 0;
   public lives: number = 3;
@@ -144,6 +150,20 @@ class Game {
 
     this.setupNameModal();
     this.setupProfileModals();
+    this.setupSkillDiscoveryModal();
+    experienceSystem.onSkillUnlockedCallback = (skillId: string) => {
+      const activeMap: Record<string, string> = {
+        emp_overcharge: 'wiggle',
+        hyper_nitro: 'nitro',
+        quantum_laser: 'quantum_laser',
+        kinetic_bastion: 'kinetic_bastion',
+        singularity_nova: 'singularity_nova'
+      };
+      const activeSkill = activeMap[skillId];
+      if (activeSkill) {
+        this.queueSkillDiscovery(activeSkill);
+      }
+    };
     badges.syncWithProfile();
     this.configureArena();
     const vOverlay = document.getElementById('chv-version-overlay');
@@ -156,15 +176,35 @@ class Game {
     this.startLoop();
   }
 
+  public isModalActive(): boolean {
+    const nameModal = document.getElementById('name-modal');
+    if (nameModal && nameModal.style.display !== 'none' && nameModal.style.display !== '') return true;
+    const restoreModal = document.getElementById('restore-modal');
+    if (restoreModal && restoreModal.style.display !== 'none' && restoreModal.style.display !== '') return true;
+    const wipeModal = document.getElementById('wipe-modal');
+    if (wipeModal && wipeModal.style.display !== 'none' && wipeModal.style.display !== '') return true;
+    const skillModal = document.getElementById('skill-discovery-modal');
+    if (skillModal && skillModal.style.display !== 'none' && skillModal.style.display !== '') return true;
+    return false;
+  }
+
   private setupNameModal() {
     const modal = document.getElementById('name-modal')!;
-    const input = document.getElementById('pseudo-input') as HTMLInputElement;
+    const inputEl = document.getElementById('pseudo-input') as HTMLInputElement;
     const submit = document.getElementById('pseudo-submit')!;
     const skip = document.getElementById('pseudo-skip')!;
 
+    const closeNameModal = (targetState: 'gameover' | 'menu') => {
+      modal.style.display = 'none';
+      input.isInputBlocked = false;
+      input.clearAllInputs();
+      this.state = targetState;
+      sounds.play('click');
+    };
+
     const save = () => {
       const savedLast = profileManager.profile.pseudo || 'PLAYER1';
-      const pseudo = (input.value.trim().toUpperCase() || savedLast).slice(0, 12);
+      const pseudo = (inputEl.value.trim().toUpperCase() || savedLast).slice(0, 12);
       profileManager.setPseudo(pseudo);
       const date = new Date().toISOString();
       this.playerDate = date;
@@ -177,37 +217,48 @@ class Game {
         mode: gameMode,
         date
       }, gameMode);
-      modal.style.display = 'none';
-      this.state = 'gameover';
-      sounds.play('click');
-    };
-
-    const closeToMenu = () => {
-      modal.style.display = 'none';
-      this.state = 'menu';
-      sounds.play('click');
+      closeNameModal('gameover');
     };
 
     submit.addEventListener('click', save);
-    input.addEventListener('keydown', (e) => {
+    inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.stopPropagation();
         save();
       } else if (e.key === 'Escape') {
         e.stopPropagation();
-        closeToMenu();
+        closeNameModal('menu');
       }
     });
-    input.addEventListener('input', () => { input.value = input.value.toUpperCase(); });
+    inputEl.addEventListener('input', () => { inputEl.value = inputEl.value.toUpperCase(); });
+
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeNameModal('menu');
+      }
+      if (e.key === 'Tab') {
+        const focusable = modal.querySelectorAll<HTMLElement>('input, button');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
 
     skip.addEventListener('click', () => {
-      modal.style.display = 'none';
-      this.state = 'gameover';
+      closeNameModal('gameover');
     });
 
     const menuBtn = document.getElementById('pseudo-menu');
     if (menuBtn) {
-      menuBtn.addEventListener('click', closeToMenu);
+      menuBtn.addEventListener('click', () => closeNameModal('menu'));
     }
   }
 
@@ -219,6 +270,12 @@ class Game {
     const restoreSubmit = document.getElementById('restore-submit')!;
     const restoreCancel = document.getElementById('restore-cancel')!;
     const restoreStatus = document.getElementById('restore-status')!;
+
+    const closeRestore = () => {
+      restoreModal.style.display = 'none';
+      input.isInputBlocked = false;
+      input.clearAllInputs();
+    };
 
     const doRestore = async () => {
       const p = restorePseudo.value.trim().toUpperCase();
@@ -241,7 +298,7 @@ class Game {
         badges.bestMadnessKills = profileManager.profile.bestMadnessKills;
         badges.syncWithProfile();
         setTimeout(() => {
-          restoreModal.style.display = 'none';
+          closeRestore();
           this.state = 'menu';
           sounds.play('badge');
         }, 1200);
@@ -252,8 +309,25 @@ class Game {
     };
 
     restoreSubmit.addEventListener('click', doRestore);
-    restoreCancel.addEventListener('click', () => {
-      restoreModal.style.display = 'none';
+    restoreCancel.addEventListener('click', closeRestore);
+    restoreModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeRestore();
+      }
+      if (e.key === 'Tab') {
+        const focusable = restoreModal.querySelectorAll<HTMLElement>('input, button');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     });
     restorePseudo.addEventListener('keydown', (e) => e.stopPropagation());
     restoreCode.addEventListener('keydown', (e) => {
@@ -266,12 +340,18 @@ class Game {
     const wipeConfirm = document.getElementById('wipe-confirm')!;
     const wipeCancel = document.getElementById('wipe-cancel')!;
 
+    const closeWipe = () => {
+      wipeModal.style.display = 'none';
+      input.isInputBlocked = false;
+      input.clearAllInputs();
+    };
+
     wipeConfirm.addEventListener('click', () => {
       profileManager.wipeAllData();
       badges.hiScore = 0;
       badges.bestMadnessKills = 0;
       badges.unlocked = {};
-      wipeModal.style.display = 'none';
+      closeWipe();
       this.state = 'menu';
       particles.shake(6, 0.25);
       particles.flash('#ff0055', 0.3);
@@ -279,8 +359,25 @@ class Game {
       sounds.play('powerup');
     });
 
-    wipeCancel.addEventListener('click', () => {
-      wipeModal.style.display = 'none';
+    wipeCancel.addEventListener('click', closeWipe);
+    wipeModal.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        closeWipe();
+      }
+      if (e.key === 'Tab') {
+        const focusable = wipeModal.querySelectorAll<HTMLElement>('button');
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     });
   }
 
@@ -290,15 +387,157 @@ class Game {
     const restoreCode = document.getElementById('restore-code-input') as HTMLInputElement;
     const restoreStatus = document.getElementById('restore-status');
     if (!restoreModal) return;
+    input.isInputBlocked = true;
+    input.clearAllInputs();
     if (restorePseudo) restorePseudo.value = profileManager.profile.pseudo || '';
     if (restoreCode) restoreCode.value = '';
     if (restoreStatus) restoreStatus.style.display = 'none';
     restoreModal.style.display = 'flex';
+    setTimeout(() => {
+      if (restorePseudo) restorePseudo.focus();
+    }, 60);
   }
 
   public showWipeModal() {
     const wipeModal = document.getElementById('wipe-modal');
-    if (wipeModal) wipeModal.style.display = 'flex';
+    if (!wipeModal) return;
+    input.isInputBlocked = true;
+    input.clearAllInputs();
+    wipeModal.style.display = 'flex';
+    const cancelBtn = document.getElementById('wipe-cancel');
+    setTimeout(() => {
+      if (cancelBtn) cancelBtn.focus();
+    }, 60);
+  }
+
+  public queueSkillDiscovery(skillId: string) {
+    if (profileManager.isSkillDiscovered(skillId)) return;
+    if (!this.skillDiscoveryQueue.includes(skillId)) {
+      this.skillDiscoveryQueue.push(skillId);
+    }
+    if (this.skillDiscoveryQueue.length === 1 && !this.isModalActive()) {
+      this.showNextSkillDiscovery();
+    }
+  }
+
+  private showNextSkillDiscovery() {
+    if (this.skillDiscoveryQueue.length === 0) return;
+    const skillId = this.skillDiscoveryQueue[0];
+    const modal = document.getElementById('skill-discovery-modal');
+    if (!modal) return;
+
+    const combo = SKILL_COMBOS.find(c => c.id === skillId);
+    if (!combo) {
+      this.skillDiscoveryQueue.shift();
+      return;
+    }
+
+    const titleEl = document.getElementById('discovery-title');
+    const descEl = document.getElementById('discovery-desc');
+    const iconEl = document.getElementById('discovery-icon');
+    const seqEl = document.getElementById('discovery-sequence');
+    const altSeqEl = document.getElementById('discovery-alt-sequence');
+    const costEl = document.getElementById('discovery-cost');
+    const cdEl = document.getElementById('discovery-cd');
+    const dismissBtn = document.getElementById('discovery-dismiss') as HTMLButtonElement;
+
+    const skillInfo: Record<string, { icon: string; desc: string; cdText: string }> = {
+      wiggle: {
+        icon: '⚡',
+        desc: 'Unleashes an expanding EMP shockwave that stuns surrounding ghosts and repels swarms.',
+        cdText: '14.0s'
+      },
+      nitro: {
+        icon: '🔥',
+        desc: 'Ignites high-velocity plasma thrusters leaving a burning trail that obliterates ghosts in pursuit.',
+        cdText: '10.0s'
+      },
+      quantum_laser: {
+        icon: '💥',
+        desc: 'Fires four cardinal lasers across the maze corridors, vaporizing ghosts along their paths.',
+        cdText: '24.0s'
+      },
+      kinetic_bastion: {
+        icon: '🛡️',
+        desc: 'Erects a protective kinetic dome that absorbs hits with Chrono energy and triggers a counterwave.',
+        cdText: '26.0s'
+      },
+      singularity_nova: {
+        icon: '🌌',
+        desc: 'Triggers a devastating micro-Singularity that pulls in and disintegrates every ghost in the arena.',
+        cdText: '40.0s'
+      }
+    };
+
+    const info = skillInfo[skillId] || { icon: '⚡', desc: combo.name, cdText: `${combo.baseCd.toFixed(1)}s` };
+
+    if (titleEl) titleEl.textContent = combo.name;
+    if (descEl) descEl.textContent = info.desc;
+    if (iconEl) iconEl.textContent = info.icon;
+    if (costEl) costEl.textContent = `${combo.manaCost} MP`;
+    if (cdEl) cdEl.textContent = info.cdText;
+
+    const arrowSymbols: Record<string, string> = { up: '▲', down: '▼', left: '◄', right: '►' };
+    if (seqEl) {
+      seqEl.innerHTML = '';
+      combo.sequence.forEach(dir => {
+        const span = document.createElement('span');
+        span.style.cssText = 'background:#00f0ff;color:#000;font-weight:bold;font-size:16px;padding:4px 10px;border-radius:4px;box-shadow:0 0 10px rgba(0,240,255,0.5);';
+        span.textContent = arrowSymbols[dir] || dir;
+        seqEl.appendChild(span);
+      });
+    }
+
+    if (altSeqEl) {
+      if (combo.altSequence) {
+        altSeqEl.textContent = `Alternative: ${combo.altSequence.map(d => arrowSymbols[d] || d).join(' ')}`;
+      } else {
+        altSeqEl.textContent = '';
+      }
+    }
+
+    input.isInputBlocked = true;
+    input.clearAllInputs();
+    modal.style.display = 'flex';
+    sounds.play('badge');
+
+    setTimeout(() => {
+      if (dismissBtn) dismissBtn.focus();
+    }, 60);
+  }
+
+  private setupSkillDiscoveryModal() {
+    const modal = document.getElementById('skill-discovery-modal');
+    const dismissBtn = document.getElementById('discovery-dismiss');
+    if (!modal || !dismissBtn) return;
+
+    const dismiss = () => {
+      const finishedId = this.skillDiscoveryQueue.shift();
+      if (finishedId) {
+        profileManager.markSkillDiscovered(finishedId);
+      }
+      modal.style.display = 'none';
+      input.isInputBlocked = false;
+      input.clearAllInputs();
+      sounds.play('click');
+
+      if (this.skillDiscoveryQueue.length > 0) {
+        setTimeout(() => this.showNextSkillDiscovery(), 200);
+      }
+    };
+
+    dismissBtn.addEventListener('click', dismiss);
+    modal.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+        e.stopPropagation();
+        e.preventDefault();
+        dismiss();
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        dismissBtn.focus();
+      }
+    });
   }
 
   public triggerEpilogue() {
@@ -564,8 +803,11 @@ class Game {
     const inputEl = document.getElementById('pseudo-input') as HTMLInputElement;
     if (!modal || !titleEl || !scoreEl || !inputEl) return;
 
+    input.isInputBlocked = true;
+    input.clearAllInputs();
+
     titleEl.textContent = 'NEW HIGH SCORE!';
-    scoreEl.textContent = `${this.pendingKills} GHOSTS PURGED (STREAK x${this.pendingStreak})`;
+    scoreEl.textContent = `${this.pendingKills} GHOSTS PURGED (${formatScoreCompact(this.pendingScore)} PTS)`;
 
     const lastPseudo = localStorage.getItem('chv_last_pseudo') || '';
     inputEl.value = lastPseudo;
@@ -625,7 +867,7 @@ class Game {
     // Click on canvas / window
     window.addEventListener('click', (e: MouseEvent) => {
       if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#touch-deck')) return;
-      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#name-modal')) return;
+      if (this.isModalActive() || ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('#name-modal, #restore-modal, #wipe-modal, #skill-discovery-modal'))) return;
       const rect = this.canvas.getBoundingClientRect();
       const curCw = this.renderer ? this.renderer.cw : this.canvas.width;
       const cx = (e.clientX - rect.left) * (curCw / rect.width);
@@ -1156,7 +1398,7 @@ class Game {
     let lastTouchTime = 0;
 
     window.addEventListener('touchstart', (e: TouchEvent) => {
-      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('.mobile-btn, #mobile-controls button, #name-modal, #confirm-wipe-modal')) return;
+      if (this.isModalActive() || ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('.mobile-btn, #mobile-controls button, #name-modal, #restore-modal, #wipe-modal, #skill-discovery-modal'))) return;
       if (!e.touches[0]) return;
       touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       const now = performance.now();
@@ -1169,7 +1411,7 @@ class Game {
     }, { passive: true });
 
     window.addEventListener('touchmove', (e: TouchEvent) => {
-      if ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('.mobile-btn, #mobile-controls button, #name-modal, #confirm-wipe-modal')) return;
+      if (this.isModalActive() || ((e.target as HTMLElement)?.closest && (e.target as HTMLElement).closest('.mobile-btn, #mobile-controls button, #name-modal, #restore-modal, #wipe-modal, #skill-discovery-modal'))) return;
       if (!touchStart || !e.touches[0]) return;
       const dx = e.touches[0].clientX - touchStart.x;
       const dy = e.touches[0].clientY - touchStart.y;
@@ -1543,6 +1785,15 @@ class Game {
     this.readyT = 1.5;
     sounds.play('powerup');
     particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« LET\'S HUNT »', '#ffd700', 22);
+
+    if (this.currentGameMode === 'custom') {
+      for (const combo of SKILL_COMBOS) {
+        const av = input.getSkillAvailability(combo.id);
+        if (av.unlocked && !profileManager.isSkillDiscovered(combo.id)) {
+          this.queueSkillDiscovery(combo.id);
+        }
+      }
+    }
   }
 
   private warpToLevel(lvlIndex: number) {
@@ -1902,7 +2153,7 @@ class Game {
       const milestoneTier = (this.madnessStreak / 10);
       const ghostStreakBonus = 2500 * milestoneTier * (this.combo.m || 1);
       this.score += ghostStreakBonus;
-      particles.addPop(ex, ey - 32, `KILL STREAK x${this.madnessStreak} ! +${ghostStreakBonus}`, '#ffd700', 16);
+      particles.addPop(ex, ey - 32, `KILL STREAK x${this.madnessStreak} ! +${formatScoreCompact(ghostStreakBonus)}`, '#ffd700', 16);
       sounds.play('streak');
     }
 
@@ -1926,7 +2177,7 @@ class Game {
     const ghostScoreMult = experienceSystem.getGhostKillScoreMultiplier();
     const pts = Math.round(250 * Math.min(this.madnessStreak, 32) * ghostScoreMult);
     this.score += pts;
-    particles.addPop(ex, ey - 15, '+' + pts, '#ffd700', 16);
+    particles.addPop(ex, ey - 15, '+' + formatScoreCompact(pts), '#ffd700', 16);
 
     // Chromavore 4.0.1 Balanced XP Engine: +30 to 190 XP based on combo (or +250 for titan)
     const baseGhostXp = e.isTitan ? 250 : Math.round(30 + 10 * Math.min(16, Math.max(1, this.combo.m)));
@@ -2056,12 +2307,44 @@ class Game {
     this.combo = { n: 0, t: 0, m: 1 };
   }
 
+  private onBonusGhostKilled(g: { x: number; y: number; color?: string }) {
+    if (profileManager.gameMode === 'custom' && this.bonusVortexKillXp < 300) {
+      this.bonusVortexKillXp += 2;
+      const lvlUp = experienceSystem.addXp(2, 'vortex_kill');
+      if (lvlUp) {
+        this.onPlayerLevelUp(lvlUp, this.bonusPacPos.x, this.bonusPacPos.y);
+      }
+    }
+  }
+
+  private checkBonusScoreMilestones() {
+    if (profileManager.gameMode !== 'custom') return;
+    const milestones = [50000, 100000, 200000, 350000];
+    for (const m of milestones) {
+      if (this.bonusScore >= m && !this.bonusVortexMilestonesHit.has(m)) {
+        this.bonusVortexMilestonesHit.add(m);
+        if (this.bonusVortexMilestoneXp < 150) {
+          const mXp = 35;
+          this.bonusVortexMilestoneXp += mXp;
+          particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 35, `+${mXp} XP (MILESTONE ${formatScoreCompact(m)} PTS)`, '#00ffaa', 18);
+          const lvlUp = experienceSystem.addXp(mXp, 'vortex_milestone');
+          if (lvlUp) {
+            this.onPlayerLevelUp(lvlUp, this.bonusPacPos.x, this.bonusPacPos.y);
+          }
+        }
+      }
+    }
+  }
+
   public enterBonusStage() {
     this.state = 'bonus';
     this.bonusTimer = BONUS_DURATION;
     this.bonusKills = 0;
     this.bonusScore = 0;
     this.bonusTallyTimer = 0;
+    this.bonusVortexKillXp = 0;
+    this.bonusVortexMilestoneXp = 0;
+    this.bonusVortexMilestonesHit.clear();
     this.bonusPacPos = { x: BONUS_ARENA_W / 2, y: BONUS_ARENA_H / 2 };
     this.bonusPacVel = { x: 0, y: 0 };
     this.bonusPacAngle = 0;
@@ -2205,7 +2488,8 @@ class Game {
           this.bonusScore += ghostPts;
           this.score += ghostPts;
           frameScore += ghostPts;
-          particles.addPop(g.x, g.y - 12, '+' + ghostPts, '#00ffff', 14);
+          this.onBonusGhostKilled(g);
+          particles.addPop(g.x, g.y - 12, '+' + formatScoreCompact(ghostPts), '#00ffff', 14);
           particles.emit(g.x, g.y, 8, '#00ffff', { speed: 150, size: 4, life: 0.5 });
           const lastIndex = this.bonusActiveCount - 1;
           if (i !== lastIndex) {
@@ -2320,9 +2604,10 @@ class Game {
         this.bonusScore += ghostPts;
         this.score += ghostPts;
         frameScore += ghostPts;
+        this.onBonusGhostKilled(g);
 
         // Floating points popup & visual sparks directly on the killed enemy
-        particles.addPop(g.x, g.y - 12, '+' + ghostPts, '#ffd700', 14);
+        particles.addPop(g.x, g.y - 12, '+' + formatScoreCompact(ghostPts), '#ffd700', 14);
         particles.emit(g.x, g.y, 8, g.color, { speed: 130, size: 3.5, life: 0.45 });
 
         // O(1) Swap-and-Pop removal from active pool
@@ -2369,6 +2654,8 @@ class Game {
         this.triggerMultikillBanner();
       }
     }
+
+    this.checkBonusScoreMilestones();
 
     // ─────────────────────────────────────────────────────────────
     // Vortex Mode Special Item Capsules Spawning & Collection
@@ -2434,6 +2721,7 @@ class Game {
               const pts = 500 + Math.min(3000, this.bonusKills * 25);
               this.bonusScore += pts;
               this.score += pts;
+              this.onBonusGhostKilled(g);
               particles.emit(g.x, g.y, 8, '#ffd700', { speed: 180, size: 4, life: 0.5 });
               const lastIdx = this.bonusActiveCount - 1;
               if (gi !== lastIdx) {
@@ -2475,7 +2763,7 @@ class Game {
 
         this.bonusScore += itemScore;
         this.score += itemScore;
-        particles.addPop(it.x, it.y - 25, `${it.name}! +${itemScore.toLocaleString('en-US')}`, it.color, 24);
+        particles.addPop(it.x, it.y - 25, `${it.name}! +${formatScoreCompact(itemScore)}`, it.color, 24);
 
         if (itemKills > 0) {
           this.bonusBatchKills += itemKills;
@@ -2650,7 +2938,8 @@ class Game {
         const ghostPts = 200 + Math.min(3000, this.bonusKills * 25);
         this.bonusScore += ghostPts;
         this.score += ghostPts;
-        particles.addPop(g.x, g.y - 12, '+' + ghostPts, '#ffd700', 14);
+        this.onBonusGhostKilled(g);
+        particles.addPop(g.x, g.y - 12, '+' + formatScoreCompact(ghostPts), '#ffd700', 14);
         particles.emit(g.x, g.y, 8, g.color, { speed: 170, size: 4, life: 0.65 });
       }
       this.bonusActiveCount = 0;
@@ -2665,12 +2954,17 @@ class Game {
         particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 70, `+${careerBonusKills} CAREER KILLS (100:1)`, '#ffd700', 20);
       }
 
-      // Vortex Mode XP attribution: normalized bonus (max 450 XP per session)
-      const vortexXp = Math.min(450, Math.floor(this.bonusScore / 50000));
-      if (vortexXp > 0) {
-        const lvlUpVortex = experienceSystem.addXp(vortexXp, 'vortex_score');
-        if (lvlUpVortex) {
-          this.onPlayerLevelUp(lvlUpVortex, BONUS_ARENA_W / 2, BONUS_ARENA_H / 2);
+      // Vortex Mode XP attribution: normalized delta bonus up to 450 XP max per session (no double counting)
+      if (profileManager.gameMode === 'custom') {
+        const totalEarned = this.bonusVortexKillXp + this.bonusVortexMilestoneXp;
+        const remainingCap = Math.max(0, 450 - totalEarned);
+        const finalBonusXp = Math.min(remainingCap, Math.floor(this.bonusScore / 60000));
+        if (finalBonusXp > 0) {
+          const lvlUpVortex = experienceSystem.addXp(finalBonusXp, 'vortex_score');
+          if (lvlUpVortex) {
+            this.onPlayerLevelUp(lvlUpVortex, BONUS_ARENA_W / 2, BONUS_ARENA_H / 2);
+          }
+          particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 95, `+${finalBonusXp} VORTEX CLEAR XP`, '#00ffaa', 18);
         }
       }
 
@@ -2828,6 +3122,9 @@ class Game {
   }
 
   private onCollectDot(c: number, r: number) {
+    if (!Number.isInteger(r) || !Number.isInteger(c)) return;
+    if (r < 0 || r >= this.maze.rows || c < 0 || c >= this.maze.cols) return;
+    if (!this.maze.dotMap || !this.maze.dotMap[r]) return;
     if (this.maze.dotMap[r][c] > 0) {
       const isPellet = this.maze.dotMap[r][c] === 3;
       this.maze.dotMap[r][c] = 0;
@@ -2859,7 +3156,7 @@ class Game {
         const isSuperPellet = progression.getSkillLevel('super_pellet') >= 1;
         const pts = Math.round(50 * this.combo.m * (1 + aetherBonus));
         this.score += pts;
-        particles.addPop(px, py - 15, '+' + pts, '#ff5555', 18);
+        particles.addPop(px, py - 15, '+' + formatScoreCompact(pts), '#ff5555', 18);
         particles.emit(px, py, 20, C_PELLET, { speed: 100, size: 4, life: 0.6 });
         powerups.triggerPredator(this.enemyManager.enemies, isSuperPellet);
         particles.shake(4, 0.2);
@@ -2938,7 +3235,7 @@ class Game {
         }
 
         // Floating +XXX score popup above eaten dot!
-        particles.addPop(px, py - 10, '+' + pts, CC[tier], 10 + tier * 2);
+        particles.addPop(px, py - 10, '+' + formatScoreCompact(pts), CC[tier], 10 + tier * 2);
         particles.emit(px, py, 2 + tier * 2, C_DOT, { speed: 40 + tier * 20, size: 2 + tier, life: 0.3 + tier * 0.1 });
         sounds.play('dot', this.combo.n);
 
@@ -2973,7 +3270,7 @@ class Game {
 
         const bonus = 2000 + (this.wave - 1) * 500;
         this.score += bonus;
-        particles.addPop(px, py - 25, `+${bonus} LEVEL CLEAR BONUS!`, '#ffd700', 22);
+        particles.addPop(px, py - 25, `+${formatScoreCompact(bonus)} LEVEL CLEAR BONUS!`, '#ffd700', 22);
         sounds.play('powerup');
         particles.flash('#ffd700', 0.25);
         particles.shake(6, 0.25);
@@ -3089,6 +3386,11 @@ class Game {
   }
 
   private update(dt: number) {
+    if (this.isModalActive()) {
+      input.clearAllInputs();
+      return;
+    }
+
     input.pollGamepad();
     this.updateGamepadNavigation(dt);
 
@@ -3734,7 +4036,7 @@ class Game {
           const bossResult = this.boss.update(dt * chronoScale, this.player, this.enemyManager, this.maze, this.time);
           if (bossResult.bossDefeated) {
             this.score += bossResult.scoreBonus;
-            particles.addPop(CW / 2, HUD_H + 50, '★ BOSS ANNIHILATED: +50,000 PTS! ★', '#ffd700', 26);
+            particles.addPop(CW / 2, HUD_H + 50, '★ BOSS ANNIHILATED: +' + formatScoreCompact(bossResult.scoreBonus || 50000) + ' PTS! ★', '#ffd700', 26);
             badges.unlock('loop1');
             if (this.loopCount >= 1) badges.unlock('loop2');
             this.triggerEpilogue();

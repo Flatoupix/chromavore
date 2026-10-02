@@ -23,6 +23,7 @@ class ExperienceSystem {
   public consecutiveLevelUpsInLife: number = 0;
   public recentLevelUpBannerTimer: number = 0;
   public lastLevelUpInfo: LevelUpEvent | null = null;
+  public onSkillUnlockedCallback?: (skillId: string) => void;
 
   /**
    * Balanced Account Level Curve (v4.0.1):
@@ -179,9 +180,14 @@ class ExperienceSystem {
     if (!profileManager.profile.skillUpgrades) {
       profileManager.profile.skillUpgrades = {};
     }
-    profileManager.profile.skillUpgrades[skillId] = (profileManager.profile.skillUpgrades[skillId] || 0) + 1;
+    const newRank = (profileManager.profile.skillUpgrades[skillId] || 0) + 1;
+    profileManager.profile.skillUpgrades[skillId] = newRank;
     profileManager.saveProfile();
     sounds.play('badge');
+
+    if (newRank === 1 && this.onSkillUnlockedCallback) {
+      this.onSkillUnlockedCallback(skillId);
+    }
     return true;
   }
 

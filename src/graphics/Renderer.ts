@@ -16,6 +16,8 @@ import { progression, SKILL_TREE } from '../systems/ProgressionSystem';
 import { experienceSystem, SKILL_NODES, SKILL_TREE_BRANCHES } from '../systems/ExperienceSystem';
 import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from './SpriteAtlas';
+import { formatScoreCompact } from '../utils/format';
+import { SKILL_COMBOS } from '../core/InputManager';
 
 export interface EffectTimer {
   label: string;
@@ -449,6 +451,183 @@ export class Renderer {
     c.textAlign = 'center';
     c.fillText(input.sequenceFeedback || 'ENTER 4 DIRECTIONS', this.cw / 2, panelY + 99, panelW - 24);
 
+    // ─── DYNAMIC COMBO HELPER GUIDE WITH PREFIX FILTERING ───
+    const buf = input.sequenceBuffer;
+    const isWide = this.cw >= 680;
+
+    const cardsData = SKILL_COMBOS.map(combo => {
+      const av = input.getSkillAvailability(combo.id);
+      const seq = combo.sequence;
+      const altSeq = combo.altSequence;
+
+      let matchedSeq: string[] = seq;
+      let isPrefix = false;
+      let isCompleted = false;
+
+      if (buf.length === 0) {
+        isPrefix = true;
+        matchedSeq = seq;
+      } else {
+        const matchesPrimary = buf.every((dir, idx) => seq[idx] === dir);
+        const matchesAlt = altSeq ? buf.every((dir, idx) => altSeq[idx] === dir) : false;
+        if (matchesPrimary) {
+          isPrefix = true;
+          matchedSeq = seq;
+          if (buf.length === seq.length) isCompleted = true;
+        } else if (matchesAlt && altSeq) {
+          isPrefix = true;
+          matchedSeq = altSeq;
+          if (buf.length === altSeq.length) isCompleted = true;
+        }
+      }
+
+      let status: 'completed' | 'matching' | 'ready' | 'cooldown' | 'no_mana' | 'locked' | 'dimmed';
+      if (!av.unlocked) {
+        status = 'locked';
+      } else if (av.cd > 0) {
+        status = 'cooldown';
+      } else if (!av.hasMana) {
+        status = 'no_mana';
+      } else if (isCompleted) {
+        status = 'completed';
+      } else if (isPrefix && buf.length > 0) {
+        status = 'matching';
+      } else if (!isPrefix && buf.length > 0) {
+        status = 'dimmed';
+      } else {
+        status = 'ready';
+      }
+
+      return { combo, av, matchedSeq, status, isCompleted, isPrefix };
+    });
+
+    const drawComboCard = (item: typeof cardsData[0], x: number, y: number, w: number, h: number) => {
+      const isDimmed = item.status === 'dimmed';
+      const isCompl = item.status === 'completed';
+      const isMatch = item.status === 'matching';
+      const isCd = item.status === 'cooldown';
+      const isNoMana = item.status === 'no_mana';
+      const isLock = item.status === 'locked';
+
+      c.save();
+      if (isDimmed) c.globalAlpha = 0.28;
+
+      let border = 'rgba(0, 240, 255, 0.3)';
+      let bg = 'rgba(8, 14, 28, 0.92)';
+      if (isCompl) {
+        border = '#ffd700';
+        bg = 'rgba(40, 32, 5, 0.95)';
+        c.shadowColor = '#ffd700';
+        c.shadowBlur = 10;
+      } else if (isMatch) {
+        border = '#00ffff';
+        bg = 'rgba(5, 25, 35, 0.95)';
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = 6;
+      } else if (isCd) {
+        border = 'rgba(255, 100, 50, 0.4)';
+      } else if (isNoMana) {
+        border = 'rgba(217, 70, 239, 0.4)';
+      } else if (isLock) {
+        border = 'rgba(255, 255, 255, 0.12)';
+        bg = 'rgba(5, 5, 12, 0.7)';
+      }
+
+      c.fillStyle = bg;
+      c.strokeStyle = border;
+      c.lineWidth = isCompl || isMatch ? 1.6 : 1;
+      c.beginPath();
+      c.roundRect(x, y, w, h, 5);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+
+      // Icon & Name
+      const icon = item.combo.id === 'wiggle' ? 'wiggle' :
+        item.combo.id === 'nitro' ? 'nitro' :
+        item.combo.id === 'quantum_laser' ? 'laser' :
+        item.combo.id === 'kinetic_bastion' ? 'shield' : 'nova';
+      spriteAtlas.drawIcon(c, icon, x + 6, y + h / 2 - 6, 12);
+
+      c.textAlign = 'left';
+      c.textBaseline = 'middle';
+      c.font = 'bold 8.5px monospace';
+      c.fillStyle = isCompl ? '#ffd700' : (isLock ? '#667788' : '#ffffff');
+      const shortName = item.combo.name.replace(' MATRIX', '').replace(' TRANSCENDENCE', '').replace(' SHIELD', '').replace(' JET', '').replace(' SHOCKWAVE', '');
+      c.fillText(shortName, x + 22, y + 9);
+
+      // Sequence arrows
+      const arrowStartX = x + 22;
+      const arrowY = y + h - 8;
+      item.matchedSeq.forEach((dir, idx) => {
+        const isArrowMatched = (isCompl || isMatch) && idx < buf.length;
+        c.font = isArrowMatched ? 'bold 10px monospace' : '9px monospace';
+        c.fillStyle = isArrowMatched ? '#ffd700' : (isLock ? '#556677' : '#00ffff');
+        c.fillText(arrowSymbols[dir] || dir, arrowStartX + idx * 11, arrowY);
+      });
+
+      // Right-side badge (Status / Cost)
+      c.textAlign = 'right';
+      c.font = 'bold 8px monospace';
+      if (isCompl) {
+        c.fillStyle = '#ffd700';
+        c.fillText('RELEASE SHIFT!', x + w - 6, y + h / 2);
+      } else if (isCd) {
+        c.fillStyle = '#ff7744';
+        c.fillText(`${item.av.cd.toFixed(1)}s CD`, x + w - 6, y + h / 2);
+      } else if (isNoMana) {
+        c.fillStyle = '#d946ef';
+        c.fillText(`${item.av.manaCost} MP`, x + w - 6, y + h / 2);
+      } else if (isLock) {
+        c.fillStyle = '#667788';
+        c.fillText('LOCKED', x + w - 6, y + h / 2);
+      } else {
+        c.fillStyle = '#00ffcc';
+        c.fillText(`${item.av.manaCost} MP`, x + w - 6, y + h / 2);
+      }
+
+      c.restore();
+    };
+
+    if (isWide) {
+      // 2 columns flanking the central sequence panel
+      const colW = 160;
+      const cardH = 32;
+      const gapY = 6;
+      const leftCards = [cardsData[0], cardsData[1], cardsData[2]];
+      const rightCards = [cardsData[3], cardsData[4]];
+
+      const leftX = panelX - colW - 14;
+      leftCards.forEach((card, idx) => {
+        if (leftX >= 10) {
+          drawComboCard(card, leftX, panelY + idx * (cardH + gapY), colW, cardH);
+        }
+      });
+
+      const rightX = panelX + panelW + 14;
+      rightCards.forEach((card, idx) => {
+        if (rightX + colW <= this.cw - 10) {
+          drawComboCard(card, rightX, panelY + idx * (cardH + gapY), colW, cardH);
+        }
+      });
+    } else {
+      // Compact 2-column grid placed below the sequence box
+      const gridW = panelW;
+      const cardW = (gridW - 8) / 2;
+      const cardH = 28;
+      const startCardY = panelY + panelH + 8;
+
+      cardsData.forEach((card, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const cardX = panelX + col * (cardW + 8);
+        const cardY = startCardY + row * (cardH + 5);
+        if (cardY + cardH <= CH - 30) {
+          drawComboCard(card, cardX, cardY, cardW, cardH);
+        }
+      });
+    }
+
     c.restore();
   }
 
@@ -673,7 +852,7 @@ export class Renderer {
       c.fillText('SCORE', 10, 13);
       c.font = 'bold 16px monospace'; c.fillStyle = '#ffd700';
       c.shadowColor = '#ffd700'; c.shadowBlur = 8;
-      c.fillText(Math.round(dScore).toString().padStart(6, '0'), isWide ? 52 : 46, 13);
+      c.fillText(formatScoreCompact(Math.round(dScore)), isWide ? 52 : 46, 13);
       c.shadowBlur = 0;
 
       // 2. Ghost Kill Streak (with active decay timer gauge between ghost kills)
@@ -1899,7 +2078,7 @@ export class Renderer {
     } else {
       c.font = 'bold 20px monospace';
       c.fillStyle = this.getChromaAccent('#ffd700', '#ffffff');
-      c.fillText('SCORE: ' + score, this.cw / 2, cy + 42);
+      c.fillText('SCORE: ' + formatScoreCompact(score), this.cw / 2, cy + 42);
       if (loopCount > 0) {
         c.font = 'bold 13px monospace';
         c.fillStyle = this.getChromaAccent('#00ffcc', '#aaaaaa');
@@ -2240,7 +2419,7 @@ export class Renderer {
       // Line 2: Score underneath Kills
       c.font = 'bold 9px monospace';
       c.fillStyle = isPlayer ? this.getChromaAccent('#ffd700', '#aaaaaa') : this.getChromaAccent('#ffaa00', '#888888');
-      c.fillText(`${(e.score || 0).toLocaleString()} PTS`, this.cw - 28, y + 11);
+      c.fillText(`${formatScoreCompact(e.score || 0)} PTS`, this.cw - 28, y + 11);
     }
 
     if (entries.length === 0) {
@@ -3685,7 +3864,7 @@ export class Renderer {
     c.fillStyle = '#ffd700';
     c.textAlign = 'left';
     c.fillText(`CYCLE COMPLETED: CYCLE ${loopCount + 1}`, statBoxX + 16, statBoxY + 24);
-    c.fillText(`FINAL SCORE: ${score.toLocaleString()} PTS`, statBoxX + 16, statBoxY + 46);
+    c.fillText(`FINAL SCORE: ${formatScoreCompact(score)} PTS`, statBoxX + 16, statBoxY + 46);
 
     c.textAlign = 'right';
     c.fillStyle = '#00ffff';
@@ -4757,18 +4936,22 @@ export class Renderer {
     c.shadowColor = '#00ffff';
     c.shadowBlur = 8;
     c.textAlign = 'right';
-    c.fillText('SCORE: ' + Math.round(dScore), this.cw - 12, 32);
+    c.fillText('SCORE: ' + formatScoreCompact(Math.round(dScore)), this.cw - 12, 32);
     c.shadowBlur = 0;
     c.font = 'bold 10px monospace';
     c.fillStyle = '#ffd700';
-    c.fillText('+' + bonusScore.toLocaleString('en-US') + ' BONUS', this.cw - 12, 48);
+    c.fillText('+' + formatScoreCompact(bonusScore) + ' BONUS', this.cw - 12, 48);
     c.shadowBlur = 0;
 
-    // Bottom Controls Hint
-    c.font = 'bold 9px monospace';
-    c.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    c.textAlign = 'center';
-    c.fillText('ABSORB SWARMS WITH FORCE FIELD • [SPACE] DASH', this.cw / 2, CH - 14);
+    // Bottom Bar / Controls Hint
+    if (profileManager.gameMode === 'custom') {
+      this.drawBottomExpBar(time);
+    } else {
+      c.font = 'bold 9px monospace';
+      c.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      c.textAlign = 'center';
+      c.fillText('ABSORB SWARMS WITH FORCE FIELD • [SPACE] DASH', this.cw / 2, CH - 14);
+    }
 
     c.restore();
   }
@@ -4816,7 +4999,7 @@ export class Renderer {
     c.fillStyle = '#00ffff';
     c.shadowColor = '#00ffff';
     c.shadowBlur = 12;
-    c.fillText(`+${bonusScore.toLocaleString('en-US')} POINTS!`, this.cw / 2, by + 112);
+    c.fillText(`+${formatScoreCompact(bonusScore)} POINTS!`, this.cw / 2, by + 112);
     c.shadowBlur = 0;
 
     // Subtitle

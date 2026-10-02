@@ -54,6 +54,7 @@ export class SingularityBoss {
   public pulseRingRadius: number = 0;
 
   public hitFlash: number = 0;
+  public coreContactCooldown: number = 0;
   public isDefeated: boolean = false;
   public deathTimer: number = 0;
   public hasSpawnedPhase2Titans: boolean = false;
@@ -74,6 +75,7 @@ export class SingularityBoss {
     this.deathTimer = 0;
     this.active = true;
     this.hasSpawnedPhase2Titans = false;
+    this.coreContactCooldown = 0;
 
     // 4 Corner Relay positions
     const marginX = 3.5 * T;
@@ -104,6 +106,7 @@ export class SingularityBoss {
     this.isDefeated = false;
     this.deathTimer = 0;
     this.hasSpawnedPhase2Titans = false;
+    this.coreContactCooldown = 0;
   }
 
   public update(dt: number, player: Player, enemyManager: EnemyManager, maze: MazeManager, time: number): { bossDefeated: boolean; scoreBonus: number } {
@@ -213,30 +216,36 @@ export class SingularityBoss {
     }
 
     // ─── 3. Player Proximity Collision with Core ───
+    if (this.coreContactCooldown > 0) this.coreContactCooldown -= dt;
     const distToCore = Math.hypot(pp.x - this.x, pp.y - this.y);
     if (distToCore < this.radius + T * 0.7) {
       const angle = Math.atan2(pp.y - this.y, pp.x - this.x);
       if (this.shieldActive) {
         // Shield bounce-back with shockwave push
-        player.fx = this.x + Math.cos(angle) * (this.radius + T * 1.5);
-        player.fy = this.y + Math.sin(angle) * (this.radius + T * 1.5);
+        player.applyRepulsion(angle, 2.5, maze);
         particles.emit(pp.x, pp.y, 16, '#00ffff', { speed: 140, size: 4, life: 0.35 });
         sounds.play('hit');
+        particles.addPop(pp.x, pp.y - 20, 'SHIELD DEFLECT !', '#00ffff', 14);
       } else {
         // Core is exposed: contact deals damage and bounces player slightly
-        this.takeDamage(150);
-        player.fx = this.x + Math.cos(angle) * (this.radius + T * 1.3);
-        player.fy = this.y + Math.sin(angle) * (this.radius + T * 1.3);
+        if (this.coreContactCooldown <= 0) {
+          this.coreContactCooldown = 0.5; // Prevent multi-hit per frame
+          this.takeDamage(150);
+          sounds.play('hit');
+          particles.emit(pp.x, pp.y, 20, '#ffd700', { speed: 160, size: 4.5, life: 0.4 });
+          particles.addPop(pp.x, pp.y - 24, 'CORE STRIKE -150', '#ffd700', 16);
+        }
+        player.applyRepulsion(angle, 1.8, maze);
       }
     }
 
     // ─── 4. Boss Attacks ───
-    this.updateAttacks(dt, player, pp);
+    this.updateAttacks(dt, player, pp, maze);
 
     return { bossDefeated: false, scoreBonus: 0 };
   }
 
-  private updateAttacks(dt: number, player: Player, pp: { x: number; y: number }) {
+  private updateAttacks(dt: number, player: Player, pp: { x: number; y: number }, maze: MazeManager) {
     // Attack 1: Cardinal Laser Beams (Phases 1-3)
     this.beamTimer -= dt;
     if (this.beamTimer <= 0) {
@@ -297,10 +306,8 @@ export class SingularityBoss {
         const dist = Math.hypot(pp.x - this.x, pp.y - this.y);
         if (dist > this.radius && dist < 350) {
           const pullAngle = Math.atan2(this.y - pp.y, this.x - pp.x);
-          const pullStrength = 85 * dt;
-          player.fx += Math.cos(pullAngle) * pullStrength;
-          player.fy += Math.sin(pullAngle) * pullStrength;
-          if (Math.random() < 0.2) {
+          player.applyGravitationalPull(pullAngle, 85 * dt, maze);
+          if (Math.random() < 0.25) {
             particles.emit(pp.x, pp.y, 2, '#a855f7', { speed: 40, size: 3, life: 0.3 });
           }
         }

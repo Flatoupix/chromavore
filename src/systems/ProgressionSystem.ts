@@ -100,6 +100,17 @@ export const SKILL_TREE: SkillDef[] = [
     desc: 'Gravitational singularity pulling and crushing all spectres in range'
   },
   {
+    id: 'super_pellet_v1',
+    baseId: 'super_pellet',
+    version: 1,
+    name: 'SUPER PELLET',
+    icon: 'super_pellet',
+    threshold: 550,
+    category: 'item',
+    command: 'EAT POWER PELLET',
+    desc: 'Reinforcement ghosts entering the maze are also frightened'
+  },
+  {
     id: 'laser_v1',
     baseId: 'laser',
     version: 1,
@@ -142,17 +153,6 @@ export const SKILL_TREE: SkillDef[] = [
     category: 'movement',
     command: 'SPACE or DASH BUTTON',
     desc: '4-tile reach, -25% cooldown, and unlocks the 16:9 Widescreen Arena!'
-  },
-  {
-    id: 'super_pellet_v1',
-    baseId: 'super_pellet',
-    version: 1,
-    name: 'SUPER PELLET',
-    icon: 'super_pellet',
-    threshold: 2000,
-    category: 'item',
-    command: 'EAT POWER PELLET',
-    desc: 'Reinforcement ghosts entering the maze are also frightened'
   },
   {
     id: 'wiggle_v2',
