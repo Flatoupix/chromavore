@@ -4308,6 +4308,37 @@ export class Renderer {
     c.restore();
   }
 
+  public drawLevelUpShockwave(px: number, py: number, radius: number, progress: number, isSurge: boolean = false) {
+    if (radius <= 0) return;
+    const c = this.ctx;
+    c.save();
+    const alpha = Math.max(0, Math.min(1, (1 - progress) * 1.2));
+    const mainCol = isSurge ? '#ffd700' : '#00ffff';
+    const subCol = isSurge ? '#ff00aa' : '#00ffaa';
+
+    // Expanding outer neon ring
+    c.strokeStyle = mainCol;
+    c.shadowColor = mainCol;
+    c.shadowBlur = 24 * alpha;
+    c.lineWidth = Math.max(2, 8 * (1 - progress));
+    c.beginPath();
+    c.arc(px, py, radius, 0, PI2);
+    c.stroke();
+
+    // Inner chromatic resonance ring
+    if (radius > 10) {
+      c.strokeStyle = subCol;
+      c.shadowColor = subCol;
+      c.shadowBlur = 12 * alpha;
+      c.lineWidth = Math.max(1, 4 * (1 - progress));
+      c.beginPath();
+      c.arc(px, py, Math.max(0, radius - 8), 0, PI2);
+      c.stroke();
+    }
+
+    c.restore();
+  }
+
   public draw32xVignette(_time?: number, _timer?: number, _maxTimer?: number) {
     // Removed per user feedback: eliminates intrusive blue screen tint and long overlay
   }

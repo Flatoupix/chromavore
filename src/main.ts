@@ -18,7 +18,7 @@ import { Renderer, type EffectTimer } from './graphics/Renderer';
 import { settingsManager, PAUSE_BUTTONS } from './systems/SettingsManager';
 import { leaderboard } from './systems/Leaderboard';
 import { progression } from './systems/ProgressionSystem';
-import { experienceSystem, SKILL_NODES } from './systems/ExperienceSystem';
+import { experienceSystem, SKILL_NODES, type LevelUpEvent } from './systems/ExperienceSystem';
 import { profileManager } from './systems/ProfileManager';
 import { wobbleBanner } from './graphics/WobbleBanner';
 import { SingularityBoss } from './entities/SingularityBoss';
@@ -102,6 +102,20 @@ class Game {
   public dotStreak: number = 0;
   public dotStreakTimer: number = 0;
   public maxDotStreak: number = 0;
+
+  // Level-Up Shockwave (Section 8: clears basic ghosts on level up, stuns Titans)
+  public levelUpShockwave = {
+    active: false,
+    timer: 0,
+    maxTimer: 0.6,
+    x: 0,
+    y: 0,
+    radius: 0,
+    maxRadius: 0,
+    level: 1,
+    isSurge: false
+  };
+  public cameraScale: number = 1.0;
 
   // Bullet Time (Chrono-Shift) specific
   public chronoEnergy: number = CHRONO_MAX;
@@ -1919,8 +1933,7 @@ class Game {
     const xpEarned = Math.round(baseGhostXp * ghostScoreMult);
     const lvlUp = experienceSystem.addXp(xpEarned, 'ghost_kill');
     if (lvlUp) {
-      this.lives = Math.min(5, this.lives + 1);
-      particles.addPop(ex, ey - 35, '+1 LIFE!', '#00ffaa', 22);
+      this.onPlayerLevelUp(lvlUp, ex, ey);
     }
 
     if (this.currentGameMode === 'custom') {
@@ -1942,6 +1955,35 @@ class Game {
       this.hitlag = Math.max(this.hitlag, 0.035);
     }
     sounds.play('kill');
+  }
+
+  private onPlayerLevelUp(event: LevelUpEvent, x: number, y: number) {
+    this.lives = Math.min(5, this.lives + 1);
+    particles.addPop(x, y - 35, '+1 LIFE! +1 SP!', '#00ffaa', 22);
+
+    // Board-Wide Level-Up Shockwave (Section 8)
+    // coeff = 1 + min(0.5, 0.01 * (lvl - 1))
+    const lvlCoeff = 1 + Math.min(0.5, 0.01 * (event.newLevel - 1));
+    const arenaW = this.maze.cols * T;
+    const arenaH = this.maze.rows * T;
+    const maxDiagonal = Math.hypot(arenaW, arenaH) * lvlCoeff;
+
+    this.levelUpShockwave = {
+      active: true,
+      timer: 0.6,
+      maxTimer: 0.6,
+      x,
+      y,
+      radius: 0,
+      maxRadius: maxDiagonal,
+      level: event.newLevel,
+      isSurge: event.surgeActive
+    };
+
+    sounds.play('powerup');
+    sounds.play('nova');
+    particles.flash(event.surgeActive ? '#ffd700' : '#00ffff', 0.45);
+    particles.shake(10, 0.35);
   }
 
   private checkRampageMilestone(streak: number) {
@@ -2628,8 +2670,7 @@ class Game {
       if (vortexXp > 0) {
         const lvlUpVortex = experienceSystem.addXp(vortexXp, 'vortex_score');
         if (lvlUpVortex) {
-          this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 40, '+1 LIFE!', '#00ffaa', 22);
+          this.onPlayerLevelUp(lvlUpVortex, BONUS_ARENA_W / 2, BONUS_ARENA_H / 2);
         }
       }
 
@@ -2777,8 +2818,7 @@ class Game {
           this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_NM_RECHARGE);
           const lvlUp = experienceSystem.addXp(25, 'near_miss');
           if (lvlUp) {
-            this.lives = Math.min(5, this.lives + 1);
-            particles.addPop(pp.x, pp.y - 35, '+1 LIFE!', '#00ffaa', 22);
+            this.onPlayerLevelUp(lvlUp, pp.x, pp.y);
           }
         }
       } else {
@@ -2858,8 +2898,7 @@ class Game {
 
         const lvlUpPellet = experienceSystem.addXp(Math.round(15 * (1 + aetherBonus)), 'pellet');
         if (lvlUpPellet) {
-          this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(px, py - 35, '+1 LIFE!', '#00ffaa', 22);
+          this.onPlayerLevelUp(lvlUpPellet, px, py);
         }
 
         if (this.combo.m > oldM && this.combo.m > 1) {
@@ -2895,8 +2934,7 @@ class Game {
 
         const lvlUpDot = experienceSystem.addXp(Math.round(2 * (1 + aetherBonus)), 'dot');
         if (lvlUpDot) {
-          this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(px, py - 35, '+1 LIFE!', '#00ffaa', 22);
+          this.onPlayerLevelUp(lvlUpDot, px, py);
         }
 
         // Floating +XXX score popup above eaten dot!
@@ -2922,8 +2960,7 @@ class Game {
         // Level Clear XP: +400 XP
         const lvlUpClear = experienceSystem.addXp(400, 'maze_clear');
         if (lvlUpClear) {
-          this.lives = Math.min(5, this.lives + 1);
-          particles.addPop(px, py - 45, '+1 LIFE!', '#00ffaa', 22);
+          this.onPlayerLevelUp(lvlUpClear, px, py);
         }
 
         // Unlock Level Completion Badges (Levels 1 to 10 in 4:3 or 16:9)
@@ -3340,6 +3377,46 @@ class Game {
             return;
           }
         }
+
+        // Level-Up Board-Wide Shockwave (Section 8: clears basic ghosts, stuns Titans)
+        if (this.levelUpShockwave.active) {
+          this.levelUpShockwave.timer -= dt;
+          const progress = Math.max(0, Math.min(1, 1 - (this.levelUpShockwave.timer / this.levelUpShockwave.maxTimer)));
+          this.levelUpShockwave.radius = progress * this.levelUpShockwave.maxRadius;
+
+          for (const e of this.enemyManager.enemies) {
+            if (e.st !== 'dead' && e.st !== 'return') {
+              const ep = this.enemyManager.getPos(e);
+              const dist = Math.hypot(ep.x - this.levelUpShockwave.x, ep.y - this.levelUpShockwave.y);
+              if (dist <= this.levelUpShockwave.radius) {
+                if (e.isTitan) {
+                  if (!e.frozen) {
+                    e.frozen = true;
+                    e.frozenTimer = 3.5;
+                    sounds.play('stun');
+                    particles.addPop(ep.x, ep.y - 18, 'TITAN STUNNED!', '#ff007f', 14);
+                    particles.emit(ep.x, ep.y, 16, '#00ffff', { speed: 80, size: 3, life: 0.5 });
+                  }
+                } else {
+                  e.st = 'dead';
+                  e.frightened = false;
+                  e.frozen = false;
+                  sounds.play('ghost');
+                  particles.emit(ep.x, ep.y, 14, '#00ffff', { speed: 100, size: 2.8, life: 0.45 });
+                  particles.addPop(ep.x, ep.y - 10, 'PURGED', '#00f0ff', 11);
+                }
+              }
+            }
+          }
+
+          if (this.levelUpShockwave.timer <= 0) {
+            this.levelUpShockwave.active = false;
+          }
+        }
+
+        // Camera scale update (Level 10 Boss arena zoom-out)
+        const targetCameraScale = (this.boss.active && this.maze.currentLevel === 9) ? 0.94 : 1.0;
+        this.cameraScale += (targetCameraScale - this.cameraScale) * Math.min(1, dt * 4);
 
         // Bullet Time (Chrono-Shift), unlocked at 180 frags or Chrono Tank skill
         const chronoLevel = progression.getSkillLevel('chrono');
@@ -3891,11 +3968,11 @@ class Game {
       }
       case 'add_xp': {
         const lvlUp = experienceSystem.addXp(5000, 'debug');
+        if (lvlUp) this.onPlayerLevelUp(lvlUp, pp.x, pp.y);
         sounds.play('powerup');
         particles.flash('#ffd700', 0.4);
         particles.shake(8, 0.25);
         particles.addPop(pp.x, pp.y - 20, `DEBUG: +5,000 XP (LVL ${experienceSystem.accountLevel})`, '#ffd700', 20);
-        if (lvlUp) this.lives = Math.min(5, this.lives + 1);
         break;
       }
       case 'resume_play':
@@ -4124,6 +4201,16 @@ class Game {
     // Maze translation
     this.renderer.ctx.save();
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
+
+    // Dynamic Camera Zoom-Out (e.g. framing Level 10 Boss Arena & Relays)
+    if (Math.abs(this.cameraScale - 1.0) > 0.001) {
+      const arenaW = this.maze.cols * T;
+      const arenaH = this.maze.rows * T;
+      this.renderer.ctx.translate(arenaW / 2, arenaH / 2);
+      this.renderer.ctx.scale(this.cameraScale, this.cameraScale);
+      this.renderer.ctx.translate(-arenaW / 2, -arenaH / 2);
+    }
+
     this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
     this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
     this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
@@ -4140,6 +4227,18 @@ class Game {
       const pp = this.player.getPos();
       const introElapsed = 5.0 - this.singularityIntroTimer;
       this.renderer.drawSingularityShockwave(pp.x, pp.y, this.singularityShockwaveRadius, introElapsed / 5.0);
+    }
+
+    // Level-Up Expanding Shockwave (Section 8)
+    if (this.levelUpShockwave.active && this.levelUpShockwave.radius > 0) {
+      const progress = Math.max(0, Math.min(1, 1 - (this.levelUpShockwave.timer / this.levelUpShockwave.maxTimer)));
+      this.renderer.drawLevelUpShockwave(
+        this.levelUpShockwave.x,
+        this.levelUpShockwave.y,
+        this.levelUpShockwave.radius,
+        progress,
+        this.levelUpShockwave.isSurge
+      );
     }
 
     this.renderer.drawDots(this.maze, this.time);

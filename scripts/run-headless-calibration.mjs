@@ -23,6 +23,7 @@ const ghostCaps = splitNumbers(args['ghost-caps'], [16]);
 const xpCurves = splitNumbers(args['xp-curves'], [1]);
 const xpGains = splitNumbers(args['xp-gains'], [1]);
 const singularityThresholds = splitNumbers(args['singularity-kills'], [200]);
+const arenaThresholds = splitNumbers(args['arena-unlock-kills'], [500]);
 const outputPath = resolve(repoRoot, args.out ?? `scripts/reports/headless-${new Date().toISOString().replaceAll(':', '').replaceAll('.', '-')}.json`);
 
 const validBots = new Set(['cautious', 'collector', 'hunter']);
@@ -37,7 +38,9 @@ for (const botStrategy of bots) {
       for (const xpCurveMultiplier of xpCurves) {
         for (const xpGainMultiplier of xpGains) {
           for (const singularityTriggerKills of singularityThresholds) {
-            scenarios.push({ botStrategy, skillPolicy, ghostXpComboCap, xpCurveMultiplier, xpGainMultiplier, singularityTriggerKills });
+            for (const arenaUnlockKills of arenaThresholds) {
+              scenarios.push({ botStrategy, skillPolicy, ghostXpComboCap, xpCurveMultiplier, xpGainMultiplier, singularityTriggerKills, arenaUnlockKills });
+            }
           }
         }
       }
@@ -82,7 +85,8 @@ try {
       candidate.scenario.ghostXpComboCap === result.scenario.ghostXpComboCap &&
       candidate.scenario.xpCurveMultiplier === result.scenario.xpCurveMultiplier &&
       candidate.scenario.xpGainMultiplier === result.scenario.xpGainMultiplier &&
-      candidate.scenario.singularityTriggerKills === result.scenario.singularityTriggerKills
+      candidate.scenario.singularityTriggerKills === result.scenario.singularityTriggerKills &&
+      candidate.scenario.arenaUnlockKills === result.scenario.arenaUnlockKills
     );
     if (noSkillScenario) result.deltaVsNoSkills = pairedDelta(result, noSkillScenario);
 
@@ -92,7 +96,8 @@ try {
       candidate.scenario.ghostXpComboCap === 16 &&
       candidate.scenario.xpCurveMultiplier === 1 &&
       candidate.scenario.xpGainMultiplier === 1 &&
-      candidate.scenario.singularityTriggerKills === result.scenario.singularityTriggerKills
+      candidate.scenario.singularityTriggerKills === result.scenario.singularityTriggerKills &&
+      candidate.scenario.arenaUnlockKills === result.scenario.arenaUnlockKills
     );
     if (!baseScenario) continue;
     result.deltaVsReference = pairedDelta(result, baseScenario);
@@ -254,21 +259,22 @@ function pairedDelta(candidate, baseline) {
 
 function toCsv(results, gamesPerReplicate) {
   const columns = [
-    'botStrategy', 'skillPolicy', 'ghostXpComboCap', 'xpCurveMultiplier', 'xpGainMultiplier', 'singularityTriggerKills', 'replicate', 'games',
-    'finalLevel', 'careerGhosts', 'campaignSeconds', 'campaignXp', 'campaignXpPerMinute', 'averageRunSeconds',
+    'botStrategy', 'skillPolicy', 'ghostXpComboCap', 'xpCurveMultiplier', 'xpGainMultiplier', 'singularityTriggerKills', 'arenaUnlockKills', 'replicate', 'games',
+    'finalLevel', 'careerGhosts', 'widescreenRuns', 'campaignSeconds', 'campaignXp', 'campaignXpPerMinute', 'averageRunSeconds',
     'medianRunXp', 'averageRunKills', 'averageMazesCleared', 'averageRunDeaths', 'averageDotsCollected',
     'averageDashes', 'averageEmpUses', 'averageBastionUses', 'averageLaserKills', 'averageNovaUses',
     'singularityRunRate', 'gameOverRate',
     'deltaXpPerMinutePctVsNoSkills', 'deltaLevelVsNoSkills',
-    'secondsToLevel5', 'secondsToLevel10', 'secondsToLevel20', 'secondsToLevel35', 'secondsToLevel50', 'secondsToLevel75', 'secondsToLevel100'
+    'secondsToLevel5', 'secondsToLevel10', 'secondsToLevel20', 'secondsToLevel35', 'secondsToLevel50', 'secondsToLevel75', 'secondsToLevel100',
+    'secondsTo5Ghosts', 'secondsTo20Ghosts', 'secondsTo60Ghosts', 'secondsTo200Ghosts', 'secondsTo500Ghosts', 'secondsTo1600Ghosts'
   ];
   const lines = [columns.join(',')];
   for (const result of results) {
     result.replicates.forEach((run, index) => {
       const row = [
         result.scenario.botStrategy, result.scenario.skillPolicy, result.scenario.ghostXpComboCap,
-        result.scenario.xpCurveMultiplier, result.scenario.xpGainMultiplier, result.scenario.singularityTriggerKills, index + 1, gamesPerReplicate,
-        run.finalProfile.accountLevel, run.finalProfile.careerGhosts, run.totalCampaignSeconds, run.totalCampaignXp,
+        result.scenario.xpCurveMultiplier, result.scenario.xpGainMultiplier, result.scenario.singularityTriggerKills, result.scenario.arenaUnlockKills, index + 1, gamesPerReplicate,
+        run.finalProfile.accountLevel, run.finalProfile.careerGhosts, run.widescreenRuns ?? 0, run.totalCampaignSeconds, run.totalCampaignXp,
         run.campaignXpPerMinute, run.averageRunSeconds, run.medianRunXp, run.averageRunKills,
         run.averageMazesCleared, run.averageRunDeaths,
         run.averageDotsCollected,
@@ -276,7 +282,8 @@ function toCsv(results, gamesPerReplicate) {
         run.singularityRunRate, run.gameOverRate,
         result.deltaVsNoSkills?.campaignXpPerMinutePercent.mean ?? '',
         result.deltaVsNoSkills?.finalLevel.mean ?? '',
-        ...[5, 10, 20, 35, 50, 75, 100].map(level => run.timeToLevelSeconds[level] ?? '')
+        ...[5, 10, 20, 35, 50, 75, 100].map(level => run.timeToLevelSeconds[level] ?? ''),
+        ...[5, 20, 60, 200, 500, 1600].map(target => run.timeToCareerGhostsSeconds?.[target] ?? '')
       ];
       lines.push(row.join(','));
     });

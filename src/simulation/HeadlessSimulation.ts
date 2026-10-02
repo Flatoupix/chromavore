@@ -1,4 +1,4 @@
-import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, KILL_STREAK_DECAY_WINDOW, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, SINGULARITY_DURATION, SINGULARITY_TRIGGER_STREAK, T, getComboTier } from '../config/constants';
+import { CM, COMBO_DECAY, COMBO_DECAY_WIDE, E_SPEED, GOD_MODE_DURATION, HALF, HIT_DIST, KILL_STREAK_DECAY_WINDOW, MADNESS_UNLOCK_KILLS, NM_DIST, P_MADNESS_BASE_SPEED, P_SPEED, SINGULARITY_DURATION, SINGULARITY_TRIGGER_STREAK, T, getComboTier } from '../config/constants';
 import { MADNESS_LEVELS_16_9, MADNESS_LEVELS_4_3, MazeManager } from '../levels/levels';
 import { chooseBotAction, type BotDirection, type BotGhost, type BotStrategy } from './BotController';
 import { SKILL_NODES } from '../config/skillTree';
@@ -17,6 +17,10 @@ export interface HeadlessRunOptions {
   seed: number;
   maxSeconds?: number;
   widescreen?: boolean;
+  /** Presentation experiment: the arena changes at the next run, as in live play. */
+  arenaUnlockKills?: number;
+  /** Exact cumulative play-time measurements, including targets never reached (null). */
+  careerMilestones?: number[];
   botStrategy?: BotStrategy;
   skillPolicy?: SimulatedSkillPolicy;
   /** Candidate balance knobs; defaults mirror the current production XP rules. */
@@ -50,6 +54,9 @@ export interface HeadlessRunMetrics {
   xpGainMultiplier: number;
   xpCurveMultiplier: number;
   singularityTriggerKills: number;
+  arenaUnlockKills: number;
+  widescreen: boolean;
+  timeToCareerGhostsSeconds: Record<number, number | null>;
   skillRanks: Record<string, number>;
   profile: HeadlessProfile;
 }
@@ -84,6 +91,9 @@ export interface HeadlessCampaignMetrics {
   singularityRunRate: number;
   gameOverRate: number;
   timeToLevelSeconds: Record<number, number | null>;
+  timeToCareerGhostsSeconds: Record<number, number | null>;
+  runsToCareerGhosts: Record<number, number | null>;
+  widescreenRuns: number;
   finalProfile: HeadlessProfile;
 }
 
@@ -179,7 +189,18 @@ function actorPosition(actor: { fromX: number; fromY: number; x: number; y: numb
 export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics {
   const random = seededRandom(options.seed);
   let careerGhosts = options.profile?.careerGhosts ?? 0;
-  const widescreen = options.widescreen ?? (careerGhosts >= 1600);
+  const arenaUnlockKills = options.arenaUnlockKills ?? MADNESS_UNLOCK_KILLS;
+  if (!Number.isInteger(arenaUnlockKills) || arenaUnlockKills <= 0) {
+    throw new Error('arenaUnlockKills must be a positive integer');
+  }
+  const careerTargets = [...new Set(options.careerMilestones ?? [5, 20, 60, 200, 500, 1600, 3000])];
+  if (careerTargets.some(target => !Number.isInteger(target) || target <= 0)) {
+    throw new Error('careerMilestones must contain positive integers');
+  }
+  const careerMilestones: Record<number, number | null> = Object.fromEntries(
+    careerTargets.map(target => [target, careerGhosts >= target ? 0 : null])
+  );
+  const widescreen = options.widescreen ?? (careerGhosts >= arenaUnlockKills);
   const mazeList = widescreen ? MADNESS_LEVELS_16_9 : MADNESS_LEVELS_4_3;
   const maze = new MazeManager(false);
   let mazeIndex = 0;
@@ -364,6 +385,9 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     ghost.frozen = false;
     kills++;
     careerGhosts++;
+    for (const target of careerTargets) {
+      if (careerMilestones[target] === null && careerGhosts >= target) careerMilestones[target] = elapsed;
+    }
     if (countForStreak) {
       killStreak++;
       killStreakTimer = KILL_STREAK_DECAY_WINDOW + (skillRanks.singularity_mastery ?? 0) * 0.4;
@@ -742,6 +766,7 @@ export function runHeadlessGame(options: HeadlessRunOptions): HeadlessRunMetrics
     empUses, bastionUses, laserKills, novaUses,
     singularityTriggered,
     ghostXpComboCap, xpGainMultiplier, xpCurveMultiplier, singularityTriggerKills,
+    arenaUnlockKills, widescreen, timeToCareerGhostsSeconds: careerMilestones,
     skillRanks,
     profile: { careerGhosts, accountLevel: level, accountXp: currentLevelXp, skillPoints, skillUpgrades: skillRanks }
   };
@@ -775,6 +800,12 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
   const milestones: Record<number, number | null> = { 5: null, 10: null, 20: null, 35: null, 50: null, 75: null, 100: null };
   let campaignSeconds = 0;
   let gameOvers = 0;
+  let widescreenRuns = 0;
+  const careerTargets = [...new Set(options.careerMilestones ?? [5, 20, 60, 200, 500, 1600, 3000])];
+  const careerMilestones: Record<number, number | null> = Object.fromEntries(
+    careerTargets.map(target => [target, profile.careerGhosts >= target ? 0 : null])
+  );
+  const runsToCareerGhosts: Record<number, number | null> = { ...careerMilestones };
   for (const target of Object.keys(milestones).map(Number)) {
     if (profile.accountLevel >= target) milestones[target] = 0;
   }
@@ -799,6 +830,14 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     laserByRun.push(run.laserKills);
     novaByRun.push(run.novaUses);
     if (run.singularityTriggered) singularityRuns++;
+    for (const target of careerTargets) {
+      const reachedAt = run.timeToCareerGhostsSeconds[target];
+      if (careerMilestones[target] === null && reachedAt !== null) {
+        careerMilestones[target] = campaignSeconds + reachedAt;
+        runsToCareerGhosts[target] = index + 1;
+      }
+    }
+    if (run.widescreen) widescreenRuns++;
     campaignSeconds += run.simulatedSeconds;
     if (run.gameOver) gameOvers++;
     profile = run.profile;
@@ -840,6 +879,9 @@ export function runHeadlessCampaign(options: HeadlessCampaignOptions): HeadlessC
     singularityRunRate: runCount ? singularityRuns / runCount : 0,
     gameOverRate: runCount ? gameOvers / runCount : 0,
     timeToLevelSeconds: milestones,
+    timeToCareerGhostsSeconds: careerMilestones,
+    runsToCareerGhosts,
+    widescreenRuns,
     finalProfile: profile
   };
 }

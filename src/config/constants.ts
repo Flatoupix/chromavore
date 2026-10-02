@@ -96,8 +96,9 @@ export const KILL_STREAK_DECAY_WINDOW = 2.0; // Window between ghost kills to ma
 export const GOD_MODE_DURATION = 15.0; // 15.0s God Mode duration when triggered
 export const SINGULARITY_DURATION = 30.0; // 30.0s Singularity Mode duration when triggered
 export const SINGULARITY_TRIGGER_STREAK = 200; // Trigger Singularity at a x200 consecutive ghost-kill streak
-export const MADNESS_UNLOCK_KILLS = 1600; // Unlocked with Cyber Dash V2 at 1600 career ghost kills
-export const HD_AUDIO_UNLOCK_KILLS = 3000; // Unlocked at 3000 career ghost kills (HD Dark Synthwave Studio OST)
+// Alpha awakening milestone: presentation and arena access, not power/XP upgrades.
+export const MADNESS_UNLOCK_KILLS = 500;
+export const HD_AUDIO_UNLOCK_KILLS = MADNESS_UNLOCK_KILLS;
 
 // Bullet Time (Chrono-Shift) settings
 export const CHRONO_MAX = 100;
@@ -143,16 +144,16 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v5.2.0';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v5.3.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v5.2.0';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v5.3.0';
 
 // ─────────────────────────────────────────────────────────────────
 //  CHROMA AWAKENING — Visual Progression Tiers (career ghost kills)
 //  Fantômes : toujours en couleur (source de lumière du monde)
 //  Environnement + Chromavore : progressent du monochrome au néon
 // ─────────────────────────────────────────────────────────────────
-export const CHROMA_TIERS = [0, 10, 50, 200, 600, 1600] as const;
+export const CHROMA_TIERS = [0, 5, 20, 60, 200, 350] as const;
 export type ChromaTier = 0 | 1 | 2 | 3 | 4 | 5;
 
 export function getChromaTier(careerGhosts: number): ChromaTier {
