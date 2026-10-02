@@ -24,6 +24,7 @@ import { wobbleBanner } from './graphics/WobbleBanner';
 import { SingularityBoss } from './entities/SingularityBoss';
 import { formatScoreCompact } from './utils/format';
 import { SKILL_COMBOS } from './core/InputManager';
+import { labManager } from './systems/LabManager';
 if (import.meta.env.DEV) {
   import('./utils/adminReset');
 }
@@ -37,7 +38,7 @@ class Game {
   public boss: SingularityBoss;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' | 'debug' | 'epilogue' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' | 'debug' | 'epilogue' | 'lab' = 'menu';
   public previousStateBeforeDebug: 'playing' | 'paused' | 'bonus' = 'playing';
   public playerRank: number = 0;
   public playerDate: string = '';
@@ -163,6 +164,10 @@ class Game {
       if (activeSkill) {
         this.queueSkillDiscovery(activeSkill);
       }
+    };
+    profileManager.onGameModeChanged = () => {
+      input.clearAllInputs();
+      input.cancelChronoInput();
     };
     badges.syncWithProfile();
     this.configureArena();
@@ -561,6 +566,37 @@ class Game {
   public exitEpilogueToMenu() {
     sounds.stopAsystoleFlatline();
     this.state = 'menu';
+    sounds.play('click');
+  }
+
+  public startLab(preferredItemType?: string) {
+    sounds.stopBgm();
+    this.state = 'lab';
+    input.clearAllInputs();
+    input.cancelChronoInput();
+    labManager.init(preferredItemType);
+    this.player.reset(labManager.maze, 1.0);
+    this.player.x = 10;
+    this.player.y = 11;
+    this.player.fx = 10;
+    this.player.fy = 11;
+    this.player.dx = 0;
+    this.player.dy = 0;
+    this.player.lastDx = 1;
+    this.player.lastDy = 0;
+    this.player.invuln = 1.0;
+    sounds.play('powerup');
+    particles.flash('#00f0ff', 0.25);
+  }
+
+  public exitLab() {
+    powerups.fx.overdrive = 0;
+    superItems.resetEffects();
+    particles.clearAll();
+    input.clearAllInputs();
+    input.cancelChronoInput();
+    this.state = 'codex';
+    this.codexTab = 'skills';
     sounds.play('click');
   }
 
@@ -1026,6 +1062,28 @@ class Game {
           return;
         }
 
+        // Arsenal interactions (Try in Lab)
+        if (this.codexTab === 'skills') {
+          // 1. Check Try in Lab Button
+          if (this.renderer.codexLabBtnBounds) {
+            const b = this.renderer.codexLabBtnBounds;
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+              this.startLab();
+              return;
+            }
+          }
+          // 2. Check Click on Any Unlocked Skill Card to try it in Lab
+          for (const [skillId, b] of this.renderer.skillCardBounds.entries()) {
+            if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
+              if (progression.isSkillUnlocked(skillId)) {
+                const baseId = skillId.replace(/_v[1-5]$/, '');
+                this.startLab(baseId);
+                return;
+              }
+            }
+          }
+        }
+
         // Tree interactions (Upgrade Node, Respec, or Switch Mode)
         if (this.codexTab === 'tree') {
           // 1. Check Respec Button
@@ -1138,6 +1196,18 @@ class Game {
           this.state = 'menu';
           sounds.play('click');
           return;
+        }
+      }
+
+      if (this.state === 'lab') {
+        if (cy < HUD_H) {
+          if (cx < 180) {
+            this.exitLab();
+            return;
+          } else if (cx > curCw - 180) {
+            labManager.reset(this.player);
+            return;
+          }
         }
       }
 
@@ -1403,7 +1473,7 @@ class Game {
       touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       const now = performance.now();
       if (now - lastTouchTime < 280) {
-        if (this.state === 'playing') {
+        if (this.state === 'playing' || this.state === 'lab') {
           this.executeDash();
         }
       }
@@ -1416,7 +1486,7 @@ class Game {
       const dx = e.touches[0].clientX - touchStart.x;
       const dy = e.touches[0].clientY - touchStart.y;
       if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
-        if (this.state === 'playing') {
+        if (this.state === 'playing' || this.state === 'lab') {
           if (Math.abs(dx) > Math.abs(dy)) {
             input.setNextDir(dx > 0 ? 1 : -1, 0);
           } else {
@@ -1654,6 +1724,20 @@ class Game {
             sounds.play('click');
             e.preventDefault();
           }
+        } else if (e.code === 'KeyT' && this.codexTab === 'skills') {
+          this.startLab();
+          e.preventDefault();
+          return;
+        }
+      } else if (this.state === 'lab') {
+        if (e.code === 'Escape' || e.code === 'KeyC') {
+          this.exitLab();
+          e.preventDefault();
+          return;
+        } else if (e.code === 'KeyR') {
+          labManager.reset(this.player);
+          e.preventDefault();
+          return;
         }
       } else if (this.state === 'menu') {
         const isUnlocked = profileManager.isChromamancerUnlocked();
@@ -1930,6 +2014,25 @@ class Game {
   }
 
   private executeDash() {
+    if (this.state === 'lab') {
+      const ok = this.player.triggerDash(
+        labManager.maze,
+        labManager.ghosts as any,
+        (e, x, y) => labManager.defeatGhost(e, x, y),
+        () => {},
+        false,
+        powerups.fx.overdrive > 0,
+        () => {},
+        false,
+        false
+      );
+      if (ok) {
+        sounds.play('dash');
+        particles.shake(4, 0.15);
+      }
+      return;
+    }
+
     const isSingularity = this.combo.m >= 64;
     const startPos = this.player.getPos();
     const ok = this.player.triggerDash(
@@ -3543,6 +3646,45 @@ class Game {
       return;
     }
 
+    if (this.state === 'lab') {
+      if (input.isPauseRequested) {
+        this.exitLab();
+        input.isPauseRequested = false;
+        return;
+      }
+      if (input.isRestartRequested) {
+        labManager.reset(this.player);
+        powerups.fx.overdrive = 0;
+        input.isRestartRequested = false;
+      }
+      if (input.isDashRequested) {
+        this.executeDash();
+        input.isDashRequested = false;
+      }
+      if (input.nextDir.x !== 0 || input.nextDir.y !== 0) {
+        this.player.doMove(input.nextDir.x, input.nextDir.y, labManager.maze);
+      }
+      if (powerups.fx.overdrive > 0) {
+        powerups.fx.overdrive = Math.max(0, powerups.fx.overdrive - dt);
+      }
+      labManager.update(dt, this.player, () => {
+        powerups.fx.overdrive = progression.getSkillLevel('overdrive') >= 2 ? 10.0 : 8.0;
+      });
+      this.player.update(
+        dt,
+        labManager.maze,
+        input.nitroActive > 0,
+        input.nextDir,
+        () => {},
+        1.0,
+        input.heldDirections,
+        1.0
+      );
+      particles.update(dt);
+      this.syncTouchControls();
+      return;
+    }
+
     if (input.isRestartRequested) {
       if (this.state === 'playing' || this.state === 'paused' || this.state === 'dying' || this.state === 'ready' || this.state === 'gameover') {
         this.startGame();
@@ -4337,6 +4479,23 @@ class Game {
         this.renderer.drawBonusTally(this.bonusKills, this.bonusScore, this.time);
       }
       this.renderer.drawBottomExpBar(this.time);
+      return;
+    }
+
+    if (this.state === 'lab') {
+      const c = this.renderer.ctx;
+      c.save();
+      c.translate(particles.shk.x, HUD_H + particles.shk.y);
+      if (labManager.maze.mOff) {
+        c.drawImage(labManager.maze.mOff, 0, 0);
+      }
+      labManager.draw(c, this.time);
+      superItems.draw(c, this.player.getPos(), this.time);
+      this.player.draw(c, this.time, false, false, 0, 7.0, { m: 1, t: 0, n: 0 }, false, this.renderer.chromaTier, 0);
+      particles.draw(c);
+      c.restore();
+
+      labManager.drawHUD(c, this.renderer.cw, this.renderer.ch, this.time);
       return;
     }
 

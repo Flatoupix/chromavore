@@ -146,14 +146,18 @@ class ProfileManager {
     return (this.profile.careerGhosts || 0) >= MADNESS_UNLOCK_KILLS;
   }
 
+  public onGameModeChanged?: (mode: 'arcade' | 'custom') => void;
+
   public setGameMode(mode: 'arcade' | 'custom'): boolean {
     if (mode === 'custom' && !this.isChromamancerUnlocked()) {
       this.profile.gameMode = 'arcade';
       this.saveProfile();
+      if (this.onGameModeChanged) this.onGameModeChanged('arcade');
       return false;
     }
     this.profile.gameMode = mode;
     this.saveProfile();
+    if (this.onGameModeChanged) this.onGameModeChanged(mode);
     return true;
   }
 

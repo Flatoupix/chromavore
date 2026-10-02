@@ -323,10 +323,15 @@ class ProgressionManager {
     for (const s of SKILL_TREE) {
       if (prev < s.threshold && next >= s.threshold) {
         newlyUnlocked.push(s);
-        sounds.play('badge');
-        wobbleBanner.show('★ NEW SKILL UNLOCKED ★', s.name, s.command, s.icon, '#00f0ff', 2.4);
-        particles.flash('#00f0ff', 0.35);
-        particles.shake(6, 0.2);
+      }
+    }
+
+    if (newlyUnlocked.length > 0) {
+      sounds.play('badge');
+      particles.flash('#00f0ff', 0.35);
+      particles.shake(6, 0.2);
+      for (const s of newlyUnlocked) {
+        wobbleBanner.show('★ NEW SKILL UNLOCKED ★', s.name, s.command, s.icon, '#00f0ff', 2.5);
       }
     }
     // Chroma Awakening — détection de franchissement de tier visuel
@@ -408,6 +413,23 @@ class ProgressionManager {
       prevThreshold = s.threshold;
     }
     return { skill: null, remaining: 0, progress: 1, prevThreshold };
+  }
+
+  public getUpcomingUnlocks(limit: number = 2): SkillDef[] {
+    const g = this.totalGhosts;
+    const upcoming: SkillDef[] = [];
+    let skippedFirst = false;
+    for (const s of SKILL_TREE) {
+      if (g < s.threshold) {
+        if (!skippedFirst) {
+          skippedFirst = true;
+        } else {
+          upcoming.push(s);
+          if (upcoming.length >= limit) break;
+        }
+      }
+    }
+    return upcoming;
   }
 
   public getUnlockedSuperItems(): string[] {

@@ -39,6 +39,8 @@ export class Renderer {
   public inspectorUpgradeBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
   public treeRespecBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
   public treeSwitchModeBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
+  public codexLabBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
+  public skillCardBounds: Map<string, { x: number; y: number; w: number; h: number }> = new Map();
   private ghostStamps: Map<string, HTMLCanvasElement[]> = new Map();
 
   /** Retourne une couleur adaptée au tier chromatique (monochrome/grayscale au tier 0, progressive ensuite) */
@@ -357,7 +359,7 @@ export class Renderer {
   }
 
   public drawSequenceModeOverlay(input: import('../core/InputManager').InputManager, time: number) {
-    if (!input.isSequenceMode || input.sequenceStatus === 'executed') return;
+    if (profileManager.gameMode !== 'custom' || !input.isSequenceMode || input.sequenceStatus === 'executed') return;
     const c = this.ctx;
     c.save();
 
@@ -456,6 +458,7 @@ export class Renderer {
     const isWide = this.cw >= 680;
 
     const cardsData = SKILL_COMBOS.map(combo => {
+      const isDiscovered = profileManager.isSkillDiscovered(combo.id);
       const av = input.getSkillAvailability(combo.id);
       const seq = combo.sequence;
       const altSeq = combo.altSequence;
@@ -463,6 +466,18 @@ export class Renderer {
       let matchedSeq: string[] = seq;
       let isPrefix = false;
       let isCompleted = false;
+
+      if (!isDiscovered) {
+        return {
+          combo,
+          av,
+          matchedSeq,
+          status: 'locked' as const,
+          isCompleted: false,
+          isPrefix: false,
+          isDiscovered: false
+        };
+      }
 
       if (buf.length === 0) {
         isPrefix = true;
@@ -498,10 +513,43 @@ export class Renderer {
         status = 'ready';
       }
 
-      return { combo, av, matchedSeq, status, isCompleted, isPrefix };
+      return { combo, av, matchedSeq, status, isCompleted, isPrefix, isDiscovered: true };
     });
 
     const drawComboCard = (item: typeof cardsData[0], x: number, y: number, w: number, h: number) => {
+      if (!item.isDiscovered) {
+        c.save();
+        c.fillStyle = 'rgba(6, 9, 18, 0.75)';
+        c.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.roundRect(x, y, w, h, 5);
+        c.fill();
+        c.stroke();
+
+        // Icon ?
+        c.font = 'bold 12px monospace';
+        c.fillStyle = '#556677';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText('?', x + 12, y + h / 2);
+
+        // Title UNKNOWN SKILL
+        c.textAlign = 'left';
+        c.font = 'bold 8.5px monospace';
+        c.fillStyle = '#445566';
+        c.fillText('UNKNOWN SKILL', x + 24, y + h / 2);
+
+        // Right side badge
+        c.textAlign = 'right';
+        c.font = 'bold 8px monospace';
+        c.fillStyle = '#334455';
+        c.fillText('LOCKED', x + w - 6, y + h / 2);
+
+        c.restore();
+        return;
+      }
+
       const isDimmed = item.status === 'dimmed';
       const isCompl = item.status === 'completed';
       const isMatch = item.status === 'matching';
@@ -1406,10 +1454,11 @@ export class Renderer {
 
     } else {
       // ═══════════════════════════════════════════════════════════════
-      //  CHROMAVORE (ARCADE) — 16:9 / ARSENAL PROGRESSION BAR
+      //  CHROMAVORE (ARCADE) — KILLS PROGRESSION (INTERMEDIATE POWERS)
       // ═══════════════════════════════════════════════════════════════
       const careerGhosts = profileManager.profile.careerGhosts || 0;
-      const isWideUnlocked = profileManager.isChromamancerUnlocked();
+      const nxt = progression.getNextUnlock();
+      const upcoming = progression.getUpcomingUnlocks(2);
 
       // 1. Dark Glass Background
       c.fillStyle = 'rgba(4, 8, 16, 0.94)';
@@ -1418,17 +1467,24 @@ export class Renderer {
       c.textBaseline = 'middle';
       const textY = barY + barH / 2 + 0.5;
 
-      if (!isWideUnlocked) {
-        // Locked: Progress towards 16:9 Arena & Chromamancer mode
-        const prog = Math.min(1, careerGhosts / MADNESS_UNLOCK_KILLS);
-        const fillW = Math.round(this.cw * prog);
+      if (nxt.skill) {
+        const fillW = Math.round(this.cw * nxt.progress);
         if (fillW > 0) {
           const grad = c.createLinearGradient(0, barY, Math.max(10, fillW), barY);
           grad.addColorStop(0, '#003355');
-          grad.addColorStop(0.7, '#0099bb');
+          grad.addColorStop(0.65, '#0099bb');
           grad.addColorStop(1, '#00ffff');
           c.fillStyle = grad;
           c.fillRect(0, barY + 1, fillW, barH - 1);
+
+          // Leading edge pulse line
+          if (fillW < this.cw - 2) {
+            c.fillStyle = '#ffffff';
+            c.shadowColor = '#00ffff';
+            c.shadowBlur = 6;
+            c.fillRect(fillW - 2, barY + 1, 2, barH - 1);
+            c.shadowBlur = 0;
+          }
         }
 
         // Top Border
@@ -1442,71 +1498,45 @@ export class Renderer {
         c.stroke();
         c.shadowBlur = 0;
 
-        // Left
+        // Left: Next power icon + name
         c.textAlign = 'left';
         c.font = 'bold 8.5px monospace';
         c.fillStyle = '#00ffff';
-        c.fillText('🔒 16:9 & CHROMAMANCER', 10, textY);
+        spriteAtlas.drawIcon(c, nxt.skill.icon, 10, barY + barH / 2 - 6, 12);
+        const nextLabel = nxt.skill.threshold === 500
+          ? `NEXT: ${nxt.skill.name} (+ 16:9 ARENA)`
+          : `NEXT: ${nxt.skill.name}`;
+        c.fillText(nextLabel, 26, textY);
 
-        // Center
+        // Center: Career ghosts progress
         c.textAlign = 'center';
         c.font = 'bold 8.5px monospace';
         c.fillStyle = '#ffffff';
-        const pct = (prog * 100).toFixed(1);
-        c.fillText(`PROGRESSION 16:9 : ${careerGhosts.toLocaleString()} / ${MADNESS_UNLOCK_KILLS.toLocaleString()} GHOSTS (${pct}%)`, this.cw / 2, textY);
+        const pct = (nxt.progress * 100).toFixed(0);
+        c.fillText(`CAREER: ${careerGhosts.toLocaleString()} / ${nxt.skill.threshold.toLocaleString()} GHOSTS (${pct}%)`, this.cw / 2, textY);
 
-        // Right
+        // Right: Remaining ghosts + next milestone hint
         c.textAlign = 'right';
         c.font = 'bold 8.5px monospace';
-        const left = MADNESS_UNLOCK_KILLS - careerGhosts;
-        c.fillStyle = '#ffaaee';
-        c.fillText(`ENCORE ${left.toLocaleString()} GHOSTS`, this.cw - 10, textY);
+        c.fillStyle = '#ffd700';
+        const rightText = upcoming.length > 0 && this.cw >= 600
+          ? `${nxt.remaining.toLocaleString()} LEFT (THEN: ${upcoming[0].name.slice(0, 11)})`
+          : `${nxt.remaining.toLocaleString()} GHOSTS LEFT`;
+        c.fillText(rightText, this.cw - 10, textY);
 
       } else {
-        // Unlocked: 16:9 Hyper-Arena active, tracking Next Arsenal Skill
-        const nxt = progression.getNextUnlock();
-        const fillW = Math.round(this.cw * nxt.progress);
-        if (fillW > 0) {
-          const grad = c.createLinearGradient(0, barY, Math.max(10, fillW), barY);
-          grad.addColorStop(0, '#005544');
-          grad.addColorStop(0.7, '#00bb88');
-          grad.addColorStop(1, '#00ffaa');
-          c.fillStyle = grad;
-          c.fillRect(0, barY + 1, fillW, barH - 1);
-        }
-
-        // Top Border
-        c.strokeStyle = '#00ffaa';
+        // All powers unlocked in SKILL_TREE
+        c.strokeStyle = '#ffd700';
         c.lineWidth = 1;
-        c.shadowColor = '#00ffaa';
-        c.shadowBlur = 4;
         c.beginPath();
         c.moveTo(0, barY);
         c.lineTo(this.cw, barY);
         c.stroke();
-        c.shadowBlur = 0;
 
-        // Left
-        c.textAlign = 'left';
-        c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#00ffaa';
-        c.fillText('✦ 16:9 HYPER-ARENA ACTIVE', 10, textY);
-
-        // Center
         c.textAlign = 'center';
         c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#ffffff';
-        if (nxt.skill) {
-          c.fillText(`NEXT ARSENAL: ${nxt.skill.name} (${progression.totalGhosts}/${nxt.skill.threshold})`, this.cw / 2, textY);
-        } else {
-          c.fillText(`CAREER TOTAL: ${progression.totalGhosts.toLocaleString()} GHOSTS PURGED`, this.cw / 2, textY);
-        }
-
-        // Right
-        c.textAlign = 'right';
-        c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#ff00aa';
-        c.fillText('⚡ CHROMAMANCER DÉBLOQUÉ !', this.cw - 10, textY);
+        c.fillStyle = '#ffd700';
+        c.fillText(`CAREER: ${careerGhosts.toLocaleString()} GHOSTS  •  ARSENAL MASTERED  •  16:9 HYPER-ARENA ACTIVE`, this.cw / 2, textY);
       }
     }
 
@@ -2678,6 +2708,8 @@ export class Renderer {
         c.fillText('[CLICK A NODE TO UPGRADE]  •  [R] RESPEC  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] BACK', this.cw / 2, CH - 14);
       }
     } else if (isSkills) {
+      this.skillCardBounds.clear();
+
       // Career Progress Bar Header
       const nxt = progression.getNextUnlock();
       const barW = Math.min(totalGridW, isWide ? 620 : 460), barH = 8;
@@ -2700,13 +2732,38 @@ export class Renderer {
       c.fill();
       c.shadowBlur = 0;
 
+      // [T] TRY IN LAB Button
+      const tryBtnW = 106, tryBtnH = 20;
+      const tryBtnX = Math.round(barX + barW - tryBtnW);
+      const tryBtnY = 54;
+      this.codexLabBtnBounds = { x: tryBtnX, y: tryBtnY, w: tryBtnW, h: tryBtnH };
+
+      c.save();
+      c.fillStyle = 'rgba(0, 240, 255, 0.16)';
+      c.strokeStyle = '#00ffff';
+      c.lineWidth = 1.2;
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 6;
+      c.beginPath();
+      c.roundRect(tryBtnX, tryBtnY, tryBtnW, tryBtnH, 4);
+      c.fill();
+      c.stroke();
+      c.shadowBlur = 0;
+
+      c.font = 'bold 9px monospace';
+      c.fillStyle = '#00ffff';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText('🧪 [T] TRY LAB', tryBtnX + tryBtnW / 2, tryBtnY + tryBtnH / 2);
+      c.restore();
+
       c.font = 'bold 9.5px monospace';
       c.fillStyle = '#ffffff';
-      c.textAlign = 'center';
+      c.textAlign = 'left';
       if (nxt.skill) {
-        c.fillText(`CAREER TOTAL: ${progression.totalGhosts.toLocaleString()} KILLS >> NEXT: ${nxt.skill.name} (${nxt.remaining.toLocaleString()} KILLS)`, this.cw / 2, 70);
+        c.fillText(`CAREER: ${progression.totalGhosts.toLocaleString()} KILLS >> NEXT: ${nxt.skill.name} (${nxt.remaining.toLocaleString()} LEFT)`, barX, 68);
       } else {
-        c.fillText(`CAREER TOTAL: ${progression.totalGhosts.toLocaleString()} KILLS (ARSENAL 100% MASTERED!)`, this.cw / 2, 70);
+        c.fillText(`CAREER: ${progression.totalGhosts.toLocaleString()} KILLS (ARSENAL MASTERED!)`, barX, 68);
       }
 
       // Base and odd-numbered upgrades on the left; advanced even-numbered upgrades on the right.
@@ -2720,11 +2777,13 @@ export class Renderer {
       for (let i = 0; i < leftSkills.length; i++) {
         const s = leftSkills[i];
         const y = startY + i * gapY;
+        this.skillCardBounds.set(s.id, { x: col1X, y, w: colW, h: cardH });
         this.drawSkillCard(c, s, col1X, y, colW, cardH);
       }
       for (let i = 0; i < rightSkills.length; i++) {
         const s = rightSkills[i];
         const y = startY + i * gapY;
+        this.skillCardBounds.set(s.id, { x: col2X, y, w: colW, h: cardH });
         this.drawSkillCard(c, s, col2X, y, colW, cardH);
       }
 
@@ -2734,7 +2793,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00ffff';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [3] SKILL TREE  •  [TAB] SWITCH  •  [ESC / C] BACK', this.cw / 2, CH - 14);
+      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [3] SKILL TREE  •  [T] TRY IN LAB  •  [ESC / C] BACK', this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     } else {
       // BADGES & ACHIEVEMENTS GALLERY
@@ -3375,7 +3434,7 @@ export class Renderer {
     c.font = 'bold 10px monospace';
     if (unlocked) {
       c.fillStyle = this.getChromaAccent('#00ffaa', '#cccccc');
-      const statusText = 'ACTIVE';
+      const statusText = 'ACTIVE • [TRY]';
       const tw = c.measureText(statusText).width;
       spriteAtlas.drawIcon(c, 'check', x + w - 8 - tw - 8, y + 14, 10);
       c.fillText(statusText, x + w - 8, y + 14);

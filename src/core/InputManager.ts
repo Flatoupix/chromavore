@@ -141,11 +141,12 @@ export class InputManager {
   }
 
   public handleChronoDown() {
+    const isChromamancer = profileManager.gameMode === 'custom';
     const now = performance.now();
-    const isDoubleTap = this.lastShiftPressTime > 0 && (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
+    const isDoubleTap = isChromamancer && this.lastShiftPressTime > 0 && (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
 
     if (isDoubleTap) {
-      // Give the player a short, real-time window while the world is frozen.
+      // Sequence Mode ONLY for Chromamancer
       this.isSequenceMode = true;
       this.sequenceTimeLeft = this.SEQUENCE_DURATION;
       this.sequenceEndTime = now + this.SEQUENCE_DURATION * 1000;
@@ -156,7 +157,7 @@ export class InputManager {
       this.sequenceMatchedSkill = null;
       sounds.play('sequence_step', 0);
     } else {
-      // Standard single-hold Chrono bullet time
+      // Standard single-hold Chrono bullet time (available in both modes when unlocked)
       this.isSequenceMode = false;
       this.sequenceTimeLeft = 0;
       this.sequenceEndTime = 0;
@@ -172,10 +173,13 @@ export class InputManager {
   public handleChronoUp() {
     this.isChronoKeyHeld = false;
     if (this.isSequenceMode) {
-      this.evaluateAndTriggerSequence();
+      if (profileManager.gameMode === 'custom') {
+        this.evaluateAndTriggerSequence();
+      }
       this.isSequenceMode = false;
       this.sequenceTimeLeft = 0;
       this.sequenceEndTime = 0;
+      this.sequenceBuffer = [];
     }
     this.heldDirections = [];
   }
@@ -265,6 +269,15 @@ export class InputManager {
   public updateSequencePreview() {
     const matched = this.matchCombo(this.sequenceBuffer);
     if (matched) {
+      const isDiscovered = profileManager.isSkillDiscovered(matched.id);
+      if (!isDiscovered) {
+        // Do not reveal skill identity or confirm sequence for undiscovered skills
+        this.sequenceStatus = 'invalid';
+        this.sequenceFeedback = 'UNKNOWN SEQUENCE';
+        this.sequenceMatchedSkill = null;
+        return;
+      }
+
       this.sequenceMatchedSkill = matched.id;
       const av = this.getSkillAvailability(matched.id);
       if (!av.unlocked) {
@@ -283,9 +296,9 @@ export class InputManager {
       return;
     }
 
-    // Check if current buffer is a prefix of any combo
+    // Check if current buffer is a prefix of any DISCOVERED combo
     const curStr = this.sequenceBuffer.join('-');
-    const isPrefix = SKILL_COMBOS.some(c =>
+    const isPrefix = SKILL_COMBOS.filter(c => profileManager.isSkillDiscovered(c.id)).some(c =>
       c.sequence.join('-').startsWith(curStr) || (c.altSequence && c.altSequence.join('-').startsWith(curStr))
     );
 
@@ -301,6 +314,11 @@ export class InputManager {
   }
 
   public evaluateAndTriggerSequence() {
+    if (profileManager.gameMode !== 'custom') {
+      this.cancelChronoInput();
+      return;
+    }
+
     if (this.sequenceBuffer.length === 0) {
       this.sequenceStatus = 'idle';
       this.sequenceFeedback = '';
@@ -316,10 +334,20 @@ export class InputManager {
       return;
     }
 
+    const isDiscovered = profileManager.isSkillDiscovered(matched.id);
+    if (!isDiscovered) {
+      // Secret skill entered by accident: don't reveal name!
+      this.sequenceStatus = 'invalid';
+      this.sequenceFeedback = 'UNKNOWN SEQUENCE';
+      this.sequenceFeedbackTimer = 0.7;
+      sounds.play('sequence_fail');
+      return;
+    }
+
     const av = this.getSkillAvailability(matched.id);
     if (!av.unlocked) {
       this.sequenceStatus = 'invalid';
-      this.sequenceFeedback = `${matched.name} LOCKED!`;
+      this.sequenceFeedback = `${matched.name} LOCKED IN TREE!`;
       this.sequenceFeedbackTimer = 1.0;
       sounds.play('sequence_fail');
       return;
