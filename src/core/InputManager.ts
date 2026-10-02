@@ -85,6 +85,25 @@ export class InputManager {
   public isSettingsRequested: boolean = false;
   public isNovaRequested: boolean = false;
 
+  // ─── Gamepad Extended State & Edge Triggering ───
+  public isGamepadConnected: boolean = false;
+  private prevButtons: boolean[] = [];
+  private prevAxes: [number, number] = [0, 0];
+  public gpJustPressed: Record<string, boolean> = {
+    a: false,
+    b: false,
+    x: false,
+    y: false,
+    lb: false,
+    rb: false,
+    select: false,
+    start: false,
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+  };
+
   // ─── Shift Double-Tap Sequence Mode ───
   public isSequenceMode: boolean = false;
   public sequenceBuffer: string[] = [];
@@ -548,34 +567,105 @@ export class InputManager {
   }
 
   public pollGamepad() {
+    for (const k in this.gpJustPressed) {
+      this.gpJustPressed[k] = false;
+    }
+
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-    for (const gp of gamepads) {
-      if (!gp) continue;
+    let gp: Gamepad | null = null;
+    for (const g of gamepads) {
+      if (g && g.connected) {
+        gp = g;
+        break;
+      }
+    }
 
-      // Stick / D-Pad
-      const ax = gp.axes[0] || 0, ay = gp.axes[1] || 0;
-      const th = 0.35;
-      if (ax < -th || (gp.buttons[14] && gp.buttons[14].pressed)) this.setNextDir(-1, 0);
-      else if (ax > th || (gp.buttons[15] && gp.buttons[15].pressed)) this.setNextDir(1, 0);
-      else if (ay < -th || (gp.buttons[12] && gp.buttons[12].pressed)) this.setNextDir(0, -1);
-      else if (ay > th || (gp.buttons[13] && gp.buttons[13].pressed)) this.setNextDir(0, 1);
+    this.isGamepadConnected = gp !== null;
+    if (!gp) {
+      this.prevButtons = [];
+      this.prevAxes = [0, 0];
+      return;
+    }
 
-      // A / X / Triggers = Dash / Start
-      if ((gp.buttons[0] && gp.buttons[0].pressed) || (gp.buttons[2] && gp.buttons[2].pressed)) {
+    const ax = gp.axes[0] || 0;
+    const ay = gp.axes[1] || 0;
+    const th = 0.45;
+
+    // Detect digital and analog edge triggers for navigation & spellcasting
+    const stickUp = ay < -th && !(this.prevAxes[1] < -th);
+    const stickDown = ay > th && !(this.prevAxes[1] > th);
+    const stickLeft = ax < -th && !(this.prevAxes[0] < -th);
+    const stickRight = ax > th && !(this.prevAxes[0] > th);
+
+    const bPress = (idx: number) => Boolean(gp.buttons[idx] && gp.buttons[idx].pressed);
+    const bJust = (idx: number) => Boolean(gp.buttons[idx] && gp.buttons[idx].pressed && !this.prevButtons[idx]);
+
+    this.gpJustPressed.up = bJust(12) || stickUp;
+    this.gpJustPressed.down = bJust(13) || stickDown;
+    this.gpJustPressed.left = bJust(14) || stickLeft;
+    this.gpJustPressed.right = bJust(15) || stickRight;
+    this.gpJustPressed.a = bJust(0);
+    this.gpJustPressed.b = bJust(1);
+    this.gpJustPressed.x = bJust(2);
+    this.gpJustPressed.y = bJust(3);
+    this.gpJustPressed.lb = bJust(4);
+    this.gpJustPressed.rb = bJust(5);
+    this.gpJustPressed.select = bJust(8);
+    this.gpJustPressed.start = bJust(9);
+
+    // ─── Shift Sequence Mode over Gamepad ───
+    if (this.isSequenceMode) {
+      if (this.gpJustPressed.up) this.addSequenceDirection('up');
+      else if (this.gpJustPressed.down) this.addSequenceDirection('down');
+      else if (this.gpJustPressed.left) this.addSequenceDirection('left');
+      else if (this.gpJustPressed.right) this.addSequenceDirection('right');
+
+      // B or X acts as Backspace / undo
+      if (this.gpJustPressed.b || this.gpJustPressed.x) {
+        if (this.sequenceBuffer.length > 0) {
+          this.sequenceBuffer.pop();
+          sounds.play('sequence_step', this.sequenceBuffer.length);
+          this.updateSequencePreview();
+        }
+      }
+
+      if (this.gpJustPressed.start || this.gpJustPressed.select) {
+        this.cancelChronoInput();
+      }
+    } else {
+      // Normal continuous gameplay movement:
+      const moveTh = 0.32;
+      if (ax < -moveTh || bPress(14)) this.setNextDir(-1, 0);
+      else if (ax > moveTh || bPress(15)) this.setNextDir(1, 0);
+      else if (ay < -moveTh || bPress(12)) this.setNextDir(0, -1);
+      else if (ay > moveTh || bPress(13)) this.setNextDir(0, 1);
+
+      // Dash / Start on Button A or Button X
+      if (this.gpJustPressed.a || this.gpJustPressed.x) {
         this.isDashRequested = true;
         this.isStartRequested = true;
       }
-      // Left Bumper / Trigger = Chrono Bullet Time
-      if (gp.buttons[4] && gp.buttons[4].pressed) {
-        if (!this.isChronoKeyHeld) this.handleChronoDown();
-      } else if (this.isChronoKeyHeld && !this.keys['ShiftLeft'] && !this.keys['ShiftRight']) {
-        this.handleChronoUp();
-      }
-      // Start = Pause
-      if (gp.buttons[9] && gp.buttons[9].pressed) {
+
+      // Pause on Start
+      if (this.gpJustPressed.start) {
         this.isPauseRequested = true;
       }
     }
+
+    // Left Bumper / Trigger = Chrono Bullet Time & Double-tap Sequence Mode
+    const lbHeld = bPress(4) || bPress(6);
+    const lbJust = bJust(4) || bJust(6);
+    if (lbJust) {
+      this.handleChronoDown();
+    } else if (!lbHeld && this.isChronoKeyHeld && !this.keys['ShiftLeft'] && !this.keys['ShiftRight']) {
+      this.handleChronoUp();
+    }
+
+    // Save previous state for next frame's edge detection
+    for (let i = 0; i < gp.buttons.length; i++) {
+      this.prevButtons[i] = Boolean(gp.buttons[i] && gp.buttons[i].pressed);
+    }
+    this.prevAxes = [ax, ay];
   }
 
   public resetKombos() {

@@ -13,6 +13,18 @@ class SoundManager {
   private isChronoActive: boolean = false;
   private lastKillSfxTime: number = 0;
 
+  // Multi-Bus Audio Routing & Volume Levels (0..1)
+  private masterVolume: number = 0.8;
+  private musicVolume: number = 0.7;
+  private sfxVolume: number = 0.9;
+  private masterGain: GainNode | null = null;
+  private sfxGain: GainNode | null = null;
+  private musicGain: GainNode | null = null;
+
+  // Asystole / Biological Heart Flatline Telemetry
+  private asystoleOsc: OscillatorNode | null = null;
+  private asystoleGain: GainNode | null = null;
+
   // HD Audio System (Unlocked at 3000 kills)
   private hdTracks: Record<'normal' | 'madness' | 'singularity', HTMLAudioElement> | null = null;
   private hdVolumes: Record<'normal' | 'madness' | 'singularity', number> = { normal: 0, madness: 0, singularity: 0 };
@@ -23,6 +35,13 @@ class SoundManager {
 
   constructor() {
     this.muted = localStorage.getItem('chv_muted') === 'true';
+    const savedMaster = localStorage.getItem('chv_vol_master');
+    if (savedMaster !== null) this.masterVolume = Math.max(0, Math.min(1, parseFloat(savedMaster)));
+    const savedMusic = localStorage.getItem('chv_vol_music');
+    if (savedMusic !== null) this.musicVolume = Math.max(0, Math.min(1, parseFloat(savedMusic)));
+    const savedSfx = localStorage.getItem('chv_vol_sfx');
+    if (savedSfx !== null) this.sfxVolume = Math.max(0, Math.min(1, parseFloat(savedSfx)));
+
     if (typeof window !== 'undefined') {
       const unlockAudio = () => {
         this.initCtx();
@@ -65,8 +84,71 @@ class SoundManager {
         this.actx = new AudioContextClass();
       }
     }
-    if (this.actx && this.actx.state === 'suspended') {
-      this.actx.resume();
+    if (this.actx) {
+      if (!this.masterGain) {
+        this.masterGain = this.actx.createGain();
+        this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.masterVolume, this.actx.currentTime);
+        this.masterGain.connect(this.actx.destination);
+
+        this.sfxGain = this.actx.createGain();
+        this.sfxGain.gain.setValueAtTime(this.sfxVolume, this.actx.currentTime);
+        this.sfxGain.connect(this.masterGain);
+
+        this.musicGain = this.actx.createGain();
+        this.musicGain.gain.setValueAtTime(this.musicVolume, this.actx.currentTime);
+        this.musicGain.connect(this.masterGain);
+      }
+      if (this.actx.state === 'suspended') {
+        this.actx.resume();
+      }
+    }
+  }
+
+  private get sfxDest(): AudioNode {
+    return this.sfxGain || (this.actx ? this.actx.destination : (null as any));
+  }
+
+  private get musicDest(): AudioNode {
+    return this.musicGain || (this.actx ? this.actx.destination : (null as any));
+  }
+
+  public setMasterVolume(v: number) {
+    this.masterVolume = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem('chv_vol_master', this.masterVolume.toString()); } catch {}
+    if (this.masterGain && this.actx) {
+      this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.masterVolume, this.actx.currentTime);
+    }
+    this.applyHDVolumes();
+  }
+
+  public setMusicVolume(v: number) {
+    this.musicVolume = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem('chv_vol_music', this.musicVolume.toString()); } catch {}
+    if (this.musicGain && this.actx) {
+      this.musicGain.gain.setValueAtTime(this.musicVolume, this.actx.currentTime);
+    }
+    this.applyHDVolumes();
+  }
+
+  public setSfxVolume(v: number) {
+    this.sfxVolume = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem('chv_vol_sfx', this.sfxVolume.toString()); } catch {}
+    if (this.sfxGain && this.actx) {
+      this.sfxGain.gain.setValueAtTime(this.sfxVolume, this.actx.currentTime);
+    }
+  }
+
+  public getMasterVolume(): number { return this.masterVolume; }
+  public getMusicVolume(): number { return this.musicVolume; }
+  public getSfxVolume(): number { return this.sfxVolume; }
+
+  private applyHDVolumes() {
+    if (!this.hdTracks) return;
+    for (const k of ['normal', 'madness', 'singularity'] as const) {
+      const audio = this.hdTracks[k];
+      if (audio) {
+        audio.volume = this.muted ? 0 : Math.max(0, Math.min(1, this.hdVolumes[k] * this.musicVolume * this.masterVolume));
+      }
     }
   }
 
@@ -80,19 +162,69 @@ class SoundManager {
       localStorage.setItem('chv_muted', this.muted ? 'true' : 'false');
     } catch {}
 
-    if (this.hdTracks) {
-      Object.values(this.hdTracks).forEach(a => {
-        a.muted = this.muted;
-        if (this.muted) {
-          a.volume = 0;
-        }
-      });
+    if (this.masterGain && this.actx) {
+      this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.masterVolume, this.actx.currentTime);
     }
+
+    this.applyHDVolumes();
 
     if (!this.muted) {
       this.play('dot');
     }
     return this.muted;
+  }
+
+  public playAsystoleFlatline() {
+    if (this.muted) return;
+    this.initCtx();
+    if (!this.actx) return;
+    this.stopAsystoleFlatline();
+
+    const t = this.actx.currentTime;
+    // 1. Initial dying heart telemetry beeps (progressively slower intervals: 0.6s -> 0.9s -> 1.3s -> flatline)
+    const beeps = [0.0, 0.65, 1.45, 2.4];
+    for (const b of beeps) {
+      const osc = this.actx.createOscillator();
+      const g = this.actx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t + b);
+      g.gain.setValueAtTime(0.06, t + b);
+      g.gain.exponentialRampToValueAtTime(0.001, t + b + 0.12);
+      osc.connect(g);
+      if (this.sfxDest) g.connect(this.sfxDest);
+      osc.start(t + b);
+      osc.stop(t + b + 0.13);
+    }
+
+    // 2. Continuous Flatline Tone starting at t + 3.2s
+    const flatlineOsc = this.actx.createOscillator();
+    const flatlineGain = this.actx.createGain();
+    flatlineOsc.type = 'sine';
+    flatlineOsc.frequency.setValueAtTime(784, t + 3.2); // G5 clinical monitor pitch
+    flatlineGain.gain.setValueAtTime(0.0001, t + 3.2);
+    flatlineGain.gain.linearRampToValueAtTime(0.045, t + 3.4); // Smooth entrance
+
+    flatlineOsc.connect(flatlineGain);
+    if (this.sfxDest) flatlineGain.connect(this.sfxDest);
+    flatlineOsc.start(t + 3.2);
+
+    this.asystoleOsc = flatlineOsc;
+    this.asystoleGain = flatlineGain;
+  }
+
+  public stopAsystoleFlatline() {
+    if (this.asystoleGain && this.actx) {
+      try {
+        this.asystoleGain.gain.linearRampToValueAtTime(0.0001, this.actx.currentTime + 0.3);
+      } catch {}
+    }
+    if (this.asystoleOsc) {
+      try {
+        this.asystoleOsc.stop(this.actx ? this.actx.currentTime + 0.35 : 0);
+      } catch {}
+    }
+    this.asystoleOsc = null;
+    this.asystoleGain = null;
   }
 
   public play(type: string, param?: number) {
@@ -113,7 +245,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.045, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.04);
           break;
@@ -176,7 +308,7 @@ class SoundManager {
           g.gain.setValueAtTime(gainVal, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + duration);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + duration);
           break;
@@ -190,7 +322,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.12, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.25);
           break;
@@ -208,7 +340,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.2, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.2);
           break;
@@ -224,7 +356,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.25, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.65);
           break;
@@ -238,7 +370,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.18, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.16);
           break;
@@ -252,7 +384,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.12, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.15);
           break;
@@ -267,7 +399,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.3, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.45);
           break;
@@ -283,7 +415,7 @@ class SoundManager {
             g.gain.setValueAtTime(0.12, t + idx * 0.05);
             g.gain.exponentialRampToValueAtTime(0.001, t + idx * 0.05 + 0.1);
             osc.connect(g);
-            g.connect(this.actx.destination);
+            g.connect(this.sfxDest);
             osc.start(t + idx * 0.05);
             osc.stop(t + idx * 0.05 + 0.1);
           });
@@ -301,7 +433,7 @@ class SoundManager {
             g.gain.setValueAtTime(0.08, t);
             g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
             osc.connect(g);
-            g.connect(this.actx.destination);
+            g.connect(this.sfxDest);
             osc.start(t);
             osc.stop(t + 0.6);
           });
@@ -316,7 +448,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.1, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.1);
           break;
@@ -332,7 +464,7 @@ class SoundManager {
             g.gain.setValueAtTime(0.15, t + i * 0.08);
             g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.2);
             osc.connect(g);
-            g.connect(this.actx.destination);
+            g.connect(this.sfxDest);
             osc.start(t + i * 0.08);
             osc.stop(t + i * 0.08 + 0.2);
           });
@@ -349,7 +481,7 @@ class SoundManager {
             g.gain.setValueAtTime(0.1, t + i * 0.1);
             g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.1 + 0.18);
             osc.connect(g);
-            g.connect(this.actx.destination);
+            g.connect(this.sfxDest);
             osc.start(t + i * 0.1);
             osc.stop(t + i * 0.1 + 0.18);
           });
@@ -370,7 +502,7 @@ class SoundManager {
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
           osc.connect(filter);
           filter.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.5);
           break;
@@ -388,7 +520,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.18, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.14);
           break;
@@ -408,7 +540,7 @@ class SoundManager {
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
           osc.connect(filter);
           filter.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.32);
           break;
@@ -423,7 +555,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.15, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.20);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.20);
           break;
@@ -442,7 +574,7 @@ class SoundManager {
             g.gain.setValueAtTime(0.038, noteStart);
             g.gain.exponentialRampToValueAtTime(0.0005, noteStart + noteDur);
             osc.connect(g);
-            g.connect(this.actx.destination);
+            g.connect(this.sfxDest);
             osc.start(noteStart);
             osc.stop(noteStart + noteDur);
           });
@@ -459,7 +591,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.04, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.05);
           break;
@@ -476,7 +608,7 @@ class SoundManager {
             g.gain.setValueAtTime(0.05, st);
             g.gain.exponentialRampToValueAtTime(0.001, st + 0.12);
             osc.connect(g);
-            g.connect(this.actx.destination);
+            g.connect(this.sfxDest);
             osc.start(st);
             osc.stop(st + 0.12);
           });
@@ -491,7 +623,7 @@ class SoundManager {
           g.gain.setValueAtTime(0.05, t);
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
           osc.connect(g);
-          g.connect(this.actx.destination);
+          g.connect(this.sfxDest);
           osc.start(t);
           osc.stop(t + 0.15);
           break;
@@ -549,7 +681,7 @@ class SoundManager {
         const audio = this.hdTracks[k];
         if (this.hdVolumes[k] > 0) {
           this.hdVolumes[k] = Math.max(0, this.hdVolumes[k] - dt * 3.5);
-          audio.volume = this.muted ? 0 : this.hdVolumes[k];
+          audio.volume = this.muted ? 0 : Math.max(0, Math.min(1, this.hdVolumes[k] * this.musicVolume * this.masterVolume));
           if (this.hdVolumes[k] === 0 && !audio.paused) {
             audio.pause();
           }
@@ -599,7 +731,7 @@ class SoundManager {
         }
       }
 
-      audio.volume = this.muted ? 0 : Math.max(0, Math.min(1, this.hdVolumes[k]));
+      audio.volume = this.muted ? 0 : Math.max(0, Math.min(1, this.hdVolumes[k] * this.musicVolume * this.masterVolume));
     }
   }
 
@@ -699,7 +831,7 @@ class SoundManager {
 
         osc.connect(filter);
         filter.connect(g);
-        g.connect(this.actx.destination);
+        g.connect(this.musicDest);
 
         osc.start(t);
         osc.stop(t + stepDuration * 0.9);
@@ -725,7 +857,7 @@ class SoundManager {
           arpG.gain.exponentialRampToValueAtTime(0.001, t + stepDuration * (isInvincible ? 1.2 : 1.5));
 
           arpOsc.connect(arpG);
-          arpG.connect(this.actx.destination);
+          arpG.connect(this.musicDest);
 
           arpOsc.start(t);
           arpOsc.stop(t + stepDuration * (isInvincible ? 1.2 : 1.5));

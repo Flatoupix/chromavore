@@ -3241,18 +3241,25 @@ export class Renderer {
     }
   }
 
-  public drawPause(isMadness: boolean, kills: number, streak: number, time: number = 0, isFromMenu: boolean = false) {
+  public drawPause(
+    isMadness: boolean,
+    kills: number,
+    streak: number,
+    time: number = 0,
+    isFromMenu: boolean = false,
+    focusIndex: number = -1
+  ) {
     updatePauseButtonPositions(this.cw, isFromMenu);
     const c = this.ctx;
     // Dark blur backdrop
-    c.fillStyle = this.chromaTier === 0 ? 'rgba(0, 0, 0, 0.92)' : 'rgba(5, 7, 14, 0.88)';
+    c.fillStyle = this.chromaTier === 0 ? 'rgba(0, 0, 0, 0.92)' : 'rgba(5, 7, 14, 0.90)';
     c.fillRect(0, 0, this.cw, CH);
 
     // Modal Card (dynamically centered horizontally for every arena width)
-    const cardW = Math.min(500, this.cw - 20), cardH = 435;
-    const cardX = Math.floor((this.cw - cardW) / 2), cardY = 90;
+    const cardW = Math.min(500, this.cw - 20), cardH = 505;
+    const cardX = Math.floor((this.cw - cardW) / 2), cardY = 55;
     c.save();
-    c.fillStyle = this.chromaTier === 0 ? '#0e0e0e' : 'rgba(10, 15, 28, 0.96)';
+    c.fillStyle = this.chromaTier === 0 ? '#0e0e0e' : 'rgba(10, 15, 28, 0.97)';
     const cardStroke = this.getChromaAccent('#00d4ff', '#555555');
     c.strokeStyle = cardStroke;
     c.lineWidth = 2;
@@ -3265,24 +3272,25 @@ export class Renderer {
     c.shadowBlur = 0;
 
     // Header Title
-    c.font = 'bold 22px monospace';
+    c.font = 'bold 20px monospace';
     c.fillStyle = this.getChromaAccent('#00ffff', '#ffffff');
     c.textAlign = 'center';
     if (isFromMenu) {
-      c.fillText('SETTINGS & ACCESSIBILITY', this.cw / 2, cardY + 36);
-      c.font = '10px monospace';
+      c.fillText('SETTINGS & ACCESSIBILITY', this.cw / 2, cardY + 34);
+      c.font = '9.5px monospace';
       c.fillStyle = this.chromaTier === 0 ? '#666666' : '#667799';
-      c.fillText('VISUAL OPTIONS • PERFORMANCE • PLAYER PROFILE', this.cw / 2, cardY + 58);
+      c.fillText('VISUAL OPTIONS • AUDIO ENGINE • PROFILES • GAMEPAD', this.cw / 2, cardY + 52);
     } else {
-      c.fillText('PAUSE — DISPLAY & AUDIO SETTINGS', this.cw / 2, cardY + 36);
-      c.font = '10px monospace';
+      c.fillText('PAUSE — DISPLAY & AUDIO SETTINGS', this.cw / 2, cardY + 34);
+      c.font = '9.5px monospace';
       c.fillStyle = this.chromaTier === 0 ? '#666666' : '#667799';
-      c.fillText('TAP AN OPTION OR PRESS KEYS [1] TO [5] / [M]', this.cw / 2, cardY + 58);
+      c.fillText('ARROWS / D-PAD TO NAVIGATE • ENTER / A TO TOGGLE', this.cw / 2, cardY + 52);
     }
 
     const s = settingsManager.settings;
 
-    const items = [
+    // 1. Video & Visual Toggles (0 to 4)
+    const visualItems = [
       {
         btn: PAUSE_BUTTONS[0],
         key: '[1]',
@@ -3317,25 +3325,25 @@ export class Renderer {
         label: 'PARTICLE DENSITY',
         state: s.particleDensity === 'max' ? 'MAX (1000)' : 'ECO (350)',
         active: s.particleDensity === 'max'
-      },
-      {
-        btn: PAUSE_BUTTONS[5],
-        key: '[M]',
-        label: 'AUDIO & SYNTHWAVE BGM',
-        state: sounds.isMuted() ? 'OFF' : 'ON',
-        active: !sounds.isMuted()
       }
     ];
 
-    for (const it of items) {
+    for (let i = 0; i < visualItems.length; i++) {
+      const it = visualItems[i];
       const b = it.btn;
-      c.fillStyle = it.active
-        ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 212, 255, 0.12)')
-        : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.6)' : 'rgba(20, 26, 40, 0.6)');
-      c.strokeStyle = it.active
-        ? this.getChromaAccent('#00d4ff', '#777777')
-        : (this.chromaTier === 0 ? '#333333' : '#334460');
-      c.lineWidth = it.active ? 1.5 : 1;
+      const isFocused = focusIndex === i;
+
+      c.fillStyle = isFocused
+        ? 'rgba(0, 240, 255, 0.22)'
+        : (it.active
+          ? (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 212, 255, 0.12)')
+          : (this.chromaTier === 0 ? 'rgba(20, 20, 20, 0.6)' : 'rgba(20, 26, 40, 0.6)'));
+      c.strokeStyle = isFocused
+        ? '#00ffff'
+        : (it.active
+          ? this.getChromaAccent('#00d4ff', '#777777')
+          : (this.chromaTier === 0 ? '#333333' : '#334460'));
+      c.lineWidth = isFocused ? 2 : (it.active ? 1.5 : 1);
       c.beginPath();
       c.roundRect(b.x, b.y, b.w, b.h, 6);
       c.fill();
@@ -3343,59 +3351,150 @@ export class Renderer {
 
       // Key & Label
       c.textAlign = 'left';
-      c.font = 'bold 11px monospace';
-      c.fillStyle = it.active ? '#ffffff' : (this.chromaTier === 0 ? '#777777' : '#8899aa');
-      c.fillText(`${it.key} ${it.label}`, b.x + 14, b.y + 22);
+      c.font = 'bold 10.5px monospace';
+      c.fillStyle = isFocused ? '#ffffff' : (it.active ? '#ffffff' : (this.chromaTier === 0 ? '#777777' : '#8899aa'));
+      c.fillText(`${isFocused ? '▶ ' : ''}${it.key} ${it.label}`, b.x + 12, b.y + 20);
 
       // State pill
       c.textAlign = 'right';
-      c.font = 'bold 11px monospace';
+      c.font = 'bold 10.5px monospace';
       c.fillStyle = it.active
         ? this.getChromaAccent('#00ffff', '#cccccc')
         : (this.chromaTier === 0 ? '#555555' : '#ff4466');
-      c.fillText(it.state, b.x + b.w - 14, b.y + 22);
+      c.fillText(it.state, b.x + b.w - 12, b.y + 20);
     }
 
-    // Wipe Data button
-    const wipeBtn = PAUSE_BUTTONS[6];
-    c.fillStyle = this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 0, 85, 0.12)';
-    c.strokeStyle = this.getChromaAccent('#ff0055', '#555555');
-    c.lineWidth = 1.5;
+    // 2. Volume Sliders (5 to 7)
+    const volumeItems = [
+      { btn: PAUSE_BUTTONS[5], key: '[6]', label: 'MASTER VOLUME', val: s.masterVolume },
+      { btn: PAUSE_BUTTONS[6], key: '[7]', label: 'MUSIC BGM',     val: s.musicVolume },
+      { btn: PAUSE_BUTTONS[7], key: '[8]', label: 'SFX SOUNDS',    val: s.sfxVolume }
+    ];
+
+    for (let i = 0; i < volumeItems.length; i++) {
+      const it = volumeItems[i];
+      const b = it.btn;
+      const itemIdx = 5 + i;
+      const isFocused = focusIndex === itemIdx;
+
+      c.fillStyle = isFocused
+        ? 'rgba(0, 240, 255, 0.22)'
+        : (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.06)' : 'rgba(20, 26, 42, 0.7)');
+      c.strokeStyle = isFocused ? '#00ffff' : (this.chromaTier === 0 ? '#444444' : '#2a3b58');
+      c.lineWidth = isFocused ? 2 : 1;
+      c.beginPath();
+      c.roundRect(b.x, b.y, b.w, b.h, 6);
+      c.fill();
+      c.stroke();
+
+      // Label
+      c.textAlign = 'left';
+      c.font = 'bold 10.5px monospace';
+      c.fillStyle = isFocused ? '#ffffff' : '#c0d4ee';
+      c.fillText(`${isFocused ? '▶ ' : ''}${it.key} ${it.label}`, b.x + 12, b.y + 20);
+
+      // Track & Fill
+      const labelW = 155;
+      const trackX = b.x + labelW;
+      const trackW = b.w - labelW - 60;
+      const trackH = 6;
+      const trackY = b.y + Math.floor((b.h - trackH) / 2);
+
+      c.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      c.beginPath();
+      c.roundRect(trackX, trackY, trackW, trackH, 3);
+      c.fill();
+
+      // Filled portion
+      const fillW = Math.round(trackW * (it.val / 100));
+      if (fillW > 0) {
+        c.fillStyle = isFocused ? '#00ffff' : '#ff00aa';
+        c.beginPath();
+        c.roundRect(trackX, trackY, fillW, trackH, 3);
+        c.fill();
+      }
+
+      // Knob indicator
+      const knobX = trackX + fillW;
+      c.fillStyle = '#ffffff';
+      c.shadowColor = isFocused ? '#00ffff' : '#ff00aa';
+      c.shadowBlur = 6;
+      c.beginPath();
+      c.arc(knobX, trackY + trackH / 2, 5, 0, PI2);
+      c.fill();
+      c.shadowBlur = 0;
+
+      // Percentage text
+      c.textAlign = 'right';
+      c.font = 'bold 10.5px monospace';
+      c.fillStyle = isFocused ? '#00ffff' : '#88aacc';
+      c.fillText(`${it.val}%`, b.x + b.w - 12, b.y + 20);
+    }
+
+    // 3. Audio Mute Toggle (8)
+    const muteBtn = PAUSE_BUTTONS[8];
+    const isMuteFocused = focusIndex === 8;
+    const isMuted = sounds.isMuted();
+    c.fillStyle = isMuteFocused
+      ? 'rgba(0, 240, 255, 0.22)'
+      : (isMuted ? 'rgba(255, 0, 85, 0.12)' : 'rgba(0, 212, 255, 0.12)');
+    c.strokeStyle = isMuteFocused ? '#00ffff' : (isMuted ? '#ff0055' : '#00d4ff');
+    c.lineWidth = isMuteFocused ? 2 : 1.2;
+    c.beginPath();
+    c.roundRect(muteBtn.x, muteBtn.y, muteBtn.w, muteBtn.h, 6);
+    c.fill();
+    c.stroke();
+    c.textAlign = 'left';
+    c.font = 'bold 10.5px monospace';
+    c.fillStyle = isMuteFocused ? '#ffffff' : (isMuted ? '#ff88aa' : '#ffffff');
+    c.fillText(`${isMuteFocused ? '▶ ' : ''}[M] AUDIO OUTPUT / MUTE`, muteBtn.x + 12, muteBtn.y + 20);
+    c.textAlign = 'right';
+    c.fillStyle = isMuted ? '#ff0055' : '#00ffff';
+    c.fillText(isMuted ? 'MUTED' : 'ENABLED', muteBtn.x + muteBtn.w - 12, muteBtn.y + 20);
+
+    // 4. Wipe Data button (9)
+    const wipeBtn = PAUSE_BUTTONS[9];
+    const isWipeFocused = focusIndex === 9;
+    c.fillStyle = isWipeFocused ? 'rgba(255, 0, 85, 0.3)' : (this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 0, 85, 0.12)');
+    c.strokeStyle = isWipeFocused ? '#ff0055' : this.getChromaAccent('#ff0055', '#555555');
+    c.lineWidth = isWipeFocused ? 2 : 1.2;
     c.beginPath();
     c.roundRect(wipeBtn.x, wipeBtn.y, wipeBtn.w, wipeBtn.h, 6);
     c.fill();
     c.stroke();
-    c.font = 'bold 11px monospace';
-    c.fillStyle = this.getChromaAccent('#ff0055', '#888888');
+    c.font = 'bold 10.5px monospace';
+    c.fillStyle = isWipeFocused ? '#ffffff' : this.getChromaAccent('#ff0055', '#888888');
     c.textAlign = 'center';
-    c.fillText('RESET ALL PROGRESS & PROFILE', wipeBtn.x + wipeBtn.w / 2, wipeBtn.y + 21);
+    c.fillText(`${isWipeFocused ? '▶ ' : ''}RESET ALL PROGRESS & PROFILE`, wipeBtn.x + wipeBtn.w / 2, wipeBtn.y + 20);
 
     if (isFromMenu) {
       // Home / Return button (spans full width)
-      const homeBtn = PAUSE_BUTTONS[9];
+      const homeBtn = PAUSE_BUTTONS[12];
+      const isHomeFocused = focusIndex === 12;
       const hBorder = this.getChromaAccent('#00ffff', '#666666');
-      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#0c243a';
-      c.strokeStyle = hBorder;
-      c.lineWidth = 2;
-      c.shadowColor = this.chromaTier === 0 ? 'transparent' : hBorder;
+      c.fillStyle = isHomeFocused ? '#0c3858' : (this.chromaTier === 0 ? '#181818' : '#0c243a');
+      c.strokeStyle = isHomeFocused ? '#ffffff' : hBorder;
+      c.lineWidth = isHomeFocused ? 2.5 : 2;
+      c.shadowColor = isHomeFocused ? '#00ffff' : (this.chromaTier === 0 ? 'transparent' : hBorder);
       c.shadowBlur = this.getChromaBlur(12);
       c.beginPath();
       c.roundRect(homeBtn.x, homeBtn.y, homeBtn.w, homeBtn.h, 8);
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
-      c.font = 'bold 13px monospace';
+      c.font = 'bold 12.5px monospace';
       c.fillStyle = '#ffffff';
       c.textAlign = 'center';
-      c.fillText('◀ MAIN MENU [ESC / O]', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
+      c.fillText('◀ MAIN MENU [ESC / B]', homeBtn.x + homeBtn.w / 2, homeBtn.y + 25);
     } else {
-      // Resume button
-      const resBtn = PAUSE_BUTTONS[7];
+      // Resume button (10)
+      const resBtn = PAUSE_BUTTONS[10];
+      const isResFocused = focusIndex === 10;
       const pulse = 1 + Math.sin(time * 6) * 0.03;
       const resBorder = this.getChromaAccent('#00ffff', '#666666');
-      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#0c243a';
-      c.strokeStyle = resBorder;
-      c.lineWidth = 2;
+      c.fillStyle = isResFocused ? '#0c3858' : (this.chromaTier === 0 ? '#181818' : '#0c243a');
+      c.strokeStyle = isResFocused ? '#ffffff' : resBorder;
+      c.lineWidth = isResFocused ? 2.5 : 2;
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : resBorder;
       c.shadowBlur = this.getChromaBlur(12);
       c.beginPath();
@@ -3403,17 +3502,18 @@ export class Renderer {
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
-      c.font = `bold ${12 * pulse}px monospace`;
+      c.font = `bold ${11.5 * pulse}px monospace`;
       c.fillStyle = '#ffffff';
       c.textAlign = 'center';
-      c.fillText('▶ RESUME [P]', resBtn.x + resBtn.w / 2, resBtn.y + 26);
+      c.fillText('▶ RESUME [P/A]', resBtn.x + resBtn.w / 2, resBtn.y + 25);
 
-      // Restart button
-      const rstBtn = PAUSE_BUTTONS[8];
+      // Restart button (11)
+      const rstBtn = PAUSE_BUTTONS[11];
+      const isRstFocused = focusIndex === 11;
       const rstBorder = this.getChromaAccent('#ffaa00', '#555555');
-      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#20180a';
-      c.strokeStyle = rstBorder;
-      c.lineWidth = 2;
+      c.fillStyle = isRstFocused ? '#38280a' : (this.chromaTier === 0 ? '#181818' : '#20180a');
+      c.strokeStyle = isRstFocused ? '#ffffff' : rstBorder;
+      c.lineWidth = isRstFocused ? 2.5 : 2;
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : rstBorder;
       c.shadowBlur = this.getChromaBlur(10);
       c.beginPath();
@@ -3421,17 +3521,18 @@ export class Renderer {
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
-      c.font = 'bold 12px monospace';
+      c.font = 'bold 11.5px monospace';
       c.fillStyle = this.getChromaAccent('#ffaa00', '#aaaaaa');
       c.textAlign = 'center';
-      c.fillText('RETRY [R]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 26);
+      c.fillText('RETRY [R/X]', rstBtn.x + rstBtn.w / 2, rstBtn.y + 25);
 
-      // Home button
-      const homeBtn = PAUSE_BUTTONS[9];
+      // Home button (12)
+      const homeBtn = PAUSE_BUTTONS[12];
+      const isHomeFocused = focusIndex === 12;
       const homeBorder = this.getChromaAccent('#ff007f', '#555555');
-      c.fillStyle = this.chromaTier === 0 ? '#181818' : '#1a0a20';
-      c.strokeStyle = homeBorder;
-      c.lineWidth = 2;
+      c.fillStyle = isHomeFocused ? '#300a28' : (this.chromaTier === 0 ? '#181818' : '#1a0a20');
+      c.strokeStyle = isHomeFocused ? '#ffffff' : homeBorder;
+      c.lineWidth = isHomeFocused ? 2.5 : 2;
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : homeBorder;
       c.shadowBlur = this.getChromaBlur(10);
       c.beginPath();
@@ -3439,10 +3540,10 @@ export class Renderer {
       c.fill();
       c.stroke();
       c.shadowBlur = 0;
-      c.font = 'bold 12px monospace';
+      c.font = 'bold 11.5px monospace';
       c.fillStyle = this.getChromaAccent('#ff007f', '#aaaaaa');
       c.textAlign = 'center';
-      c.fillText('MAIN MENU', homeBtn.x + homeBtn.w / 2, homeBtn.y + 26);
+      c.fillText('MENU [B]', homeBtn.x + homeBtn.w / 2, homeBtn.y + 25);
     }
 
     // Footer stats if in madness
@@ -3456,6 +3557,176 @@ export class Renderer {
     c.fillStyle = 'rgba(255, 255, 255, 0.35)';
     c.textAlign = 'center';
     c.fillText(GAME_VERSION, this.cw / 2, cardY + cardH + 18);
+
+    c.restore();
+  }
+
+  public drawEpilogue(
+    time: number,
+    loopCount: number,
+    score: number,
+    kills: number,
+    maxStreak: number,
+    isGamepad: boolean = false
+  ) {
+    const c = this.ctx;
+    c.save();
+
+    // 1. Deep cellular void backdrop with dark arterial pulse
+    c.fillStyle = '#06010a';
+    c.fillRect(0, 0, this.cw, CH);
+
+    const radPulse = 0.5 + Math.sin(time * 1.5) * 0.15;
+    const grad = c.createRadialGradient(this.cw / 2, CH / 2, 40, this.cw / 2, CH / 2, Math.max(this.cw, CH) * 0.7);
+    grad.addColorStop(0, `rgba(180, 0, 50, ${0.18 * radPulse})`);
+    grad.addColorStop(0.6, 'rgba(40, 0, 20, 0.35)');
+    grad.addColorStop(1, 'rgba(4, 1, 10, 0.95)');
+    c.fillStyle = grad;
+    c.fillRect(0, 0, this.cw, CH);
+
+    // 2. Telemetry Header: Asystole ECG Monitor
+    const ecgY = 82;
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#ff0055';
+    c.textAlign = 'left';
+    c.fillText('BIO-TELEMETRY // PATIENT ZERO HOST', 28, ecgY);
+    c.textAlign = 'right';
+    c.fillStyle = '#ffaa00';
+    c.fillText('HEART RATE: 000 BPM • ASYSTOLE CONFIRMED', this.cw - 28, ecgY);
+
+    // Animated ECG Flatline Line
+    c.strokeStyle = '#ff0055';
+    c.lineWidth = 2;
+    c.shadowColor = '#ff0055';
+    c.shadowBlur = 12;
+    c.beginPath();
+    const ecgLineY = ecgY + 16;
+    c.moveTo(24, ecgLineY);
+    for (let x = 24; x <= this.cw - 24; x += 4) {
+      let dy = 0;
+      const blipPos = ((time * 70) % (this.cw - 48)) + 24;
+      const dist = Math.abs(x - blipPos);
+      if (dist < 24) {
+        dy = Math.sin((x - blipPos) * 0.25) * 8 * Math.exp(-dist * 0.15);
+      }
+      c.lineTo(x, ecgLineY + dy);
+    }
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // 3. Central Narrative Card
+    const cardW = Math.min(540, this.cw - 32);
+    const cardH = 370;
+    const cardX = this.cw / 2 - cardW / 2;
+    const cardY = ecgLineY + 22;
+
+    c.fillStyle = 'rgba(12, 4, 20, 0.92)';
+    c.strokeStyle = 'rgba(255, 0, 85, 0.6)';
+    c.lineWidth = 2;
+    c.shadowColor = '#ff0055';
+    c.shadowBlur = 20;
+    c.beginPath();
+    c.roundRect(cardX, cardY, cardW, cardH, 12);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    // Main Title
+    c.textAlign = 'center';
+    c.font = 'bold 20px monospace';
+    const titleGrad = c.createLinearGradient(this.cw / 2, cardY + 20, this.cw / 2, cardY + 50);
+    titleGrad.addColorStop(0, '#ffffff');
+    titleGrad.addColorStop(0.4, '#ff0055');
+    titleGrad.addColorStop(1, '#ffaa00');
+    c.fillStyle = titleGrad;
+    c.shadowColor = '#ff0055';
+    c.shadowBlur = 16;
+    c.fillText('THE REVELATION OF THE PREDATOR', this.cw / 2, cardY + 40);
+    c.shadowBlur = 0;
+
+    c.font = 'bold 9.5px monospace';
+    c.fillStyle = '#ff4477';
+    c.fillText('HOST SINGULARITY CORE COLLAPSED • ORGANISM SHUTDOWN: 100%', this.cw / 2, cardY + 60);
+
+    // Narrative Revelation Prose
+    const lines = [
+      '"You were never the patient fighting for survival."',
+      '"You are the devouring anomaly. The lethal pathogen."',
+      '"The guardians patrolling these neural corridors were not invaders..."',
+      '"They were the host organism\'s last leukocyte antibodies, fighting to purge you."',
+      '"With the Singularity Core annihilated, cellular necrosis is irreversible."',
+      '"The host has succumbed. Cellular life extinguished."'
+    ];
+
+    c.font = '11px monospace';
+    let lineY = cardY + 95;
+    for (let i = 0; i < lines.length; i++) {
+      const alpha = Math.min(1, Math.max(0.3, 0.85 + Math.sin(time * 2 + i * 0.5) * 0.15));
+      c.fillStyle = i >= 4 ? `rgba(255, 170, 0, ${alpha})` : (i === 1 ? '#00ffff' : `rgba(230, 235, 255, ${alpha})`);
+      c.fillText(lines[i], this.cw / 2, lineY);
+      lineY += 23;
+    }
+
+    // Performance & Stats Grid
+    const statBoxY = lineY + 10;
+    const statBoxW = cardW - 44;
+    const statBoxX = this.cw / 2 - statBoxW / 2;
+    const statBoxH = 64;
+
+    c.fillStyle = 'rgba(255, 0, 85, 0.08)';
+    c.strokeStyle = 'rgba(255, 0, 85, 0.25)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(statBoxX, statBoxY, statBoxW, statBoxH, 6);
+    c.fill();
+    c.stroke();
+
+    c.font = 'bold 11px monospace';
+    c.fillStyle = '#ffd700';
+    c.textAlign = 'left';
+    c.fillText(`CYCLE COMPLETED: CYCLE ${loopCount + 1}`, statBoxX + 16, statBoxY + 24);
+    c.fillText(`FINAL SCORE: ${score.toLocaleString()} PTS`, statBoxX + 16, statBoxY + 46);
+
+    c.textAlign = 'right';
+    c.fillStyle = '#00ffff';
+    c.fillText(`LEUKOCYTES PURGED: ${kills.toLocaleString()}`, statBoxX + statBoxW - 16, statBoxY + 24);
+    c.fillText(`MAX DEVOUR STREAK: x${maxStreak}`, statBoxX + statBoxW - 16, statBoxY + 46);
+
+    // Call to Action Buttons
+    const ctaY = cardY + cardH + 24;
+    const btnPulse = 1 + Math.sin(time * 6) * 0.03;
+
+    // Loop Next Cycle Button
+    c.textAlign = 'center';
+    const loopBtnW = Math.min(480, this.cw - 48);
+    const loopBtnH = 42;
+    const loopBtnX = this.cw / 2 - loopBtnW / 2;
+
+    c.fillStyle = '#180214';
+    c.strokeStyle = '#00ffff';
+    c.lineWidth = 2;
+    c.shadowColor = '#00ffff';
+    c.shadowBlur = 14;
+    c.beginPath();
+    c.roundRect(loopBtnX, ctaY, loopBtnW, loopBtnH, 8);
+    c.fill();
+    c.stroke();
+    c.shadowBlur = 0;
+
+    c.font = `bold ${12 * btnPulse}px monospace`;
+    c.fillStyle = '#ffffff';
+    const ctaText = isGamepad
+      ? '▶ [A / START] INFILTRATE NEXT HOST // CYCLE +1 (SPEED +10%)'
+      : '▶ [SPACE / ENTER] INFILTRATE NEXT HOST // CYCLE +1 (SPEED +10%)';
+    c.fillText(ctaText, this.cw / 2, ctaY + 26);
+
+    // Menu Subtext
+    c.font = 'bold 10px monospace';
+    c.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    const menuPrompt = isGamepad
+      ? '[B] RETURN TO ARCHIVES (MAIN MENU)'
+      : '[ESC] RETURN TO ARCHIVES (MAIN MENU)';
+    c.fillText(menuPrompt, this.cw / 2, ctaY + loopBtnH + 20);
 
     c.restore();
   }

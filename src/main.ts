@@ -35,7 +35,7 @@ class Game {
   public boss: SingularityBoss;
 
   // Game state
-  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' | 'debug' = 'menu';
+  public state: 'menu' | 'ready' | 'playing' | 'paused' | 'dying' | 'waveTrans' | 'gameover' | 'leaderboard' | 'codex' | 'instructions' | 'bonus' | 'settings' | 'debug' | 'epilogue' = 'menu';
   public previousStateBeforeDebug: 'playing' | 'paused' | 'bonus' = 'playing';
   public playerRank: number = 0;
   public playerDate: string = '';
@@ -116,6 +116,8 @@ class Game {
   public pendingKills: number = 0;
   public pendingStreak: number = 0;
   public pendingMode: 'arcade' | 'custom' = 'arcade';
+  public settingsFocusIndex: number = 0;
+  public activeSliderDrag: 'volMaster' | 'volMusic' | 'volSfx' | null = null;
 
   constructor() {
     this.canvas = document.getElementById('c') as HTMLCanvasElement;
@@ -285,6 +287,242 @@ class Game {
     if (wipeModal) wipeModal.style.display = 'flex';
   }
 
+  public triggerEpilogue() {
+    this.state = 'epilogue';
+    sounds.playAsystoleFlatline();
+    particles.flash('#ff0055', 0.85);
+    particles.shake(6, 0.4);
+    sounds.stopBgm();
+  }
+
+  public advanceFromEpilogue() {
+    sounds.stopAsystoleFlatline();
+    this.loopCount++;
+    this.wave++;
+    this.warpToLevel(0);
+    this.state = 'ready';
+    this.readyT = 2.0;
+    sounds.play('start');
+  }
+
+  public exitEpilogueToMenu() {
+    sounds.stopAsystoleFlatline();
+    this.state = 'menu';
+    sounds.play('click');
+  }
+
+  public activateSettingsOption(idx: number) {
+    switch (idx) {
+      case 0: settingsManager.toggleFreezeFrame(); sounds.play('click'); break;
+      case 1: settingsManager.toggleScreenShake(); sounds.play('click'); break;
+      case 2: settingsManager.toggleScreenFlash(); sounds.play('click'); break;
+      case 3: settingsManager.toggleCrtScanlines(); sounds.play('click'); break;
+      case 4: settingsManager.toggleParticleDensity(); sounds.play('click'); break;
+      case 5: settingsManager.adjustVolume('volMaster', 10); sounds.play('click'); break;
+      case 6: settingsManager.adjustVolume('volMusic', 10); sounds.play('click'); break;
+      case 7: settingsManager.adjustVolume('volSfx', 10); sounds.play('click'); break;
+      case 8: sounds.toggleMute(); break;
+      case 9: this.showWipeModal(); break;
+      case 10:
+        if (this.state === 'paused') {
+          this.state = 'playing';
+          sounds.play('click');
+        }
+        break;
+      case 11:
+        if (this.state === 'paused') {
+          this.startGame();
+          sounds.play('start');
+        }
+        break;
+      case 12:
+        this.state = 'menu';
+        input.isStartRequested = false;
+        input.isDashRequested = false;
+        input.isPauseRequested = false;
+        input.cancelChronoInput();
+        sounds.play('click');
+        sounds.stopBgm();
+        break;
+    }
+  }
+
+  public updateGamepadNavigation(_dt: number) {
+    if (!input.isGamepadConnected) return;
+
+    if (this.state === 'menu') {
+      // D-pad Left / Right or LB / RB toggles Game Mode
+      if (input.gpJustPressed.left || input.gpJustPressed.lb) {
+        if (profileManager.gameMode !== 'arcade') {
+          profileManager.setGameMode('arcade');
+          sounds.play('click');
+          particles.flash('#00f0ff', 0.15);
+        }
+      } else if (input.gpJustPressed.right || input.gpJustPressed.rb) {
+        if (profileManager.isChromamancerUnlocked()) {
+          if (profileManager.gameMode !== 'custom') {
+            profileManager.setGameMode('custom');
+            sounds.play('click');
+            particles.flash('#ff007f', 0.15);
+          }
+        } else {
+          sounds.play('click');
+          particles.flash('#ff007f', 0.15);
+        }
+      }
+
+      // Button A or Start launches game
+      if (input.gpJustPressed.a || input.gpJustPressed.start) {
+        this.startGame();
+      }
+
+      // Button Y opens Codex / Skill tree
+      if (input.gpJustPressed.y) {
+        this.state = 'codex';
+        this.codexTab = profileManager.gameMode === 'custom' ? 'tree' : 'skills';
+        sounds.play('click');
+      }
+
+      // Button X opens Settings
+      if (input.gpJustPressed.x) {
+        this.state = 'settings';
+        this.settingsFocusIndex = 0;
+        sounds.play('click');
+      }
+
+      // Select opens Leaderboard
+      if (input.gpJustPressed.select) {
+        this.state = 'leaderboard';
+        leaderboard.syncRemote();
+        sounds.play('click');
+      }
+      return;
+    }
+
+    if (this.state === 'settings' || this.state === 'paused') {
+      if (input.gpJustPressed.up) {
+        this.settingsFocusIndex = (this.settingsFocusIndex - 1 + 13) % 13;
+        if (this.state === 'settings' && (this.settingsFocusIndex === 10 || this.settingsFocusIndex === 11)) {
+          this.settingsFocusIndex = 9;
+        }
+        sounds.play('click');
+      } else if (input.gpJustPressed.down) {
+        this.settingsFocusIndex = (this.settingsFocusIndex + 1) % 13;
+        if (this.state === 'settings' && (this.settingsFocusIndex === 10 || this.settingsFocusIndex === 11)) {
+          this.settingsFocusIndex = 12;
+        }
+        sounds.play('click');
+      }
+
+      // Volume sliders adjustment with Left / Right
+      if (input.gpJustPressed.left) {
+        if (this.settingsFocusIndex === 5) {
+          settingsManager.adjustVolume('volMaster', -5);
+          sounds.play('click');
+        } else if (this.settingsFocusIndex === 6) {
+          settingsManager.adjustVolume('volMusic', -5);
+          sounds.play('click');
+        } else if (this.settingsFocusIndex === 7) {
+          settingsManager.adjustVolume('volSfx', -5);
+          sounds.play('click');
+        }
+      } else if (input.gpJustPressed.right) {
+        if (this.settingsFocusIndex === 5) {
+          settingsManager.adjustVolume('volMaster', 5);
+          sounds.play('click');
+        } else if (this.settingsFocusIndex === 6) {
+          settingsManager.adjustVolume('volMusic', 5);
+          sounds.play('click');
+        } else if (this.settingsFocusIndex === 7) {
+          settingsManager.adjustVolume('volSfx', 5);
+          sounds.play('click');
+        }
+      }
+
+      // Button A activates focused option
+      if (input.gpJustPressed.a) {
+        this.activateSettingsOption(this.settingsFocusIndex);
+      }
+
+      // Button B backs out
+      if (input.gpJustPressed.b) {
+        if (this.state === 'settings') {
+          this.state = 'menu';
+          sounds.play('click');
+        } else {
+          this.state = 'playing';
+          sounds.play('click');
+        }
+      }
+      return;
+    }
+
+    if (this.state === 'epilogue') {
+      if (input.gpJustPressed.a || input.gpJustPressed.start) {
+        this.advanceFromEpilogue();
+      } else if (input.gpJustPressed.b) {
+        this.exitEpilogueToMenu();
+      }
+      return;
+    }
+
+    if (this.state === 'codex') {
+      // LB / RB cycles tabs
+      if (input.gpJustPressed.lb) {
+        if (this.codexTab === 'tree') this.codexTab = 'badges';
+        else if (this.codexTab === 'badges') this.codexTab = 'skills';
+        else this.codexTab = profileManager.gameMode === 'custom' ? 'tree' : 'badges';
+        sounds.play('click');
+      } else if (input.gpJustPressed.rb) {
+        if (this.codexTab === 'skills') this.codexTab = 'badges';
+        else if (this.codexTab === 'badges') this.codexTab = profileManager.gameMode === 'custom' ? 'tree' : 'skills';
+        else this.codexTab = 'skills';
+        sounds.play('click');
+      }
+
+      // D-pad navigates skills
+      if (this.codexTab === 'tree') {
+        if (input.gpJustPressed.left) this.navigateTreeBranches(-1);
+        else if (input.gpJustPressed.right) this.navigateTreeBranches(1);
+        else if (input.gpJustPressed.up) this.navigateTreeSkills(-1);
+        else if (input.gpJustPressed.down) this.navigateTreeSkills(1);
+
+        if (input.gpJustPressed.a) {
+          const targetId = this.renderer.selectedSkillId;
+          if (targetId) {
+            const upgraded = experienceSystem.upgradeSkill(targetId);
+            if (upgraded) {
+              particles.flash('#00ffaa', 0.25);
+              particles.shake(4, 0.15);
+            } else {
+              sounds.play('click');
+            }
+          }
+        }
+        if (input.gpJustPressed.y) {
+          experienceSystem.respecSkills();
+          particles.flash('#00ffaa', 0.25);
+          particles.shake(4, 0.15);
+        }
+      }
+
+      // Button B returns to menu
+      if (input.gpJustPressed.b) {
+        this.state = 'menu';
+        sounds.play('click');
+      }
+      return;
+    }
+
+    if (this.state === 'leaderboard' || this.state === 'instructions' || this.state === 'gameover') {
+      if (input.gpJustPressed.b || input.gpJustPressed.a) {
+        this.state = 'menu';
+        sounds.play('click');
+      }
+      return;
+    }
+  }
+
   private navigateTreeSkills(direction: number) {
     const curNode = SKILL_NODES.find(n => n.id === this.renderer.selectedSkillId) || SKILL_NODES[0];
     const branchNodes = SKILL_NODES.filter(n => n.branch === curNode.branch);
@@ -387,6 +625,15 @@ class Game {
       if (this.state === 'instructions') {
         this.state = 'menu';
         sounds.play('click');
+        return;
+      }
+
+      if (this.state === 'epilogue') {
+        if (cy >= 460) {
+          this.advanceFromEpilogue();
+        } else {
+          this.exitEpilogueToMenu();
+        }
         return;
       }
 
@@ -739,6 +986,19 @@ class Game {
                 settingsManager.toggleParticleDensity();
                 sounds.play('click');
                 return;
+              case 'volMaster':
+              case 'volMusic':
+              case 'volSfx': {
+                const labelW = 155;
+                const trackX = btn.x + labelW;
+                const trackW = btn.w - labelW - 60;
+                const pct = Math.max(0, Math.min(100, Math.round(((cx - trackX) / trackW) * 100)));
+                if (btn.id === 'volMaster') settingsManager.setMasterVolume(pct);
+                else if (btn.id === 'volMusic') settingsManager.setMusicVolume(pct);
+                else if (btn.id === 'volSfx') settingsManager.setSfxVolume(pct);
+                sounds.play('click');
+                return;
+              }
               case 'audio':
                 sounds.toggleMute();
                 return;
@@ -779,6 +1039,19 @@ class Game {
                 settingsManager.toggleParticleDensity();
                 sounds.play('click');
                 return;
+              case 'volMaster':
+              case 'volMusic':
+              case 'volSfx': {
+                const labelW = 155;
+                const trackX = btn.x + labelW;
+                const trackW = btn.w - labelW - 60;
+                const pct = Math.max(0, Math.min(100, Math.round(((cx - trackX) / trackW) * 100)));
+                if (btn.id === 'volMaster') settingsManager.setMasterVolume(pct);
+                else if (btn.id === 'volMusic') settingsManager.setMusicVolume(pct);
+                else if (btn.id === 'volSfx') settingsManager.setSfxVolume(pct);
+                sounds.play('click');
+                return;
+              }
               case 'audio':
                 sounds.toggleMute();
                 return;
@@ -819,6 +1092,49 @@ class Game {
         }
         return;
       }
+    });
+
+    const updateSliderFromCoord = (clientX: number) => {
+      if (!this.activeSliderDrag) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const curCw = this.renderer ? this.renderer.cw : this.canvas.width;
+      const cx = (clientX - rect.left) * (curCw / rect.width);
+      const btn = PAUSE_BUTTONS.find(b => b.id === this.activeSliderDrag);
+      if (!btn) return;
+      const labelW = 155;
+      const trackX = btn.x + labelW;
+      const trackW = btn.w - labelW - 60;
+      const pct = Math.max(0, Math.min(100, Math.round(((cx - trackX) / trackW) * 100)));
+      if (this.activeSliderDrag === 'volMaster') settingsManager.setMasterVolume(pct);
+      else if (this.activeSliderDrag === 'volMusic') settingsManager.setMusicVolume(pct);
+      else if (this.activeSliderDrag === 'volSfx') settingsManager.setSfxVolume(pct);
+    };
+
+    window.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (this.state !== 'settings' && this.state !== 'paused') return;
+      const rect = this.canvas.getBoundingClientRect();
+      const curCw = this.renderer ? this.renderer.cw : this.canvas.width;
+      const cx = (e.clientX - rect.left) * (curCw / rect.width);
+      const cy = (e.clientY - rect.top) * (CH / rect.height);
+      for (const id of ['volMaster', 'volMusic', 'volSfx'] as const) {
+        const btn = PAUSE_BUTTONS.find(b => b.id === id);
+        if (btn && cx >= btn.x && cx <= btn.x + btn.w && cy >= btn.y && cy <= btn.y + btn.h) {
+          this.activeSliderDrag = id;
+          updateSliderFromCoord(e.clientX);
+          sounds.play('click');
+          return;
+        }
+      }
+    });
+
+    window.addEventListener('pointermove', (e: PointerEvent) => {
+      if (this.activeSliderDrag) {
+        updateSliderFromCoord(e.clientX);
+      }
+    });
+
+    window.addEventListener('pointerup', () => {
+      this.activeSliderDrag = null;
     });
 
     // Touch swipe steering & double tap dash
@@ -904,15 +1220,31 @@ class Game {
         }
       }
 
-      if (this.state === 'settings') {
-        if (e.code === 'Escape' || e.code === 'KeyO' || e.code === 'Enter') {
-          this.state = 'menu';
-          sounds.play('click');
+      if (this.state === 'epilogue') {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          this.advanceFromEpilogue();
+          e.preventDefault();
+          return;
+        }
+        if (e.code === 'Escape') {
+          this.exitEpilogueToMenu();
           e.preventDefault();
           return;
         }
       }
+
       if (this.state === 'paused' || this.state === 'settings') {
+        if (e.code === 'Escape' || (this.state === 'settings' && (e.code === 'KeyO' || e.code === 'KeyP'))) {
+          if (this.state === 'settings') {
+            this.state = 'menu';
+            sounds.play('click');
+          } else {
+            this.state = 'playing';
+            sounds.play('click');
+          }
+          e.preventDefault();
+          return;
+        }
         if (e.code === 'Digit1' || e.code === 'Numpad1') {
           settingsManager.toggleFreezeFrame();
           sounds.play('click');
@@ -933,6 +1265,48 @@ class Game {
           settingsManager.toggleParticleDensity();
           sounds.play('click');
           e.preventDefault();
+        } else if (e.code === 'Digit6' || e.code === 'Numpad6') {
+          settingsManager.adjustVolume('volMaster', 10);
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'Digit7' || e.code === 'Numpad7') {
+          settingsManager.adjustVolume('volMusic', 10);
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'Digit8' || e.code === 'Numpad8') {
+          settingsManager.adjustVolume('volSfx', 10);
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'ArrowUp') {
+          this.settingsFocusIndex = (this.settingsFocusIndex - 1 + 13) % 13;
+          if (this.state === 'settings' && (this.settingsFocusIndex === 10 || this.settingsFocusIndex === 11)) {
+            this.settingsFocusIndex = 9;
+          }
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'ArrowDown') {
+          this.settingsFocusIndex = (this.settingsFocusIndex + 1) % 13;
+          if (this.state === 'settings' && (this.settingsFocusIndex === 10 || this.settingsFocusIndex === 11)) {
+            this.settingsFocusIndex = 12;
+          }
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'ArrowLeft') {
+          if (this.settingsFocusIndex === 5) settingsManager.adjustVolume('volMaster', -5);
+          else if (this.settingsFocusIndex === 6) settingsManager.adjustVolume('volMusic', -5);
+          else if (this.settingsFocusIndex === 7) settingsManager.adjustVolume('volSfx', -5);
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'ArrowRight') {
+          if (this.settingsFocusIndex === 5) settingsManager.adjustVolume('volMaster', 5);
+          else if (this.settingsFocusIndex === 6) settingsManager.adjustVolume('volMusic', 5);
+          else if (this.settingsFocusIndex === 7) settingsManager.adjustVolume('volSfx', 5);
+          sounds.play('click');
+          e.preventDefault();
+        } else if (e.code === 'Enter' || e.code === 'Space') {
+          this.activateSettingsOption(this.settingsFocusIndex);
+          e.preventDefault();
+          return;
         }
       } else if (this.state === 'codex') {
         if (e.code === 'Escape' || e.code === 'Space') {
@@ -2679,6 +3053,19 @@ class Game {
 
   private update(dt: number) {
     input.pollGamepad();
+    this.updateGamepadNavigation(dt);
+
+    if (this.state === 'epilogue') {
+      if (input.isStartRequested || input.isDashRequested) {
+        input.isStartRequested = false;
+        input.isDashRequested = false;
+        this.advanceFromEpilogue();
+      } else if (input.isPauseRequested) {
+        input.isPauseRequested = false;
+        this.exitEpilogueToMenu();
+      }
+      return;
+    }
 
     // The sequence clock uses wall time; no gameplay, effects, or HUD timers advance.
     if (this.state === 'playing' && input.isSequenceMode) {
@@ -3271,13 +3658,9 @@ class Game {
           if (bossResult.bossDefeated) {
             this.score += bossResult.scoreBonus;
             particles.addPop(CW / 2, HUD_H + 50, '★ BOSS ANNIHILATED: +50,000 PTS! ★', '#ffd700', 26);
-            this.loopCount++;
             badges.unlock('loop1');
-            if (this.loopCount >= 2) badges.unlock('loop2');
-            this.wave++;
-            this.warpToLevel(0);
-            this.state = 'waveTrans';
-            this.waveTransTimer = 2.5;
+            if (this.loopCount >= 1) badges.unlock('loop2');
+            this.triggerEpilogue();
           }
         }
 
@@ -3596,6 +3979,18 @@ class Game {
       return;
     }
 
+    if (this.state === 'epilogue') {
+      this.renderer.drawEpilogue(
+        this.time,
+        this.loopCount,
+        this.score,
+        this.madnessKills,
+        this.maxMadnessStreak,
+        input.isGamepadConnected
+      );
+      return;
+    }
+
     if (this.state === 'instructions') {
       this.renderer.drawInstructions(this.time);
       return;
@@ -3604,7 +3999,7 @@ class Game {
     if (this.state === 'settings') {
       const topKills = Math.max(badges.bestMadnessKills, leaderboard.getTopScore());
       this.renderer.drawMenu(this.time, topKills);
-      this.renderer.drawPause(false, 0, 0, this.time, true);
+      this.renderer.drawPause(false, 0, 0, this.time, true, this.settingsFocusIndex);
       return;
     }
 
@@ -3664,7 +4059,7 @@ class Game {
       this.renderer.drawBottomExpBar(this.time);
       this.renderer.drawEffectTimers(this.getEffectTimers());
       // Onboarding skill progress is now directly integrated into the HUD (Section 6)
-      this.renderer.drawPause(true, this.madnessKills, this.madnessStreak, this.time);
+      this.renderer.drawPause(true, this.madnessKills, this.madnessStreak, this.time, false, this.settingsFocusIndex);
       return;
     }
 
