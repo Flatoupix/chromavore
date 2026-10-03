@@ -22,6 +22,7 @@ export interface PlayerProfile {
   customBestKills?: number;
   badges: Record<string, boolean>;
   discoveredSkills?: string[];
+  pendingDiscoveries?: string[];
   updatedAt: string;
 }
 
@@ -129,7 +130,12 @@ class ProfileManager {
   }
 
   public isSkillDiscovered(skillId: string): boolean {
-    return Array.isArray(this.profile.discoveredSkills) && this.profile.discoveredSkills.includes(skillId);
+    const seen = Array.isArray(this.profile.discoveredSkills) ? this.profile.discoveredSkills : [];
+    if (seen.includes(skillId)) return true;
+    // The sequence guide still queries the original combo IDs. Keep both save formats readable.
+    const nodes: Record<string, string> = { wiggle: 'emp_overcharge', nitro: 'hyper_nitro', quantum_laser: 'quantum_laser', kinetic_bastion: 'kinetic_bastion', singularity_nova: 'singularity_nova' };
+    if (!nodes[skillId]) return false;
+    return seen.some(id => id.startsWith(`custom:${nodes[skillId]}:rank:`) || id.startsWith(`custom:${skillId}_v`));
   }
 
   public markSkillDiscovered(skillId: string) {

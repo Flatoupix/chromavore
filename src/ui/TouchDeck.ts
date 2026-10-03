@@ -81,6 +81,7 @@ export class TouchDeckManager {
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (input.isInputBlocked) return;
         onPress();
       });
     };
@@ -95,6 +96,7 @@ export class TouchDeckManager {
       chronoBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (input.isInputBlocked) return;
         chronoBtn.setPointerCapture(e.pointerId);
         input.handleChronoDown();
         input.isChronoRequested = true;
@@ -102,6 +104,11 @@ export class TouchDeckManager {
       });
       const releaseChrono = (e: Event) => {
         e.preventDefault();
+        if (input.isInputBlocked) {
+          input.cancelChronoInput();
+          chronoBtn.classList.remove('active-chrono');
+          return;
+        }
         input.handleChronoUp();
         input.isChronoRequested = false;
         chronoBtn.classList.remove('active-chrono');

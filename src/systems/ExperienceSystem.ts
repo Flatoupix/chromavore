@@ -185,7 +185,7 @@ class ExperienceSystem {
     profileManager.saveProfile();
     sounds.play('badge');
 
-    if (newRank === 1 && this.onSkillUnlockedCallback) {
+    if (this.onSkillUnlockedCallback) {
       this.onSkillUnlockedCallback(skillId);
     }
     return true;

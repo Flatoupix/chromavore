@@ -46,7 +46,7 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 5,
     costPerRank: 1,
     desc: 'Reduces Dash cooldown by 12% per rank (up to 60%).',
-    tradeoffDesc: 'Ranks 4–5: +20% burst speed, but demand precise turns near walls.'
+    tradeoffDesc: 'Passive upgrade: the shorter cooldown applies to every Dash.'
   },
   {
     id: 'multi_dash',
@@ -57,7 +57,7 @@ export const SKILL_NODES: SkillNode[] = [
     costPerRank: 2,
     reqSkillId: 'dash_reflex',
     desc: 'Grants +1 consecutive Dash charge per rank (up to 4 charges).',
-    tradeoffDesc: 'Dashes chained within 1.2s deal +25% shockwave damage, but cost 8% Chrono energy.'
+    tradeoffDesc: 'Chain within 1.2s to widen each follow-up Dash blast by 25% (up to 75%). Each follow-up costs 8 Chrono.'
   },
   {
     id: 'vector_surge',
@@ -77,8 +77,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'nitro',
     maxRank: 4,
     costPerRank: 1,
-    desc: 'Increases Nitro speed by 10% and extends its plasma trail by 0.5s per rank.',
-    tradeoffDesc: 'Shift combo: [↑ ↓ ↑ ↓]. Higher speed slightly reduces control in tight turns.'
+    desc: 'Adds 10% Nitro speed and 0.5s to Nitro duration and trail lifetime per rank.',
+    tradeoffDesc: 'Double-tap and hold Shift, enter ↑ ↓ ↑ ↓, then release Shift. Costs 20 mana.'
   },
   {
     id: 'phase_shift',
@@ -88,8 +88,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'multi_dash',
-    desc: 'Become intangible for 0.35s (+0.18s per rank) after each Dash.',
-    tradeoffDesc: 'Rank 3 lets you phase through ghosts and briefly break interior walls.'
+    desc: 'Adds 0.35s of protection after Dash, then +0.18s per rank, up to 0.75s total.',
+    tradeoffDesc: 'Rank 3 also lets a Dash cross one thin interior wall.'
   },
   {
     id: 'quantum_laser',
@@ -103,7 +103,7 @@ export const SKILL_NODES: SkillNode[] = [
     comboSequence: ['right', 'down', 'right', 'down'],
     comboHint: '[DOUBLE-SHIFT] + [→ ↓ → ↓]',
     desc: 'AGILITY ULTIMATE: Fires four cardinal lasers that annihilate ghosts along their paths.',
-    tradeoffDesc: '24s cooldown (18s at rank 2). Pierces portals and triples combo score.'
+    tradeoffDesc: '24s base cooldown (18s at rank 2). Hits along the four axes and collects dots. Costs 40 mana.'
   },
 
   // ─── BRANCHE CONTRÔLE ───
@@ -115,7 +115,7 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 5,
     costPerRank: 1,
     desc: 'Increases the Chrono energy pool by 20% per rank (up to 100%).',
-    tradeoffDesc: 'Ranks 4–5 slow time to 12% instead of 18%, but reduce passive recharge without collecting.'
+    tradeoffDesc: 'Ranks 4–5 deepen the slowdown by 5 percentage points (minimum 10%) but reduce passive recharge by 15%.'
   },
   {
     id: 'emp_overcharge',
@@ -124,8 +124,8 @@ export const SKILL_NODES: SkillNode[] = [
     icon: 'wiggle',
     maxRank: 4,
     costPerRank: 1,
-    desc: 'Increases the Wiggle EMP shockwave radius by 25% per rank and stuns ghosts.',
-    tradeoffDesc: 'Shift combo: [← → ← →]. Rank 3+ turns ghost debris into magnetic orbs.'
+    desc: 'Unlocks Wiggle EMP and increases its ghost-clearing radius by 25% per rank.',
+    tradeoffDesc: 'Double-tap and hold Shift, enter ← → ← →, then release Shift. Costs 25 mana; cooldown falls 10% per rank.'
   },
   {
     id: 'deep_freeze',
@@ -135,8 +135,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'emp_overcharge',
-    desc: 'Extends the EMP stun duration by 1.2s per rank.',
-    tradeoffDesc: 'Devouring a frozen ghost releases ice shards that freeze nearby specters.'
+    desc: 'Adds 1.2s of freeze duration per rank and enables EMP frost effects.',
+    tradeoffDesc: 'From rank 2, defeating a frozen ghost freezes nearby ghosts for 2.5s.'
   },
   {
     id: 'magnetic_core',
@@ -146,7 +146,7 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     desc: 'Passively attracts nearby pellets within a radius of 1.8–4.2 tiles.',
-    tradeoffDesc: 'Also pulls vulnerable ghosts toward Chromavore 15% faster.'
+    tradeoffDesc: 'Also automatically devours nearby frightened or frozen ghosts.'
   },
   {
     id: 'aegis_shield',
@@ -156,8 +156,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'deep_freeze',
-    desc: 'Emergency barrier. Absorbs a fatal hit, triggers a protective shockwave, and grants 1.4s invulnerability.',
-    tradeoffDesc: 'Max 1 active barrier. Recharges after collecting pellets (Rank 1: 100, Rank 2: 80, Rank 3: 60).'
+    desc: 'Automatically absorbs one normal ghost hit, freezes nearby threats, and grants 1.4s protection.',
+    tradeoffDesc: 'One barrier at a time. Recharge: 100 / 80 / 60 dots by rank. Power Pellets count as 5.'
   },
   {
     id: 'kinetic_bastion',
@@ -183,7 +183,7 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 5,
     costPerRank: 1,
     desc: 'Extends ghost vulnerability by 1.4s per rank (up to 7s).',
-    tradeoffDesc: 'Ranks 4–5: devouring vulnerable ghosts grants 25% bonus score and XP.'
+    tradeoffDesc: 'Ghost score and XP increase by 25% at rank 4 and 50% at rank 5.'
   },
   {
     id: 'titan_breaker',
@@ -193,8 +193,8 @@ export const SKILL_NODES: SkillNode[] = [
     maxRank: 3,
     costPerRank: 2,
     reqSkillId: 'pellet_resonance',
-    desc: 'Breaks Titan armor. Rank 1 stuns on Dash impact. Rank 2 slows all Titans by 35%. Rank 3 executes (+2,500 pts).',
-    tradeoffDesc: 'Direct collision without Dash or Singularity remains lethal.'
+    desc: 'Dash stuns Titans for 3s at rank 1 and 4.5s at rank 2. Rank 3 eliminates Titans on Dash impact.',
+    tradeoffDesc: 'Rank 2 also slows all Titans by 35%. Unprotected direct contact remains lethal.'
   },
   {
     id: 'super_frequency',
@@ -228,7 +228,7 @@ export const SKILL_NODES: SkillNode[] = [
     isUltimate: true,
     comboSequence: ['up', 'right', 'down', 'left'],
     comboHint: '[DOUBLE-SHIFT] + [↑ → ↓ ←]',
-    desc: 'CARNAGE ULTIMATE: Triggers a micro-Singularity that pulls in and disintegrates every ghost.',
-    tradeoffDesc: '40s cooldown (32s at rank 2). Triggers an x64 multiplier surge for 8s.'
+    desc: 'CARNAGE ULTIMATE: Instantly clears all ghosts and activates an x64 multiplier.',
+    tradeoffDesc: '40s base cooldown (32s at rank 2). x64 lasts at least 8s. Costs 50 mana.'
   }
 ];

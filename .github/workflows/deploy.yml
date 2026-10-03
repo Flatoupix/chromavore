@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify gameplay contracts
+        run: npm test
+
       - name: Build with Vite
         run: npm run build
 

@@ -67,7 +67,7 @@ export class SuperItemManager {
     if (pool.length === 0) return;
     const meta: Record<string, { name: string; icon: string }> = {
       nova: { name: 'MEGA NOVA', icon: 'nova' },
-      overdrive: { name: 'DASH INFINI', icon: 'overdrive' },
+      overdrive: { name: 'INFINITE DASH', icon: 'overdrive' },
       vortex: { name: 'BLACK HOLE', icon: 'black_hole' },
       laser: { name: 'HYPER BEAMS', icon: 'laser' },
       cryo: { name: 'CRYO SHATTER', icon: 'cryo' },
@@ -161,7 +161,7 @@ export class SuperItemManager {
         if (activateOverdrive) activateOverdrive();
         particles.shake(6, 0.2);
         particles.flash('#00ffcc', 0.35);
-        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? 'CHRONO OVERDRIVE V2 !' : 'DASH INFINI (8s) !', '#00ffcc', 22);
+        particles.addPop(plPos.x, plPos.y - 20, lvl >= 2 ? 'CHRONO OVERDRIVE V2 !' : 'INFINITE DASH (8s) !', '#00ffcc', 22);
         break;
       }
     }
@@ -178,7 +178,7 @@ export class SuperItemManager {
   ) {
     const meta: Record<string, { name: string; icon: string }> = {
       nova: { name: 'MEGA NOVA', icon: 'nova' },
-      overdrive: { name: 'DASH INFINI', icon: 'overdrive' },
+      overdrive: { name: 'INFINITE DASH', icon: 'overdrive' },
       vortex: { name: 'BLACK HOLE', icon: 'black_hole' },
       laser: { name: 'HYPER BEAMS', icon: 'laser' },
       cryo: { name: 'CRYO SHATTER', icon: 'cryo' },

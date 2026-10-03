@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#090117">
-<title>CHROMAVORE v5.5.0 // SYNTHWAVE 1984</title>
+<title>CHROMAVORE v5.6.0 // SYNTHWAVE 1984</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='55,5 15,55 45,55 35,95 85,45 55,45' fill='%2300f0ff'/></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -257,11 +257,39 @@ canvas{
     display: none !important;
   }
 }
+
+#skill-discovery-modal{position:fixed;inset:0;z-index:105;background:rgba(5,1,20,.92);justify-content:center;align-items:center;padding:12px;font-family:monospace;touch-action:pan-y;}
+.discovery-card{width:min(100%,500px);max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;background:#0a0d1e;border:2px solid #e8bf46;border-radius:14px;padding:22px;box-shadow:0 0 45px #ffd70026,0 0 20px #00f0ff20;color:#deecff;text-align:center;display:flex;flex-direction:column;gap:12px;}
+.discovery-heading{display:flex;gap:12px;align-items:center;text-align:left;justify-content:center;}
+#discovery-icon{width:54px;height:54px;flex-shrink:0;border:1px solid #e8bf4688;border-radius:50%;background:#ffd70010;display:grid;place-items:center;}
+#discovery-icon canvas{width:48px;height:48px;}
+#discovery-mode{font-size:10px;color:#7c92b2;letter-spacing:1.5px;margin-bottom:5px;}
+#discovery-unlock-label{font-size:11px;line-height:1.4;color:#00f0ff;font-weight:bold;letter-spacing:1px;}
+#discovery-title{font-size:20px;color:#ffd76a;line-height:1.2;overflow-wrap:anywhere;}
+#discovery-desc,#discovery-usage{font-size:13px;line-height:1.5;}
+.discovery-scene{width:100%;background:#070d20;border:1px solid #20405b;border-radius:9px;overflow:hidden;flex-shrink:0;}
+#discovery-preview{display:block;width:100%;height:auto;aspect-ratio:440 / 176;}
+.discovery-instructions{padding:12px;border:1px solid #00f0ff33;border-radius:8px;background:#00f0ff09;}
+#discovery-sequence{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+#discovery-sequence[hidden],#discovery-stats[hidden],#discovery-cost-block[hidden],#discovery-cd-block[hidden]{display:none;}
+#discovery-sequence kbd{padding:6px 12px;background:#122c42;color:#d5faff;border:1px solid #347484;border-radius:5px;font:700 16px monospace;}
+#discovery-sequence kbd.is-active{background:#00f0ff;color:#021119;box-shadow:0 0 12px #00f0ff66;}
+#discovery-alt-sequence{font-size:11px;color:#a2b7d2;margin-top:6px;}
+#discovery-alt-sequence:empty{display:none;}
+#discovery-stats{display:flex;justify-content:space-evenly;gap:12px;font-size:12px;line-height:1.4;padding:8px;background:#ffffff05;border-radius:6px;}
+.discovery-stat-label{display:block;font-size:9px;color:#98a8bf;letter-spacing:1px;margin-bottom:4px;}
+#discovery-cost{color:#76f7ff;}#discovery-cd{color:#ffd76a;}
+#discovery-dismiss{width:100%;padding:12px;background:linear-gradient(135deg,#ffd76a,#ffac44);border:none;border-radius:8px;color:#100d03;font:bold 13px monospace;cursor:pointer;}
+.discovery-card button:focus-visible,.discovery-card select:focus-visible{outline:2px solid #fff;outline-offset:3px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+@media(max-width:420px){.discovery-card{padding:15px;gap:10px;}#discovery-title{font-size:18px;}#discovery-desc,#discovery-usage{font-size:12px;}.discovery-instructions{padding:10px;}}
+@media(max-height:520px){#skill-discovery-modal{align-items:flex-start;}.discovery-card{padding:14px;gap:8px;}.discovery-heading{display:none;}}
+
 </style>
 </head>
 <body>
 <div id="game-wrap">
-  <canvas id="c"></canvas>
+  <canvas id="c" tabindex="0" aria-label="Chromavore game"></canvas>
   <button id="fullscreen-toggle" type="button" hidden aria-label="Enter fullscreen" aria-pressed="false" title="Enter fullscreen">⛶</button>
   <div id="fullscreen-status" role="status" aria-live="polite"></div>
 
@@ -292,7 +320,7 @@ canvas{
       <div style="color:#8899bb;font-size:11px;margin-bottom:10px;letter-spacing:1px;">
         ENTER YOUR USERNAME
       </div>
-      <input id="pseudo-input" type="text" maxlength="12" autocomplete="off"
+      <input id="pseudo-input" aria-label="Player name" type="text" maxlength="12" autocomplete="off"
         placeholder="PLAYER1"
         style="
           background:#0c1830;border:2px solid #00f0ff;border-radius:6px;
@@ -317,7 +345,7 @@ canvas{
         border-radius:8px;color:#667799;
         font-family:monospace;font-size:11px;cursor:pointer;
         letter-spacing:1px;
-      ">SKIP WITHOUT SAVING</button>
+      ">SKIP</button>
       <button id="pseudo-menu" style="
         margin-top:8px;width:100%;padding:8px;
         background:rgba(255,0,127,0.15);border:1px solid #ff007f;
@@ -431,70 +459,24 @@ canvas{
     </div>
   </div>
 
-  <!-- Skill Discovery Modal for Chromamancer -->
-  <div id="skill-discovery-modal" style="
-    display:none;position:fixed;inset:0;z-index:105;
-    background:rgba(5,1,20,0.92);
-    justify-content:center;align-items:center;
-    font-family:monospace;
-  ">
-    <div style="
-      background:#0a0d1e;border:2px solid #ffd700;border-radius:12px;
-      padding:28px 32px;max-width:400px;width:90%;text-align:center;
-      box-shadow:0 0 45px rgba(255,215,0,0.4),0 0 20px rgba(0,240,255,0.25);
-    ">
-      <div style="display:flex;justify-content:center;margin-bottom:8px;">
-        <div id="discovery-icon-wrapper" style="
-          width:52px;height:52px;border-radius:50%;background:rgba(255,215,0,0.15);
-          border:2px solid #ffd700;display:flex;align-items:center;justify-content:center;
-          box-shadow:0 0 20px rgba(255,215,0,0.4);
-        ">
-          <span id="discovery-icon" style="font-size:26px;">⚡</span>
-        </div>
+  <!-- Shared discovery card: both game modes and Arsenal review. -->
+  <div id="skill-discovery-modal" role="dialog" aria-modal="true" aria-labelledby="discovery-title" aria-describedby="discovery-desc discovery-usage" style="display:none;">
+    <section class="discovery-card">
+      <div class="discovery-heading"><div id="discovery-icon" aria-hidden="true"></div><div><div id="discovery-mode"></div><div id="discovery-unlock-label"></div></div></div>
+      <h2 id="discovery-title"></h2>
+      <p id="discovery-desc"></p>
+      <figure class="discovery-scene"><canvas id="discovery-preview" role="img"></canvas><figcaption id="discovery-preview-caption" class="sr-only"></figcaption></figure>
+      <div class="discovery-instructions">
+        <p id="discovery-usage"></p>
+        <div id="discovery-sequence" aria-label="Controls"></div>
+        <p id="discovery-alt-sequence"></p>
       </div>
-      <div style="color:#00ffff;font-size:11px;font-weight:bold;letter-spacing:2px;margin-bottom:4px;">
-        ★ NEW ACTIVE SKILL DISCOVERED ★
+      <div id="discovery-stats">
+        <div id="discovery-cost-block"><span class="discovery-stat-label">COST</span><span id="discovery-cost"></span></div>
+        <div id="discovery-cd-block"><span class="discovery-stat-label">RECHARGE</span><span id="discovery-cd"></span></div>
       </div>
-      <div id="discovery-title" style="color:#ffd700;font-size:17px;font-weight:bold;letter-spacing:1.5px;margin-bottom:10px;">
-        WIGGLE EMP SHOCKWAVE
-      </div>
-      <div id="discovery-desc" style="color:#ddeeff;font-size:11.5px;line-height:1.45;margin-bottom:14px;">
-        Unleashes an expanding EMP shockwave that stuns all ghosts in range and breaks through barriers.
-      </div>
-
-      <!-- Sequence Combo Display -->
-      <div style="background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.3);border-radius:8px;padding:10px;margin-bottom:14px;">
-        <div style="color:#8899bb;font-size:9.5px;letter-spacing:1px;margin-bottom:6px;">
-          ACTIVATION: [DOUBLE-TAP SHIFT] THEN
-        </div>
-        <div id="discovery-sequence" style="display:flex;justify-content:center;gap:8px;margin-bottom:4px;">
-        </div>
-        <div id="discovery-alt-sequence" style="color:#8899bb;font-size:9px;margin-top:4px;">
-        </div>
-      </div>
-
-      <!-- Stats: Cost & Cooldown -->
-      <div style="display:flex;justify-content:space-around;background:rgba(255,255,255,0.04);border-radius:6px;padding:8px;margin-bottom:16px;">
-        <div>
-          <div style="color:#8899bb;font-size:9px;">MANA COST</div>
-          <div id="discovery-cost" style="color:#00ffff;font-size:13px;font-weight:bold;">25 MP</div>
-        </div>
-        <div style="width:1px;background:rgba(255,255,255,0.1);"></div>
-        <div>
-          <div style="color:#8899bb;font-size:9px;">COOLDOWN</div>
-          <div id="discovery-cd" style="color:#ffd700;font-size:13px;font-weight:bold;">14.0s</div>
-        </div>
-      </div>
-
-      <button id="discovery-dismiss" style="
-        width:100%;padding:11px;
-        background:linear-gradient(135deg,#ffd700,#ff7700);
-        border:none;border-radius:8px;color:#000;
-        font-family:monospace;font-size:12px;font-weight:bold;
-        letter-spacing:2px;cursor:pointer;
-        box-shadow:0 0 16px rgba(255,215,0,0.4);
-      ">UNDERSTOOD [SPACE / ENTER]</button>
-    </div>
+      <button id="discovery-dismiss" type="button">Continue</button>
+    </section>
   </div>
   <!-- Floating Mobile Controls (Option A) -->
   <div id="mobile-controls">
@@ -551,7 +533,7 @@ canvas{
     </div>
   </div>
 </div>
-<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v5.5.0</div>
+<div id="chv-version-overlay" style="position:fixed;bottom:4px;right:8px;font-size:9.5px;color:rgba(0,255,255,0.45);font-family:monospace;pointer-events:none;z-index:99;letter-spacing:0.5px;">v5.6.0</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

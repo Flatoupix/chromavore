@@ -85,6 +85,9 @@ export class InputManager {
   public isSettingsRequested: boolean = false;
   public isNovaRequested: boolean = false;
   public isInputBlocked: boolean = false;
+  private physicalHeldKeys: Set<string> = new Set();
+  private suppressedKeys: Set<string> = new Set();
+  private gamepadNeedsNeutral: boolean = false;
 
   // ─── Gamepad Extended State & Edge Triggering ───
   public isGamepadConnected: boolean = false;
@@ -433,6 +436,7 @@ export class InputManager {
     this.isInstructionsRequested = false;
     this.isSettingsRequested = false;
     this.isNovaRequested = false;
+    this.motionHistory = [];
     this.heldShiftKeys.clear();
     this.cancelChronoInput();
     for (const k in this.gpJustPressed) {
@@ -440,9 +444,35 @@ export class InputManager {
     }
   }
 
+  /** A modal must not turn its closing gesture into a gameplay command. */
+  public suppressUntilRelease() {
+    this.suppressedKeys = new Set(this.physicalHeldKeys);
+    this.gamepadNeedsNeutral = true;
+    this.clearAllInputs();
+  }
+
+  public isKeySuppressed(code: string): boolean {
+    return this.suppressedKeys.has(code);
+  }
+
   private setupKeyboard() {
-    window.addEventListener('blur', () => this.cancelChronoInput());
+    // Capture physical state even when a dialog stops the bubbling event.
+    window.addEventListener('keydown', (e: KeyboardEvent) => this.physicalHeldKeys.add(e.code), true);
+    window.addEventListener('keyup', (e: KeyboardEvent) => {
+      this.physicalHeldKeys.delete(e.code);
+      this.suppressedKeys.delete(e.code);
+    }, true);
+    window.addEventListener('blur', () => {
+      this.physicalHeldKeys.clear();
+      this.suppressedKeys.clear();
+      this.suppressUntilRelease();
+    });
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      this.physicalHeldKeys.add(e.code);
+      if (this.isKeySuppressed(e.code)) {
+        e.preventDefault();
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
@@ -559,6 +589,8 @@ export class InputManager {
     });
 
     window.addEventListener('keyup', (e: KeyboardEvent) => {
+      this.physicalHeldKeys.delete(e.code);
+      this.suppressedKeys.delete(e.code);
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
@@ -586,14 +618,34 @@ export class InputManager {
   }
 
   public registerMotion(dirKey: string) {
+    if (this.isInputBlocked || this.isSequenceMode) return;
     const now = performance.now();
+    // Holding a stick or key is one movement, regardless of polling frequency.
+    const previous = this.motionHistory[this.motionHistory.length - 1];
+    if (previous?.dir === dirKey) return;
     this.motionHistory.push({ dir: dirKey, time: now });
     if (this.motionHistory.length > 8) this.motionHistory.shift();
   }
 
-  /** Legacy pass-through: retained for backward compatibility */
+  /** Arcade gestures use live movement; Chromamancer uses Shift sequences only. */
   public checkKombos(onWiggle: (lvl: number) => void, onNitro: (lvl: number) => void) {
-    // Kombos now trigger on Shift release in Sequence Mode.
+    if (profileManager.gameMode === 'custom' || this.isInputBlocked || this.isSequenceMode) return;
+    const now = performance.now();
+    this.motionHistory = this.motionHistory.filter(motion => now - motion.time <= 1200);
+    if (this.motionHistory.length < 4) return;
+    const sequence = this.motionHistory.slice(-4).map(motion => motion.dir);
+    const matched = SKILL_COMBOS.slice(0, 2).find(combo =>
+      combo.sequence.every((dir, index) => dir === sequence[index]) ||
+      combo.altSequence?.every((dir, index) => dir === sequence[index])
+    );
+    if (!matched) return;
+    // Consume the gesture even when locked or cooling down; never cast it later.
+    this.motionHistory = [];
+    const level = progression.getSkillLevel(matched.id);
+    if (level < 1 || (matched.id === 'wiggle' ? this.wiggleCd : this.nitroCd) > 0) return;
+    this.startSkillCooldown(matched.id, level);
+    if (matched.id === 'wiggle') onWiggle(level);
+    else onNitro(level);
   }
 
   public updateCooldowns(dt: number, plPos: { x: number; y: number }) {
@@ -657,6 +709,14 @@ export class InputManager {
 
     const ax = gp.axes[0] || 0;
     const ay = gp.axes[1] || 0;
+    if (this.gamepadNeedsNeutral) {
+      this.prevButtons = gp.buttons.map(button => button.pressed);
+      this.prevAxes = [ax, ay];
+      if (Math.abs(ax) <= 0.32 && Math.abs(ay) <= 0.32 && !gp.buttons.some(button => button.pressed || button.value > 0.3)) {
+        this.gamepadNeedsNeutral = false;
+      }
+      return;
+    }
     const th = 0.45;
 
     // Detect digital and analog edge triggers for navigation & spellcasting

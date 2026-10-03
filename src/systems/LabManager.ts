@@ -112,7 +112,7 @@ export class LabManager {
       shortName: 'DASH ∞',
       icon: 'overdrive',
       color: '#00ffcc',
-      desc: 'Zero-cooldown infinite dash for 8 adrenaline-filled seconds.',
+      desc: 'Dash without cooldown: 8s, or 10s with Chrono Drive V2.',
       requiredSkillId: 'overdrive_v1',
       tileX: 7,
       tileY: 15
@@ -136,7 +136,7 @@ export class LabManager {
       shortName: 'PELLET',
       icon: 'super_pellet',
       color: '#00f0ff',
-      desc: 'Frightens ghosts with flashing vulnerability to devour them on contact.',
+      desc: 'Frightens normal ghosts and arriving reinforcements for contact attacks.',
       requiredSkillId: 'super_pellet_v1',
       tileX: 17,
       tileY: 15
@@ -160,7 +160,7 @@ export class LabManager {
       shortName: 'CRYO',
       icon: 'cryo',
       color: '#aaffff',
-      desc: 'Absolute zero: freezes all ghosts in place to shatter them on contact.',
+      desc: 'Freezes ghosts in place; touch frozen normal ghosts to shatter them.',
       requiredSkillId: 'cryo_v1',
       tileX: 10,
       tileY: 19

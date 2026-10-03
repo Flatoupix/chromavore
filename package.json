@@ -1,13 +1,14 @@
 {
   "name": "chromavore",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "simulate:headless": "node scripts/run-headless-calibration.mjs"
+    "simulate:headless": "node scripts/run-headless-calibration.mjs",
+    "test": "node scripts/test-personal-records.mjs && node scripts/test-discovery-contracts.mjs"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

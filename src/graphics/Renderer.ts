@@ -18,6 +18,7 @@ import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from './SpriteAtlas';
 import { formatScoreCompact } from '../utils/format';
 import { SKILL_COMBOS } from '../core/InputManager';
+import { isCareerDiscoveryAvailableInMode } from '../ui/DiscoveryCatalog';
 
 export interface EffectTimer {
   label: string;
@@ -40,6 +41,7 @@ export class Renderer {
   public treeRespecBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
   public treeSwitchModeBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
   public codexLabBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
+  public codexDiscoveryBtnBounds: { x: number; y: number; w: number; h: number } | null = null;
   public skillCardBounds: Map<string, { x: number; y: number; w: number; h: number }> = new Map();
   private ghostStamps: Map<string, HTMLCanvasElement[]> = new Map();
 
@@ -331,7 +333,7 @@ export class Renderer {
       c.font = 'bold 9.5px monospace';
       c.fillStyle = '#00ffff';
       c.textAlign = 'center';
-      c.fillText('<< DILATATION TEMPORELLE // CHRONO-SHIFT >>', this.cw / 2, 22);
+      c.fillText('<< TIME DILATION // CHRONO SHIFT >>', this.cw / 2, 22);
 
       c.restore();
     }
@@ -1442,7 +1444,7 @@ export class Renderer {
         c.fillStyle = pulse ? '#ffd700' : '#00ffaa';
         c.shadowColor = pulse ? '#ffd700' : '#00ffaa';
         c.shadowBlur = 6;
-        c.fillText(`✦ +${sp} SKILL POINT${sp > 1 ? 'S' : ''} DISPO !`, this.cw - 10, textY);
+        c.fillText(`✦ +${sp} SKILL POINT${sp > 1 ? 'S' : ''} AVAILABLE`, this.cw - 10, textY);
         c.shadowBlur = 0;
       } else if (isSurge) {
         c.fillStyle = '#ffd700';
@@ -1760,7 +1762,7 @@ export class Renderer {
       c.fillText('🔒 CHROMAMANCER', custX + cardW / 2, cardY + 23);
       c.font = 'bold 8.5px monospace';
       c.fillStyle = '#885577';
-      c.fillText('ROGUELITE (16:9 REQUIS)', custX + cardW / 2, cardY + 39);
+      c.fillText('ROGUELITE (REQUIRES 16:9)', custX + cardW / 2, cardY + 39);
 
       // Mini gauge
       const gw = cardW - 36;
@@ -1912,16 +1914,23 @@ export class Renderer {
       { badge: 'P / ESC', desc: 'Pause game, display & audio settings, CRT scanlines' }
     ]);
 
-    // Card 2: explain the Shift sequence input clearly.
-    this.drawInstructionCard(c, cardX, 180, cardW, 90, '#ffd700', 'SHIFT SEQUENCES • 4-SECOND FREEZE', [
-      { badge: 'DOUBLE-TAP SHIFT', badgeW: 132, desc: 'The world freezes. Enter four directions; release Shift or wait for the countdown.' },
-      { badge: '← → ← → / ↑ ↓ ↑ ↓', badgeW: 132, desc: 'Wiggle EMP / Nitro Jet (when unlocked).' }
+    // Each mode has its own controls; Arcade gestures never require Shift.
+    const isChromamancer = profileManager.gameMode === 'custom';
+    this.drawInstructionCard(c, cardX, 180, cardW, 90, '#ffd700', isChromamancer ? 'CHROMAMANCER • SPELL SEQUENCES' : 'CHROMAVORE • MOVEMENT POWERS', isChromamancer ? [
+      { badge: 'DOUBLE-TAP SHIFT', badgeW: 132, desc: 'Hold the second press. Enter four directions, then release Shift to cast.' },
+      { badge: '4-SECOND LIMIT', badgeW: 132, desc: 'Time freezes while you enter the spell. A complete spell also casts when time runs out.' }
+    ] : [
+      { badge: '← → ← →', badgeW: 132, desc: 'Wiggle EMP: alternate left and right within 1.2s after unlocking it.' },
+      { badge: '↑ ↓ ↑ ↓', badgeW: 132, desc: 'Nitro Jet: alternate up and down within 1.2s. The reverse order also works.' }
     ]);
 
     // Card 3: SUPER-ITEMS IN THE MAZE (y: 266, h: 76)
-    this.drawInstructionCard(c, cardX, 280, cardW, 76, '#ff007f', 'SUPER-ITEMS IN THE MAZE', [
-      { badge: 'AUTO-COLLECT', desc: 'Touch super-items to trigger their ultimate power instantly' },
-      { badge: 'SPAWNS', desc: 'Mega Nova, Black Hole, 8-Axis Lasers, Cryo Blizzard, Shockwave...' }
+    this.drawInstructionCard(c, cardX, 280, cardW, 76, '#ff007f', isChromamancer ? 'CHROMAMANCER • MANA & SKILLS' : 'CHROMAVORE • SUPER-ITEMS', isChromamancer ? [
+      { badge: 'SPELL COST', desc: 'Spells spend mana and start their cooldown when cast.' },
+      { badge: 'SKILL TREE', desc: 'Spend Skill Points on active spells and automatic passive upgrades.' }
+    ] : [
+      { badge: 'AUTO-COLLECT', desc: 'Touch an item to activate it immediately. No inventory or extra key.' },
+      { badge: 'ARSENAL', desc: 'Replay discoveries with D, or try unlocked arcade items in the Lab with T.' }
     ]);
 
     // Card 4: distinct progression tracks for each game mode.
@@ -2471,6 +2480,8 @@ export class Renderer {
 
   public drawCodex(time: number, tab: 'skills' | 'badges' | 'tree' = 'skills', page: number = 0) {
     const c = this.ctx;
+    this.codexDiscoveryBtnBounds = null;
+    this.codexLabBtnBounds = null;
     c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
     c.fillRect(0, 0, this.cw, CH);
 
@@ -2703,9 +2714,9 @@ export class Renderer {
       c.fillStyle = isArcade ? '#ff66bb' : '#00ffaa';
       c.textAlign = 'center';
       if (isArcade) {
-        c.fillText('[CLICK NODE TO PREVIEW / SWITCH]  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] BACK', this.cw / 2, CH - 14);
+        c.fillText('CLICK TO PREVIEW  •  [1/2] TABS  •  [ESC] BACK', (this.cw + 160) / 2, CH - 14, this.cw - 184);
       } else {
-        c.fillText('[CLICK A NODE TO UPGRADE]  •  [R] RESPEC  •  [1] ARSENAL  •  [2] BADGES  •  [ESC] BACK', this.cw / 2, CH - 14);
+        c.fillText('CLICK TO UPGRADE  •  [R] RESPEC  •  [ESC] BACK', (this.cw + 160) / 2, CH - 14, this.cw - 184);
       }
     } else if (isSkills) {
       this.skillCardBounds.clear();
@@ -2767,8 +2778,9 @@ export class Renderer {
       }
 
       // Base and odd-numbered upgrades on the left; advanced even-numbered upgrades on the right.
-      const leftSkills = SKILL_TREE.filter(s => s.version === 1 || s.version === 3 || s.version === 5);
-      const rightSkills = SKILL_TREE.filter(s => s.version === 2 || s.version === 4);
+      const modeSkills = SKILL_TREE.filter(s => isCareerDiscoveryAvailableInMode(s, profileManager.gameMode));
+      const leftSkills = modeSkills.filter(s => s.version === 1 || s.version === 3 || s.version === 5);
+      const rightSkills = modeSkills.filter(s => s.version === 2 || s.version === 4);
       const maxCol = Math.max(leftSkills.length, rightSkills.length);
       const compactGrid = maxCol > 10;
       const cardH = compactGrid ? 39 : 45;
@@ -2793,7 +2805,7 @@ export class Renderer {
       c.textAlign = 'center';
       c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00ffff';
       c.shadowBlur = this.getChromaBlur(6);
-      c.fillText('[1] ARSENAL  •  [2] BADGES  •  [3] SKILL TREE  •  [T] TRY IN LAB  •  [ESC / C] BACK', this.cw / 2, CH - 14);
+      c.fillText('[1/2/3] TABS  •  [T] LAB  •  [ESC / C] BACK', (this.cw + 160) / 2, CH - 14, this.cw - 184);
       c.shadowBlur = 0;
     } else {
       // BADGES & ACHIEVEMENTS GALLERY
@@ -2853,6 +2865,24 @@ export class Renderer {
       c.fillText(`[1] ARSENAL  •  [2] BADGES  •  [3] SKILL TREE  •  [PAGE ${curPage + 1}/${maxPages} • ARROWS ← / →]  •  [ESC] BACK`, this.cw / 2, CH - 14);
       c.shadowBlur = 0;
     }
+    if (isSkills || isTree) {
+      const button = { x: 12, y: CH - 30, w: 144, h: 24 };
+      this.codexDiscoveryBtnBounds = button;
+      c.save();
+      c.fillStyle = 'rgba(0, 240, 255, 0.12)';
+      c.strokeStyle = this.getChromaAccent('#00ffff', '#aaaaaa');
+      c.lineWidth = 1;
+      c.beginPath();
+      c.roundRect(button.x, button.y, button.w, button.h, 5);
+      c.fill();
+      c.stroke();
+      c.font = 'bold 10px monospace';
+      c.fillStyle = this.getChromaAccent('#00ffff', '#ffffff');
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText('[D / PAD X] REPLAY', button.x + button.w / 2, button.y + button.h / 2);
+      c.restore();
+    }
   }
 
   public getSkillEffectDetails(node: import('../config/skillTree').SkillNode, rank: number): { current: string; next: string } {
@@ -2880,18 +2910,18 @@ export class Renderer {
         };
       case 'phase_shift':
         return {
-          current: rank > 0 ? `${(0.35 + (rank - 1) * 0.18).toFixed(2)}s Dash intangibility` : 'Normal Dash vulnerability',
-          next: isMax ? 'Maximized (0.71s i-frames + ghost phasing)' : `${(0.35 + rank * 0.18).toFixed(2)}s Dash intangibility`
+          current: rank > 0 ? `${Math.min(0.75, 0.25 + 0.35 + (rank - 1) * 0.18).toFixed(2)}s Dash protection` : 'Standard Dash protection',
+          next: isMax ? 'Maximized (0.75s protection + wall phasing)' : `${Math.min(0.75, 0.25 + 0.35 + rank * 0.18).toFixed(2)}s Dash protection`
         };
       case 'quantum_laser':
         return {
           current: rank > 0 ? `${rank >= 2 ? '18s' : '24s'} Cooldown, 4-Way Cardinal Lasers` : 'Locked (Requires Phase Shift)',
-          next: isMax ? 'Maximized (18s Cooldown)' : 'Cooldown reduced to 18s & pierces portals'
+          next: isMax ? 'Maximized (18s Cooldown)' : rank === 0 ? 'Unlock 4-way lasers (24s base cooldown)' : 'Base cooldown reduced to 18s'
         };
       case 'chrono_tank':
         return {
-          current: rank > 0 ? `+${rank * 20}% Chrono pool capacity${rank >= 4 ? ' (12% Bullet-Time slowdown)' : ''}` : 'Standard Chrono pool (100 units)',
-          next: isMax ? 'Maximized (+100% pool)' : `+${(rank + 1) * 20}% Chrono capacity${rank + 1 >= 4 ? ' (Dilation to 12%)' : ''}`
+          current: rank > 0 ? `+${rank * 20}% Chrono pool capacity${rank >= 4 ? ' (stronger time dilation)' : ''}` : 'Standard Chrono pool (100 units)',
+          next: isMax ? 'Maximized (+100% pool)' : `+${(rank + 1) * 20}% Chrono capacity${rank + 1 >= 4 ? ' (stronger time dilation)' : ''}`
         };
       case 'emp_overcharge':
         return {
@@ -2910,23 +2940,23 @@ export class Renderer {
         };
       case 'aegis_shield':
         return {
-          current: rank > 0 ? `Active: Recharges after ${rank === 3 ? 60 : (rank === 2 ? 80 : 100)} pellets` : 'No emergency barrier',
-          next: isMax ? 'Maximized (60 pellets)' : `Recharge threshold reduced to ${rank + 1 === 3 ? 60 : 80} pellets`
+          current: rank > 0 ? `Active: Recharges after ${rank === 3 ? 60 : (rank === 2 ? 80 : 100)} dots` : 'No emergency barrier',
+          next: isMax ? 'Maximized (60 dots; Power Pellet = 5)' : `Recharge threshold reduced to ${rank + 1 === 3 ? 60 : rank + 1 === 2 ? 80 : 100} dots`
         };
       case 'kinetic_bastion':
         return {
           current: rank > 0 ? `${rank >= 2 ? '8s' : '6s'} Kinetic dome, ${rank >= 2 ? '5.0' : '3.5'} tiles counterwave` : 'Locked (Requires Aegis Barrier)',
-          next: isMax ? 'Maximized (8s dome, 5.0 tiles counterwave)' : 'Duration to 8s, Counterwave expanded to 5.0 tiles'
+          next: isMax ? 'Maximized (8s dome, 5.0 tiles counterwave)' : rank === 0 ? 'Unlock 6s dome; 3.5-tile counterwave' : '8s dome; 5-tile counterwave'
         };
       case 'pellet_resonance':
         return {
-          current: rank > 0 ? `+${(rank * 1.4).toFixed(1)}s Ghost vulnerability${rank >= 4 ? ' & +25% XP/Score' : ''}` : 'Standard Power Pellet duration',
-          next: isMax ? 'Maximized (+7.0s duration)' : `+${((rank + 1) * 1.4).toFixed(1)}s Vulnerability${rank + 1 >= 4 ? ' + 25% XP/Score' : ''}`
+          current: rank > 0 ? `+${(rank * 1.4).toFixed(1)}s Ghost vulnerability${rank >= 4 ? ` & +${(rank - 3) * 25}% ghost XP/score` : ''}` : 'Standard Power Pellet duration',
+          next: isMax ? 'Maximized (+7s fear, +50% ghost XP/score)' : `+${((rank + 1) * 1.4).toFixed(1)}s Vulnerability${rank + 1 >= 4 ? ` & +${(rank - 2) * 25}% ghost XP/score` : ''}`
         };
       case 'titan_breaker':
         return {
-          current: rank >= 3 ? 'Direct Dash execution (+2,500 pts)' : (rank === 2 ? 'Dash heavy stun (4.5s) & 35% Titan slow' : (rank === 1 ? 'Dash stun (3.0s) & armor break' : 'Titans immune to Dash')),
-          next: isMax ? 'Maximized (Instant execution)' : (rank === 2 ? 'Direct Dash execution (+2,500 pts)' : (rank === 1 ? '35% Titan movement slow & heavy stun' : 'Stun Titans on Dash impact'))
+          current: rank >= 3 ? 'Dash eliminates Titans' : (rank === 2 ? 'Dash heavy stun (4.5s) & 35% Titan slow' : (rank === 1 ? 'Dash stun (3.0s) & armor break' : 'Titans immune to Dash')),
+          next: isMax ? 'Maximized (Instant execution)' : (rank === 2 ? 'Dash eliminates Titans' : (rank === 1 ? '35% Titan movement slow & heavy stun' : 'Stun Titans on Dash impact'))
         };
       case 'super_frequency':
         return {
@@ -2941,7 +2971,7 @@ export class Renderer {
       case 'singularity_nova':
         return {
           current: rank > 0 ? `${rank >= 2 ? '32s' : '40s'} Cooldown, Void Nova Transcendence` : 'Locked (Requires Void Transcendence)',
-          next: isMax ? 'Maximized (32s Cooldown)' : 'Cooldown reduced from 40s to 32s'
+          next: isMax ? 'Maximized (32s Cooldown)' : rank === 0 ? 'Unlock Void Nova (40s base cooldown)' : 'Base cooldown reduced to 32s'
         };
       default:
         return { current: `Rank ${rank}`, next: isMax ? 'Max rank' : `Rank ${rank + 1}` };
@@ -3371,7 +3401,7 @@ export class Renderer {
       c.font = '7.5px monospace';
       c.fillStyle = this.getChromaAccent('#ffaa00', '#aaaaaa');
       spriteAtlas.drawIcon(c, 'trophy', x + 14, y + 54, 10);
-      c.fillText('Trophy saved to cloud profile', x + 24, y + 54);
+      c.fillText('Achievement saved to profile', x + 24, y + 54);
     }
 
     c.restore();
@@ -3434,7 +3464,7 @@ export class Renderer {
     c.font = 'bold 10px monospace';
     if (unlocked) {
       c.fillStyle = this.getChromaAccent('#00ffaa', '#cccccc');
-      const statusText = 'ACTIVE • [TRY]';
+      const statusText = '[REPLAY]';
       const tw = c.measureText(statusText).width;
       spriteAtlas.drawIcon(c, 'check', x + w - 8 - tw - 8, y + 14, 10);
       c.fillText(statusText, x + w - 8, y + 14);
@@ -4028,7 +4058,7 @@ export class Renderer {
 
     c.font = 'bold 9px monospace';
     c.fillStyle = info.ecgColor;
-    c.fillText(`TÉLÉMÉTRIE DU SYSTÈME HÔTE • ${info.stageCode} (${info.bpm} BPM)`, this.cw / 2, bioY + 13);
+    c.fillText(`HOST SYSTEM TELEMETRY • ${info.stageCode} (${info.bpm} BPM)`, this.cw / 2, bioY + 13);
     c.font = '8px monospace';
     c.fillStyle = '#94a3b8';
     c.fillText(info.stageDetail, this.cw / 2, bioY + 24);
@@ -4048,7 +4078,7 @@ export class Renderer {
     } else {
       c.font = 'bold 9.5px monospace';
       c.fillStyle = '#778899';
-      c.fillText('INITIALISATION DU PROCHAIN SECTEUR...', this.cw / 2, cardY + 180);
+      c.fillText('INITIALIZING NEXT SECTOR...', this.cw / 2, cardY + 180);
     }
 
     c.restore();

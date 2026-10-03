@@ -52,8 +52,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'wiggle',
     threshold: 120,
     category: 'kombo',
-    command: '← → ← → (Wiggle)',
-    desc: 'EMP shockwave knocking back and stunning nearby ghosts for 2.5s'
+    command: '← → ← → quickly',
+    desc: 'EMP wave eliminates nearby ghosts and collects nearby dots'
   },
   {
     id: 'chrono_v1',
@@ -85,8 +85,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nitro',
     threshold: 360,
     category: 'kombo',
-    command: '↓ ↑ ↓ ↑ (Bao Bao)',
-    desc: 'Turbo speed boost leaving a burning trail that incinerates ghosts for 3.2s'
+    command: '↑ ↓ ↑ ↓ quickly',
+    desc: 'Burns ghosts along a 3.2s trail; also boosts speed in the widescreen arena'
   },
   {
     id: 'vortex_v1',
@@ -118,7 +118,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'laser',
     threshold: 700,
     category: 'item',
-    command: 'AUTO-FIRES AT 16x COMBO',
+    command: 'AUTO ON PICKUP',
     desc: 'Cross-axial laser cannons cutting through horizontal and vertical corridors'
   },
   {
@@ -130,7 +130,7 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 950,
     category: 'item',
     command: 'AUTO ON PICKUP',
-    desc: 'Absolute zero: freezes all ghosts to shatter them on contact'
+    desc: 'Freezes ghosts for 4s; touch frozen normal ghosts to shatter them'
   },
   {
     id: 'tsunami_v1',
@@ -140,8 +140,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'tsunami',
     threshold: 1250,
     category: 'item',
-    command: 'AUTO-FIRES AT 32x GOD MODE',
-    desc: 'Sacred royal wave clearing the entire maze with extra survival time'
+    command: 'AUTO ON PICKUP',
+    desc: 'A wave sweeps across the arena and eliminates ghosts in its path'
   },
   {
     id: 'dash_v2',
@@ -162,8 +162,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'wiggle',
     threshold: 2400,
     category: 'kombo',
-    command: '← → ← → (Wiggle)',
-    desc: 'Double radius (160px), 4s stun, and turns ghosts vulnerable to consumption'
+    command: '← → ← → quickly',
+    desc: 'EMP reaches 8.5 tiles instead of 4.8, with a 25% shorter cooldown'
   },
   {
     id: 'chrono_v2',
@@ -195,8 +195,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'nitro',
     threshold: 3300,
     category: 'kombo',
-    command: '↓ ↑ ↓ ↑ (Bao Bao)',
-    desc: '+20% turbo speed, 4.5s duration, and persistent ground plasma for 2.5s'
+    command: '↑ ↓ ↑ ↓ quickly',
+    desc: 'Extends Nitro to 4.5s and its trail to 2.5s, with a 25% shorter cooldown'
   },
   {
     id: 'nova_v2',
@@ -207,7 +207,7 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 3900,
     category: 'item',
     command: 'AUTO ON PICKUP',
-    desc: 'Full screen purge + golden bonus orb shower and instant multipliers'
+    desc: 'The same arena-wide purge, with a larger golden blast'
   },
   {
     id: 'dash_v3',
@@ -229,7 +229,7 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 5200,
     category: 'item',
     command: 'AUTO ON PICKUP',
-    desc: 'Infinite dash + invulnerability with zero overheat for the entire duration'
+    desc: 'Extends zero-cooldown Dash from 8s to 10s; use SPACE repeatedly'
   },
   {
     id: 'vortex_v2',
@@ -250,7 +250,7 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'laser',
     threshold: 7000,
     category: 'item',
-    command: 'AUTO-FIRES AT 16x COMBO',
+    command: 'AUTO ON PICKUP',
     desc: '8-directional laser star (cross + diagonals) slicing the entire arena'
   },
   {
@@ -273,7 +273,7 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 9000,
     category: 'item',
     command: 'AUTO ON PICKUP',
-    desc: 'Freezes all ghosts and triggers a chain-reaction explosion after 3s'
+    desc: 'Extends Cryo from 4s to 5.5s; touch frozen normal ghosts to shatter them'
   },
   {
     id: 'tsunami_v2',
@@ -283,8 +283,8 @@ export const SKILL_TREE: SkillDef[] = [
     icon: 'tsunami',
     threshold: 10000,
     category: 'item',
-    command: 'AUTO-FIRES AT 32x GOD MODE',
-    desc: 'Dual sweeping royal wave back-and-forth + instant arsenal reload (100% Mastered)'
+    command: 'AUTO ON PICKUP',
+    desc: 'Solar Eclipse variant keeps the same single sweeping wave'
   },
   {
     id: 'dash_v5',

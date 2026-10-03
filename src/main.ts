@@ -23,8 +23,10 @@ import { profileManager } from './systems/ProfileManager';
 import { wobbleBanner } from './graphics/WobbleBanner';
 import { SingularityBoss } from './entities/SingularityBoss';
 import { formatScoreCompact } from './utils/format';
-import { SKILL_COMBOS } from './core/InputManager';
+import { DiscoveryManager } from './ui/DiscoveryManager';
+import { getArcadeDiscovery, getBaseDiscovery, getCustomDiscovery, type BaseDiscoveryId } from './ui/DiscoveryCatalog';
 import { labManager } from './systems/LabManager';
+import { getKnownPseudo, snapshotPersonalRecord } from './systems/PersonalRecord';
 if (import.meta.env.DEV) {
   import('./utils/adminReset');
 }
@@ -74,7 +76,7 @@ class Game {
   public bonusVortexKillXp: number = 0;
   public bonusVortexMilestoneXp: number = 0;
   public bonusVortexMilestonesHit: Set<number> = new Set();
-  public skillDiscoveryQueue: string[] = [];
+  public discoveries: DiscoveryManager;
   public score: number = 0;
   public dScore: number = 0;
   public lives: number = 3;
@@ -137,6 +139,8 @@ class Game {
   public pendingKills: number = 0;
   public pendingStreak: number = 0;
   public pendingMode: 'arcade' | 'custom' = 'arcade';
+  public pendingIsNewRecord: boolean = false;
+  public isTestRun: boolean = false;
   public settingsFocusIndex: number = 0;
   public activeSliderDrag: 'volMaster' | 'volMusic' | 'volSfx' | null = null;
 
@@ -151,19 +155,19 @@ class Game {
 
     this.setupNameModal();
     this.setupProfileModals();
-    this.setupSkillDiscoveryModal();
+    this.discoveries = new DiscoveryManager(
+      () => {
+        input.isInputBlocked = true;
+        input.suppressUntilRelease();
+      },
+      () => {
+        input.suppressUntilRelease();
+        input.isInputBlocked = this.isModalActive();
+      },
+      type => this.startLab(type)
+    );
     experienceSystem.onSkillUnlockedCallback = (skillId: string) => {
-      const activeMap: Record<string, string> = {
-        emp_overcharge: 'wiggle',
-        hyper_nitro: 'nitro',
-        quantum_laser: 'quantum_laser',
-        kinetic_bastion: 'kinetic_bastion',
-        singularity_nova: 'singularity_nova'
-      };
-      const activeSkill = activeMap[skillId];
-      if (activeSkill) {
-        this.queueSkillDiscovery(activeSkill);
-      }
+      this.discoveries.enqueue(getCustomDiscovery(skillId, profileManager.profile.skillUpgrades?.[skillId] || 1));
     };
     profileManager.onGameModeChanged = () => {
       input.clearAllInputs();
@@ -202,13 +206,15 @@ class Game {
     const closeNameModal = (targetState: 'gameover' | 'menu') => {
       modal.style.display = 'none';
       input.isInputBlocked = false;
-      input.clearAllInputs();
+      input.suppressUntilRelease();
       this.state = targetState;
+      this.canvas.focus({ preventScroll: true });
       sounds.play('click');
     };
 
     const save = () => {
-      const savedLast = profileManager.profile.pseudo || 'PLAYER1';
+      if (modal.style.display === 'none') return;
+      const savedLast = getKnownPseudo(profileManager.profile, localStorage.getItem('chv_last_pseudo')) || 'PLAYER1';
       const pseudo = (inputEl.value.trim().toUpperCase() || savedLast).slice(0, 12);
       profileManager.setPseudo(pseudo);
       const date = new Date().toISOString();
@@ -225,12 +231,18 @@ class Game {
       closeNameModal('gameover');
     };
 
-    submit.addEventListener('click', save);
+    submit.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      save();
+    });
     inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
+        e.preventDefault();
         e.stopPropagation();
         save();
       } else if (e.key === 'Escape') {
+        e.preventDefault();
         e.stopPropagation();
         closeNameModal('menu');
       }
@@ -239,6 +251,7 @@ class Game {
 
     modal.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
         e.stopPropagation();
         closeNameModal('menu');
       }
@@ -257,13 +270,19 @@ class Game {
       }
     });
 
-    skip.addEventListener('click', () => {
+    skip.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       closeNameModal('gameover');
     });
 
     const menuBtn = document.getElementById('pseudo-menu');
     if (menuBtn) {
-      menuBtn.addEventListener('click', () => closeNameModal('menu'));
+      menuBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeNameModal('menu');
+      });
     }
   }
 
@@ -415,134 +434,31 @@ class Game {
     }, 60);
   }
 
-  public queueSkillDiscovery(skillId: string) {
-    if (profileManager.isSkillDiscovered(skillId)) return;
-    if (!this.skillDiscoveryQueue.includes(skillId)) {
-      this.skillDiscoveryQueue.push(skillId);
-    }
-    if (this.skillDiscoveryQueue.length === 1 && !this.isModalActive()) {
-      this.showNextSkillDiscovery();
+  private queueCareerDiscoveries(previousKills: number) {
+    if (this.isTestRun || this.state === 'lab') return;
+    // Shared career upgrades exist in both modes, but each card teaches that mode's controls.
+    for (const skill of progression.SKILL_TREE) {
+      if (previousKills < skill.threshold && progression.totalGhosts >= skill.threshold) {
+        for (const mode of ['arcade', 'custom'] as const) this.discoveries.enqueue(getArcadeDiscovery(skill, mode));
+      }
     }
   }
 
-  private showNextSkillDiscovery() {
-    if (this.skillDiscoveryQueue.length === 0) return;
-    const skillId = this.skillDiscoveryQueue[0];
-    const modal = document.getElementById('skill-discovery-modal');
-    if (!modal) return;
-
-    const combo = SKILL_COMBOS.find(c => c.id === skillId);
-    if (!combo) {
-      this.skillDiscoveryQueue.shift();
-      return;
-    }
-
-    const titleEl = document.getElementById('discovery-title');
-    const descEl = document.getElementById('discovery-desc');
-    const iconEl = document.getElementById('discovery-icon');
-    const seqEl = document.getElementById('discovery-sequence');
-    const altSeqEl = document.getElementById('discovery-alt-sequence');
-    const costEl = document.getElementById('discovery-cost');
-    const cdEl = document.getElementById('discovery-cd');
-    const dismissBtn = document.getElementById('discovery-dismiss') as HTMLButtonElement;
-
-    const skillInfo: Record<string, { icon: string; desc: string; cdText: string }> = {
-      wiggle: {
-        icon: '⚡',
-        desc: 'Unleashes an expanding EMP shockwave that stuns surrounding ghosts and repels swarms.',
-        cdText: '14.0s'
-      },
-      nitro: {
-        icon: '🔥',
-        desc: 'Ignites high-velocity plasma thrusters leaving a burning trail that obliterates ghosts in pursuit.',
-        cdText: '10.0s'
-      },
-      quantum_laser: {
-        icon: '💥',
-        desc: 'Fires four cardinal lasers across the maze corridors, vaporizing ghosts along their paths.',
-        cdText: '24.0s'
-      },
-      kinetic_bastion: {
-        icon: '🛡️',
-        desc: 'Erects a protective kinetic dome that absorbs hits with Chrono energy and triggers a counterwave.',
-        cdText: '26.0s'
-      },
-      singularity_nova: {
-        icon: '🌌',
-        desc: 'Triggers a devastating micro-Singularity that pulls in and disintegrates every ghost in the arena.',
-        cdText: '40.0s'
-      }
-    };
-
-    const info = skillInfo[skillId] || { icon: '⚡', desc: combo.name, cdText: `${combo.baseCd.toFixed(1)}s` };
-
-    if (titleEl) titleEl.textContent = combo.name;
-    if (descEl) descEl.textContent = info.desc;
-    if (iconEl) iconEl.textContent = info.icon;
-    if (costEl) costEl.textContent = `${combo.manaCost} MP`;
-    if (cdEl) cdEl.textContent = info.cdText;
-
-    const arrowSymbols: Record<string, string> = { up: '▲', down: '▼', left: '◄', right: '►' };
-    if (seqEl) {
-      seqEl.innerHTML = '';
-      combo.sequence.forEach(dir => {
-        const span = document.createElement('span');
-        span.style.cssText = 'background:#00f0ff;color:#000;font-weight:bold;font-size:16px;padding:4px 10px;border-radius:4px;box-shadow:0 0 10px rgba(0,240,255,0.5);';
-        span.textContent = arrowSymbols[dir] || dir;
-        seqEl.appendChild(span);
-      });
-    }
-
-    if (altSeqEl) {
-      if (combo.altSequence) {
-        altSeqEl.textContent = `Alternative: ${combo.altSequence.map(d => arrowSymbols[d] || d).join(' ')}`;
-      } else {
-        altSeqEl.textContent = '';
-      }
-    }
-
-    input.isInputBlocked = true;
-    input.clearAllInputs();
-    modal.style.display = 'flex';
-    sounds.play('badge');
-
-    setTimeout(() => {
-      if (dismissBtn) dismissBtn.focus();
-    }, 60);
+  private discoverPickup(id: BaseDiscoveryId) {
+    if (!this.isTestRun && this.state !== 'lab') this.discoveries.enqueue(getBaseDiscovery(id, this.currentGameMode));
   }
 
-  private setupSkillDiscoveryModal() {
-    const modal = document.getElementById('skill-discovery-modal');
-    const dismissBtn = document.getElementById('discovery-dismiss');
-    if (!modal || !dismissBtn) return;
+  private discoverVisiblePickups() {
+    if (this.isTestRun || this.state !== 'playing') return;
+    const baseIds: Record<string, BaseDiscoveryId> = { nova: 'action_nova', overdrive: 'action_overdrive', phase: 'phase', timewarp: 'timewarp', magnet: 'force_field' };
+    if (powerups.current && baseIds[powerups.current.type]) this.discoverPickup(baseIds[powerups.current.type]);
+    if (powerups.forceFieldItem) this.discoverPickup('force_field');
+    if (powerups.voidRelic) this.discoverPickup('void_relic');
+    if (powerups.vortexPortal) this.discoverPickup('vortex_portal');
+  }
 
-    const dismiss = () => {
-      const finishedId = this.skillDiscoveryQueue.shift();
-      if (finishedId) {
-        profileManager.markSkillDiscovered(finishedId);
-      }
-      modal.style.display = 'none';
-      input.isInputBlocked = false;
-      input.clearAllInputs();
-      sounds.play('click');
-
-      if (this.skillDiscoveryQueue.length > 0) {
-        setTimeout(() => this.showNextSkillDiscovery(), 200);
-      }
-    };
-
-    dismissBtn.addEventListener('click', dismiss);
-    modal.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
-        e.stopPropagation();
-        e.preventDefault();
-        dismiss();
-      }
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        dismissBtn.focus();
-      }
-    });
+  public reviewDiscoveries(preferredId?: string) {
+    if (!this.isModalActive() && this.state === 'codex') this.discoveries.review(profileManager.gameMode, preferredId);
   }
 
   public triggerEpilogue() {
@@ -570,6 +486,7 @@ class Game {
   }
 
   public startLab(preferredItemType?: string) {
+    this.isTestRun = true;
     sounds.stopBgm();
     this.state = 'lab';
     input.clearAllInputs();
@@ -756,6 +673,10 @@ class Game {
     }
 
     if (this.state === 'codex') {
+      if (input.gpJustPressed.x && this.codexTab !== 'badges') {
+        this.reviewDiscoveries();
+        return;
+      }
       // LB / RB cycles tabs
       if (input.gpJustPressed.lb) {
         if (this.codexTab === 'tree') this.codexTab = 'badges';
@@ -832,7 +753,7 @@ class Game {
     sounds.play('click');
   }
 
-  private showNameModal(val: number) {
+  private showNameModal() {
     const modal = document.getElementById('name-modal');
     const titleEl = document.getElementById('name-modal-title');
     const scoreEl = document.getElementById('name-modal-score');
@@ -842,42 +763,52 @@ class Game {
     input.isInputBlocked = true;
     input.clearAllInputs();
 
-    titleEl.textContent = 'NEW HIGH SCORE!';
-    scoreEl.textContent = `${this.pendingKills} GHOSTS PURGED (${formatScoreCompact(this.pendingScore)} PTS)`;
+    titleEl.textContent = 'NEW PERSONAL BEST!';
+    const modeName = this.pendingMode === 'arcade' ? 'CHROMAVORE' : 'CHROMAMANCER';
+    scoreEl.textContent = `${modeName} · ${formatScoreCompact(this.pendingScore)} PTS`;
 
-    const lastPseudo = localStorage.getItem('chv_last_pseudo') || '';
+    const lastPseudo = getKnownPseudo(profileManager.profile, localStorage.getItem('chv_last_pseudo'));
     inputEl.value = lastPseudo;
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'name-modal-title');
+    modal.setAttribute('aria-describedby', 'name-modal-score');
     modal.style.display = 'flex';
-    setTimeout(() => {
-      inputEl.focus();
-      if (lastPseudo) inputEl.select();
-    }, 60);
+    inputEl.focus({ preventScroll: true });
+    if (lastPseudo) inputEl.select();
   }
 
   private triggerGameOver() {
+    const excludedRun = this.isTestRun || this.state === 'lab' || this.state === 'debug';
+    const record = snapshotPersonalRecord(profileManager.profile, this.currentGameMode, this.score, excludedRun);
     this.state = 'gameover';
     this.pendingScore = this.score;
     this.pendingKills = this.madnessKills;
     this.pendingStreak = this.maxMadnessStreak;
     this.pendingMode = this.currentGameMode;
+    this.pendingIsNewRecord = record.isNewRecord;
+    this.playerRank = 0;
+    this.playerDate = '';
+    sounds.play('death');
 
+    if (excludedRun) return;
+
+    const savedPseudo = getKnownPseudo(profileManager.profile, localStorage.getItem('chv_last_pseudo'));
+    if (savedPseudo && !profileManager.profile.pseudo?.trim()) profileManager.profile.pseudo = savedPseudo;
     badges.saveScore(this.score);
     badges.saveMadnessKills(this.madnessKills);
 
     // Save mode-specific stats to profile
     if (this.currentGameMode === 'arcade') {
-      profileManager.profile.arcadeHiScore = Math.max(profileManager.profile.arcadeHiScore || 0, this.score);
+      profileManager.profile.arcadeHiScore = Math.max(record.previousRecord, this.score);
       profileManager.profile.arcadeBestKills = Math.max(profileManager.profile.arcadeBestKills || 0, this.madnessKills);
     } else {
-      profileManager.profile.customHiScore = Math.max(profileManager.profile.customHiScore || 0, this.score);
+      profileManager.profile.customHiScore = Math.max(record.previousRecord, this.score);
       profileManager.profile.customBestKills = Math.max(profileManager.profile.customBestKills || 0, this.madnessKills);
     }
     profileManager.saveProfile();
 
-    sounds.play('death');
-
-    // Auto-save immediately if pseudo already known so record is NEVER lost
-    const savedPseudo = (localStorage.getItem('chv_last_pseudo') || '').trim();
+    // Leaderboard eligibility remains kill-based, independent of the nickname prompt.
     const qualifies = this.pendingKills > 0;
 
     if (savedPseudo && qualifies) {
@@ -887,15 +818,13 @@ class Game {
         score: this.pendingScore,
         kills: this.pendingKills,
         streak: this.pendingStreak,
-        mode: this.currentGameMode,
+        mode: this.pendingMode,
         date: this.playerDate
-      }, this.currentGameMode);
+      }, this.pendingMode);
     }
 
-    if (qualifies) {
-      setTimeout(() => {
-        this.showNameModal(this.pendingKills);
-      }, 400);
+    if (record.isNewRecord) {
+      this.showNameModal();
     }
   }
 
@@ -1034,6 +963,11 @@ class Game {
       }
 
       if (this.state === 'codex') {
+        const discoveryButton = this.renderer.codexDiscoveryBtnBounds;
+        if (discoveryButton && cx >= discoveryButton.x && cx <= discoveryButton.x + discoveryButton.w && cy >= discoveryButton.y && cy <= discoveryButton.y + discoveryButton.h) {
+          this.reviewDiscoveries();
+          return;
+        }
         const tabW = Math.min(160, Math.floor((curCw - 60) / 3));
         const tabH = 22, tabY = 34;
         const totalTabsW = tabW * 3 + 16;
@@ -1077,7 +1011,8 @@ class Game {
             if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) {
               if (progression.isSkillUnlocked(skillId)) {
                 const baseId = skillId.replace(/_v[1-5]$/, '');
-                this.startLab(baseId);
+                const skill = progression.SKILL_TREE.find(s => s.id === skillId)!;
+                this.reviewDiscoveries(getArcadeDiscovery(skill, profileManager.gameMode).id);
                 return;
               }
             }
@@ -1502,6 +1437,7 @@ class Game {
     });
 
     window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (this.isModalActive() || input.isKeySuppressed(e.code)) return;
       const k = e.key ? e.key.toLowerCase() : '';
       // Toggle Debug Mode with F2 or ² (Backquote)
       if (e.code === 'F2' || e.code === 'Backquote') {
@@ -1635,6 +1571,12 @@ class Game {
           return;
         }
       } else if (this.state === 'codex') {
+        if (e.code === 'KeyD') {
+          const card = this.codexTab === 'tree' ? getCustomDiscovery(this.renderer.selectedSkillId, experienceSystem.getSkillRank(this.renderer.selectedSkillId)) : null;
+          this.reviewDiscoveries(card?.id);
+          e.preventDefault();
+          return;
+        }
         if (e.code === 'Escape' || e.code === 'Space') {
           this.state = 'menu';
           sounds.play('click');
@@ -1809,6 +1751,9 @@ class Game {
   }
 
   public startGame() {
+    this.isTestRun = false;
+    this.pendingIsNewRecord = false;
+    this.levelUpShockwave.active = false;
     this.currentGameMode = profileManager.gameMode || 'arcade';
     this.configureArena();
     this.score = 0;
@@ -1870,12 +1815,15 @@ class Game {
     sounds.play('powerup');
     particles.addPop(this.renderer.cw / 2, HUD_H + 50, '« LET\'S HUNT »', '#ffd700', 22);
 
+    this.discoverPickup('power_pellet');
+    // Catch up an imported/older profile once; mode-scoped IDs survive subsequent launches.
+    for (const skill of progression.SKILL_TREE) {
+      if (progression.totalGhosts >= skill.threshold) this.discoveries.enqueue(getArcadeDiscovery(skill, this.currentGameMode));
+    }
     if (this.currentGameMode === 'custom') {
-      for (const combo of SKILL_COMBOS) {
-        const av = input.getSkillAvailability(combo.id);
-        if (av.unlocked && !profileManager.isSkillDiscovered(combo.id)) {
-          this.queueSkillDiscovery(combo.id);
-        }
+      for (const skill of SKILL_NODES) {
+        const rank = profileManager.profile.skillUpgrades?.[skill.id] || 0;
+        if (rank > 0) this.discoveries.enqueue(getCustomDiscovery(skill.id, rank));
       }
     }
   }
@@ -2231,6 +2179,7 @@ class Game {
     // Progression system: count lifetime ghost kill & check unlocks
     const prevCareer = profileManager.profile.careerGhosts;
     progression.addGhostKills(1);
+    this.queueCareerDiscoveries(prevCareer);
     this.checkArenaUnlock(prevCareer);
 
     this.madnessKills++;
@@ -2367,6 +2316,8 @@ class Game {
   }
 
   private triggerSingularitySequence() {
+    this.discoverPickup('singularity');
+    this.discoverPickup('singularity_burst');
     this.singularityTriggered = true;
     this.singularityIntroTimer = 5.0;
     this.singularityShockwaveRadius = 0;
@@ -2773,6 +2724,8 @@ class Game {
         { type: 'tsunami_burst', name: 'COSMIC TSUNAMI', color: '#ffffff', icon: 'tsunami' }
       ];
       const pick = itemTypes[(Math.random() * itemTypes.length) | 0];
+      const discoveryIds: Record<string, BaseDiscoveryId> = { nova_capsule: 'bonus_nova', black_hole: 'bonus_vortex', lightning_burst: 'bonus_laser', tsunami_burst: 'bonus_tsunami' };
+      this.discoverPickup(discoveryIds[pick.type]);
       const margin = 100;
       this.bonusItems.push({
         x: margin + Math.random() * (BONUS_ARENA_W - margin * 2),
@@ -3052,6 +3005,7 @@ class Game {
       if (careerBonusKills > 0) {
         const prevCareer = profileManager.profile.careerGhosts;
         progression.addGhostKills(careerBonusKills);
+        this.queueCareerDiscoveries(prevCareer);
         this.checkArenaUnlock(prevCareer);
         this.madnessKills += careerBonusKills;
         particles.addPop(BONUS_ARENA_W / 2, BONUS_ARENA_H / 2 - 70, `+${careerBonusKills} CAREER KILLS (100:1)`, '#ffd700', 20);
@@ -3421,6 +3375,7 @@ class Game {
       particles.emit(px, py, 30, col, { speed: 160, size: 5.5, life: 0.6 });
       badges.unlock('combo16');
     } else if (mult >= 32) {
+      this.discoverPickup('god_mode');
       sounds.play('nova');
       sounds.play('powerup');
       particles.shake(10, 0.35);
@@ -3489,7 +3444,13 @@ class Game {
   }
 
   private update(dt: number) {
+    this.discoverVisiblePickups();
+    const canPresentDiscovery = !this.isModalActive() && (!this.isTestRun || this.state === 'codex') &&
+      (this.state === 'ready' || this.state === 'playing' || this.state === 'paused' || this.state === 'codex' || (this.state === 'bonus' && this.bonusTallyTimer <= 0)) &&
+      (this.state === 'bonus' || !this.levelUpShockwave.active) && this.singularityIntroTimer <= 0 && !input.isSequenceMode;
+    this.discoveries.update(this.state === 'codex' ? profileManager.gameMode : this.currentGameMode, canPresentDiscovery);
     if (this.isModalActive()) {
+      this.discoveries.pollGamepad();
       input.clearAllInputs();
       return;
     }
@@ -4292,6 +4253,7 @@ class Game {
   }
 
   public executeDebugAction(actionId: string) {
+    if (actionId !== 'resume_play') this.isTestRun = true;
     const pp = this.player.getPos();
     sounds.play('click');
     switch (actionId) {
@@ -4779,7 +4741,7 @@ class Game {
     }
 
     if (this.state === 'gameover') {
-      const isNewHi = this.pendingScore >= badges.hiScore && this.pendingScore > 0;
+      const isNewHi = this.pendingIsNewRecord;
       const bCount = Object.keys(badges.unlocked).length;
       const topMadness = Math.max(badges.bestMadnessKills, leaderboard.getTopScore());
       this.renderer.drawGameOver(
