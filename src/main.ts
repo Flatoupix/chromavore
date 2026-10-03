@@ -1439,6 +1439,19 @@ class Game {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (this.isModalActive() || input.isKeySuppressed(e.code)) return;
       const k = e.key ? e.key.toLowerCase() : '';
+      // Direct Singularity test shortcut, without opening the debug console.
+      if (e.code === 'F3') {
+        const target = e.target as HTMLElement | null;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+        e.preventDefault();
+        if (!e.repeat && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey
+          && this.state === 'playing'
+          && !input.isSequenceMode && !this.levelUpShockwave.active
+          && this.singularityIntroTimer <= 0 && this.combo.m < 64) {
+          this.executeDebugAction('singularity');
+        }
+        return;
+      }
       // Toggle Debug Mode with F2 or ² (Backquote)
       if (e.code === 'F2' || e.code === 'Backquote') {
         this.toggleDebugMode();
