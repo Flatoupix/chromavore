@@ -1977,8 +1977,8 @@ export class Renderer {
     c.fillText('▶ PRESS [SPACE], [I] OR TAP TO RETURN ◀', this.cw / 2, pillY + 20);
     c.restore();
 
-    this.drawInstructionCard(c, cardX, 560, cardW, 64, '#ff00aa', 'SINGULARITY TEST', [
-      { badge: 'F3', desc: 'Activate ×64 Singularity instantly during play. Test runs do not set records.' }
+    this.drawInstructionCard(c, cardX, 558, cardW, 82, '#ff00aa', 'SINGULARITY TEST', [
+      { badge: 'F3', desc: 'Add 50 to your kill streak. At ×200, the normal introduction and destruction wave begin. Test runs do not set records.' }
     ]);
 
     // CRT Scanlines

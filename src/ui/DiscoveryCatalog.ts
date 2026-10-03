@@ -169,7 +169,7 @@ export function getBaseDiscovery(id: BaseDiscoveryId, mode: DiscoveryMode): Disc
       break;
     case 'singularity':
       title = 'SINGULARITY'; icon = 'black_hole';
-      c = content('vortex', 'Your ×64 form automatically devours nearby ghosts, including Titans, and draws in dots.', 'Chain a ×200 ghost streak. The transformation starts automatically after its introduction. Press F3 during play to try it instantly in a test run; test runs do not set records.');
+      c = content('vortex', 'Your ×64 form automatically devours nearby ghosts, including Titans, and draws in dots.', 'Chain a ×200 ghost streak. The transformation starts automatically after its introduction. Press F3 during play to add 50 to your streak and reach the threshold in a test run.');
       break;
     case 'singularity_burst':
       title = 'SINGULARITY NOVA'; icon = 'nova';

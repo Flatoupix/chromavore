@@ -5,17 +5,21 @@
 
 [![Jouer en ligne](https://img.shields.io/badge/🎮%20JOUER%20EN%20LIGNE-GitHub%20Pages-00ffcc?style=for-the-badge)](https://flatoupix.github.io/chromavore/)
 [![Architecture](https://img.shields.io/badge/Stack-Vite%20%2B%20TypeScript-646cff?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-[![Version](https://img.shields.io/badge/Release-5.6.1-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
+[![Version](https://img.shields.io/badge/Release-5.6.2-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
 
 👉 **Accès direct au jeu :** **[https://flatoupix.github.io/chromavore/](https://flatoupix.github.io/chromavore/)**
 
 ---
 
+## v5.6.2 — Singularity test progression
+
+Press **F3** during gameplay to add 50 to your kill streak. At ×200, the normal Singularity introduction and destruction wave begin. This starts a test run, which is excluded from personal records and leaderboard submissions. Holding F3 or pressing it again while Singularity is active has no effect.
+
+See the [verification report](scripts/reports/verification-5.6.2.md) for the browser checks and regression results.
+
 ## v5.6.1 — Direct Singularity shortcut
 
 Press **F3** during gameplay to activate ×64 Singularity immediately for 30 seconds. This starts a test run, which is excluded from personal records and leaderboard submissions. Holding F3 or pressing it again while Singularity is active does not reset or cancel the effect.
-
-See the [verification report](scripts/reports/verification-5.6.1.md) for the 30 browser checks and regression results.
 
 ## v5.6.0 — Discoveries and personal records
 

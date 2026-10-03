@@ -1439,7 +1439,7 @@ class Game {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (this.isModalActive() || input.isKeySuppressed(e.code)) return;
       const k = e.key ? e.key.toLowerCase() : '';
-      // Direct Singularity test shortcut, without opening the debug console.
+      // Add a test-only streak boost and let the regular x200 path run the cinematic.
       if (e.code === 'F3') {
         const target = e.target as HTMLElement | null;
         if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
@@ -1447,8 +1447,9 @@ class Game {
         if (!e.repeat && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey
           && this.state === 'playing'
           && !input.isSequenceMode && !this.levelUpShockwave.active
-          && this.singularityIntroTimer <= 0 && this.combo.m < 64) {
-          this.executeDebugAction('singularity');
+          && this.singularityIntroTimer <= 0 && this.combo.m < 64
+          && !this.singularityTriggered) {
+          this.addSingularityTestKills();
         }
         return;
       }
@@ -2316,6 +2317,23 @@ class Game {
       particles.shake(8, 0.3);
       particles.flash('#ffd700', 0.3);
       particles.addPop(CW / 2, HUD_H + 45, milestones[streak], '#ffd700', 20);
+    }
+  }
+
+  private addSingularityTestKills() {
+    this.isTestRun = true;
+    const target = experienceSystem.getSingularityStreakTarget();
+    this.madnessStreak += 50;
+    this.maxMadnessStreak = Math.max(this.maxMadnessStreak, this.madnessStreak);
+    this.killStreakTimer = KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus();
+    this.checkRampageMilestone(this.madnessStreak);
+
+    const playerPos = this.player.getPos();
+    particles.addPop(playerPos.x, playerPos.y - 44, `+50 KILL STREAK • x${this.madnessStreak}/${target}`, '#ffd700', 18);
+    sounds.play('streak');
+
+    if (this.madnessStreak >= target && !this.singularityTriggered) {
+      this.triggerSingularitySequence();
     }
   }
 
