@@ -66,6 +66,10 @@ export const SKILL_COMBOS: SkillComboDef[] = [
   }
 ];
 
+export function getModeSkillCombos(mode: 'arcade' | 'custom'): SkillComboDef[] {
+  return mode === 'arcade' ? SKILL_COMBOS.filter(combo => combo.id === 'wiggle' || combo.id === 'nitro') : SKILL_COMBOS;
+}
+
 export class InputManager {
   public keys: Record<string, boolean> = {};
   public dir = { x: 0, y: 0 };
@@ -144,12 +148,11 @@ export class InputManager {
   }
 
   public handleChronoDown() {
-    const isChromamancer = profileManager.gameMode === 'custom';
     const now = performance.now();
-    const isDoubleTap = isChromamancer && this.lastShiftPressTime > 0 && (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
+    const isDoubleTap = this.lastShiftPressTime > 0 && (now - this.lastShiftPressTime) <= this.DOUBLE_TAP_WINDOW_MS;
 
     if (isDoubleTap) {
-      // Sequence Mode ONLY for Chromamancer
+      // Both modes cast through double Shift; Chromamancer has more spells.
       this.isSequenceMode = true;
       this.sequenceTimeLeft = this.SEQUENCE_DURATION;
       this.sequenceEndTime = now + this.SEQUENCE_DURATION * 1000;
@@ -176,9 +179,7 @@ export class InputManager {
   public handleChronoUp() {
     this.isChronoKeyHeld = false;
     if (this.isSequenceMode) {
-      if (profileManager.gameMode === 'custom') {
-        this.evaluateAndTriggerSequence();
-      }
+      this.evaluateAndTriggerSequence();
       this.isSequenceMode = false;
       this.sequenceTimeLeft = 0;
       this.sequenceEndTime = 0;
@@ -230,7 +231,7 @@ export class InputManager {
 
   private matchCombo(seq: string[]): SkillComboDef | null {
     const seqStr = seq.join('-');
-    for (const combo of SKILL_COMBOS) {
+    for (const combo of getModeSkillCombos(profileManager.gameMode)) {
       if (combo.sequence.join('-') === seqStr || (combo.altSequence && combo.altSequence.join('-') === seqStr)) {
         return combo;
       }
@@ -240,8 +241,11 @@ export class InputManager {
 
   public getSkillAvailability(skillId: string): { unlocked: boolean; cd: number; level: number; manaCost: number; hasMana: boolean } {
     const combo = SKILL_COMBOS.find(c => c.id === skillId);
-    const manaCost = combo ? combo.manaCost : 0;
+    const manaCost = profileManager.gameMode === 'custom' && combo ? combo.manaCost : 0;
     const hasMana = profileManager.gameMode !== 'custom' || this.currentMana >= manaCost;
+    if (!getModeSkillCombos(profileManager.gameMode).some(combo => combo.id === skillId)) {
+      return { unlocked: false, cd: 0, level: 0, manaCost: 0, hasMana: true };
+    }
 
     switch (skillId) {
       case 'wiggle': {
@@ -294,14 +298,14 @@ export class InputManager {
         this.sequenceFeedback = `NEED ${av.manaCost} MANA (HAVE ${Math.floor(this.currentMana)})`;
       } else {
         this.sequenceStatus = 'valid';
-        this.sequenceFeedback = `READY: ${matched.name} [${av.manaCost} MP]`;
+        this.sequenceFeedback = `READY: ${matched.name}${av.manaCost ? ` [${av.manaCost} MP]` : ''}`;
       }
       return;
     }
 
     // Check if current buffer is a prefix of any DISCOVERED combo
     const curStr = this.sequenceBuffer.join('-');
-    const isPrefix = SKILL_COMBOS.filter(c => profileManager.isSkillDiscovered(c.id)).some(c =>
+    const isPrefix = getModeSkillCombos(profileManager.gameMode).filter(c => profileManager.isSkillDiscovered(c.id)).some(c =>
       c.sequence.join('-').startsWith(curStr) || (c.altSequence && c.altSequence.join('-').startsWith(curStr))
     );
 
@@ -317,11 +321,6 @@ export class InputManager {
   }
 
   public evaluateAndTriggerSequence() {
-    if (profileManager.gameMode !== 'custom') {
-      this.cancelChronoInput();
-      return;
-    }
-
     if (this.sequenceBuffer.length === 0) {
       this.sequenceStatus = 'idle';
       this.sequenceFeedback = '';
@@ -625,27 +624,6 @@ export class InputManager {
     if (previous?.dir === dirKey) return;
     this.motionHistory.push({ dir: dirKey, time: now });
     if (this.motionHistory.length > 8) this.motionHistory.shift();
-  }
-
-  /** Arcade gestures use live movement; Chromamancer uses Shift sequences only. */
-  public checkKombos(onWiggle: (lvl: number) => void, onNitro: (lvl: number) => void) {
-    if (profileManager.gameMode === 'custom' || this.isInputBlocked || this.isSequenceMode) return;
-    const now = performance.now();
-    this.motionHistory = this.motionHistory.filter(motion => now - motion.time <= 1200);
-    if (this.motionHistory.length < 4) return;
-    const sequence = this.motionHistory.slice(-4).map(motion => motion.dir);
-    const matched = SKILL_COMBOS.slice(0, 2).find(combo =>
-      combo.sequence.every((dir, index) => dir === sequence[index]) ||
-      combo.altSequence?.every((dir, index) => dir === sequence[index])
-    );
-    if (!matched) return;
-    // Consume the gesture even when locked or cooling down; never cast it later.
-    this.motionHistory = [];
-    const level = progression.getSkillLevel(matched.id);
-    if (level < 1 || (matched.id === 'wiggle' ? this.wiggleCd : this.nitroCd) > 0) return;
-    this.startSkillCooldown(matched.id, level);
-    if (matched.id === 'wiggle') onWiggle(level);
-    else onNitro(level);
   }
 
   public updateCooldowns(dt: number, plPos: { x: number; y: number }) {

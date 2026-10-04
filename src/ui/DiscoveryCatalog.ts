@@ -4,7 +4,7 @@ import { SKILL_NODES } from '../config/skillTree';
 export type DiscoveryMode = 'arcade' | 'custom';
 export type PreviewKind = 'pellet' | 'super_pellet' | 'dash' | 'emp' | 'nitro' | 'nova' | 'laser' | 'cryo' | 'field' | 'vortex' | 'chrono' | 'phase' | 'shield' | 'tsunami' | 'magnet' | 'surge' | 'titan' | 'harvest' | 'mastery' | 'portal' | 'audio' | 'contact';
 export interface DiscoveryCard {
-  /** Persist this complete id: mode and rank are deliberately part of identity. */
+  /** Card identity keeps mode/rank for review; automatic history uses a shared skill family. */
   id: string;
   mode: DiscoveryMode;
   title: string;
@@ -49,13 +49,13 @@ export function getArcadeDiscovery(skill: SkillDef, mode: DiscoveryMode = 'arcad
       c.cooldown = later ? '1.2s base recharge' : '1.6s base recharge';
       break;
     case 'wiggle':
-      c = content('emp', `An EMP wave eliminates ghosts and collects dots within ${later ? '8.5' : '4.8'} tiles.`, mode === 'custom' ? sequenceUse : 'Quickly alternate left and right four times while moving. Arrow keys, direction pad or swipes work.', movementKeys, v);
+      c = content('emp', `An EMP wave eliminates ghosts and collects dots within ${later ? '8.5' : '4.8'} tiles.`, sequenceUse, movementKeys, v);
       c.alternateKeys = ['→', '←', '→', '←'];
       c.cooldown = later ? '10.5s base' : '14s base';
       if (mode === 'custom') c.cost = '25 Mana';
       break;
     case 'nitro':
-      c = content('nitro', `A burning trail destroys ghosts for ${later ? '4.5' : '3.2'}s; in the wide arena, movement gains 30% speed.${later ? ' Trail segments now last 2.5s instead of 1.6s.' : ''}`, mode === 'custom' ? sequenceUse : 'Quickly alternate up and down four times while moving. Arrow keys, direction pad or swipes work.', nitroKeys, v);
+      c = content('nitro', `A burning trail destroys ghosts for ${later ? '4.5' : '3.2'}s; in the wide arena, movement gains 30% speed.${later ? ' Trail segments now last 2.5s instead of 1.6s.' : ''}`, sequenceUse, nitroKeys, v);
       c.alternateKeys = ['↓', '↑', '↓', '↑'];
       c.cooldown = later ? '6.75s base' : '9s base';
       if (mode === 'custom') c.cost = '20 Mana';

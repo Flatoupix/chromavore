@@ -3,6 +3,7 @@ import { SKILL_NODES } from '../config/skillTree';
 import { profileManager } from '../systems/ProfileManager';
 import { BASE_DISCOVERY_IDS, getArcadeDiscovery, getBaseDiscovery, getCustomDiscovery, isCareerDiscoveryAvailableInMode, type DiscoveryCard, type DiscoveryMode } from './DiscoveryCatalog';
 import { DiscoveryCardView } from './DiscoveryPreview';
+import { discoveryFamily, isDiscoveryUpgrade } from '../systems/DiscoveryIdentity';
 
 const BASE_IDS = BASE_DISCOVERY_IDS;
 
@@ -68,21 +69,13 @@ export class DiscoveryManager {
   public get isOpen(): boolean { return this.active !== null; }
 
   public enqueue(card: DiscoveryCard | null) {
-    if (!card || profileManager.isSkillDiscovered(card.id)) return;
+    this.prunePending();
+    if (!card || isDiscoveryUpgrade(card.id) || profileManager.isSkillDiscovered(card.id)) return;
     const careerSkill = SKILL_TREE.find(skill => card.id === `${card.mode}:${skill.id}`);
     if (careerSkill && !isCareerDiscoveryAvailableInMode(careerSkill, card.mode)) return;
-    // Original releases stored the five Chromamancer cards under bare combo IDs.
-    const legacyIds: Record<string, string> = {
-      'custom:wiggle_v1': 'wiggle', 'custom:nitro_v1': 'nitro',
-      'custom:emp_overcharge:rank:1': 'wiggle', 'custom:hyper_nitro:rank:1': 'nitro',
-      'custom:quantum_laser:rank:1': 'quantum_laser',
-      'custom:kinetic_bastion:rank:1': 'kinetic_bastion',
-      'custom:singularity_nova:rank:1': 'singularity_nova'
-    };
-    if (legacyIds[card.id] && profileManager.isSkillDiscovered(legacyIds[card.id])) return;
     this.register(card);
     const pending = profileManager.profile.pendingDiscoveries ||= [];
-    if (!pending.includes(card.id)) {
+    if (!pending.some(id => discoveryFamily(id) === discoveryFamily(card.id))) {
       pending.push(card.id);
       profileManager.saveProfile();
     }
@@ -90,11 +83,38 @@ export class DiscoveryManager {
 
   /** Call only at a frame boundary after gameplay events have finished. */
   public update(mode: DiscoveryMode, canPresent: boolean) {
+    this.prunePending();
     if (!canPresent || this.isOpen) return;
-    const next = (profileManager.profile.pendingDiscoveries || [])
-      .map(id => this.cards.get(id))
-      .find(card => card?.mode === mode && !profileManager.isSkillDiscovered(card.id));
+    const next = this.nextCard(mode);
     if (next) this.present(next, false);
+  }
+
+  private prunePending() {
+    const pending = profileManager.profile.pendingDiscoveries || [];
+    const families = new Set<string>();
+    const remaining = pending.filter(id => {
+      if (!this.cards.has(id) || isDiscoveryUpgrade(id) || profileManager.isSkillDiscovered(id)) return false;
+      const family = discoveryFamily(id);
+      if (families.has(family)) return false;
+      families.add(family);
+      return true;
+    });
+    if (remaining.length !== pending.length) {
+      profileManager.profile.pendingDiscoveries = remaining;
+      profileManager.saveProfile();
+    }
+  }
+
+  private nextCard(mode: DiscoveryMode): DiscoveryCard | undefined {
+    for (const id of profileManager.profile.pendingDiscoveries || []) {
+      const card = this.cards.get(id);
+      if (!card) continue;
+      if (card.mode === mode) return card;
+      const equivalent = this.cards.get(id.replace(/^(arcade|custom):/, `${mode}:`));
+      const skill = SKILL_TREE.find(skill => equivalent?.id === `${mode}:${skill.id}`);
+      if (equivalent && (!skill || isCareerDiscoveryAvailableInMode(skill, mode))) return equivalent;
+    }
+    return undefined;
   }
 
   public available(mode: DiscoveryMode): DiscoveryCard[] {
@@ -151,6 +171,10 @@ export class DiscoveryManager {
   }
 
   private present(card: DiscoveryCard, reviewing: boolean) {
+    if (reviewing && !profileManager.isSkillDiscovered(card.id)) {
+      profileManager.markSkillDiscovered(card.id);
+      this.prunePending();
+    }
     if (!this.active) this.previousFocus = document.activeElement as HTMLElement;
     this.active = card;
     this.reviewing = reviewing;
@@ -172,9 +196,10 @@ export class DiscoveryManager {
       const id = this.active.id;
       const seen = profileManager.profile.discoveredSkills ||= [];
       if (!seen.includes(id)) seen.push(id);
-      profileManager.profile.pendingDiscoveries = (profileManager.profile.pendingDiscoveries || []).filter(pending => pending !== id);
+      profileManager.profile.pendingDiscoveries = (profileManager.profile.pendingDiscoveries || []).filter(pending => discoveryFamily(pending) !== discoveryFamily(id));
       profileManager.saveProfile();
-      const next = profileManager.profile.pendingDiscoveries.map(id => this.cards.get(id)).find(card => card?.mode === this.active!.mode && !profileManager.isSkillDiscovered(card.id));
+      this.prunePending();
+      const next = this.nextCard(this.active.mode);
       if (next) {
         this.present(next, false);
         return;

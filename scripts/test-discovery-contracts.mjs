@@ -61,7 +61,7 @@ try {
   const { profileManager } = await vite.ssrLoadModule('/src/systems/ProfileManager.ts');
   const { SKILL_TREE } = await vite.ssrLoadModule('/src/systems/ProgressionSystem.ts');
   const { SKILL_NODES } = await vite.ssrLoadModule('/src/config/skillTree.ts');
-  const { SKILL_COMBOS, input } = await vite.ssrLoadModule('/src/core/InputManager.ts');
+  const { SKILL_COMBOS, getModeSkillCombos, input } = await vite.ssrLoadModule('/src/core/InputManager.ts');
   const { getArcadeDiscovery, getCustomDiscovery, getBaseDiscovery, getPickupDiscovery, BASE_DISCOVERY_IDS } = await vite.ssrLoadModule('/src/ui/DiscoveryCatalog.ts');
   const allCards = [];
 
@@ -92,9 +92,10 @@ try {
       assert.ok(Array.isArray(card.keys));
     }
   });
-  check('arcade never teaches Chromamancer sequence mode or mana spending', () => {
-    for (const card of allCards.filter(card => card.mode === 'arcade')) {
-      assert.doesNotMatch(JSON.stringify(card), /double.?tap\s+(?:and\s+hold\s+)?Shift|double.?shift|release Shift to cast|\bMana\b/i, card.id);
+  check('both modes teach double Shift; arcade never teaches mana spending', () => {
+    for (const card of allCards.filter(card => card.mode === 'arcade')) assert.doesNotMatch(JSON.stringify(card), /\bMana\b/i, card.id);
+    for (const skill of SKILL_TREE.filter(skill => ['wiggle', 'nitro'].includes(skill.baseId))) {
+      for (const mode of ['arcade', 'custom']) assert.match(getArcadeDiscovery(skill, mode).usage, /Double-tap Shift.*release Shift to cast/);
     }
   });
   check('all five sequence skills teach the actual primary/alternate controls and mana cost', () => {
@@ -148,30 +149,35 @@ try {
     assert.deepEqual([...storage], saved);
   });
 
-  check('arcade movement gestures execute once, respect cooldowns, and never cast in Chromamancer', () => {
+  check('both modes cast on double Shift; arcade has two free spells and Chromamancer has five mana spells', () => {
     profileManager.profile.careerGhosts = 2000;
-    profileManager.profile.gameMode = 'arcade';
+    profileManager.profile.skillUpgrades = {emp_overcharge:1, hyper_nitro:1, quantum_laser:1};
+    profileManager.profile.discoveredSkills = ['wiggle','nitro','quantum_laser'];
     input.isInputBlocked = false;
     input.clearAllInputs();
-    let emp = 0, nitro = 0;
-    const gesture = directions => {
-      directions.forEach(direction => input.registerMotion(direction));
-      input.checkKombos(() => emp++, () => nitro++);
+    const casts = [];
+    input.onSkillExecuted = (id, level, cost) => casts.push({id,level,cost});
+    const cast = () => {
+      input.lastShiftPressTime = 0;
+      input.handleChronoDown(); input.handleChronoUp(); input.handleChronoDown();
+      assert.equal(input.isSequenceMode, true);
+      ['left','right','left','right'].forEach(dir => input.addSequenceDirection(dir));
+      input.handleChronoUp();
     };
-    gesture(['left', 'right', 'left', 'right']);
-    assert.equal(emp, 1);
-    assert.ok(input.wiggleCd > 0);
-    gesture(['right', 'left', 'right', 'left']);
-    assert.equal(emp, 1);
-    gesture(['up', 'down', 'up', 'down']);
-    assert.equal(nitro, 1);
-    assert.ok(input.nitroActive > 0);
-    profileManager.profile.gameMode = 'custom';
-    input.wiggleCd = 0;
-    gesture(['left', 'right', 'left', 'right']);
-    assert.equal(emp, 1);
     profileManager.profile.gameMode = 'arcade';
-    input.clearAllInputs();
+    input.currentMana = 0; input.wiggleCd = 0;
+    ['left','right','left','right'].forEach(dir => input.registerMotion(dir));
+    assert.equal(casts.length, 0, 'Ordinary movement must not cast');
+    cast(); assert.equal(casts.length, 1); assert.equal(casts[0].cost, 0);
+    assert.ok(input.wiggleCd > 0); assert.equal(input.isSequenceMode, false);
+    cast(); assert.equal(casts.length, 1, 'Cooldown prevents repeated casting');
+    assert.equal(getModeSkillCombos('arcade').length, 2);
+    assert.equal(input.getSkillAvailability('quantum_laser').unlocked, false);
+    profileManager.profile.gameMode = 'custom'; input.wiggleCd = 0;
+    assert.equal(getModeSkillCombos('custom').length, 5);
+    cast(); assert.equal(casts.length, 1, 'Mana prevents casting');
+    input.currentMana = 100; cast(); assert.equal(casts.length, 2); assert.equal(casts[1].cost, 25);
+    profileManager.profile.gameMode = 'arcade'; input.clearAllInputs();
   });
 
   const { DiscoveryPreview } = await vite.ssrLoadModule('/src/ui/DiscoveryPreview.ts');
@@ -207,18 +213,18 @@ try {
 
   check('enqueue is ordered, deduplicated, deferred, and persistent across profile reload', () => {
     manager.enqueue(first); manager.enqueue(first); manager.enqueue(otherMode); manager.enqueue(second);
-    assert.deepEqual(profileManager.profile.pendingDiscoveries, [first.id, otherMode.id, second.id]);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, [first.id, second.id]);
     assert.equal(manager.isOpen, false);
     manager.update('arcade', false);
     assert.equal(manager.isOpen, false);
     profileManager.profile = new profileManager.constructor().profile;
-    assert.deepEqual(profileManager.profile.pendingDiscoveries, [first.id, otherMode.id, second.id]);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, [first.id, second.id]);
     manager.update('arcade', true);
     assert.equal(manager.isOpen, true);
     assert.equal(manager.active.id, first.id);
     assert.equal(opens, 1);
   });
-  check('simultaneous discoveries never resume gameplay between cards or cross modes', () => {
+  check('simultaneous discoveries stay ordered and never repeat in another mode', () => {
     manager.update('custom', true);
     assert.equal(manager.active.id, first.id);
     dismiss();
@@ -227,14 +233,13 @@ try {
     dismiss();
     assert.equal(manager.isOpen, false);
     assert.equal(closes, 1);
-    assert.deepEqual(profileManager.profile.pendingDiscoveries, [otherMode.id]);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
     assert.ok(profileManager.profile.discoveredSkills.includes('wiggle'));
     assert.ok(profileManager.profile.discoveredSkills.includes(first.id));
     manager.enqueue(first);
-    assert.deepEqual(profileManager.profile.pendingDiscoveries, [otherMode.id]);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
     manager.update('custom', true);
-    assert.equal(manager.active.id, otherMode.id);
-    dismiss();
+    assert.equal(manager.isOpen, false);
   });
   check('review exposes unlocked cards only and never changes profile or queue', () => {
     profileManager.profile.careerGhosts = SKILL_TREE[1].threshold;
@@ -269,7 +274,36 @@ try {
     manager.enqueue(getCustomDiscovery('emp_overcharge', 1));
     assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
     manager.enqueue(getCustomDiscovery('emp_overcharge', 2));
-    assert.deepEqual(profileManager.profile.pendingDiscoveries, ['custom:emp_overcharge:rank:2']);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
+  });
+
+  check('legacy upgrades and seen cards in either mode suppress all automatic family repeats', () => {
+    profileManager.profile.discoveredSkills = ['arcade:wiggle_v2'];
+    profileManager.profile.pendingDiscoveries = ['custom:wiggle_v1','custom:emp_overcharge:rank:1','custom:emp_overcharge:rank:2','arcade:dash_v2'];
+    manager.update('custom', true);
+    assert.equal(manager.isOpen, false);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
+    assert.equal(profileManager.isSkillDiscovered('custom:emp_overcharge:rank:1'), true);
+    profileManager.profile.discoveredSkills = []; profileManager.profile.pendingDiscoveries = [];
+    manager.enqueue(getArcadeDiscovery(SKILL_TREE.find(skill => skill.id === 'dash_v2')));
+    manager.enqueue(getCustomDiscovery('emp_overcharge', 2));
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
+  });
+  check('a pending first discovery adapts to the active mode before being seen globally', () => {
+    manager.enqueue(first); manager.update('custom', true);
+    assert.equal(manager.active.id, otherMode.id);
+    dismiss();
+    assert.equal(profileManager.isSkillDiscovered(first.id), true);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
+  });
+  check('manual card consultation records the shared history and consumes a pending equivalent', () => {
+    profileManager.profile.discoveredSkills = []; profileManager.profile.pendingDiscoveries = [];
+    manager.enqueue(first); manager.review('custom', otherMode.id);
+    assert.equal(manager.active.id, otherMode.id);
+    assert.equal(profileManager.isSkillDiscovered(first.id), true);
+    assert.deepEqual(profileManager.profile.pendingDiscoveries, []);
+    dismiss(); manager.enqueue(first); manager.update('arcade', true);
+    assert.equal(manager.isOpen, false);
   });
 
   check('preview module has no executable gameplay, profile, sound, or storage dependency', () => {

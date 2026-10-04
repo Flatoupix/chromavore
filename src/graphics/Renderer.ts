@@ -17,7 +17,7 @@ import { experienceSystem, SKILL_NODES, SKILL_TREE_BRANCHES } from '../systems/E
 import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from './SpriteAtlas';
 import { formatScoreCompact } from '../utils/format';
-import { SKILL_COMBOS } from '../core/InputManager';
+import { getModeSkillCombos } from '../core/InputManager';
 import { isCareerDiscoveryAvailableInMode } from '../ui/DiscoveryCatalog';
 
 export interface EffectTimer {
@@ -361,7 +361,7 @@ export class Renderer {
   }
 
   public drawSequenceModeOverlay(input: import('../core/InputManager').InputManager, time: number) {
-    if (profileManager.gameMode !== 'custom' || !input.isSequenceMode || input.sequenceStatus === 'executed') return;
+    if (!input.isSequenceMode || input.sequenceStatus === 'executed') return;
     const c = this.ctx;
     c.save();
 
@@ -459,7 +459,7 @@ export class Renderer {
     const buf = input.sequenceBuffer;
     const isWide = this.cw >= 680;
 
-    const cardsData = SKILL_COMBOS.map(combo => {
+    const cardsData = getModeSkillCombos(profileManager.gameMode).map(combo => {
       const isDiscovered = profileManager.isSkillDiscovered(combo.id);
       const av = input.getSkillAvailability(combo.id);
       const seq = combo.sequence;
@@ -627,13 +627,13 @@ export class Renderer {
         c.fillText(`${item.av.cd.toFixed(1)}s CD`, x + w - 6, y + h / 2);
       } else if (isNoMana) {
         c.fillStyle = '#d946ef';
-        c.fillText(`${item.av.manaCost} MP`, x + w - 6, y + h / 2);
+        c.fillText(item.av.manaCost ? `${item.av.manaCost} MP` : 'READY', x + w - 6, y + h / 2);
       } else if (isLock) {
         c.fillStyle = '#667788';
         c.fillText('LOCKED', x + w - 6, y + h / 2);
       } else {
         c.fillStyle = '#00ffcc';
-        c.fillText(`${item.av.manaCost} MP`, x + w - 6, y + h / 2);
+        c.fillText(item.av.manaCost ? `${item.av.manaCost} MP` : 'READY', x + w - 6, y + h / 2);
       }
 
       c.restore();
@@ -644,8 +644,9 @@ export class Renderer {
       const colW = 160;
       const cardH = 32;
       const gapY = 6;
-      const leftCards = [cardsData[0], cardsData[1], cardsData[2]];
-      const rightCards = [cardsData[3], cardsData[4]];
+      const split = Math.ceil(cardsData.length / 2);
+      const leftCards = cardsData.slice(0, split);
+      const rightCards = cardsData.slice(split);
 
       const leftX = panelX - colW - 14;
       leftCards.forEach((card, idx) => {
@@ -1864,6 +1865,14 @@ export class Renderer {
     c.restore();
   }
 
+  public getInstructionButtons() {
+    const w = (this.cw - 54) / 2;
+    return [
+      { id: 'discoveries', x: 22, y: 518, w, h: 32 },
+      { id: 'back', x: 32 + w, y: 518, w, h: 32 }
+    ];
+  }
+
   public drawInstructions(time: number) {
     const c = this.ctx;
     c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
@@ -1914,14 +1923,10 @@ export class Renderer {
       { badge: 'P / ESC', desc: 'Pause game, display & audio settings, CRT scanlines' }
     ]);
 
-    // Each mode has its own controls; Arcade gestures never require Shift.
     const isChromamancer = profileManager.gameMode === 'custom';
-    this.drawInstructionCard(c, cardX, 180, cardW, 90, '#ffd700', isChromamancer ? 'CHROMAMANCER • SPELL SEQUENCES' : 'CHROMAVORE • MOVEMENT POWERS', isChromamancer ? [
-      { badge: 'DOUBLE-TAP SHIFT', badgeW: 132, desc: 'Hold the second press. Enter four directions, then release Shift to cast.' },
-      { badge: '4-SECOND LIMIT', badgeW: 132, desc: 'Time freezes while you enter the spell. A complete spell also casts when time runs out.' }
-    ] : [
-      { badge: '← → ← →', badgeW: 132, desc: 'Wiggle EMP: alternate left and right within 1.2s after unlocking it.' },
-      { badge: '↑ ↓ ↑ ↓', badgeW: 132, desc: 'Nitro Jet: alternate up and down within 1.2s. The reverse order also works.' }
+    this.drawInstructionCard(c, cardX, 180, cardW, 90, '#ffd700', 'SPELLS • DOUBLE SHIFT', [
+      { badge: 'DOUBLE-TAP SHIFT', badgeW: 132, desc: 'Hold the second press, enter four directions, then release to cast.' },
+      { badge: isChromamancer ? '5 SPELLS + MANA' : 'EMP / NITRO', badgeW: 132, desc: 'Complete the sequence within four seconds. Cooldowns still apply.' }
     ]);
 
     // Card 3: SUPER-ITEMS IN THE MAZE (y: 266, h: 76)
@@ -1929,8 +1934,8 @@ export class Renderer {
       { badge: 'SPELL COST', desc: 'Spells spend mana and start their cooldown when cast.' },
       { badge: 'SKILL TREE', desc: 'Spend Skill Points on active spells and automatic passive upgrades.' }
     ] : [
-      { badge: 'AUTO-COLLECT', desc: 'Touch an item to activate it immediately. No inventory or extra key.' },
-      { badge: 'ARSENAL', desc: 'Replay discoveries with D, or try unlocked arcade items in the Lab with T.' }
+      { badge: 'AUTO-COLLECT', desc: 'Collect a glowing item to activate its effect.' },
+      { badge: 'ARSENAL', desc: 'Review cards here with D. Try items in the Arsenal with T.' }
     ]);
 
     // Card 4: distinct progression tracks for each game mode.
@@ -1952,30 +1957,20 @@ export class Renderer {
       }
     ]);
 
-    // Return prompt pill container
-    const promptPulse = 0.65 + 0.35 * Math.sin(time * 3.5);
-    const pillW = 440, pillH = 32;
-    const pillX = this.cw / 2 - pillW / 2;
-    const pillY = 518;
-
-    c.save();
-    c.fillStyle = this.chromaTier === 0 ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 240, 255, 0.08)';
-    const pStroke = this.chromaTier === 0 ? `rgba(120, 120, 120, ${promptPulse})` : `rgba(0, 240, 255, ${promptPulse})`;
-    c.strokeStyle = pStroke;
-    c.lineWidth = 1.2;
-    c.shadowColor = this.chromaTier === 0 ? 'transparent' : '#00f0ff';
-    c.shadowBlur = this.getChromaBlur(10 * promptPulse);
-    c.beginPath();
-    c.roundRect(pillX, pillY, pillW, pillH, 16);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-
-    c.font = 'bold 11.5px monospace';
-    c.fillStyle = this.chromaTier === 0 ? `rgba(220, 220, 220, ${promptPulse})` : `rgba(255, 255, 255, ${promptPulse})`;
-    c.textAlign = 'center';
-    c.fillText('▶ PRESS [SPACE], [I] OR TAP TO RETURN ◀', this.cw / 2, pillY + 20);
-    c.restore();
+    for (const button of this.getInstructionButtons()) {
+      c.save();
+      c.fillStyle = button.id === 'discoveries' ? 'rgba(0, 240, 255, .12)' : 'rgba(255, 255, 255, .05)';
+      c.strokeStyle = button.id === 'discoveries' ? '#00aabc' : '#777777';
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.roundRect(button.x, button.y, button.w, button.h, 8);
+      c.fill(); c.stroke();
+      c.font = 'bold 11px monospace';
+      c.fillStyle = '#dfffff';
+      c.textAlign = 'center';
+      c.fillText(button.id === 'discoveries' ? 'DISCOVERY CARDS [D]' : '[SPACE / PAD B] RETURN', button.x + button.w / 2, button.y + 21);
+      c.restore();
+    }
 
     this.drawInstructionCard(c, cardX, 558, cardW, 82, '#ff00aa', 'SINGULARITY TEST', [
       { badge: 'F3', desc: 'Add 50 to your kill streak. At ×200, the normal introduction and destruction wave begin. Test runs do not set records.' }

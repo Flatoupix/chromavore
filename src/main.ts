@@ -458,7 +458,7 @@ class Game {
   }
 
   public reviewDiscoveries(preferredId?: string) {
-    if (!this.isModalActive() && this.state === 'codex') this.discoveries.review(profileManager.gameMode, preferredId);
+    if (!this.isModalActive() && (this.state === 'codex' || this.state === 'instructions')) this.discoveries.review(profileManager.gameMode, preferredId);
   }
 
   public triggerEpilogue() {
@@ -725,6 +725,10 @@ class Game {
     }
 
     if (this.state === 'leaderboard' || this.state === 'instructions' || this.state === 'gameover') {
+      if (this.state === 'instructions' && input.gpJustPressed.x) {
+        this.reviewDiscoveries();
+        return;
+      }
       if (input.gpJustPressed.b || input.gpJustPressed.a) {
         this.state = 'menu';
         sounds.play('click');
@@ -844,8 +848,12 @@ class Game {
       }
 
       if (this.state === 'instructions') {
-        this.state = 'menu';
-        sounds.play('click');
+        const button = this.renderer.getInstructionButtons().find(button => cx >= button.x && cx <= button.x + button.w && cy >= button.y && cy <= button.y + button.h);
+        if (button?.id === 'discoveries') this.reviewDiscoveries();
+        else if (button?.id === 'back') {
+          this.state = 'menu';
+          sounds.play('click');
+        }
         return;
       }
 
@@ -1439,6 +1447,11 @@ class Game {
     window.addEventListener('keydown', (e: KeyboardEvent) => {
       if (this.isModalActive() || input.isKeySuppressed(e.code)) return;
       const k = e.key ? e.key.toLowerCase() : '';
+      if (this.state === 'instructions' && e.code === 'KeyD') {
+        this.reviewDiscoveries();
+        e.preventDefault();
+        return;
+      }
       // Add a test-only streak boost and let the regular x200 path run the cinematic.
       if (e.code === 'F3') {
         const target = e.target as HTMLElement | null;
@@ -2024,6 +2037,24 @@ class Game {
       this.mana = Math.max(0, this.mana - manaCost);
       input.currentMana = this.mana;
     }
+    if (this.state === 'bonus') {
+      if (skillId === 'wiggle') {
+        sounds.play('powerup');
+        particles.shake(6, 0.2);
+        particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 20, 'WIGGLE EMP !', '#00ffff', 20);
+        for (let i = 0; i < this.bonusActiveCount; i++) {
+          const ghost = this.bonusGhosts[i];
+          if (Math.hypot(ghost.x - this.bonusPacPos.x, ghost.y - this.bonusPacPos.y) < (lvl >= 2 ? 180 : 130)) {
+            ghost.speed *= 0.25;
+            particles.emit(ghost.x, ghost.y, 4, '#00ffff', { speed: 90, size: 3, life: 0.35 });
+          }
+        }
+      } else if (skillId === 'nitro') {
+        sounds.play('dash');
+        particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 20, 'NITRO JET !', '#ff6600', 20);
+      }
+      return;
+    }
     const pp = this.player.getPos();
 
     // Damage against exposed Singularity Boss Core
@@ -2589,25 +2620,6 @@ class Game {
     }
     input.isDashRequested = false;
 
-    // Motion Kombos in vortex arena
-    input.checkKombos(
-      (lvl) => {
-        sounds.play('powerup');
-        particles.shake(6, 0.2);
-        particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 20, 'WIGGLE EMP !', '#00ffff', 20);
-        for (let i = 0; i < this.bonusActiveCount; i++) {
-          const g = this.bonusGhosts[i];
-          if (Math.hypot(g.x - this.bonusPacPos.x, g.y - this.bonusPacPos.y) < (lvl >= 2 ? 180 : 130)) {
-            g.speed *= 0.25;
-            particles.emit(g.x, g.y, 4, '#00ffff', { speed: 90, size: 3, life: 0.35 });
-          }
-        }
-      },
-      () => {
-        sounds.play('dash');
-        particles.addPop(this.bonusPacPos.x, this.bonusPacPos.y - 20, 'NITRO JET !', '#ff6600', 20);
-      }
-    );
     input.updateCooldowns(dt, this.bonusPacPos);
 
     // Dash streaks life update
@@ -3465,13 +3477,14 @@ class Game {
     }
 
     const chWrap = document.getElementById('chrono-wrap');
+    const spellsUnlocked = isRunActive && (input.getSkillAvailability('wiggle').unlocked || input.getSkillAvailability('nitro').unlocked);
     if (chWrap) {
-      chWrap.style.display = chronoUnlocked ? 'flex' : 'none';
+      chWrap.style.display = chronoUnlocked || spellsUnlocked ? 'flex' : 'none';
     }
     if (chBtn) {
       chBtn.classList.toggle('active-chrono', this.isChronoActive);
     }
-    if (chLbl) chLbl.innerText = chronoUnlocked ? `${Math.round(this.chronoEnergy)}%` : 'LOCK';
+    if (chLbl) chLbl.innerText = chronoUnlocked ? `${Math.round(this.chronoEnergy)}%` : spellsUnlocked ? 'SPELLS' : 'LOCK';
   }
 
   private update(dt: number) {
@@ -3502,12 +3515,12 @@ class Game {
     }
 
     // The sequence clock uses wall time; no gameplay, effects, or HUD timers advance.
-    if (this.state === 'playing' && input.isSequenceMode) {
+    if ((this.state === 'playing' || this.state === 'bonus') && input.isSequenceMode) {
       input.updateSequenceTimer();
       this.syncTouchControls();
       return;
     }
-    if (this.state !== 'playing' && input.isSequenceMode) input.cancelChronoInput();
+    if (this.state !== 'playing' && this.state !== 'bonus' && input.isSequenceMode) input.cancelChronoInput();
 
     this.time += dt;
 
@@ -3930,61 +3943,6 @@ class Game {
           }
           input.isNovaRequested = false;
         }
-
-        // Motion Kombos
-        input.checkKombos(
-            (lvl: number) => {
-              // Wiggle EMP blast
-              const pp = this.player.getPos();
-              const isV2 = lvl >= 2;
-              sounds.play('nova');
-              particles.shake(isV2 ? 10 : 7, 0.25);
-              particles.flash(isV2 ? '#00e5ff' : '#00ffff', 0.35);
-              particles.addPop(pp.x, pp.y - 26, isV2 ? 'GIGA EMP V2 !' : 'WIGGLE EMP BLAST !', '#00ffff', 20);
-              particles.emit(pp.x, pp.y, isV2 ? 35 : 16, isV2 ? '#00e5ff' : '#00ffff', { speed: isV2 ? 240 : 180, size: 5, life: 0.6 });
-              const blastRad = isV2 ? T * 8.5 : T * 4.8;
-              for (const e of this.enemyManager.enemies) {
-                if (e.st !== 'dead' && e.st !== 'return') {
-                  const ep = this.enemyManager.getPos(e);
-                  if (Math.hypot(ep.x - pp.x, ep.y - pp.y) < blastRad) {
-                    if (isV2) e.st = 'flee';
-                    this.onKillGhost(e, ep.x, ep.y);
-                  }
-                }
-              }
-              for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < this.maze.cols; c++) {
-                  if (this.maze.dotMap[r][c]) {
-                    const dx = c * T + HALF - pp.x, dy = r * T + HALF - pp.y;
-                    if (Math.hypot(dx, dy) < blastRad * 1.1) this.onCollectDot(c, r);
-                  }
-                }
-              }
-            },
-            (lvl: number) => {
-              // Nitro Flame Jet
-              const isSingularity = this.combo.m >= 64;
-              const isV2 = lvl >= 2;
-              const pp = this.player.getPos();
-              sounds.play('dash');
-              if (isSingularity) {
-                sounds.play('nova');
-                particles.shake(16, 0.45);
-                particles.flash('#ffd700', 0.45);
-                particles.emit(pp.x, pp.y, 60, '#ffd700', { speed: 280, size: 6, life: 0.7 });
-                particles.emit(pp.x, pp.y, 40, '#ff0055', { speed: 220, size: 5, life: 0.6 });
-              } else {
-                particles.shake(isV2 ? 8 : 6, 0.25);
-                particles.flash(isV2 ? '#00ffff' : '#ff7700', 0.3);
-              }
-              particles.addPop(
-                pp.x, pp.y - 26,
-                isSingularity ? '★ COSMIC HYPER-NITRO ★' : (isV2 ? 'PLASMA BURNER V2 !' : 'NITRO FLAME JET !'),
-                isSingularity ? '#ffd700' : (isV2 ? '#00ffff' : '#ff7700'),
-                isSingularity ? 24 : 20
-              );
-            }
-        );
 
         input.updateCooldowns(dt, this.player.getPos());
 

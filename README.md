@@ -5,11 +5,19 @@
 
 [![Jouer en ligne](https://img.shields.io/badge/🎮%20JOUER%20EN%20LIGNE-GitHub%20Pages-00ffcc?style=for-the-badge)](https://flatoupix.github.io/chromavore/)
 [![Architecture](https://img.shields.io/badge/Stack-Vite%20%2B%20TypeScript-646cff?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-[![Version](https://img.shields.io/badge/Release-5.6.2-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
+[![Version](https://img.shields.io/badge/Release-5.7.0-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
 
 👉 **Accès direct au jeu :** **[https://flatoupix.github.io/chromavore/](https://flatoupix.github.io/chromavore/)**
 
 ---
+
+## v5.7.0 — Fewer discovery interruptions and shared spell controls
+
+Discovery pop-ups appear only for the first encounter with a skill family, shared between Chromavore and Chromamancer. Variants and higher ranks remain available for manual review. Existing discovery history is preserved.
+
+Open **Instructions → Discovery Cards** (D or gamepad X) to browse unlocked cards, including upgrades. Both modes use **double-tap Shift**, hold the second press, enter four directions and release to cast. Chromavore offers EMP and Nitro without mana; Chromamancer offers five spells with mana costs. Ordinary movement no longer casts spells.
+
+See the [verification report](scripts/reports/verification-5.7.0.md) for coverage and results.
 
 ## v5.6.2 — Singularity test progression
 
@@ -72,8 +80,8 @@ chromavore/
 - **Le Dash Tranchant (Arme d'attaque offensive) :** Débloqué à **10 spectres de carrière**, il traverse et atomise une ligne de fantômes. Son cooldown en Madness est de **0.6s**.
 - **Vitesse progressive :** Le mode Madness accélère avec l'éveil chromatique et l'arène 16:9.
 - **Kombos Gestuels (Mouvements de combat arcade) :**
-  - ⚡ **Wiggle (Gauche-Droite-Gauche-Droite / `← → ← →` ou `A D A D`) :** Déclenche un **EMP Shockwave** qui désintègre les fantômes environnants et aspire tous les orbes à 5.5 cases !
-  - 🔥 **Nitro Jet (Haut-Bas-Haut-Bas / `↑ ↓ ↑ ↓` ou `W S W S`) :** Allume un propulseur de flammes derrière Pac-Man qui brûle toute ombre traversant son sillage.
+  - ⚡ **Wiggle (double Shift, maintenir le deuxième appui, `← → ← →`, relâcher Shift) :** Déclenche un **EMP Shockwave** qui désintègre les fantômes environnants et aspire tous les orbes à 5.5 cases !
+  - 🔥 **Nitro Jet (double Shift, maintenir le deuxième appui, `↑ ↓ ↑ ↓`, relâcher Shift) :** Allume un propulseur de flammes derrière Pac-Man qui brûle toute ombre traversant son sillage.
 - **Enjeu Critique — La Relique du Vide (`☠️ VOID CORE`) :**
   - Des cœurs d'ombre apparaissent régulièrement sur la carte avec alerte radar.
   - **Si un fantôme l'attrape :** Il mute en **Titan du Vide** et vous inflige **-6s de pénalité de temps** s'il vous percute !
@@ -93,8 +101,8 @@ chromavore/
 | :--- | :--- | :--- | :--- |
 | **Déplacement** | Flèches ou `WASD` / `ZQSD` | Stick gauche ou D-Pad | D-Pad arcade tactile ou Swipe |
 | **Dash Tranchant (Attaque & Déplacement)** | **`Espace`** — débloqué à 10 spectres | Touche `A`, `X` ou Gâchettes | Bouton arcade `⚡DASH` ou Double-Tap |
-| **Kombo Wiggle (EMP Blast)** | `← → ← →` ou `A D A D` | D-Pad Gauche/Droite rapide | Wiggle rapide sur D-Pad |
-| **Kombo Nitro (Flammes)** | `↑ ↓ ↑ ↓` ou `W S W S` | D-Pad Haut/Bas rapide | Wiggle vertical sur D-Pad |
+| **Kombo Wiggle (EMP Blast)** | Double Shift, maintenir, `← → ← →`, relâcher | Double LB/LT, maintenir, séquence, relâcher | Double Chrono, maintenir, séquence, relâcher |
+| **Kombo Nitro (Flammes)** | Double Shift, maintenir, `↑ ↓ ↑ ↓`, relâcher | Double LB/LT, maintenir, séquence, relâcher | Double Chrono, maintenir, séquence, relâcher |
 | **Super-Item** | Activation automatique au contact | Activation automatique au contact | Activation automatique au contact |
 | **Chrono Shift** | **`Shift`** — débloqué à 180 spectres | — | Bouton `CHRONO` après déblocage |
 | **Changer de Mode (Menu)** | `1` = Madness, `2` = Classique | D-Pad sur Menu | Boutons interactifs sur l'écran d'accueil |
