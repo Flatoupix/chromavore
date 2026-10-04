@@ -105,9 +105,8 @@ class ExperienceSystem {
 
       // Audiovisual spectacle
       sounds.play('powerup');
-      sounds.play('nova');
-      particles.flash(isSurge ? '#ffd700' : '#00ffff', 0.65);
-      particles.shake(14, 0.45);
+      particles.flash(isSurge ? '#ffd700' : '#00ffff', 0.25);
+      particles.shake(7, 0.28);
 
       const surgeLabel = isSurge ? ` (★ 2x XP SURGE STREAK x${this.consecutiveLevelUpsInLife}!)` : '';
       wobbleBanner.show(

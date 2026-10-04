@@ -2309,29 +2309,51 @@ class Game {
     this.lives = Math.min(5, this.lives + 1);
     particles.addPop(x, y - 35, '+1 LIFE! +1 SP!', '#00ffaa', 22);
 
-    // Board-Wide Level-Up Shockwave (Section 8)
-    // coeff = 1 + min(0.5, 0.01 * (lvl - 1))
-    const lvlCoeff = 1 + Math.min(0.5, 0.01 * (event.newLevel - 1));
+    // Screen shake & subtle flash
+    particles.shake(7, 0.28);
+    particles.flash(event.surgeActive ? '#ffd700' : '#00ffff', 0.22);
+    sounds.play('powerup');
+
+    // Visual particles scattered across the board ("quelques petites particules qui apparaissent un peu partout")
+    // Purely cosmetic visual effects with zero in-game / entity existence
     const arenaW = this.maze.cols * T;
     const arenaH = this.maze.rows * T;
-    const maxDiagonal = Math.hypot(arenaW, arenaH) * lvlCoeff;
+    const colors = event.surgeActive
+      ? ['#ffd700', '#ffe066', '#ffffff', '#ffaa00', '#ff00aa']
+      : ['#00ffff', '#00ffaa', '#88ffff', '#ffffff', '#ffd700'];
+
+    // 1. Concentrated burst of small sparkle particles around the player
+    particles.emit(x, y, 16, event.surgeActive ? '#ffd700' : '#00ffaa', {
+      speed: 75,
+      size: 2.2,
+      life: 0.55
+    });
+
+    // 2. Small particles popping up scattered across the screen
+    const scatterCount = 32;
+    for (let i = 0; i < scatterCount; i++) {
+      const rx = 12 + Math.random() * (arenaW - 24);
+      const ry = 12 + Math.random() * (arenaH - 24);
+      const col = colors[i % colors.length];
+      particles.emit(rx, ry, 1, col, {
+        speed: 25 + Math.random() * 35,
+        size: 1.5 + Math.random() * 1.6,
+        life: 0.5 + Math.random() * 0.45,
+        gravity: -18 // slight upward float
+      });
+    }
 
     this.levelUpShockwave = {
       active: true,
-      timer: 0.6,
-      maxTimer: 0.6,
+      timer: 0.25,
+      maxTimer: 0.25,
       x,
       y,
       radius: 0,
-      maxRadius: maxDiagonal,
+      maxRadius: 0,
       level: event.newLevel,
       isSurge: event.surgeActive
     };
-
-    sounds.play('powerup');
-    sounds.play('nova');
-    particles.flash(event.surgeActive ? '#ffd700' : '#00ffff', 0.45);
-    particles.shake(10, 0.35);
   }
 
   private checkRampageMilestone(streak: number) {
@@ -3827,37 +3849,9 @@ class Game {
           }
         }
 
-        // Level-Up Board-Wide Shockwave (Section 8: clears basic ghosts, stuns Titans)
+        // Level-Up cosmetic timer (visual particle effects only, zero in-game / enemy impact)
         if (this.levelUpShockwave.active) {
           this.levelUpShockwave.timer -= dt;
-          const progress = Math.max(0, Math.min(1, 1 - (this.levelUpShockwave.timer / this.levelUpShockwave.maxTimer)));
-          this.levelUpShockwave.radius = progress * this.levelUpShockwave.maxRadius;
-
-          for (const e of this.enemyManager.enemies) {
-            if (e.st !== 'dead' && e.st !== 'return') {
-              const ep = this.enemyManager.getPos(e);
-              const dist = Math.hypot(ep.x - this.levelUpShockwave.x, ep.y - this.levelUpShockwave.y);
-              if (dist <= this.levelUpShockwave.radius) {
-                if (e.isTitan) {
-                  if (!e.frozen) {
-                    e.frozen = true;
-                    e.frozenTimer = 3.5;
-                    sounds.play('stun');
-                    particles.addPop(ep.x, ep.y - 18, 'TITAN STUNNED!', '#ff007f', 14);
-                    particles.emit(ep.x, ep.y, 16, '#00ffff', { speed: 80, size: 3, life: 0.5 });
-                  }
-                } else {
-                  e.st = 'dead';
-                  e.frightened = false;
-                  e.frozen = false;
-                  sounds.play('ghost');
-                  particles.emit(ep.x, ep.y, 14, '#00ffff', { speed: 100, size: 2.8, life: 0.45 });
-                  particles.addPop(ep.x, ep.y - 10, 'PURGED', '#00f0ff', 11);
-                }
-              }
-            }
-          }
-
           if (this.levelUpShockwave.timer <= 0) {
             this.levelUpShockwave.active = false;
           }
