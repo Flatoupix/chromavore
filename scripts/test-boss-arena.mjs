@@ -199,3 +199,55 @@ function testMap(name, half, halfWidth, fullCols, rows) {
 
 testMap('MM10_MACRO (4:3)', MM10_MACRO, 21, 41, 35);
 testMap('MM10_169_MACRO (16:9)', MM10_169_MACRO, 33, 65, 35);
+
+// Test Dash Algorithm outside top-left quadrant (rows >= 22)
+console.log('Testing Dash calculation in lower quadrant (rows 22-34)...');
+function simulateDash(mapFull, fullCols, fullRows, startX, startY, dx, dy, maxDist = 5) {
+  let cx = startX;
+  let cy = startY;
+  let dashed = 0;
+  for (let i = 0; i < maxDist; i++) {
+    let nx = cx + dx;
+    let ny = cy + dy;
+    if (nx < 0) nx = fullCols - 1;
+    if (nx >= fullCols) nx = 0;
+    if (ny < 0) ny = fullRows - 1;
+    if (ny >= fullRows) ny = 0;
+
+    const tile = mapFull[ny][nx];
+    if (tile === WALL || tile === DOOR) break;
+    cx = nx;
+    cy = ny;
+    dashed++;
+  }
+  return { cx, cy, dashed };
+}
+
+// Expand MM10_MACRO full map
+const fullMM10 = [];
+for (let r = 0; r < 35; r++) {
+  const row = new Array(41);
+  for (let c = 0; c < 21; c++) {
+    const val = MM10_MACRO[r][c];
+    row[c] = val;
+    row[40 - c] = val;
+  }
+  fullMM10.push(row);
+}
+
+// Test dash from row 26 (player spawn) upwards, downwards, left, and right
+const dashUp = simulateDash(fullMM10, 41, 35, 20, 26, 0, -1);
+const dashDown = simulateDash(fullMM10, 41, 35, 20, 26, 0, 1);
+const dashLeft = simulateDash(fullMM10, 41, 35, 20, 26, -1, 0);
+const dashRight = simulateDash(fullMM10, 41, 35, 20, 26, 1, 0);
+
+console.log(`Spawn (20, 26) -> Dash Up: moved ${dashUp.dashed} tiles to (${dashUp.cx}, ${dashUp.cy})`);
+console.log(`Spawn (20, 26) -> Dash Down: moved ${dashDown.dashed} tiles to (${dashDown.cx}, ${dashDown.cy})`);
+console.log(`Spawn (20, 26) -> Dash Left: moved ${dashLeft.dashed} tiles to (${dashLeft.cx}, ${dashLeft.cy})`);
+console.log(`Spawn (20, 26) -> Dash Right: moved ${dashRight.dashed} tiles to (${dashRight.cx}, ${dashRight.cy})`);
+
+if (dashUp.dashed === 0 && dashDown.dashed === 0 && dashLeft.dashed === 0 && dashRight.dashed === 0) {
+  throw new Error('Dash failed in lower quadrant!');
+}
+console.log('✓ Dash calculation in lower quadrant PASSED!\n');
+

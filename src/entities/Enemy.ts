@@ -412,14 +412,14 @@ export class EnemyManager {
         };
       }
     } else if (e.st === 'flee') {
-      target = { x: maze.cols - 1 - target.x, y: ROWS - 1 - target.y };
+      target = { x: maze.cols - 1 - target.x, y: maze.rows - 1 - target.y };
     } else if (e.type === 'rusher') {
       target = { x: target.x + e.dx * 3, y: target.y + e.dy * 3 };
     } else if (e.type === 'orbiter') {
-      target = { x: (target.x + 5) % maze.cols, y: (target.y + 4) % ROWS };
+      target = { x: (target.x + 5) % maze.cols, y: (target.y + 4) % maze.rows };
     } else if (e.type === 'phaser') {
       // Phantom Stalker: smart ambush flanking AI, strictly respecting maze corridors
-      target = { x: (target.x - e.dx * 2 + maze.cols) % maze.cols, y: Math.max(1, Math.min(ROWS - 2, target.y - e.dy * 2)) };
+      target = { x: (target.x - e.dx * 2 + maze.cols) % maze.cols, y: Math.max(1, Math.min(maze.rows - 2, target.y - e.dy * 2)) };
     }
 
     let bestDir = valid[0];

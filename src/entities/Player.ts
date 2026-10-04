@@ -48,6 +48,7 @@ export class Player {
   public dashStreaks: { x1: number; y1: number; x2: number; y2: number; life: number; maxLife: number; singularity?: boolean }[] = [];
   public invuln: number = 2;
   public currentCols: number = COLS;
+  public currentRows: number = ROWS;
 
   // Aegis Orbital Shields & Vector Surge
   public aegisShields: number = 0;
@@ -98,6 +99,7 @@ export class Player {
     let sx = 10, sy = 16;
     if (maze) {
       this.currentCols = maze.cols;
+      this.currentRows = maze.rows;
       const sp = maze.getSpawn();
       sx = sp.x;
       sy = sp.y;
@@ -151,16 +153,23 @@ export class Player {
 
   public getPos(): { x: number; y: number } {
     const cols = this.currentCols;
+    const rows = this.currentRows;
     let fx_ = this.fx, fy_ = this.fy, tx = this.x, ty = this.y;
     if (Math.abs(tx - fx_) > cols / 2) {
       if (tx > fx_) fx_ += cols;
       else tx += cols;
+    }
+    if (Math.abs(ty - fy_) > rows / 2) {
+      if (ty > fy_) fy_ += rows;
+      else ty += rows;
     }
     const t = Math.min(this.t, 1);
     let px = (fx_ + (tx - fx_) * t) * T + HALF;
     let py = (fy_ + (ty - fy_) * t) * T + HALF;
     if (px < 0) px += cols * T;
     if (px >= cols * T) px -= cols * T;
+    if (py < 0) py += rows * T;
+    if (py >= rows * T) py -= rows * T;
     return { x: px, y: py };
   }
 
@@ -172,7 +181,7 @@ export class Player {
     this.fx = this.x;
     this.fy = this.y;
     this.x = this.wrapX(this.x + dx);
-    this.y = this.y + dy;
+    this.y = this.wrapY(this.y + dy);
     const ov = this.t - 1;
     this.t = Math.max(0, ov);
     this.sq = 0.72;
@@ -228,6 +237,7 @@ export class Player {
     chronoScale: number = 1.0
   ) {
     this.currentCols = maze.cols;
+    this.currentRows = maze.rows;
     // Dash streaks
     for (let i = this.dashStreaks.length - 1; i >= 0; i--) {
       const s = this.dashStreaks[i];
@@ -342,7 +352,7 @@ export class Player {
     const isPerp = (this.ndx !== 0 && this.dx === 0) || (this.ndy !== 0 && this.dy === 0);
     if (isPerp && (this.dx !== 0 || this.dy !== 0) && this.t <= 0.38) {
       const lateTurnX = this.wrapX(this.fx + this.ndx);
-      const lateTurnY = this.fy + this.ndy;
+      const lateTurnY = this.wrapY(this.fy + this.ndy);
       if (maze.isWalkable(lateTurnX, lateTurnY, false)) {
         this.x = lateTurnX;
         this.y = lateTurnY;
@@ -359,12 +369,12 @@ export class Player {
     if (this.t >= 1) {
       // Find best walkable direction among desired input and held keys
       let targetDir = { x: this.ndx, y: this.ndy };
-      let nx = this.wrapX(this.x + targetDir.x), ny = this.y + targetDir.y;
+      let nx = this.wrapX(this.x + targetDir.x), ny = this.wrapY(this.y + targetDir.y);
       if (!maze.isWalkable(nx, ny, false)) {
         // Desired direction blocked by wall! Check if another held key is walkable (wall-contouring)
         for (let i = heldDirections.length - 1; i >= 0; i--) {
           const h = heldDirections[i];
-          const hx = this.wrapX(this.x + h.x), hy = this.y + h.y;
+          const hx = this.wrapX(this.x + h.x), hy = this.wrapY(this.y + h.y);
           if (maze.isWalkable(hx, hy, false)) {
             targetDir = { x: h.x, y: h.y };
             nx = hx;
@@ -378,7 +388,7 @@ export class Player {
         this.doMove(targetDir.x, targetDir.y, maze);
       } else if (this.dx !== 0 || this.dy !== 0) {
         // Forward is open along the current corridor: keep gliding along the wall!
-        const mx = this.wrapX(this.x + this.dx), my = this.y + this.dy;
+        const mx = this.wrapX(this.x + this.dx), my = this.wrapY(this.y + this.dy);
         if (maze.isWalkable(mx, my, false)) {
           this.doMove(this.dx, this.dy, maze);
         } else {
@@ -458,7 +468,7 @@ export class Player {
       const wantDy = Math.abs(pullSin) > 0.4 ? Math.sign(pullSin) : 0;
       if (wantDx !== 0 && maze.isWalkable(this.wrapX(this.x + wantDx), this.y, false)) {
         this.doMove(wantDx, 0, maze);
-      } else if (wantDy !== 0 && maze.isWalkable(this.x, this.y + wantDy, false)) {
+      } else if (wantDy !== 0 && maze.isWalkable(this.x, this.wrapY(this.y + wantDy), false)) {
         this.doMove(0, wantDy, maze);
       }
     } else {
@@ -485,6 +495,8 @@ export class Player {
     isSingularity: boolean = false,
     isShiftHeld: boolean = false
   ): boolean {
+    this.currentCols = maze.cols;
+    this.currentRows = maze.rows;
     if (this.dashCharges <= 0 && this.dashCd > 0 && !isOverdrive) return false;
 
     const dashLvl = progression.getSkillLevel('dash');
@@ -522,7 +534,7 @@ export class Player {
 
     const isSingularityDash = isSingularity && isShiftHeld;
     const maxDist = isSingularityDash
-      ? (dx !== 0 ? this.currentCols : ROWS)
+      ? (dx !== 0 ? this.currentCols : this.currentRows)
       : (DASH_DIST + Math.min(4, Math.max(0, dashLvl - 1)));
 
     const phaseRank = experienceSystem.getSkillRank('phase_shift');
@@ -571,7 +583,7 @@ export class Player {
         for (let radY = -radLimit; radY <= radLimit; radY++) {
           for (let radX = -radLimit; radX <= radLimit; radX++) {
             const rx = this.wrapX(nx + radX), ry = this.wrapY(ny + radY);
-            if (ry >= 0 && ry < ROWS && Math.hypot(radX, radY) <= dashR) {
+            if (ry >= 0 && ry < this.currentRows && Math.hypot(radX, radY) <= dashR) {
               onCollectDot(rx, ry);
             }
           }
@@ -600,11 +612,11 @@ export class Player {
 
     // Swept corridor cleanup along dash trajectory:
     // Ensures that any dot crossed or grazed along the path (even across mid-tile triggers) is 100% collected
-    if (Math.abs(startPos.x - endPos.x) < this.currentCols * T * 0.75) {
+    if (Math.abs(startPos.x - endPos.x) < this.currentCols * T * 0.75 && Math.abs(startPos.y - endPos.y) < this.currentRows * T * 0.75) {
       const minCol = Math.max(0, Math.floor(Math.min(startPos.x, endPos.x) / T) - 1);
       const maxCol = Math.min(this.currentCols - 1, Math.ceil(Math.max(startPos.x, endPos.x) / T) + 1);
       const minRow = Math.max(0, Math.floor(Math.min(startPos.y, endPos.y) / T) - 1);
-      const maxRow = Math.min(ROWS - 1, Math.ceil(Math.max(startPos.y, endPos.y) / T) + 1);
+      const maxRow = Math.min(this.currentRows - 1, Math.ceil(Math.max(startPos.y, endPos.y) / T) + 1);
 
       for (let r = minRow; r <= maxRow; r++) {
         for (let c = minCol; c <= maxCol; c++) {
@@ -748,8 +760,8 @@ export class Player {
   }
 
   public wrapY(r: number): number {
-    if (r < 0) return ROWS - 1;
-    if (r >= ROWS) return 0;
+    if (r < 0) return this.currentRows - 1;
+    if (r >= this.currentRows) return 0;
     return r;
   }
 

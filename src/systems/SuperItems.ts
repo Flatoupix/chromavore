@@ -37,6 +37,7 @@ export interface AbsorbedGhost {
 
 export class SuperItemManager {
   public currentCols: number = COLS;
+  public currentRows: number = ROWS;
   public boardDrop: SuperItemDrop | null = null;
   public spawnTimer: number = 8.0;
   public vortex: { x: number; y: number; life: number; maxLife: number } | null = null;
@@ -80,6 +81,7 @@ export class SuperItemManager {
 
   private spawnOnBoard(item: SuperItem, maze: MazeManager) {
     this.currentCols = maze.cols;
+    this.currentRows = maze.rows;
     let pt = maze.getRandomWalkable(false);
     let attempts = 0;
     while (maze.isInGhostHouse(pt.x, pt.y) && attempts < 20) {
@@ -197,7 +199,10 @@ export class SuperItemManager {
     onCollectDot?: (c: number, r: number) => void,
     activateOverdrive?: () => void
   ) {
-    if (maze) this.currentCols = maze.cols;
+    if (maze) {
+      this.currentCols = maze.cols;
+      this.currentRows = maze.rows;
+    }
     const cols = this.currentCols;
     const cw = cols * T;
 
@@ -279,7 +284,7 @@ export class SuperItemManager {
           for (let dx = -tileRadius; dx <= tileRadius; dx++) {
             const tx = (vTileX + dx + cols) % cols;
             const ty = vTileY + dy;
-            if (ty >= 0 && ty < ROWS && maze.dotMap[ty] && maze.dotMap[ty][tx] > 0) {
+            if (ty >= 0 && ty < this.currentRows && maze.dotMap[ty] && maze.dotMap[ty][tx] > 0) {
               const dDist = Math.hypot(tx * T + T / 2 - vX, ty * T + T / 2 - vY);
               if (dDist < vRadius * 0.75 && Math.random() < dt * 4.5) {
                 onCollectDot(tx, ty);
