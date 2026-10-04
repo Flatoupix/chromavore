@@ -19,6 +19,7 @@ export interface SkillDef {
   category: 'movement' | 'kombo' | 'item';
   command: string;        // e.g. 'Espace ou Double-Tap'
   desc: string;
+  dashCharges?: number;   // Available dash units granted at this tier
 }
 
 export const SKILL_TREE: SkillDef[] = [
@@ -31,7 +32,8 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 10,
     category: 'movement',
     command: 'SPACE or DASH BUTTON',
-    desc: '3-tile offensive warp slashing through ghosts'
+    desc: '1 Dash unit • 3-tile offensive warp slashing through ghosts',
+    dashCharges: 1
   },
   {
     id: 'nova_v1',
@@ -152,7 +154,8 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 1600,
     category: 'movement',
     command: 'SPACE or DASH BUTTON',
-    desc: '4-tile reach, -25% cooldown, and unlocks the 16:9 Widescreen Arena!'
+    desc: '2 Dash units • 4-tile reach, -25% cooldown, and unlocks the 16:9 Widescreen Arena!',
+    dashCharges: 2
   },
   {
     id: 'wiggle_v2',
@@ -218,7 +221,8 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 4500,
     category: 'movement',
     command: 'SPACE or DASH BUTTON',
-    desc: '5-tile reach: pierce through deep swarm lines in a single flash'
+    desc: '3 Dash units • 5-tile reach: pierce through deep swarm lines in a single flash',
+    dashCharges: 3
   },
   {
     id: 'overdrive_v2',
@@ -262,7 +266,8 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 8000,
     category: 'movement',
     command: 'SPACE or DASH BUTTON',
-    desc: '6-tile reach: maximum breakthrough through the heaviest hordes'
+    desc: '4 Dash units • 6-tile reach: maximum breakthrough through the heaviest hordes',
+    dashCharges: 4
   },
   {
     id: 'cryo_v2',
@@ -295,7 +300,8 @@ export const SKILL_TREE: SkillDef[] = [
     threshold: 12000,
     category: 'movement',
     command: 'SPACE or DASH BUTTON',
-    desc: 'Quantum Wall-Breaker: smashes and phases through up to 3 walls with shockwave & freeze-frame'
+    desc: '4 Dash units • Quantum Wall-Breaker: smashes and phases through up to 3 walls with shockwave & freeze-frame',
+    dashCharges: 4
   }
 ];
 
@@ -360,6 +366,54 @@ class ProgressionManager {
       }
     }
     return level;
+  }
+
+  /**
+   * Returns the number of dash units (charges) unlocked by career progression in Arcade mode.
+   * - Level 0: 0 charges (locked until 10 kills)
+   * - Level 1: 1 charge (Offensive Dash, 10 kills)
+   * - Level 2: 2 charges (Cyber Dash V2, 1600 kills)
+   * - Level 3: 3 charges (Hyper Dash V3, 4500 kills)
+   * - Level 4+: 4 charges (Quantum Dash V4 / V5, 8000+ kills)
+   */
+  public getDashCharges(): number {
+    const lvl = this.getSkillLevel('dash');
+    if (lvl === 0) return 0;
+    return Math.min(4, Math.max(1, lvl));
+  }
+
+  /** Alias to inspect available dash units in ProgressionSystem */
+  public getAvailableDashCharges(): number {
+    return this.getDashCharges();
+  }
+
+  /** Returns available dash units in ProgressionSystem */
+  public getDashUnits(): number {
+    return this.getDashCharges();
+  }
+
+  /**
+   * Returns detailed metadata on available dash units, max capacity,
+   * current active dash skill and next upgrade requirement.
+   */
+  public getDashUnitsInfo(): {
+    available: number;
+    max: number;
+    level: number;
+    currentSkill: SkillDef | null;
+    nextSkill: SkillDef | null;
+  } {
+    const level = this.getSkillLevel('dash');
+    const available = this.getDashCharges();
+    const currentSkill = SKILL_TREE.find(s => s.baseId === 'dash' && s.version === level) || null;
+    const nextSkill = SKILL_TREE.find(s => s.baseId === 'dash' && s.version === level + 1) || null;
+    return {
+      available,
+      max: 4,
+      level,
+      currentSkill,
+      nextSkill
+    };
   }
 
   public isSkillUnlocked(skillId: string): boolean {

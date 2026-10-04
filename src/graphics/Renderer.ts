@@ -1508,7 +1508,7 @@ export class Renderer {
         spriteAtlas.drawIcon(c, nxt.skill.icon, 10, barY + barH / 2 - 6, 12);
         const nextLabel = nxt.skill.threshold === 500
           ? `NEXT: ${nxt.skill.name} (+ 16:9 ARENA)`
-          : `NEXT: ${nxt.skill.name}`;
+          : (nxt.skill.baseId === 'dash' && nxt.skill.dashCharges ? `NEXT: ${nxt.skill.name} (${nxt.skill.dashCharges} UNITS)` : `NEXT: ${nxt.skill.name}`);
         c.fillText(nextLabel, 26, textY);
 
         // Center: Career ghosts progress
@@ -2767,6 +2767,27 @@ export class Renderer {
       c.fillText('🧪 [T] TRY LAB', tryBtnX + tryBtnW / 2, tryBtnY + tryBtnH / 2);
       c.restore();
 
+      // Available Dash Units Indicator in Arsenal header
+      const dashUnits = progression.getDashCharges();
+      const pipsX = tryBtnX - 146;
+      const pipsY = 54;
+      c.save();
+      c.font = 'bold 9px monospace';
+      c.textAlign = 'right';
+      c.textBaseline = 'middle';
+      c.fillStyle = dashUnits > 0 ? '#00ffff' : '#667788';
+      c.fillText(`DASH UNITS: ${dashUnits}/4`, pipsX - 6, pipsY + 10);
+      for (let p = 0; p < 4; p++) {
+        const px = pipsX + p * 11, py = pipsY + 4, pw = 8, ph = 12;
+        const isCharged = p < dashUnits;
+        c.fillStyle = isCharged ? '#00f0ff' : 'rgba(255, 255, 255, 0.1)';
+        c.strokeStyle = isCharged ? '#00ffff' : 'rgba(255, 255, 255, 0.25)';
+        c.lineWidth = 1;
+        if (isCharged) { c.shadowColor = '#00f0ff'; c.shadowBlur = 4; }
+        c.beginPath(); c.roundRect(px, py, pw, ph, 2); c.fill(); c.stroke(); c.shadowBlur = 0;
+      }
+      c.restore();
+
       c.font = 'bold 9.5px monospace';
       c.fillStyle = '#ffffff';
       c.textAlign = 'left';
@@ -3446,11 +3467,13 @@ export class Renderer {
     if (unlocked) {
       c.fillStyle = this.getChromaAccent(isV2 ? '#00ffff' : '#ffd700', '#ffffff');
       spriteAtlas.drawIcon(c, s.icon, x + 16, y + 14, 14);
-      c.fillText(`[V${s.version}] ${s.name}`, x + 28, y + 14);
+      const dashUnitSuffix = (w > 320 && s.baseId === 'dash' && s.dashCharges) ? ` • ${s.dashCharges} UNIT${s.dashCharges > 1 ? 'S' : ''}` : '';
+      c.fillText(`[V${s.version}] ${s.name}${dashUnitSuffix}`, x + 28, y + 14);
     } else if (isNext) {
       c.fillStyle = this.getChromaAccent('#ffcc00', '#cccccc');
       spriteAtlas.drawIcon(c, s.icon, x + 16, y + 14, 14);
-      c.fillText(`[V${s.version}] ${s.name}`, x + 28, y + 14);
+      const dashUnitSuffix = (w > 320 && s.baseId === 'dash' && s.dashCharges) ? ` • ${s.dashCharges} UNIT${s.dashCharges > 1 ? 'S' : ''}` : '';
+      c.fillText(`[V${s.version}] ${s.name}${dashUnitSuffix}`, x + 28, y + 14);
     } else {
       // Hidden / classified: name is hidden!
       c.fillStyle = this.chromaTier === 0 ? '#444444' : '#4a5a70';
@@ -3463,13 +3486,14 @@ export class Renderer {
     c.font = 'bold 10px monospace';
     if (unlocked) {
       c.fillStyle = this.getChromaAccent('#00ffaa', '#cccccc');
-      const statusText = '[REPLAY]';
+      const statusText = (s.baseId === 'dash' && s.dashCharges) ? `[${s.dashCharges} UNIT${s.dashCharges > 1 ? 'S' : ''}]` : '[REPLAY]';
       const tw = c.measureText(statusText).width;
       spriteAtlas.drawIcon(c, 'check', x + w - 8 - tw - 8, y + 14, 10);
       c.fillText(statusText, x + w - 8, y + 14);
     } else if (isNext) {
       c.fillStyle = this.getChromaAccent('#ffd700', '#aaaaaa');
-      c.fillText(`GOAL: ${s.threshold.toLocaleString()} KILLS`, x + w - 8, y + 14);
+      const goalText = (s.baseId === 'dash' && s.dashCharges) ? `GOAL: ${s.threshold.toLocaleString()} K (${s.dashCharges}U)` : `GOAL: ${s.threshold.toLocaleString()} KILLS`;
+      c.fillText(goalText, x + w - 8, y + 14);
     } else {
       c.fillStyle = this.chromaTier === 0 ? '#444444' : '#6a7888';
       const reqText = `${s.threshold.toLocaleString()} KILLS`;
@@ -3483,10 +3507,12 @@ export class Renderer {
     c.font = '9px monospace';
     if (unlocked) {
       c.fillStyle = '#ffffff';
-      c.fillText(s.command, x + 8, y + 26);
+      const cmdText = (s.baseId === 'dash' && s.dashCharges) ? `${s.command}  [${s.dashCharges} DASH UNIT${s.dashCharges > 1 ? 'S' : ''}]` : s.command;
+      c.fillText(cmdText, x + 8, y + 26);
     } else if (isNext) {
       c.fillStyle = this.chromaTier === 0 ? '#cccccc' : '#ffdd88';
-      c.fillText(s.command, x + 8, y + 26);
+      const cmdText = (s.baseId === 'dash' && s.dashCharges) ? `${s.command}  [${s.dashCharges} DASH UNIT${s.dashCharges > 1 ? 'S' : ''}]` : s.command;
+      c.fillText(cmdText, x + 8, y + 26);
     } else {
       c.fillStyle = this.chromaTier === 0 ? '#333333' : '#334455';
       c.fillText('ENCRYPTED COMMAND', x + 8, y + 26);

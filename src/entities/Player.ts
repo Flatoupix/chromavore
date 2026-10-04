@@ -74,6 +74,13 @@ export class Player {
     this.pelletSpeedBonus = Math.min(3.5, this.pelletSpeedBonus + 1.2);
   }
 
+  public getMaxDashCharges(): number {
+    if (profileManager.gameMode === 'arcade') {
+      return Math.max(1, progression.getDashCharges());
+    }
+    return experienceSystem.getDashCharges();
+  }
+
   public reset(maze?: MazeManager, speedMult: number = 1.0) {
     let sx = 10, sy = 16;
     if (maze) {
@@ -108,7 +115,7 @@ export class Player {
       this.speed = calculatedSpeed * speedMult;
     }
     this.invuln = 2.0;
-    this.dashCharges = experienceSystem.getDashCharges();
+    this.dashCharges = this.getMaxDashCharges();
     this.dashMaxCharges = this.dashCharges;
     this.consecutiveDashCount = 0;
     this.consecutiveDashTimer = 0;
@@ -212,12 +219,12 @@ export class Player {
       if (s.life <= 0) this.dashStreaks.splice(i, 1);
     }
 
-    const maxCharges = experienceSystem.getDashCharges();
+    const maxCharges = this.getMaxDashCharges();
     this.dashMaxCharges = maxCharges;
     // Keep dash charges clamped and synchronize when skill tree rank increases
     if (this.dashCharges < maxCharges && this.dashCd <= 0 && this.dashChargeCooldown <= 0) {
       const cdMult = progression.getSkillLevel('dash') >= 2 ? 0.75 : 1.0;
-      const skillReduction = experienceSystem.getDashCdReduction();
+      const skillReduction = profileManager.gameMode === 'custom' ? experienceSystem.getDashCdReduction() : 0;
       this.dashChargeCooldown = Math.max(0.25, DASH_MADNESS_CD * cdMult * (1.0 - skillReduction));
     }
 
@@ -227,7 +234,7 @@ export class Player {
         this.dashCharges++;
         if (this.dashCharges < maxCharges) {
           const cdMult = progression.getSkillLevel('dash') >= 2 ? 0.75 : 1.0;
-          const skillReduction = experienceSystem.getDashCdReduction();
+          const skillReduction = profileManager.gameMode === 'custom' ? experienceSystem.getDashCdReduction() : 0;
           this.dashChargeCooldown = Math.max(0.25, DASH_MADNESS_CD * cdMult * (1.0 - skillReduction));
         }
       }
@@ -597,7 +604,7 @@ export class Player {
     if (!isOverdrive) {
       this.dashCharges = Math.max(0, this.dashCharges - 1);
       const cdMult = dashLvl >= 2 ? 0.75 : 1.0;
-      const skillReduction = experienceSystem.getDashCdReduction();
+      const skillReduction = profileManager.gameMode === 'custom' ? experienceSystem.getDashCdReduction() : 0;
       const rechargeTime = Math.max(0.25, DASH_MADNESS_CD * cdMult * (1.0 - skillReduction));
 
       if (this.dashCharges > 0) {
