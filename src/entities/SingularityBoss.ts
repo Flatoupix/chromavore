@@ -2,7 +2,7 @@
 //  CHROMAVORE — SINGULARITY CORE BOSS ENCOUNTER (LEVEL 10)
 // ═══════════════════════════════════════════════════════════════
 
-import { T, ROWS, HALF } from '../config/constants';
+import { T, ROWS, HALF, HUD_H } from '../config/constants';
 import { particles } from '../systems/ParticleSystem';
 import { sounds } from '../audio/SoundManager';
 import { experienceSystem } from '../systems/ExperienceSystem';
@@ -700,23 +700,35 @@ export class SingularityBoss {
 
     c.restore();
 
-    // ─── 6. Boss HP Bar ───
-    this.drawBossHPBar(c);
   }
 
-  private drawBossHPBar(c: CanvasRenderingContext2D) {
-    const barW = Math.min(360, this.x * 2 - 40);
-    const barH = 10;
-    const barX = this.x - barW / 2;
-    const barY = 56;
+  public drawHUD(c: CanvasRenderingContext2D, screenWidth: number) {
+    if (!this.active) return;
+    const barW = Math.min(380, screenWidth - 40);
+    const barH = 11;
+    const cx = screenWidth / 2;
+    const barX = cx - barW / 2;
+    const barY = HUD_H + 10;
 
     const hpRatio = Math.max(0, Math.min(1, this.hp / this.maxHp));
     const phaseCol = this.phase === 3 ? '#ff0055' : (this.phase === 2 ? '#a855f7' : '#00ffff');
 
     c.save();
 
+    // Dark cybernetic backing panel
+    const panelPad = 8;
+    const panelW = barW + panelPad * 2;
+    const panelH = barH + 28;
+    c.fillStyle = 'rgba(5, 8, 20, 0.88)';
+    c.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    c.lineWidth = 1;
+    c.beginPath();
+    c.roundRect(cx - panelW / 2, barY - 14, panelW, panelH, 6);
+    c.fill();
+    c.stroke();
+
     // Container
-    c.fillStyle = 'rgba(5, 8, 18, 0.9)';
+    c.fillStyle = 'rgba(10, 15, 30, 0.95)';
     c.strokeStyle = phaseCol;
     c.lineWidth = 1.5;
     c.shadowColor = phaseCol;
@@ -736,26 +748,26 @@ export class SingularityBoss {
     }
 
     // Text Header
-    c.font = 'bold 9.5px monospace';
+    c.font = 'bold 10px monospace';
     c.textAlign = 'center';
     c.textBaseline = 'bottom';
     c.fillStyle = '#ffffff';
     c.shadowColor = phaseCol;
     c.shadowBlur = 6;
-    c.fillText(`SINGULARITY CORE [PHASE ${this.phase}] • ${Math.round(this.hp)} / ${this.maxHp} HP`, this.x, barY - 3);
+    c.fillText(`SINGULARITY CORE [PHASE ${this.phase}] • ${Math.round(this.hp)} / ${this.maxHp} HP`, cx, barY - 3);
 
     // Shield / Exposed Status line
-    c.font = 'bold 8.5px monospace';
+    c.font = 'bold 9px monospace';
     c.textBaseline = 'top';
     if (this.shieldActive) {
       const overloadedCount = this.relays.filter(r => r.isOverloaded).length;
       c.fillStyle = '#00ffff';
       c.shadowColor = '#00ffff';
-      c.fillText(`SHIELD ACTIVE: DASH OVERLOAD 4 RELAYS (${overloadedCount}/4)`, this.x, barY + barH + 3);
+      c.fillText(`SHIELD ACTIVE: DASH OVERLOAD 4 RELAYS (${overloadedCount}/4)`, cx, barY + barH + 3);
     } else {
       c.fillStyle = '#ffd700';
       c.shadowColor = '#ffd700';
-      c.fillText(`⚡ CORE EXPOSED: STRIKE NOW! (${this.exposedTimer.toFixed(1)}s) ⚡`, this.x, barY + barH + 3);
+      c.fillText(`⚡ CORE EXPOSED: STRIKE NOW! (${this.exposedTimer.toFixed(1)}s) ⚡`, cx, barY + barH + 3);
     }
 
     c.restore();

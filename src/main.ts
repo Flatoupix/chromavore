@@ -4512,6 +4512,15 @@ class Game {
     if (this.state === 'paused') {
       this.renderer.ctx.save();
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
+      if (Math.abs(this.cameraScale - 1.0) > 0.001) {
+        const vpW = this.renderer.cw;
+        const vpH = ROWS * T;
+        const arenaW = this.maze.cols * T;
+        const arenaH = this.maze.rows * T;
+        this.renderer.ctx.translate(vpW / 2, vpH / 2);
+        this.renderer.ctx.scale(this.cameraScale, this.cameraScale);
+        this.renderer.ctx.translate(-arenaW / 2, -arenaH / 2);
+      }
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
       this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
       this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
@@ -4540,6 +4549,10 @@ class Game {
         this.killStreakTimer > 0 ? this.madnessStreak : 0
       );
       this.renderer.ctx.restore();
+
+      if (this.boss.active) {
+        this.boss.drawHUD(this.renderer.ctx, this.renderer.cw);
+      }
 
       this.renderer.drawHUD(
         this.score, this.dScore, this.lives,
@@ -4610,6 +4623,10 @@ class Game {
         this.killStreakTimer > 0 ? this.madnessStreak : 0
       );
       this.renderer.ctx.restore();
+
+      if (this.boss.active) {
+        this.boss.drawHUD(this.renderer.ctx, this.renderer.cw);
+      }
 
       this.renderer.drawHUD(
         this.score, this.dScore, this.lives,
@@ -4707,11 +4724,27 @@ class Game {
       this.state === 'playing' && this.killStreakTimer > 0 ? this.madnessStreak : 0
     );
 
-    // Overlays
-    this.renderer.drawOverlays(powerups.fx, particles.flsh, this.player.getPos(), this.time, this.isChronoActive);
     particles.draw(this.renderer.ctx);
+    this.renderer.ctx.restore();
 
-    // Ready text
+    // Screen-space Overlays (Phase Shift, Timewarp, Chrono Shift sweep, Spacetime waves, CRT scanlines)
+    const rawPlPos = this.player.getPos();
+    let overlayPlPos = rawPlPos;
+    if (Math.abs(this.cameraScale - 1.0) > 0.001) {
+      const vpW = this.renderer.cw;
+      const vpH = ROWS * T;
+      const arenaW = this.maze.cols * T;
+      const arenaH = this.maze.rows * T;
+      overlayPlPos = {
+        x: vpW / 2 + (rawPlPos.x - arenaW / 2) * this.cameraScale,
+        y: vpH / 2 + (rawPlPos.y - arenaH / 2) * this.cameraScale
+      };
+    }
+    this.renderer.ctx.save();
+    this.renderer.ctx.translate(0, HUD_H);
+    this.renderer.drawOverlays(powerups.fx, particles.flsh, overlayPlPos, this.time, this.isChronoActive);
+
+    // Ready text (Viewport screen space)
     if (this.state === 'ready') {
       const c = this.renderer.ctx;
       c.fillStyle = 'rgba(7,7,15,0.4)';
@@ -4727,8 +4760,12 @@ class Game {
       c.fillText(txt, this.renderer.cw / 2, (ROWS * T) / 2);
       c.shadowBlur = 0;
     }
-
     this.renderer.ctx.restore();
+
+    // Fixed Boss HUD Health Bar (Screen space below top HUD)
+    if (this.boss.active) {
+      this.boss.drawHUD(this.renderer.ctx, this.renderer.cw);
+    }
 
     // HUD & Badges
     this.renderer.drawHUD(
