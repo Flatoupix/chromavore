@@ -2,7 +2,7 @@
 //  CHROMAVORE — LEVEL MAPS & MAZE MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
 
-import { T, COLS, ROWS, BASE_COLS, MADNESS_COLS, HUD_H, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL, ChromaTier, CHROMA_WALL, CHROMA_GLOW, CHROMA_BG } from '../config/constants';
+import { T, HALF, COLS, ROWS, BASE_COLS, MADNESS_COLS, HUD_H, WALL, DOT, PELLET, EMPTY, GHOST, DOOR, SPAWN, TUNNEL, VOID, C_WALL, ChromaTier, CHROMA_WALL, CHROMA_GLOW, CHROMA_BG } from '../config/constants';
 
 export interface LevelDef {
   name: string;
@@ -461,7 +461,7 @@ export const MM10: number[][] = [
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 3: Corner bracket top
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 4
   // 5-9: NW Relay chamber & Ghost House
-  [1,2,2,2,2,4,4,4,2,2,2,2,2,2,2,2,2,2,2,2,2], // 5: NW Relay (col 6, row 6)
+  [1,2,2,2,3,4,4,4,3,2,2,2,2,2,2,2,2,2,2,2,2], // 5: NW Relay with Super Pellets
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2], // 6: NW Relay core + pylon
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2], // 7: Pylon
   [8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,6,1], // 8: Tunnel + Ghost house door
@@ -475,7 +475,7 @@ export const MM10: number[][] = [
   // 15-19: Core Open Arena
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4], // 15: Core open plaza
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4], // 16: Core open plaza
-  [8,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4], // 17: Center Tunnel + Core center!
+  [8,2,3,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4], // 17: Center Tunnel (with Pellet) + Core center!
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4], // 18: Core open plaza
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4], // 19: Core open plaza
   // 20-24: Core exit & Mid south
@@ -489,7 +489,7 @@ export const MM10: number[][] = [
   [8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 26: Tunnel + Player spawn
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2], // 27: SW Relay pylon
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2], // 28: SW Relay core
-  [1,2,2,2,2,4,4,4,2,2,2,2,2,2,2,2,2,2,2,2,2], // 29: SW Relay
+  [1,2,2,2,3,4,4,4,3,2,2,2,2,2,2,2,2,2,2,2,2], // 29: SW Relay with Super Pellets
   // 30-34: Bottom perimeter speedway
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 30: Corner bracket bottom
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 31
@@ -838,7 +838,7 @@ export const MM10_169: number[][] = [
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 3
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 4
   // 5-9: NW Relay (col 6, row 6) & Ghost House
-  [1,2,2,2,2,4,4,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 5
+  [1,2,2,2,3,4,4,4,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 5: NW Relay with Super Pellets
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 6
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 7
   [8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,6,1], // 8: Tunnel + Door
@@ -852,7 +852,7 @@ export const MM10_169: number[][] = [
   // 15-19: Core Open Plaza (Core at col 32, row 17)
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4], // 15
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4], // 16
-  [8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4], // 17: Tunnel + Core
+  [8,2,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4], // 17: Tunnel (with Pellet) + Core
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4], // 18
   [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,4,4,4,4,4,4,4,4,4], // 19
   // 20-24
@@ -866,7 +866,7 @@ export const MM10_169: number[][] = [
   [8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 26: Tunnel + Spawn
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 27
   [1,2,1,1,2,4,4,4,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 28
-  [1,2,2,2,2,4,4,4,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 29
+  [1,2,2,2,3,4,4,4,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 29: SW Relay with Super Pellets
   // 30-34: Bottom perimeter speedway
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 30
   [1,2,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2], // 31
@@ -1257,14 +1257,81 @@ export class MazeManager {
 
     // Grille wireframe : désactivée au tier 0 (trop stylisée), atténuée aux tiers 1–2
     if (tier >= 1) {
-      const gridAlpha = tier <= 2 ? 0.02 : 0.05;
-      c.strokeStyle = `rgba(255, 0, 128, ${gridAlpha})`;
+      const isBossArena = this.rows === 35;
+      const gridAlpha = isBossArena ? 0.12 : (tier <= 2 ? 0.02 : 0.05);
+      const gridColor = isBossArena ? `rgba(234, 179, 8, ${gridAlpha})` : `rgba(255, 0, 128, ${gridAlpha})`;
+      c.strokeStyle = gridColor;
       c.lineWidth = 1;
       for (let x = 0; x < w; x += T) {
         c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
       }
       for (let y = 0; y < h; y += T) {
         c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+      }
+
+      // INFINITY ARENA Floor Graphics: Concentric amphitheater runes, conduits, and speedway tracks
+      if (isBossArena) {
+        c.save();
+        const cx = w / 2;
+        const cy = 17 * T + HALF;
+
+        // Concentric Core Arena Rings
+        const ringRadii = [80, 150, 230, 320, 420];
+        for (let i = 0; i < ringRadii.length; i++) {
+          const rRad = ringRadii[i];
+          c.beginPath();
+          c.arc(cx, cy, rRad, 0, Math.PI * 2);
+          c.strokeStyle = i % 2 === 0 ? 'rgba(234, 179, 8, 0.22)' : 'rgba(0, 240, 255, 0.16)';
+          c.lineWidth = i === 0 ? 2.5 : 1.5;
+          c.setLineDash(i % 2 === 0 ? [12, 8] : [6, 6]);
+          c.stroke();
+        }
+        c.setLineDash([]);
+
+        // Diagonal Power Circuit Runways connecting Core to the 4 Corner Relays
+        const nwX = 6 * T + HALF, nwY = 6 * T + HALF;
+        const neX = w - nwX, neY = nwY;
+        const swX = nwX, swY = 28 * T + HALF;
+        const seX = neX, seY = swY;
+        const relayCoords = [{ x: nwX, y: nwY }, { x: neX, y: neY }, { x: swX, y: swY }, { x: seX, y: seY }];
+
+        for (const rc of relayCoords) {
+          c.beginPath();
+          c.moveTo(cx, cy);
+          c.lineTo(rc.x, rc.y);
+          c.strokeStyle = 'rgba(0, 240, 255, 0.20)';
+          c.lineWidth = 2.0;
+          c.stroke();
+
+          // Sanctuary demarcation circle on floor
+          c.beginPath();
+          c.arc(rc.x, rc.y, 44, 0, Math.PI * 2);
+          c.strokeStyle = 'rgba(234, 179, 8, 0.35)';
+          c.lineWidth = 1.8;
+          c.setLineDash([8, 6]);
+          c.stroke();
+          c.setLineDash([]);
+        }
+
+        // Speedway Chevrons on Top & Bottom Outer Highways
+        c.fillStyle = 'rgba(0, 240, 255, 0.12)';
+        for (let sx = 4 * T; sx < w - 4 * T; sx += 3 * T) {
+          // Top highway chevron
+          c.beginPath();
+          c.moveTo(sx, 1.5 * T - 4);
+          c.lineTo(sx + 8, 1.5 * T);
+          c.lineTo(sx, 1.5 * T + 4);
+          c.fill();
+
+          // Bottom highway chevron
+          c.beginPath();
+          c.moveTo(sx + 8, (this.rows - 1.5) * T - 4);
+          c.lineTo(sx, (this.rows - 1.5) * T);
+          c.lineTo(sx + 8, (this.rows - 1.5) * T + 4);
+          c.fill();
+        }
+
+        c.restore();
       }
     }
 

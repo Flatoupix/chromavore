@@ -26,14 +26,39 @@ class ExperienceSystem {
   public onSkillUnlockedCallback?: (skillId: string) => void;
 
   /**
-   * Balanced Account Level Curve (v4.0.1):
-   * Early levels are fast to unlock skill points, higher levels require solid mastery.
-   * Level N requires floor(420 * N^1.48) XP
+   * Progressive RPG Account Level Curve (v5.11.0):
+   * Early levels are fast and rewarding (level 1->2 in run 1 with ~185 XP),
+   * smoothly scaling with sub-linear power to reward deep play and combos.
    */
   public getXpRequiredForLevel(level: number): number {
-    if (level < 1) return 420;
+    if (level < 1) return 185;
     if (level >= 100) return Infinity; // Max level reached!
-    return Math.floor(420 * Math.pow(level, 1.48));
+    return Math.floor(120 + 65 * Math.pow(level, 1.35));
+  }
+
+  /**
+   * Dynamic Chromamancer Max Mana Pool:
+   * 1. Base 100 Mana.
+   * 2. Automatic RPG growth: +2.5 Max Mana per account level.
+   * 3. Skill point investment: Aether Harvest (+10 MP/rank) & Chrono Tank (+5 MP/rank).
+   */
+  public getMaxMana(): number {
+    const base = 100;
+    const lvlBonus = (this.accountLevel - 1) * 2.5;
+    const aetherRank = this.getSkillRank('super_frequency');
+    const tankRank = this.getSkillRank('chrono_tank');
+    const skillBonus = aetherRank * 10 + tankRank * 5;
+    return Math.round(base + lvlBonus + skillBonus);
+  }
+
+  /**
+   * Passive Mana Regeneration Rate:
+   * Base 3.5 MP/s + RPG level scaling + Aether Harvest skill bonus.
+   */
+  public getManaRegenPerSecond(): number {
+    const lvlBonus = (this.accountLevel - 1) * 0.08;
+    const aetherBonus = (this.getAetherHarvestBonus() || 0) * 2.5;
+    return 3.5 + lvlBonus + aetherBonus;
   }
 
   public get accountLevel(): number {

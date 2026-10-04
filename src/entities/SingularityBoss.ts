@@ -704,11 +704,11 @@ export class SingularityBoss {
 
   public drawHUD(c: CanvasRenderingContext2D, screenWidth: number) {
     if (!this.active) return;
-    const barW = Math.min(380, screenWidth - 40);
-    const barH = 11;
+    const barW = Math.min(420, screenWidth - 36);
+    const barH = 12;
     const cx = screenWidth / 2;
     const barX = cx - barW / 2;
-    const barY = HUD_H + 10;
+    const barY = HUD_H + 11;
 
     const hpRatio = Math.max(0, Math.min(1, this.hp / this.maxHp));
     const phaseCol = this.phase === 3 ? '#ff0055' : (this.phase === 2 ? '#a855f7' : '#00ffff');
@@ -718,19 +718,19 @@ export class SingularityBoss {
     // Dark cybernetic backing panel
     const panelPad = 8;
     const panelW = barW + panelPad * 2;
-    const panelH = barH + 28;
-    c.fillStyle = 'rgba(5, 8, 20, 0.88)';
-    c.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    c.lineWidth = 1;
+    const panelH = barH + 34;
+    c.fillStyle = 'rgba(4, 7, 18, 0.92)';
+    c.strokeStyle = this.shieldActive ? 'rgba(0, 240, 255, 0.25)' : 'rgba(255, 215, 0, 0.5)';
+    c.lineWidth = 1.2;
     c.beginPath();
     c.roundRect(cx - panelW / 2, barY - 14, panelW, panelH, 6);
     c.fill();
     c.stroke();
 
-    // Container
+    // Health bar container
     c.fillStyle = 'rgba(10, 15, 30, 0.95)';
     c.strokeStyle = phaseCol;
-    c.lineWidth = 1.5;
+    c.lineWidth = 1.6;
     c.shadowColor = phaseCol;
     c.shadowBlur = 8;
     c.strokeRect(barX, barY, barW, barH);
@@ -747,7 +747,7 @@ export class SingularityBoss {
       c.fillRect(barX + 1, barY + 1, fillW, barH - 2);
     }
 
-    // Text Header
+    // Text Header (Above bar)
     c.font = 'bold 10px monospace';
     c.textAlign = 'center';
     c.textBaseline = 'bottom';
@@ -756,18 +756,52 @@ export class SingularityBoss {
     c.shadowBlur = 6;
     c.fillText(`SINGULARITY CORE [PHASE ${this.phase}] • ${Math.round(this.hp)} / ${this.maxHp} HP`, cx, barY - 3);
 
-    // Shield / Exposed Status line
-    c.font = 'bold 9px monospace';
-    c.textBaseline = 'top';
+    // Shield / Exposed Status line with interactive relay pips (Below bar)
+    const statusY = barY + barH + 4;
     if (this.shieldActive) {
-      const overloadedCount = this.relays.filter(r => r.isOverloaded).length;
-      c.fillStyle = '#00ffff';
-      c.shadowColor = '#00ffff';
-      c.fillText(`SHIELD ACTIVE: DASH OVERLOAD 4 RELAYS (${overloadedCount}/4)`, cx, barY + barH + 3);
+      c.font = 'bold 8.5px monospace';
+      c.textBaseline = 'top';
+      c.textAlign = 'left';
+      c.fillStyle = '#88ccee';
+      c.shadowBlur = 0;
+      c.fillText('OVERLOAD 4 RELAYS:', barX + 4, statusY);
+
+      // 4 High-Visibility Relay Badges [NW] [NE] [SW] [SE]
+      const relayPips = ['NW', 'NE', 'SW', 'SE'] as const;
+      const pipStartX = barX + 130;
+      const pipSpacing = (barW - 134) / 4;
+
+      for (let i = 0; i < relayPips.length; i++) {
+        const rId = relayPips[i];
+        const relayObj = this.relays.find(r => r.id === rId);
+        const isOver = relayObj ? relayObj.isOverloaded : false;
+        const px = pipStartX + i * pipSpacing;
+
+        // Mini Badge
+        c.fillStyle = isOver ? 'rgba(0, 240, 255, 0.25)' : 'rgba(255, 0, 85, 0.22)';
+        c.strokeStyle = isOver ? '#00ffff' : '#ff0055';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.roundRect(px, statusY - 1, pipSpacing - 4, 13, 3);
+        c.fill();
+        c.stroke();
+
+        c.font = 'bold 8px monospace';
+        c.textAlign = 'center';
+        c.fillStyle = isOver ? '#00ffff' : '#ffffff';
+        c.shadowColor = isOver ? '#00ffff' : '#ff0055';
+        c.shadowBlur = isOver ? 6 : 0;
+        c.fillText(`${rId} ${isOver ? '⚡' : '🛡'}`, px + (pipSpacing - 4) / 2, statusY + 6);
+        c.shadowBlur = 0;
+      }
     } else {
+      c.font = 'bold 9.5px monospace';
+      c.textBaseline = 'top';
+      c.textAlign = 'center';
       c.fillStyle = '#ffd700';
       c.shadowColor = '#ffd700';
-      c.fillText(`⚡ CORE EXPOSED: STRIKE NOW! (${this.exposedTimer.toFixed(1)}s) ⚡`, cx, barY + barH + 3);
+      c.shadowBlur = 10;
+      c.fillText(`⚡ CORE VULNERABLE: STRIKE WITH DASH! (${this.exposedTimer.toFixed(1)}s) ⚡`, cx, statusY);
     }
 
     c.restore();

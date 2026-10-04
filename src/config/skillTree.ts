@@ -199,12 +199,12 @@ export const SKILL_NODES: SkillNode[] = [
   {
     id: 'super_frequency',
     branch: 'carnage',
-    name: 'AETHER HARVEST',
+    name: 'AETHER HARVEST & MANA FLOW',
     icon: 'nova',
     maxRank: 4,
     costPerRank: 1,
-    desc: 'Increases XP and score gained from pellets and streaks by +15% per rank.',
-    tradeoffDesc: 'Reduces Shift sequence spell cooldowns by 8% per rank.'
+    desc: 'Adds +20% XP gained from all sources, +10 Max Mana, and +0.6 MP/s regen per rank (up to +80% XP, +40 Max Mana).',
+    tradeoffDesc: 'Directly accelerates account progression and sequence spell capacity. Reduces spell cooldowns by 8% per rank.'
   },
   {
     id: 'singularity_mastery',

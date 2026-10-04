@@ -172,7 +172,9 @@ export class Renderer {
     // Couleurs progressives : monochrome au début, néon complet au tier 5
     const dotCol    = tier <= 4 ? CHROMA_DOT[tier]    : lvl.dotColor;
     const pelletCol = tier <= 4 ? CHROMA_PELLET[tier] : lvl.pelletColor;
-    for (let r = 0; r < ROWS; r++) {
+    const isBossArena = maze.rows > 22;
+
+    for (let r = 0; r < maze.rows; r++) {
       for (let col = 0; col < maze.cols; col++) {
         const d = maze.dotMap[r][col];
         if (!d) continue;
@@ -180,17 +182,34 @@ export class Renderer {
         if (d === 2) {
           c.fillStyle = dotCol;
           c.beginPath();
-          c.arc(px, py, 2.5, 0, PI2);
+          c.arc(px, py, isBossArena ? 2.8 : 2.5, 0, PI2);
           c.fill();
         } else if (d === 3) {
-          const p = 1 + Math.sin(time * 4) * 0.3;
-          c.fillStyle = pelletCol;
+          const p = 1 + Math.sin(time * 5) * 0.25;
+          const rad = (isBossArena ? 7.2 : 5.4) * p;
+
+          c.save();
+          // High-visibility animated Super Pellet aura
+          c.strokeStyle = pelletCol;
+          c.lineWidth = isBossArena ? 2.5 : 1.8;
           c.shadowColor = pelletCol;
+          c.shadowBlur = tier <= 1 ? 6 : (isBossArena ? 20 : 14);
+          c.beginPath();
+          c.arc(px, py, rad * 1.55, 0, PI2);
+          c.stroke();
+
+          // Intense glowing core
+          c.fillStyle = '#ffffff';
           c.shadowBlur = tier <= 1 ? 4 : 12;
           c.beginPath();
-          c.arc(px, py, 5 * p, 0, PI2);
+          c.arc(px, py, rad * 0.65, 0, PI2);
           c.fill();
-          c.shadowBlur = 0;
+
+          c.fillStyle = pelletCol;
+          c.beginPath();
+          c.arc(px, py, rad, 0, PI2);
+          c.fill();
+          c.restore();
         }
       }
     }
@@ -4112,14 +4131,16 @@ export class Renderer {
     c.restore();
   }
 
-  public drawMaze32xSupercharge(_mOff: HTMLCanvasElement, time: number, isSingularity: boolean = false) {
+  public drawMaze32xSupercharge(_mOff: HTMLCanvasElement, time: number, isSingularity: boolean = false, arenaW?: number, arenaH?: number) {
     const c = this.ctx;
     c.save();
     c.globalCompositeOperation = 'source-atop';
     // Deep vibrant electrified cyan or pure incandescent gold energy in Singularity flowing through maze walls
     const pulse = 0.40 + 0.12 * Math.sin(time * 6);
     c.fillStyle = isSingularity ? `rgba(255, 215, 0, ${pulse + 0.1})` : `rgba(0, 240, 255, ${pulse})`;
-    c.fillRect(0, 0, this.cw, ROWS * T);
+    const w = arenaW ?? this.cw;
+    const h = arenaH ?? (ROWS * T);
+    c.fillRect(0, 0, w, h);
     c.restore();
   }
 
@@ -4171,50 +4192,52 @@ export class Renderer {
     return { stage, stageName, stageCode, stageDetail, bpm, ecgColor, isFlatline, effectiveLvl };
   }
 
-  public drawBiologicalHostPulse(time: number, currentLevel: number, loopCount: number = 0) {
+  public drawBiologicalHostPulse(time: number, currentLevel: number, loopCount: number = 0, arenaW?: number, arenaH?: number) {
     const c = this.ctx;
     const info = this.getInfectionData(currentLevel, loopCount);
+    const w = arenaW ?? this.cw;
+    const h = arenaH ?? (ROWS * T);
     c.save();
 
     if (info.stage === 1) {
       // Stade 1 : Homéostasie (pulsation douce et régulière ~72 BPM)
       const pulse = 0.03 + 0.025 * Math.sin(time * (72 / 60) * Math.PI * 2);
       c.fillStyle = `rgba(0, 255, 170, ${pulse})`;
-      c.fillRect(0, 0, this.cw, ROWS * T);
+      c.fillRect(0, 0, w, h);
     } else if (info.stage === 2) {
       // Stade 2 : Réaction inflammatoire / Fièvre (~126 BPM)
       const fever = 0.06 + 0.04 * Math.sin(time * (126 / 60) * Math.PI * 2);
       c.fillStyle = `rgba(255, 90, 10, ${fever})`;
-      c.fillRect(0, 0, this.cw, ROWS * T);
+      c.fillRect(0, 0, w, h);
 
       // Micro-tension vasculaire en périphérie
       const capPulse = 0.08 + 0.06 * Math.sin(time * 4);
       c.strokeStyle = `rgba(255, 50, 10, ${capPulse})`;
       c.lineWidth = 1.8;
-      c.strokeRect(2, 2, this.cw - 4, ROWS * T - 4);
+      c.strokeRect(2, 2, w - 4, h - 4);
     } else if (info.stage === 3) {
       // Stade 3 : Arythmie & Nécrose (soubresauts irréguliers et plaques violacées)
       const irregular = Math.sin(time * 7.2) * Math.sin(time * 2.8);
       const spasm = irregular > 0.3;
       const alpha = spasm ? 0.14 : 0.06;
       c.fillStyle = `rgba(140, 0, 190, ${alpha})`;
-      c.fillRect(0, 0, this.cw, ROWS * T);
+      c.fillRect(0, 0, w, h);
 
       // Spasme ischémique nécrotique intermittent
       if (Math.sin(time * 11) > 0.6) {
         c.fillStyle = 'rgba(25, 0, 40, 0.22)';
-        c.fillRect(0, 0, this.cw, ROWS * T);
+        c.fillRect(0, 0, w, h);
       }
     } else {
       // Stade 4 : Asystolie / Arrêt (Level 10)
       // Dévitalisé, terne, froid, aucune pulsation vitale
       c.fillStyle = 'rgba(15, 23, 42, 0.32)';
-      c.fillRect(0, 0, this.cw, ROWS * T);
+      c.fillRect(0, 0, w, h);
 
       // Faint mourir tremblotant
       if ((time % 3.8) < 0.15) {
         c.fillStyle = 'rgba(148, 163, 184, 0.08)';
-        c.fillRect(0, 0, this.cw, ROWS * T);
+        c.fillRect(0, 0, w, h);
       }
     }
 

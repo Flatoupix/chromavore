@@ -138,7 +138,9 @@ class Game {
 
   // Mana Economy for Chromamancer (RPG mode)
   public mana: number = 50;
-  public readonly MAX_MANA: number = 100;
+  public get MAX_MANA(): number {
+    return experienceSystem.getMaxMana();
+  }
 
   // Pending game over snapshot
   public pendingScore: number = 0;
@@ -2100,7 +2102,7 @@ class Game {
             }
           }
         }
-        for (let r = 0; r < ROWS; r++) {
+        for (let r = 0; r < this.maze.rows; r++) {
           for (let c = 0; c < this.maze.cols; c++) {
             if (this.maze.dotMap[r][c]) {
               const dx = c * T + HALF - pp.x, dy = r * T + HALF - pp.y;
@@ -2317,6 +2319,11 @@ class Game {
 
   private onPlayerLevelUp(event: LevelUpEvent, x: number, y: number) {
     this.lives = Math.min(5, this.lives + 1);
+    if (this.currentGameMode === 'custom') {
+      this.mana = this.MAX_MANA;
+      input.currentMana = this.mana;
+      particles.addPop(x, y - 52, '★ MANA REFILLED! ★', '#00ffff', 16);
+    }
     particles.addPop(x, y - 35, '+1 LIFE! +1 SP!', '#00ffaa', 22);
 
     // Screen shake & subtle flash
@@ -3326,11 +3333,11 @@ class Game {
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + 6.0);
 
         if (this.currentGameMode === 'custom') {
-          this.mana = Math.min(this.MAX_MANA, this.mana + 15.0);
+          this.mana = Math.min(this.MAX_MANA, this.mana + 20.0);
           input.currentMana = this.mana;
         }
 
-        const lvlUpPellet = experienceSystem.addXp(Math.round(15 * (1 + aetherBonus)), 'pellet');
+        const lvlUpPellet = experienceSystem.addXp(Math.round(35 * (1 + aetherBonus)), 'pellet');
         if (lvlUpPellet) {
           this.onPlayerLevelUp(lvlUpPellet, px, py);
         }
@@ -3343,7 +3350,7 @@ class Game {
         const maxChrono = progression.getSkillLevel('chrono') === 2 ? 150 : CHRONO_MAX;
         this.chronoEnergy = Math.min(maxChrono, this.chronoEnergy + CHRONO_DOT_RECHARGE);
         if (this.currentGameMode === 'custom') {
-          this.mana = Math.min(this.MAX_MANA, this.mana + 1.0);
+          this.mana = Math.min(this.MAX_MANA, this.mana + 1.2);
           input.currentMana = this.mana;
         }
         this.player.addDotSpeed(this.combo.m);
@@ -3366,7 +3373,8 @@ class Game {
         const pts = Math.round(10 * this.combo.m * (1 + aetherBonus));
         this.score += pts;
 
-        const lvlUpDot = experienceSystem.addXp(Math.round(2 * (1 + aetherBonus)), 'dot');
+        const dotXpGain = Math.round((3 + (this.combo.m >= 4 ? Math.min(10, Math.floor(this.combo.m / 2)) : 0)) * (1 + aetherBonus));
+        const lvlUpDot = experienceSystem.addXp(dotXpGain, 'dot');
         if (lvlUpDot) {
           this.onPlayerLevelUp(lvlUpDot, px, py);
         }
@@ -3909,7 +3917,7 @@ class Game {
 
         // Chromamancer Mana passive regen & sync to inputManager
         if (this.currentGameMode === 'custom') {
-          const manaRegen = 3.0 + (experienceSystem.getAetherHarvestBonus() || 0) * 1.5;
+          const manaRegen = experienceSystem.getManaRegenPerSecond();
           this.mana = Math.min(this.MAX_MANA, this.mana + manaRegen * dt);
         } else {
           this.mana = this.MAX_MANA;
@@ -4512,23 +4520,23 @@ class Game {
     if (this.state === 'paused') {
       this.renderer.ctx.save();
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
+      const arenaW = this.maze.cols * T;
+      const arenaH = this.maze.rows * T;
       if (Math.abs(this.cameraScale - 1.0) > 0.001) {
         const vpW = this.renderer.cw;
         const vpH = ROWS * T;
-        const arenaW = this.maze.cols * T;
-        const arenaH = this.maze.rows * T;
         this.renderer.ctx.translate(vpW / 2, vpH / 2);
         this.renderer.ctx.scale(this.cameraScale, this.cameraScale);
         this.renderer.ctx.translate(-arenaW / 2, -arenaH / 2);
       }
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
       this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
-      this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
+      this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount, arenaW, arenaH);
 
       // Electrified supercharged maze walls in 32x God Mode
       const is32xGod = this.combo.m >= 32;
       if (is32xGod) {
-        this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time);
+        this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time, false, arenaW, arenaH);
       }
 
       this.renderer.drawDots(this.maze, this.time);
@@ -4587,22 +4595,22 @@ class Game {
     if (this.state === 'debug') {
       this.renderer.ctx.save();
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
+      const arenaW = this.maze.cols * T;
+      const arenaH = this.maze.rows * T;
       if (Math.abs(this.cameraScale - 1.0) > 0.001) {
         const vpW = this.renderer.cw;
         const vpH = ROWS * T;
-        const arenaW = this.maze.cols * T;
-        const arenaH = this.maze.rows * T;
         this.renderer.ctx.translate(vpW / 2, vpH / 2);
         this.renderer.ctx.scale(this.cameraScale, this.cameraScale);
         this.renderer.ctx.translate(-arenaW / 2, -arenaH / 2);
       }
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
       this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
-      this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
+      this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount, arenaW, arenaH);
 
       const is32xGod = this.combo.m >= 32;
       if (is32xGod) {
-        this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time);
+        this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time, false, arenaW, arenaH);
       }
 
       this.renderer.drawDots(this.maze, this.time);
@@ -4661,12 +4669,13 @@ class Game {
     this.renderer.ctx.save();
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
 
+    const arenaW = this.maze.cols * T;
+    const arenaH = this.maze.rows * T;
+
     // Dynamic Camera Zoom-Out (framing Level 10 Boss Macro-Arena into the viewport)
     if (Math.abs(this.cameraScale - 1.0) > 0.001) {
       const vpW = this.renderer.cw;
       const vpH = ROWS * T;
-      const arenaW = this.maze.cols * T;
-      const arenaH = this.maze.rows * T;
       this.renderer.ctx.translate(vpW / 2, vpH / 2);
       this.renderer.ctx.scale(this.cameraScale, this.cameraScale);
       this.renderer.ctx.translate(-arenaW / 2, -arenaH / 2);
@@ -4674,13 +4683,13 @@ class Game {
 
     this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
     this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
-    this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
+    this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount, arenaW, arenaH);
 
     // Electrified supercharged maze walls in 32x God Mode & 64x Singularity
     const isSingularity = this.combo.m >= 64;
     const is32xGod = this.combo.m >= 32;
     if (is32xGod || isSingularity) {
-      this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time, isSingularity);
+      this.renderer.drawMaze32xSupercharge(this.maze.mOff, this.time, isSingularity, arenaW, arenaH);
     }
 
     // Expanding Golden Deflagration Shockwave during Singularity intro
