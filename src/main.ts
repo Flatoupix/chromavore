@@ -51,6 +51,12 @@ class Game {
   public singularityShockwaveRadius: number = 0;
   public singularityTriggered: boolean = false;
   public singularityNovaUsed: boolean = false; // 1 Nova per Singularity
+  public singularityKillsProgress: number = 0;
+  public singularityTier: number = 0;
+
+  public get currentSingularityTarget(): number {
+    return experienceSystem.getSingularityStreakTarget(this.singularityTier);
+  }
 
   // Bonus Level Hyper-Swarm specific (500+ entity object-pooled architecture)
   public bonusTimer: number = BONUS_DURATION;
@@ -1772,8 +1778,8 @@ class Game {
 
   public configureArena() {
     const isWidescreen = this.isWidescreenUnlocked();
-    this.maze.cols = isWidescreen ? MADNESS_COLS : BASE_COLS;
-    this.renderer.updateCanvasSize(this.maze.cols, this.maze.rows);
+    const cols = isWidescreen ? MADNESS_COLS : BASE_COLS;
+    this.renderer.updateCanvasSize(cols, ROWS);
     this.touchDeck.resize();
   }
 
@@ -1806,6 +1812,8 @@ class Game {
     this.singularityShockwaveRadius = 0;
     this.singularityTriggered = false;
     this.singularityNovaUsed = false;
+    this.singularityKillsProgress = 0;
+    this.singularityTier = 0;
     this.bonusItems = [];
     this.bonusItemSpawnTimer = 2.0;
 
@@ -1863,7 +1871,8 @@ class Game {
     const list = this.getCurrentLevelList();
     this.maze.build(lvlIndex, isWidescreen);
     this.maze.renderOffscreen(this.renderer.chromaTier);
-    this.renderer.updateCanvasSize(this.maze.cols, this.maze.rows);
+    const vpCols = isWidescreen ? MADNESS_COLS : BASE_COLS;
+    this.renderer.updateCanvasSize(vpCols, ROWS);
     this.touchDeck.resize();
 
     // Singularity Core Boss in Level 10 (index 9)
@@ -2234,13 +2243,14 @@ class Game {
     }
     if (countForStreak) {
       this.madnessStreak++;
+      this.singularityKillsProgress++;
       this.killStreakTimer = KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus();
       if (this.madnessStreak > this.maxMadnessStreak) {
         this.maxMadnessStreak = this.madnessStreak;
       }
 
-      // The flame counter itself must reach x200; total run kills do not qualify.
-      if (this.madnessStreak >= experienceSystem.getSingularityStreakTarget() && !this.singularityTriggered) {
+      // Internal progress reaches current Singularity threshold (200, 300, 400...)
+      if (this.singularityKillsProgress >= this.currentSingularityTarget && !this.singularityTriggered) {
         this.triggerSingularitySequence();
       }
     }
@@ -2375,17 +2385,18 @@ class Game {
 
   private addSingularityTestKills() {
     this.isTestRun = true;
-    const target = experienceSystem.getSingularityStreakTarget();
+    const target = this.currentSingularityTarget;
     this.madnessStreak += 50;
+    this.singularityKillsProgress += 50;
     this.maxMadnessStreak = Math.max(this.maxMadnessStreak, this.madnessStreak);
     this.killStreakTimer = KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus();
     this.checkRampageMilestone(this.madnessStreak);
 
     const playerPos = this.player.getPos();
-    particles.addPop(playerPos.x, playerPos.y - 44, `+50 KILL STREAK • x${this.madnessStreak}/${target}`, '#ffd700', 18);
+    particles.addPop(playerPos.x, playerPos.y - 44, `+50 KILL STREAK • x${this.madnessStreak} (SINGULARITY: ${this.singularityKillsProgress}/${target})`, '#ffd700', 18);
     sounds.play('streak');
 
-    if (this.madnessStreak >= target && !this.singularityTriggered) {
+    if (this.singularityKillsProgress >= target && !this.singularityTriggered) {
       this.triggerSingularitySequence();
     }
   }
@@ -2403,6 +2414,8 @@ class Game {
     this.discoverPickup('singularity');
     this.discoverPickup('singularity_burst');
     this.singularityTriggered = true;
+    this.singularityTier++;
+    this.singularityKillsProgress = 0; // Internal singularity counter resets to 0 right when Singularity is triggered!
     this.singularityIntroTimer = 5.0;
     this.singularityShockwaveRadius = 0;
     // Set the 64x combo for the Singularity bonus phase.
@@ -2416,7 +2429,8 @@ class Game {
     sounds.play('powerup');
 
     const pp = this.player.getPos();
-    particles.addPop(pp.x, pp.y - 45, '« SINGULARITY AWAKENS »', '#ffd700', 26);
+    const nextTarget = this.currentSingularityTarget;
+    particles.addPop(pp.x, pp.y - 45, `« SINGULARITY AWAKENS » (NEXT: ${nextTarget})`, '#ffd700', 26);
   }
 
   private playerDie() {
@@ -2428,6 +2442,7 @@ class Game {
     this.madnessStreak = 0;
     this.killStreakTimer = 0;
     this.singularityTriggered = false;
+    this.singularityKillsProgress = 0;
     this.dotStreak = 0;
     this.dotStreakTimer = 0;
     const pp = this.player.getPos();
@@ -3758,8 +3773,11 @@ class Game {
       // Preserve the earned x200 through the five-second Singularity intro.
       if (this.singularityIntroTimer <= 0) {
         this.killStreakTimer = Math.max(0, this.killStreakTimer - dt);
-        if (this.killStreakTimer === 0) this.madnessStreak = 0;
-        if (this.madnessStreak < experienceSystem.getSingularityStreakTarget() && this.combo.m < 64) {
+        if (this.killStreakTimer === 0) {
+          this.madnessStreak = 0;
+          this.singularityKillsProgress = 0;
+        }
+        if (this.combo.m < 64) {
           this.singularityTriggered = false;
         }
       }
@@ -3858,7 +3876,9 @@ class Game {
         }
 
         // Camera scale update (Level 10 Boss arena zoom-out)
-        const targetCameraScale = (this.boss.active && this.maze.currentLevel === 9) ? 0.94 : 1.0;
+        const targetCameraScale = (this.boss.active && this.maze.currentLevel === 9)
+          ? (Math.min(this.renderer.cw / (this.maze.cols * T), (ROWS * T) / (this.maze.rows * T)) * 0.96)
+          : 1.0;
         this.cameraScale += (targetCameraScale - this.cameraScale) * Math.min(1, dt * 4);
 
         // Bullet Time (Chrono-Shift), unlocked at 180 frags or Chrono Tank skill
@@ -4096,6 +4116,9 @@ class Game {
             sounds.resetDotStreak();
             const pp = this.player.getPos();
             particles.addPop(pp.x, pp.y - 20, 'SINGULARITY EXPIRED (30s)', '#8899aa', 14);
+            if (this.singularityKillsProgress >= this.currentSingularityTarget) {
+              this.triggerSingularitySequence();
+            }
           }
         } else if (this.combo.n > 0) {
           this.combo.t -= dt * chronoScale;
@@ -4537,7 +4560,9 @@ class Game {
         this.player.dashCharges,
         this.player.dashMaxCharges,
         this.mana,
-        this.MAX_MANA
+        this.MAX_MANA,
+        this.singularityKillsProgress,
+        this.currentSingularityTarget
       );
       this.renderer.drawBottomExpBar(this.time);
       this.renderer.drawEffectTimers(this.getEffectTimers());
@@ -4549,6 +4574,15 @@ class Game {
     if (this.state === 'debug') {
       this.renderer.ctx.save();
       this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
+      if (Math.abs(this.cameraScale - 1.0) > 0.001) {
+        const vpW = this.renderer.cw;
+        const vpH = ROWS * T;
+        const arenaW = this.maze.cols * T;
+        const arenaH = this.maze.rows * T;
+        this.renderer.ctx.translate(vpW / 2, vpH / 2);
+        this.renderer.ctx.scale(this.cameraScale, this.cameraScale);
+        this.renderer.ctx.translate(-arenaW / 2, -arenaH / 2);
+      }
       this.renderer.ctx.drawImage(this.maze.mOff, 0, 0);
       this.renderer.drawOrganicTissueNecrosis(this.maze, this.time, this.maze.currentLevel, this.loopCount);
       this.renderer.drawBiologicalHostPulse(this.time, this.maze.currentLevel, this.loopCount);
@@ -4596,7 +4630,9 @@ class Game {
         this.player.dashCharges,
         this.player.dashMaxCharges,
         this.mana,
-        this.MAX_MANA
+        this.MAX_MANA,
+        this.singularityKillsProgress,
+        this.currentSingularityTarget
       );
       this.renderer.drawBottomExpBar(this.time);
       this.renderer.drawEffectTimers(this.getEffectTimers());
@@ -4608,11 +4644,13 @@ class Game {
     this.renderer.ctx.save();
     this.renderer.ctx.translate(particles.shk.x, HUD_H + particles.shk.y);
 
-    // Dynamic Camera Zoom-Out (e.g. framing Level 10 Boss Arena & Relays)
+    // Dynamic Camera Zoom-Out (framing Level 10 Boss Macro-Arena into the viewport)
     if (Math.abs(this.cameraScale - 1.0) > 0.001) {
+      const vpW = this.renderer.cw;
+      const vpH = ROWS * T;
       const arenaW = this.maze.cols * T;
       const arenaH = this.maze.rows * T;
-      this.renderer.ctx.translate(arenaW / 2, arenaH / 2);
+      this.renderer.ctx.translate(vpW / 2, vpH / 2);
       this.renderer.ctx.scale(this.cameraScale, this.cameraScale);
       this.renderer.ctx.translate(-arenaW / 2, -arenaH / 2);
     }
@@ -4712,7 +4750,9 @@ class Game {
       this.player.dashCharges,
       this.player.dashMaxCharges,
       this.mana,
-      this.MAX_MANA
+      this.MAX_MANA,
+      this.singularityKillsProgress,
+      this.currentSingularityTarget
     );
     this.renderer.drawBottomExpBar(this.time);
     this.renderer.drawEffectTimers(this.getEffectTimers());

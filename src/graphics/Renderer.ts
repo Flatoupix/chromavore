@@ -886,7 +886,9 @@ export class Renderer {
     dashCharges: number = 1,
     dashMaxCharges: number = 1,
     currentMana: number = 100,
-    maxMana: number = 100
+    maxMana: number = 100,
+    singularityKillsProgress: number = 0,
+    singularityTarget: number = 200
   ) {
     const isMadness = true;
     const c = this.ctx;
@@ -1027,7 +1029,8 @@ export class Renderer {
         const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
         c.fillText(`LVL ${accLvl}${surgeTag} • [CHROMAMANCER]`, tmX, 44);
       } else {
-        const killProgress = Math.max(0, Math.min(1, madnessStreak / singularityTarget));
+        const target = singularityTarget || experienceSystem.getSingularityStreakTarget();
+        const killProgress = Math.max(0, Math.min(1, singularityKillsProgress / target));
 
         c.fillStyle = 'rgba(255, 255, 255, 0.12)';
         c.fillRect(xpX, xpY, xpW, xpH);
@@ -1036,7 +1039,7 @@ export class Renderer {
 
         c.font = 'bold 7.5px monospace';
         c.fillStyle = '#ffd700';
-        c.fillText(`STREAK x${madnessStreak}/${singularityTarget}`, tmX, 44);
+        c.fillText(`SINGULARITY ${singularityKillsProgress}/${target}`, tmX, 44);
       }
 
       // 5. Chrono-Shift (Bullet Time) Gauge

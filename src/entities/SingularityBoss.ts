@@ -41,6 +41,9 @@ export class SingularityBoss {
 
   public relays: BossRelay[] = [];
 
+  public arenaW: number = 0;
+  public arenaH: number = 0;
+
   // Attack timers & state
   public beamTimer: number = 4.0;
   public beamWarning: number = 0;
@@ -64,9 +67,11 @@ export class SingularityBoss {
   }
 
   public init(cols: number, rows: number) {
+    this.arenaW = cols * T;
+    this.arenaH = rows * T;
     this.x = (cols * T) / 2;
     this.y = (rows * T) / 2;
-    this.radius = T * 1.8;
+    this.radius = T * 2.2;
     this.hp = this.maxHp;
     this.phase = 1;
     this.shieldActive = true;
@@ -77,17 +82,17 @@ export class SingularityBoss {
     this.hasSpawnedPhase2Titans = false;
     this.coreContactCooldown = 0;
 
-    // 4 Corner Relay positions
-    const marginX = 3.5 * T;
-    const marginY = 3.5 * T;
-    const rightX = (cols - 3.5) * T;
-    const bottomY = (rows - 3.5) * T;
+    // 4 Corner Relay positions adapted to the macro-arena
+    const marginX = (cols >= 40 ? 5.5 : 3.5) * T;
+    const marginY = (rows >= 30 ? 6.5 : 3.5) * T;
+    const rightX = (cols * T) - marginX;
+    const bottomY = (rows * T) - marginY;
 
     this.relays = [
-      { id: 'NW', x: marginX, y: marginY, radius: T * 0.9, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
-      { id: 'NE', x: rightX, y: marginY, radius: T * 0.9, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
-      { id: 'SW', x: marginX, y: bottomY, radius: T * 0.9, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
-      { id: 'SE', x: rightX, y: bottomY, radius: T * 0.9, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
+      { id: 'NW', x: marginX, y: marginY, radius: T * 1.1, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
+      { id: 'NE', x: rightX, y: marginY, radius: T * 1.1, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
+      { id: 'SW', x: marginX, y: bottomY, radius: T * 1.1, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
+      { id: 'SE', x: rightX, y: bottomY, radius: T * 1.1, isOverloaded: false, overloadTimer: 0, hitsRequired: 1, currentHits: 0, hitCooldown: 0, pulseTimer: 0 },
     ];
 
     sounds.play('nova');
@@ -272,6 +277,7 @@ export class SingularityBoss {
 
       // Check if player stands in cardinal beams
       const beamHalfWidth = T * 0.75;
+      const beamReach = Math.max(this.arenaW || 1200, this.arenaH || 1000) * 1.5;
       const dx = pp.x - this.x;
       const dy = pp.y - this.y;
 
@@ -280,8 +286,8 @@ export class SingularityBoss {
       const rx = dx * cos - dy * sin;
       const ry = dx * sin + dy * cos;
 
-      const inHorizontalBeam = Math.abs(ry) < beamHalfWidth;
-      const inVerticalBeam = Math.abs(rx) < beamHalfWidth;
+      const inHorizontalBeam = Math.abs(ry) < beamHalfWidth && Math.abs(rx) <= beamReach;
+      const inVerticalBeam = Math.abs(rx) < beamHalfWidth && Math.abs(ry) <= beamReach;
 
       if ((inHorizontalBeam || inVerticalBeam) && player.invuln <= 0) {
         player.invuln = 1.0;
@@ -304,7 +310,8 @@ export class SingularityBoss {
       if (this.vortexActive > 0) {
         this.vortexActive -= dt;
         const dist = Math.hypot(pp.x - this.x, pp.y - this.y);
-        if (dist > this.radius && dist < 350) {
+        const maxVortexDist = Math.max(550, (this.arenaW || 1000) * 0.45);
+        if (dist > this.radius && dist < maxVortexDist) {
           const pullAngle = Math.atan2(this.y - pp.y, this.x - pp.x);
           player.applyGravitationalPull(pullAngle, 85 * dt, maze);
           if (Math.random() < 0.25) {
@@ -332,7 +339,8 @@ export class SingularityBoss {
           particles.flash('#ff0055', 0.2);
           particles.shake(6, 0.2);
         }
-        if (this.pulseRingRadius > 380) {
+        const maxRingRadius = Math.max(this.arenaW || 1200, this.arenaH || 1000) * 1.2;
+        if (this.pulseRingRadius > maxRingRadius) {
           this.pulseRingRadius = 0;
         }
       }
@@ -417,26 +425,66 @@ export class SingularityBoss {
     if (!this.active) return;
     const c = ctx;
 
-    // ─── 1. Beams / Warnings ───
-    if (this.beamWarning > 0 || this.beamActive > 0) {
+    // ─── 1. Beams & Precision Telegraphing ───
+    const beamReach = Math.max(this.arenaW || 1200, this.arenaH || 1000) * 1.5;
+    if (this.beamWarning > 0) {
       c.save();
       c.translate(this.x, this.y);
       c.rotate(this.beamAngle);
 
-      const isWarning = this.beamWarning > 0;
-      const alpha = isWarning ? 0.35 + 0.25 * Math.sin(time * 20) : 0.85;
-      const col = isWarning ? '#ff5500' : '#00ffff';
-      const beamW = isWarning ? 4 : T * 1.5;
+      const alpha = 0.4 + 0.35 * Math.sin(time * 24);
+      const beamW = T * 1.5;
 
-      c.fillStyle = col;
-      c.strokeStyle = col;
-      c.shadowColor = col;
-      c.shadowBlur = isWarning ? 6 : 18;
+      // Telegraph Zone Corridor
+      c.fillStyle = `rgba(255, 40, 0, ${alpha * 0.15})`;
+      c.fillRect(-beamReach, -beamW / 2, beamReach * 2, beamW);
+      c.fillRect(-beamW / 2, -beamReach, beamW, beamReach * 2);
+
+      // Central Laser Sightlines
+      c.strokeStyle = '#ff3300';
+      c.shadowColor = '#ff4400';
+      c.shadowBlur = 10;
+      c.lineWidth = 1.8;
       c.globalAlpha = alpha;
 
-      // 4 Cardinal rays from core to borders
-      c.fillRect(-450, -beamW / 2, 900, beamW);
-      c.fillRect(-beamW / 2, -450, beamW, 900);
+      c.beginPath();
+      c.moveTo(-beamReach, 0); c.lineTo(beamReach, 0);
+      c.moveTo(0, -beamReach); c.lineTo(0, beamReach);
+      c.stroke();
+
+      // Scrolling Targeting Reticles along the sightlines
+      const offset = (time * 180) % 120;
+      for (let d = 90; d < beamReach; d += 120) {
+        for (const sign of [-1, 1]) {
+          const px = (d + offset) * sign;
+          c.strokeRect(px - 5, -5, 10, 10);
+          const py = (d + offset) * sign;
+          c.strokeRect(-5, py - 5, 10, 10);
+        }
+      }
+      c.restore();
+    } else if (this.beamActive > 0) {
+      c.save();
+      c.translate(this.x, this.y);
+      c.rotate(this.beamAngle);
+
+      const beamW = T * 1.6;
+      const colOuter = this.phase === 3 ? '#ff0055' : '#00ffff';
+
+      // Outer High-Energy Laser Aura
+      c.fillStyle = colOuter;
+      c.shadowColor = colOuter;
+      c.shadowBlur = 24;
+      c.globalAlpha = 0.85;
+      c.fillRect(-beamReach, -beamW / 2, beamReach * 2, beamW);
+      c.fillRect(-beamW / 2, -beamReach, beamW, beamReach * 2);
+
+      // Intense White Core Beam
+      c.fillStyle = '#ffffff';
+      c.shadowBlur = 0;
+      c.globalAlpha = 0.95;
+      c.fillRect(-beamReach, -beamW * 0.22, beamReach * 2, beamW * 0.44);
+      c.fillRect(-beamW * 0.22, -beamReach, beamW * 0.44, beamReach * 2);
 
       c.restore();
     }
@@ -458,35 +506,68 @@ export class SingularityBoss {
     if (this.vortexActive > 0) {
       c.save();
       c.beginPath();
-      c.arc(this.x, this.y, 160 + 20 * Math.sin(time * 8), 0, Math.PI * 2);
-      c.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+      c.arc(this.x, this.y, 220 + 30 * Math.sin(time * 8), 0, Math.PI * 2);
+      c.strokeStyle = 'rgba(168, 85, 247, 0.45)';
       c.lineWidth = 3;
       c.setLineDash([8, 6]);
       c.stroke();
       c.restore();
     }
 
-    // ─── 4. Relays & Connecting Tether Beams ───
+    // ─── 4. Relays & High-Tech Plasma Conduits ───
     for (const r of this.relays) {
-      // Tether beam to core
       c.save();
+      // Conduit Tether to Core
       c.beginPath();
       c.moveTo(this.x, this.y);
       c.lineTo(r.x, r.y);
-      const tetherCol = r.isOverloaded ? '#00ffff' : (this.shieldActive ? '#ff0055' : '#ffd700');
-      c.strokeStyle = tetherCol;
-      c.shadowColor = tetherCol;
-      c.shadowBlur = r.isOverloaded ? 10 : 4;
-      c.lineWidth = r.isOverloaded ? 2.5 : 1;
-      c.globalAlpha = r.isOverloaded ? 0.75 : 0.35;
-      c.stroke();
+
+      if (r.isOverloaded) {
+        // Severed conduit with flickering electrical spark discharges
+        c.strokeStyle = 'rgba(255, 60, 60, 0.35)';
+        c.setLineDash([4, 8]);
+        c.lineWidth = 1.5;
+        c.stroke();
+        c.setLineDash([]);
+
+        if (Math.random() < 0.35) {
+          const sparkT = Math.random();
+          const sx = this.x + (r.x - this.x) * sparkT + (Math.random() - 0.5) * 8;
+          const sy = this.y + (r.y - this.y) * sparkT + (Math.random() - 0.5) * 8;
+          c.fillStyle = '#00ffff';
+          c.fillRect(sx - 1.5, sy - 1.5, 3, 3);
+        }
+      } else {
+        // Active High-Energy Power Conduit
+        const conduitCol = this.shieldActive ? '#ff007f' : '#ffd700';
+        c.strokeStyle = conduitCol;
+        c.shadowColor = conduitCol;
+        c.shadowBlur = 8;
+        c.lineWidth = 2.5;
+        c.globalAlpha = 0.6 + 0.2 * Math.sin(time * 6 + r.pulseTimer);
+        c.stroke();
+
+        // Flowing plasma packets heading towards the core
+        for (let p = 0; p < 4; p++) {
+          const tNode = (time * 0.7 + p * 0.25) % 1.0;
+          const flowT = 1.0 - tNode;
+          const nx = this.x + (r.x - this.x) * flowT;
+          const ny = this.y + (r.y - this.y) * flowT;
+          c.beginPath();
+          c.arc(nx, ny, 3.5, 0, Math.PI * 2);
+          c.fillStyle = '#00ffff';
+          c.shadowColor = '#00ffff';
+          c.shadowBlur = 10;
+          c.fill();
+        }
+      }
       c.restore();
 
       // Relay Pillar Base
       c.save();
       c.beginPath();
       c.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-      c.fillStyle = r.isOverloaded ? 'rgba(0, 240, 255, 0.25)' : 'rgba(25, 10, 30, 0.85)';
+      c.fillStyle = r.isOverloaded ? 'rgba(0, 240, 255, 0.2)' : 'rgba(25, 10, 30, 0.9)';
       c.strokeStyle = r.isOverloaded ? '#00ffff' : '#8899bb';
       c.lineWidth = 2.5;
       c.shadowColor = r.isOverloaded ? '#00ffff' : '#556677';
@@ -504,14 +585,14 @@ export class SingularityBoss {
       if (r.isOverloaded && this.exposedTimer <= 0) {
         const prog = r.overloadTimer / 8.0;
         c.beginPath();
-        c.arc(r.x, r.y, r.radius + 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
+        c.arc(r.x, r.y, r.radius + 5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
         c.strokeStyle = '#00ffff';
         c.lineWidth = 2.5;
         c.stroke();
       }
 
       // Relay Label
-      c.font = 'bold 9px monospace';
+      c.font = 'bold 9.5px monospace';
       c.fillStyle = r.isOverloaded ? '#00ffff' : '#ffffff';
       c.textAlign = 'center';
       c.textBaseline = 'middle';
@@ -520,13 +601,13 @@ export class SingularityBoss {
       c.restore();
     }
 
-    // ─── 5. Central Singularity Core ───
+    // ─── 5. Central Singularity Core & Kinetic Shields ───
     c.save();
     c.translate(this.x, this.y);
 
     // Accretion disk
     const diskRadius = this.radius * (1.35 + 0.1 * Math.sin(time * 4));
-    const grad = c.createRadialGradient(0, 0, this.radius * 0.6, 0, 0, diskRadius);
+    const grad = c.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, diskRadius);
     const coreColor = this.hitFlash > 0 ? '#ffffff' : (this.shieldActive ? '#a855f7' : '#ffd700');
     grad.addColorStop(0, '#000000');
     grad.addColorStop(0.6, coreColor);
@@ -541,33 +622,80 @@ export class SingularityBoss {
     c.arc(0, 0, this.radius, 0, Math.PI * 2);
     c.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#05020a';
     c.strokeStyle = coreColor;
-    c.lineWidth = 3;
+    c.lineWidth = 3.5;
     c.shadowColor = coreColor;
-    c.shadowBlur = 18;
+    c.shadowBlur = 20;
     c.fill();
     c.stroke();
 
-    // Shield or Exposed Glow
+    // Shield or Exposed State
     if (this.shieldActive) {
+      // Ring 1 (Inner Arc Plates)
+      c.save();
       c.rotate(this.shieldAngle);
       c.strokeStyle = '#00ffff';
-      c.lineWidth = 3;
+      c.lineWidth = 3.5;
       c.shadowColor = '#00ffff';
-      c.shadowBlur = 12;
+      c.shadowBlur = 14;
       for (let i = 0; i < 4; i++) {
         c.beginPath();
-        c.arc(0, 0, this.radius + 8, (i * Math.PI) / 2 + 0.15, ((i + 1) * Math.PI) / 2 - 0.15);
+        c.arc(0, 0, this.radius + 10, (i * Math.PI) / 2 + 0.15, ((i + 1) * Math.PI) / 2 - 0.15);
         c.stroke();
       }
+      c.restore();
+
+      // Ring 2 (Middle Hex Force Barrier)
+      c.save();
+      c.rotate(-this.shieldAngle * 1.3);
+      c.strokeStyle = '#a855f7';
+      c.lineWidth = 2;
+      c.shadowColor = '#a855f7';
+      c.shadowBlur = 10;
+      for (let i = 0; i < 6; i++) {
+        c.beginPath();
+        c.arc(0, 0, this.radius + 20, (i * Math.PI) / 3 + 0.1, ((i + 1) * Math.PI) / 3 - 0.1);
+        c.stroke();
+      }
+      c.restore();
+
+      // Ring 3 (Outer Kinetic Deflector Nodes)
+      c.save();
+      c.rotate(this.shieldAngle * 0.7);
+      c.fillStyle = '#00ffff';
+      c.shadowColor = '#00ffff';
+      c.shadowBlur = 8;
+      for (let i = 0; i < 8; i++) {
+        const nodeAng = (i * Math.PI) / 4;
+        const nx = Math.cos(nodeAng) * (this.radius + 28);
+        const ny = Math.sin(nodeAng) * (this.radius + 28);
+        c.beginPath();
+        c.arc(nx, ny, 3, 0, Math.PI * 2);
+        c.fill();
+      }
+      c.restore();
     } else {
-      // Golden exposed radiant aura
+      // Golden exposed radiant aura & pulsating flare beams
       c.beginPath();
-      c.arc(0, 0, this.radius + 6 + 4 * Math.sin(time * 12), 0, Math.PI * 2);
+      c.arc(0, 0, this.radius + 8 + 5 * Math.sin(time * 12), 0, Math.PI * 2);
       c.strokeStyle = '#ffd700';
       c.shadowColor = '#ffd700';
-      c.shadowBlur = 24;
-      c.lineWidth = 3;
+      c.shadowBlur = 28;
+      c.lineWidth = 3.5;
       c.stroke();
+
+      // Radial energy rays bursting out
+      c.save();
+      c.rotate(time * 0.5);
+      c.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+      c.lineWidth = 2;
+      for (let i = 0; i < 12; i++) {
+        const ang = (i * Math.PI) / 6;
+        c.beginPath();
+        c.moveTo(Math.cos(ang) * (this.radius + 12), Math.sin(ang) * (this.radius + 12));
+        c.lineTo(Math.cos(ang) * (this.radius + 38), Math.sin(ang) * (this.radius + 38));
+        c.stroke();
+      }
+      c.restore();
     }
 
     c.restore();

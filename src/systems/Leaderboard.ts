@@ -23,6 +23,9 @@ class LeaderboardManager {
   private customEntries: LeaderboardEntry[] = [];
   public isSyncing: boolean = false;
   public remoteActive: boolean = false;
+  public remoteOnline: boolean = false;
+  public remoteError: string | null = null;
+  public lastSyncTime: number = 0;
 
   constructor() {
     this.load();
@@ -157,6 +160,9 @@ class LeaderboardManager {
     try {
       const res = await fetch(`${dbUrl}/leaderboard.json`, { headers: { 'Accept': 'application/json' } });
       if (res.ok) {
+        this.remoteOnline = true;
+        this.remoteError = null;
+        this.lastSyncTime = Date.now();
         const data = await res.json();
         if (data) {
           // 1. Sync Arcade (data.arcade || data.madness || data)
@@ -168,8 +174,18 @@ class LeaderboardManager {
             this.mergeRemoteList(data.custom, 'custom');
           }
         }
+      } else {
+        if (res.status === 401 || res.status === 403) {
+          this.remoteError = 'PERMISSION_DENIED';
+        } else {
+          this.remoteError = `HTTP_${res.status}`;
+        }
+        this.remoteOnline = false;
+        console.warn(`Leaderboard remote returned ${res.status} (${this.remoteError})`);
       }
     } catch (err) {
+      this.remoteOnline = false;
+      this.remoteError = 'NETWORK_ERROR';
       console.warn('Leaderboard remote sync error:', err);
     } finally {
       this.isSyncing = false;
@@ -226,11 +242,18 @@ class LeaderboardManager {
     const path = mode === 'custom' ? 'custom' : 'arcade';
     const safeKey = encodeURIComponent(entry.pseudo.trim().toUpperCase().replace(/[.#$\[\]\/]/g, '_'));
     try {
-      await fetch(`${dbUrl}/leaderboard/${path}/${safeKey}.json`, {
+      const res = await fetch(`${dbUrl}/leaderboard/${path}/${safeKey}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry)
       });
+      if (res.ok) {
+        this.remoteOnline = true;
+        this.remoteError = null;
+      } else if (res.status === 401 || res.status === 403) {
+        this.remoteOnline = false;
+        this.remoteError = 'PERMISSION_DENIED';
+      }
     } catch (err) {
       console.warn('Leaderboard remote push error:', err);
     }

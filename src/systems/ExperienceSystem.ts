@@ -304,8 +304,8 @@ class ExperienceSystem {
     return this.getSkillRank('singularity_mastery') * 0.4; // up to +1.2s between ghost kills
   }
 
-  public getSingularityStreakTarget(): number {
-    return SINGULARITY_TRIGGER_STREAK;
+  public getSingularityStreakTarget(tier: number = 0): number {
+    return SINGULARITY_TRIGGER_STREAK + Math.max(0, tier) * 100;
   }
 
   public getSingularityNovaRank(): number {
