@@ -2303,7 +2303,8 @@ export class Renderer {
     time: number,
     playerRank: number = 0,
     playerDate: string = '',
-    activeMode: 'arcade' | 'custom' = 'arcade'
+    activeMode: 'arcade' | 'custom' = 'arcade',
+    syncStatus?: { online: boolean; error: string | null; isSyncing: boolean }
   ) {
     const c = this.ctx;
     c.fillStyle = this.chromaTier === 0 ? '#050505' : '#06010f';
@@ -2492,11 +2493,37 @@ export class Renderer {
       c.fillText('Play a game and set your high score!', this.cw / 2, CH * 0.5 + 24);
     }
 
+    // Cloud Sync Status Pill
+    c.save();
+    c.textAlign = 'center';
+    c.font = 'bold 9.5px monospace';
+    if (syncStatus?.isSyncing) {
+      c.fillStyle = '#ffbb00';
+      c.fillText('⚡ CLOUD SYNC: SYNCHRONIZING...', this.cw / 2, CH - 34);
+    } else if (syncStatus?.error === 'PERMISSION_DENIED') {
+      c.fillStyle = '#ff3366';
+      c.shadowColor = '#ff0033';
+      c.shadowBlur = 6;
+      c.fillText('⚠ CLOUD SYNC: 401 PERMISSION DENIED (Check Firebase Rules)', this.cw / 2, CH - 34);
+    } else if (syncStatus?.error) {
+      c.fillStyle = '#ff3366';
+      c.fillText(`⚠ CLOUD SYNC: ${syncStatus.error}`, this.cw / 2, CH - 34);
+    } else if (syncStatus?.online) {
+      c.fillStyle = '#00ffaa';
+      c.shadowColor = '#00ffaa';
+      c.shadowBlur = 5;
+      c.fillText('● CLOUD SYNC: CONNECTED (Firebase RTDB)', this.cw / 2, CH - 34);
+    } else {
+      c.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      c.fillText('○ CLOUD SYNC: LOCAL ONLY', this.cw / 2, CH - 34);
+    }
+    c.restore();
+
     // Footer
     c.font = 'bold 10px monospace';
     c.fillStyle = this.chromaTier === 0 ? '#555555' : '#334466';
     c.textAlign = 'center';
-    c.fillText('[ SPACE / ESC ] RETURN TO MENU', this.cw / 2, CH - 14);
+    c.fillText('[ R ] REFRESH SYNC   •   [ SPACE / ESC ] RETURN TO MENU', this.cw / 2, CH - 14);
   }
 
   public drawCodex(time: number, tab: 'skills' | 'badges' | 'tree' = 'skills', page: number = 0) {

@@ -49,11 +49,28 @@ try {
   console.log(`HTTP Status: ${writeRes.status} ${writeRes.statusText}`);
 
   if (writeRes.ok) {
-    console.log('✅ Write permission: GRANTED');
+    console.log('✅ Write permission for leaderboard: GRANTED');
     // Clean up ping entry
     await fetch(`${dbUrl}/leaderboard/arcade/__PING__.json`, { method: 'DELETE' });
-    console.log('✅ Ping test entry successfully removed.');
-    console.log('\n🎉 ALL CHECKS PASSED: Firebase Realtime Database is ready!');
+    console.log('✅ Ping leaderboard entry successfully removed.');
+
+    // 3. Test Players Write
+    console.log('\n3. Testing PUT /players/__PING__.json ...');
+    const playerPayload = { pseudo: '__PING__', accountLevel: 1 };
+    const pWriteRes = await fetch(`${dbUrl}/players/__PING__.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(playerPayload)
+    });
+    console.log(`HTTP Status: ${pWriteRes.status} ${pWriteRes.statusText}`);
+    if (pWriteRes.ok) {
+      console.log('✅ Write permission for players: GRANTED');
+      await fetch(`${dbUrl}/players/__PING__.json`, { method: 'DELETE' });
+      console.log('✅ Ping player entry successfully removed.');
+      console.log('\n🎉 ALL CHECKS PASSED: Firebase Realtime Database is completely ready!');
+    } else {
+      console.error(`❌ Players write permission: DENIED (${pWriteRes.status} ${pWriteRes.statusText})`);
+    }
   } else {
     console.error(`❌ Write permission: DENIED (${writeRes.status} ${writeRes.statusText})`);
     console.log('\n👉 ACTION REQUIRED IN FIREBASE CONSOLE:');

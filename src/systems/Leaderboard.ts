@@ -166,13 +166,23 @@ class LeaderboardManager {
         const data = await res.json();
         if (data) {
           // 1. Sync Arcade (data.arcade || data.madness || data)
-          const arcadeSource = data.arcade || data.madness || data;
-          this.mergeRemoteList(arcadeSource, 'arcade');
+          const hasStructured = Boolean(data.arcade || data.custom);
+          const arcadeSource = data.arcade || data.madness || (!hasStructured ? data : null);
+          if (arcadeSource) {
+            this.mergeRemoteList(arcadeSource, 'arcade');
+          } else {
+            await this.pushAllLocal('arcade');
+          }
 
           // 2. Sync Custom (data.custom)
           if (data.custom) {
             this.mergeRemoteList(data.custom, 'custom');
+          } else {
+            await this.pushAllLocal('custom');
           }
+        } else {
+          // Empty remote database (null): push all existing local entries to restore remote!
+          await this.pushAllLocal();
         }
       } else {
         if (res.status === 401 || res.status === 403) {
@@ -189,6 +199,16 @@ class LeaderboardManager {
       console.warn('Leaderboard remote sync error:', err);
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  public async pushAllLocal(mode?: 'arcade' | 'custom'): Promise<void> {
+    const modes: ('arcade' | 'custom')[] = mode ? [mode] : ['arcade', 'custom'];
+    for (const m of modes) {
+      const list = m === 'custom' ? this.customEntries : this.arcadeEntries;
+      for (const entry of list) {
+        await this.pushRemote(entry);
+      }
     }
   }
 
@@ -234,9 +254,9 @@ class LeaderboardManager {
     this.save(mode);
   }
 
-  public async pushRemote(entry: LeaderboardEntry) {
+  public async pushRemote(entry: LeaderboardEntry): Promise<boolean> {
     const dbUrl = (FIREBASE_CONFIG.databaseURL || localStorage.getItem('chv_firebase_url') || '').trim().replace(/\/+$/, '');
-    if (!dbUrl) return;
+    if (!dbUrl) return false;
 
     const mode = entry.mode || 'arcade';
     const path = mode === 'custom' ? 'custom' : 'arcade';
@@ -250,12 +270,21 @@ class LeaderboardManager {
       if (res.ok) {
         this.remoteOnline = true;
         this.remoteError = null;
+        return true;
       } else if (res.status === 401 || res.status === 403) {
         this.remoteOnline = false;
         this.remoteError = 'PERMISSION_DENIED';
+        return false;
+      } else {
+        this.remoteOnline = false;
+        this.remoteError = `HTTP_${res.status}`;
+        return false;
       }
     } catch (err) {
+      this.remoteOnline = false;
+      this.remoteError = 'NETWORK_ERROR';
       console.warn('Leaderboard remote push error:', err);
+      return false;
     }
   }
 

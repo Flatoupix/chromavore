@@ -3594,6 +3594,11 @@ class Game {
     }
 
     if (this.state === 'leaderboard') {
+      if (input.isRestartRequested) {
+        leaderboard.syncRemote();
+        sounds.play('click');
+        input.isRestartRequested = false;
+      }
       if (input.isPauseRequested || input.isStartRequested) {
         this.state = 'menu';
         sounds.play('click');
@@ -4484,7 +4489,11 @@ class Game {
     if (this.state === 'leaderboard') {
       const mode = this.leaderboardTab || 'arcade';
       const entries = leaderboard.getEntries(mode);
-      this.renderer.drawLeaderboard(entries, this.time, this.playerRank, this.playerDate, mode);
+      this.renderer.drawLeaderboard(entries, this.time, this.playerRank, this.playerDate, mode, {
+        online: leaderboard.remoteOnline,
+        error: leaderboard.remoteError,
+        isSyncing: leaderboard.isSyncing
+      });
       return;
     }
 
