@@ -59,6 +59,19 @@ export class Player {
   public lastDirectionTapTime: number = 0;
   public lastTapDir: { x: number; y: number } = { x: 0, y: 0 };
 
+  // Straight-line kinetic acceleration (doubles every 8 tiles, scales infinitely)
+  public straightLineDir: { x: number; y: number } = { x: 0, y: 0 };
+  public straightLineDistance: number = 0;
+  public straightLineMilestone: number = 0;
+
+  public getStraightLineDistance(): number {
+    return this.straightLineDistance;
+  }
+
+  public getStraightLineSpeedMultiplier(): number {
+    return 1.0 + (this.straightLineDistance / 8.0);
+  }
+
   public addDotSpeed(comboMultiplier: number = 1) {
     // Strictly disabled in 4/3 version (early game)!
     // Speed increase only arrives in 16/9 widescreen mode (cols > 21) after building combo (x2+)
@@ -131,6 +144,9 @@ export class Player {
     this.vectorSurgeCd = 0;
     this.lastDirectionTapTime = 0;
     this.lastTapDir = { x: 0, y: 0 };
+    this.straightLineDir = { x: 0, y: 0 };
+    this.straightLineDistance = 0;
+    this.straightLineMilestone = 0;
   }
 
   public getPos(): { x: number; y: number } {
@@ -269,11 +285,12 @@ export class Player {
     const isWide = maze ? maze.cols > 21 : false;
     const isCustomMode = profileManager.gameMode === 'custom';
     const surgeBonus = (isCustomMode && this.vectorSurgeTimer > 0) ? (this.vectorSurgeCran * 0.05) : 0;
+    const straightLineMult = this.getStraightLineSpeedMultiplier();
 
     if (!isWide) {
       this.pelletSpeedBonus = 0;
       this.superPelletBoostTimer = 0;
-      this.speed = (P_SPEED * (1 + surgeBonus)) * speedMult * chronoScale;
+      this.speed = (P_SPEED * (1 + surgeBonus)) * straightLineMult * speedMult * chronoScale;
     } else {
       if (this.superPelletBoostTimer > 0) this.superPelletBoostTimer -= dt * chronoScale;
       if (this.pelletSpeedBonus > 0) {
@@ -284,7 +301,7 @@ export class Player {
       const madnessCalculatedSpeed = P_MADNESS_BASE_SPEED + progressionBoost;
       const nitroBonus = (isCustomMode && isNitro) ? experienceSystem.getNitroSpeedBonus() : 0;
       const baseSpeed = isNitro ? madnessCalculatedSpeed * (1.30 + nitroBonus) : madnessCalculatedSpeed;
-      this.speed = ((baseSpeed * (1 + surgeBonus)) + pelletSurge) * speedMult * chronoScale;
+      this.speed = (((baseSpeed * (1 + surgeBonus)) + pelletSurge) * straightLineMult) * speedMult * chronoScale;
     }
 
     // Accept input direction & Vector Surge double-tap detection
@@ -376,17 +393,50 @@ export class Player {
     }
 
     if (this.dx !== 0 || this.dy !== 0) {
+      if (this.straightLineDir.x === 0 && this.straightLineDir.y === 0) {
+        this.straightLineDir = { x: this.dx, y: this.dy };
+        this.straightLineDistance = 0;
+        this.straightLineMilestone = 0;
+      } else if (this.dx === this.straightLineDir.x && this.dy === this.straightLineDir.y) {
+        const tilesTraveled = dt * this.speed;
+        this.straightLineDistance += tilesTraveled;
+
+        const milestone = Math.floor(this.straightLineDistance / 8);
+        if (milestone > this.straightLineMilestone) {
+          this.straightLineMilestone = milestone;
+          const pp = this.getPos();
+          particles.emit(pp.x, pp.y, 16, '#00ffff', { speed: 130, size: 3.5, life: 0.35 });
+          particles.addPop(pp.x, pp.y - 18, `SONIC CRUISE x${(1 + milestone).toFixed(1)}!`, '#00ffff', 14);
+          sounds.play('streak');
+        }
+      } else {
+        this.straightLineDir = { x: this.dx, y: this.dy };
+        this.straightLineDistance = 0;
+        this.straightLineMilestone = 0;
+      }
+
+      // Spark particles trailing when cruising fast
+      if (this.straightLineDistance >= 3 && Math.random() < 0.35) {
+        const pp = this.getPos();
+        particles.emit(pp.x - this.dx * 10, pp.y - this.dy * 10, 1, '#00ffff', { speed: 40, size: 2.2, life: 0.22 });
+      }
+
       this.t += dt * this.speed;
       this.ma += dt * 15 * chronoScale;
       if (this.t >= 1) {
         onCollectDot(this.x, this.y);
       }
+    } else {
+      this.straightLineDistance = 0;
+      this.straightLineDir = { x: 0, y: 0 };
+      this.straightLineMilestone = 0;
     }
 
-    // Motion trail
+    // Motion trail with speed-dependent length
     const pp = this.getPos();
     this.trail.unshift({ x: pp.x, y: pp.y });
-    if (this.trail.length > 8) this.trail.pop();
+    const maxTrail = Math.min(24, Math.floor(8 + this.straightLineDistance * 1.5));
+    if (this.trail.length > maxTrail) this.trail.pop();
   }
 
   /**
@@ -580,6 +630,15 @@ export class Player {
     this.t = 1;
     this.fx = this.x;
     this.fy = this.y;
+
+    // Straight-line kinetic bonus preserves and accumulates dash distance!
+    if (dx === this.straightLineDir.x && dy === this.straightLineDir.y) {
+      this.straightLineDistance += dashed;
+    } else {
+      this.straightLineDir = { x: dx, y: dy };
+      this.straightLineDistance = dashed;
+    }
+    this.straightLineMilestone = Math.floor(this.straightLineDistance / 8);
 
     const endPos = this.getPos();
 
@@ -824,12 +883,12 @@ export class Player {
     const tl = this.trail.length;
     for (let i = 0; i < tl; i++) {
       const t = i / tl, tp = this.trail[i];
-      c.globalAlpha = t * (isPredator || isGodMode ? 0.45 : 0.25);
+      c.globalAlpha = t * (isPredator || isGodMode ? 0.45 : (this.straightLineDistance >= 4 ? 0.42 : 0.25));
       c.fillStyle = isPredator
         ? (i % 2 === 0 ? '#00ffff' : '#ff007f')
-        : (isGodMode ? '#00ffff' : '#ffd700');
+        : (isGodMode ? '#00ffff' : (this.straightLineDistance >= 8 ? '#00ffff' : '#ffd700'));
       c.beginPath();
-      c.arc(tp.x, tp.y, P_RAD * t * (isPredator ? 0.85 : 0.6), 0, PI2);
+      c.arc(tp.x, tp.y, P_RAD * t * (isPredator ? 0.85 : (this.straightLineDistance >= 8 ? 0.8 : 0.6)), 0, PI2);
       c.fill();
     }
     c.globalAlpha = 1;
@@ -840,8 +899,28 @@ export class Player {
       c.translate(pp.x + ox, pp.y);
       const faceAngle = (this.dx || this.dy) ? Math.atan2(this.dy, this.dx) : Math.atan2(this.lastDy, this.lastDx);
       c.rotate(faceAngle);
-      if (this.dx || this.dy) c.scale(this.st, this.sq);
+      if (this.dx || this.dy) {
+        const kineticStretch = Math.min(1.35, 1 + this.straightLineDistance * 0.02);
+        const kineticSquash = Math.max(0.72, 1 - this.straightLineDistance * 0.015);
+        c.scale(this.st * kineticStretch, this.sq * kineticSquash);
+      }
       if (this.invuln > 0 && Math.sin(time * 16) > 0) c.globalAlpha = 0.4;
+
+      // Supersonic Kinetic Thrusters when cruising in straight line
+      if (this.straightLineDistance >= 4) {
+        c.save();
+        c.strokeStyle = this.straightLineDistance >= 8 ? '#00ffff' : 'rgba(0, 240, 255, 0.6)';
+        c.lineWidth = 1.5;
+        c.shadowColor = '#00ffff';
+        c.shadowBlur = this.straightLineDistance >= 8 ? 10 : 5;
+        const thrusterLen = Math.min(22, 6 + this.straightLineDistance * 0.8);
+        c.beginPath();
+        c.moveTo(-P_RAD - 2, -P_RAD * 0.45);
+        c.lineTo(-P_RAD - thrusterLen, 0);
+        c.lineTo(-P_RAD - 2, P_RAD * 0.45);
+        c.stroke();
+        c.restore();
+      }
 
       const isWarn = isPredator && predTimer < 2.5;
       const isSingularity = combo.m >= 64;
