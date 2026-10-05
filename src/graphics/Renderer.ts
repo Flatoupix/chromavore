@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, BOTTOM_BAR_H, T, ROWS, COLS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, DASH_BTN, CC, COMBO_DECAY, GOD_MODE_DURATION, KILL_STREAK_DECAY_WINDOW, getComboTier, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET, CHROMA_TIERS } from '../config/constants';
+import { CW, CH, HUD_H, BOTTOM_BAR_H, T, ROWS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, KILL_STREAK_DECAY_WINDOW, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET, CHROMA_TIERS } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -17,7 +17,8 @@ import { experienceSystem, SKILL_NODES, SKILL_TREE_BRANCHES } from '../systems/E
 import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from './SpriteAtlas';
 import { formatScoreCompact } from '../utils/format';
-import { getModeSkillCombos } from '../core/InputManager';
+import { getModeSkillCombos, input } from '../core/InputManager';
+import { drawArcadeHUD, drawArcadeCommands, drawArcadeProgress, type HUDSpell } from './ArcadeHUD';
 import { isCareerDiscoveryAvailableInMode } from '../ui/DiscoveryCatalog';
 
 export interface EffectTimer {
@@ -907,665 +908,53 @@ export class Renderer {
     currentMana: number = 100,
     maxMana: number = 100,
     singularityKillsProgress: number = 0,
-    singularityTarget: number = 200
+    singularityTarget: number = 200,
+    commandsOnly: boolean = false
   ) {
-    const isMadness = true;
-    const c = this.ctx;
-    c.fillStyle = '#0a0a12';
-    c.fillRect(0, 0, this.cw, HUD_H);
-
-    if (isMadness) {
-      // Madness HUD
-      const isWide = this.cw >= 450;
-      c.textAlign = 'left'; c.textBaseline = 'middle';
-
-      // 1. Live Animated Score Line
-      c.font = 'bold 9px monospace'; c.fillStyle = '#8899bb';
-      c.fillText('SCORE', 10, 13);
-      c.font = 'bold 16px monospace'; c.fillStyle = '#ffd700';
-      c.shadowColor = '#ffd700'; c.shadowBlur = 8;
-      c.fillText(formatScoreCompact(Math.round(dScore)), isWide ? 52 : 46, 13);
-      c.shadowBlur = 0;
-
-      // 2. Ghost Kill Streak (with active decay timer gauge between ghost kills)
-      const stX = isWide ? 38 : 30;
-      const streakActive = madnessStreak > 0 && killStreakTimer > 0;
-      if (streakActive) {
-        // Growth every 10 kills (smooth sub-linear step: +1.2px per 10 kills, capped at 18px)
-        const streakTier = Math.floor(madnessStreak / 10);
-        const streakFontSize = Math.min(18, 10.5 + streakTier * 1.2);
-        const streakIconSize = Math.min(18, 13 + streakTier * 1.0);
-
-        spriteAtlas.drawIcon(c, 'flame', stX - 16, 27, streakIconSize);
-        c.font = `bold ${streakFontSize}px monospace`;
-        c.fillStyle = streakTier >= 5 ? '#ffd700' : (streakTier >= 2 ? '#ff7733' : '#ff5533');
-        c.shadowColor = c.fillStyle;
-        c.shadowBlur = Math.min(12, 6 + streakTier * 1.2);
-        c.fillText('x' + madnessStreak, stX - 4, 27);
-        c.shadowBlur = 0;
-
-        // Kill streak timer gauge (countdown between ghost kills)
-        const sProg = Math.max(0, Math.min(1, killStreakTimer / (KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus())));
-        const sBarW = isWide ? 44 : 34;
-        c.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        c.fillRect(stX - 18, 33, sBarW, 2.5);
-        c.fillStyle = c.fillStyle;
-        c.shadowColor = c.fillStyle;
-        c.shadowBlur = 4;
-        c.fillRect(stX - 18, 33, sBarW * sProg, 2.5);
-        c.shadowBlur = 0;
-      }
-
-      // 3. Status / Combo / Predator
-      if (combo.m >= 64) {
-        // Mode Singularity x64 (30s)
-        const sProg = Math.max(0, Math.min(1, combo.t / 30.0));
-        spriteAtlas.drawIcon(c, 'crown', 15, 41, 12);
-        c.font = 'bold 9.5px monospace'; c.fillStyle = '#ffd700';
-        c.shadowColor = '#ffd700'; c.shadowBlur = 10;
-        c.fillText(`x64 SINGULARITY (${combo.t.toFixed(1)}s)`, 24, 41);
-        c.shadowBlur = 0;
-        c.fillStyle = '#222'; c.fillRect(10, 46, isWide ? 85 : 62, 3);
-        c.fillStyle = '#ffd700'; c.fillRect(10, 46, (isWide ? 85 : 62) * sProg, 3);
-      } else if (combo.m >= 32) {
-        const pProg = Math.max(0, Math.min(1, combo.t / GOD_MODE_DURATION));
-        spriteAtlas.drawIcon(c, 'lightning', 15, 41, 11);
-        c.font = 'bold 9px monospace'; c.fillStyle = '#ffd700';
-        c.shadowColor = '#ffd700'; c.shadowBlur = 8;
-        c.fillText(`x32 (${combo.t.toFixed(1)}s)`, 24, 41);
-        c.shadowBlur = 0;
-        c.fillStyle = '#222'; c.fillRect(10, 46, isWide ? 85 : 62, 3);
-        c.fillStyle = '#ffd700'; c.fillRect(10, 46, (isWide ? 85 : 62) * pProg, 3);
-      } else if (isPredator && predTimer > 0) {
-        const pProg = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
-        spriteAtlas.drawIcon(c, 'lightning', 15, 41, 11);
-        c.font = 'bold 8.5px monospace'; c.fillStyle = '#00ffff';
-        c.shadowColor = '#00ffff'; c.shadowBlur = 8;
-        c.fillText(isWide ? `SCARED PREY (${predTimer.toFixed(1)}s)` : `SCARED ${predTimer.toFixed(1)}s`, 24, 41);
-        c.shadowBlur = 0;
-        c.fillStyle = '#222'; c.fillRect(10, 46, isWide ? 85 : 62, 3);
-        c.fillStyle = '#00ffff'; c.fillRect(10, 46, (isWide ? 85 : 62) * pProg, 3);
-      } else if (overdriveTimer > 0) {
-        spriteAtlas.drawIcon(c, 'overdrive', 15, 41, 11);
-        c.font = 'bold 8.5px monospace'; c.fillStyle = '#00ffcc';
-        c.shadowColor = '#00ffcc'; c.shadowBlur = 8;
-        c.fillText(`NO-CD (${overdriveTimer.toFixed(1)}s)`, 24, 41);
-        c.shadowBlur = 0;
-      } else if (combo.m > 1) {
-        c.font = 'bold 9px monospace'; c.fillStyle = '#ff00ff';
-        c.fillText('COMBO x' + combo.m, 10, 41);
-      } else {
-        const dashThreshold = SKILL_TREE.find(s => s.id === 'dash_v1')?.threshold ?? 10;
-        const dashLevel = progression.getSkillLevel('dash');
-        c.font = 'bold 8px monospace';
-        c.fillStyle = dashLevel > 0 ? '#00ffff' : '#ffaa00';
-        const dashText = dashLevel > 0
-          ? (dashMaxCharges > 1 ? `DASH (${dashCharges}/${dashMaxCharges})` : 'DASH [SPACE]')
-          : `DASH ${progression.totalGhosts}/${dashThreshold}`;
-        c.fillText(dashText, 10, 41);
-      }
-
-      // 4. Level & Account XP in Center
-      const tmX = isWide ? Math.round(this.cw * 0.50) : 130;
-      const mDef = MADNESS_LEVELS[currentLevel % MADNESS_LEVELS.length];
-      c.font = isWide ? 'bold 10px monospace' : 'bold 8px monospace';
-      c.fillStyle = loopCount > 0 ? '#ffd700' : '#8899bb';
-      c.textAlign = 'center';
-      c.fillText(
-        loopCount > 0
-          ? (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} • LOOP ${loopCount + 1} (+${loopCount * 10}%)` : `L.${currentLevel + 1} LOOP ${loopCount + 1}`)
-          : (isWide ? `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length} : ${mDef.name}` : `LVL ${currentLevel + 1}/${MADNESS_LEVELS.length}`),
-        tmX,
-        21
-      );
-
-      // Biological Host Vital Telemetry (Heart rate & ECG monitor)
-      if (isWide) {
-        this.drawHostVitalTelemetry(c, Math.round(this.cw * 0.385), 28, currentLevel, time, loopCount, isWide);
-      }
-
-      // Center HUD: account XP in Chromamancer, Singularity ghost streak in Arcade.
-      const isCustomMode = profileManager.gameMode === 'custom';
-      const singularityTarget = experienceSystem.getSingularityStreakTarget();
-      const xpW = isWide ? 96 : 70;
-      const xpH = 3.5;
-      const xpX = tmX - xpW / 2;
-      const xpY = 32;
-
-      if (isCustomMode) {
-        const accLvl = experienceSystem.accountLevel;
-        const curXp = experienceSystem.accountXp;
-        const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
-        const xpRatio = reqXp === Infinity ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
-
-        c.fillStyle = 'rgba(255, 255, 255, 0.12)';
-        c.fillRect(xpX, xpY, xpW, xpH);
-        c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#00ffaa';
-        c.fillRect(xpX, xpY, xpW * xpRatio, xpH);
-
-        c.font = 'bold 7.5px monospace';
-        c.fillStyle = experienceSystem.consecutiveLevelUpsInLife > 1 ? '#ffd700' : '#88ffcc';
-        const surgeTag = experienceSystem.consecutiveLevelUpsInLife > 1 ? ` (SURGE 2x!)` : '';
-        c.fillText(`LVL ${accLvl}${surgeTag} • [CHROMAMANCER]`, tmX, 44);
-      } else {
-        const target = singularityTarget || experienceSystem.getSingularityStreakTarget();
-        const killProgress = Math.max(0, Math.min(1, singularityKillsProgress / target));
-
-        c.fillStyle = 'rgba(255, 255, 255, 0.12)';
-        c.fillRect(xpX, xpY, xpW, xpH);
-        c.fillStyle = '#ffd700';
-        c.fillRect(xpX, xpY, xpW * killProgress, xpH);
-
-        c.font = 'bold 7.5px monospace';
-        c.fillStyle = '#ffd700';
-        c.fillText(`SINGULARITY ${singularityKillsProgress}/${target}`, tmX, 44);
-      }
-
-      // 5. Chrono-Shift (Bullet Time) Gauge
-      const chW = isWide ? 68 : 48;
-      const chH = isWide ? 6 : 5;
-      const chCenter = isWide ? Math.round(this.cw * 0.28) : 192;
-      const chX = Math.round(chCenter - chW / 2);
-      const chY = 24;
-      const maxChrono = chronoLevel === 2 ? 150 : 100;
-      const chRatio = Math.max(0, Math.min(1, chronoEnergy / maxChrono));
-
-      c.textAlign = 'center';
-      c.font = isWide ? 'bold 8px monospace' : 'bold 7px monospace';
-      if (chronoLevel === 0) {
-        const chronoRequirement = SKILL_TREE.find(skill => skill.id === 'chrono_v1')?.threshold ?? 180;
-        c.fillStyle = '#556677';
-        spriteAtlas.drawIcon(c, 'lock', chCenter - (isWide ? 34 : 24), 13, 10);
-        c.fillText(isWide ? `CHRONO: ${chronoRequirement} KILLS` : `${chronoRequirement} KILLS`, chCenter + 6, 13);
-        c.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        c.lineWidth = 1;
-        c.strokeRect(chX, chY, chW, chH);
-        c.fillStyle = 'rgba(8, 16, 28, 0.6)';
-        c.fillRect(chX, chY, chW, chH);
-      } else if (isChronoActive) {
-        c.fillStyle = '#ffffff';
-        c.shadowColor = '#00f0ff';
-        c.shadowBlur = 10;
-        spriteAtlas.drawIcon(c, 'chrono', chCenter - (isWide ? 34 : 26), 13, 11);
-        c.fillText(chronoLevel === 2 ? 'SLOW 12%' : 'SLOW 18%', chCenter + 6, 13);
-        c.shadowBlur = 0;
-      } else {
-        c.fillStyle = chronoEnergy >= 25 ? '#00e5ff' : '#ff4466';
-        spriteAtlas.drawIcon(c, 'chrono', chCenter - (isWide ? 36 : 24), 13, 11);
-        c.fillText(isWide ? `CHRONO ${Math.round(chronoEnergy)}%` : `${Math.round(chronoEnergy)}%`, chCenter + 6, 13);
-      }
-
-      if (chronoLevel > 0) {
-        c.fillStyle = 'rgba(8, 16, 28, 0.9)';
-        c.strokeStyle = isChronoActive ? '#ffffff' : (chronoEnergy >= 25 ? '#00f0ff' : '#ff4466');
-        c.lineWidth = isChronoActive ? 1.5 : 1;
-        if (isChronoActive) {
-          c.shadowColor = '#00f0ff';
-          c.shadowBlur = 10;
-        }
-        c.strokeRect(chX, chY, chW, chH);
-        c.fillRect(chX, chY, chW, chH);
-        c.shadowBlur = 0;
-
-        if (chRatio > 0) {
-          const fillW = Math.max(2, (chW - 2) * chRatio);
-          const grad = c.createLinearGradient(chX, chY, chX + fillW, chY);
-          if (isChronoActive) {
-            grad.addColorStop(0, '#00f0ff');
-            grad.addColorStop(1, '#ffffff');
-          } else {
-            grad.addColorStop(0, '#0088cc');
-            grad.addColorStop(1, chronoLevel === 2 ? '#00ffea' : '#00f0ff');
-          }
-          c.fillStyle = grad;
-          if (isChronoActive) {
-            c.shadowColor = '#00f0ff';
-            c.shadowBlur = 8;
-          }
-          c.fillRect(chX + 1, chY + 1, fillW, chH - 2);
-          c.shadowBlur = 0;
-        }
-        c.font = '7px monospace';
-        c.fillStyle = isChronoActive ? '#00f0ff' : '#667788';
-        c.fillText('[SHIFT]', chCenter, 41);
-      }
-
-      // 6. Real-time Skill & Arsenal Unlock Progression / Active Item Status
-      c.textAlign = 'right';
-      const rightPad = isWide ? 14 : 10;
-      if (superItems.isRunning()) {
-        c.font = 'bold 10px monospace'; c.fillStyle = '#00ffff'; c.shadowColor = '#00ffff'; c.shadowBlur = 10;
-        c.fillText('ITEM ACTIVE!', this.cw - rightPad, 18); c.shadowBlur = 0;
-        c.font = '8px monospace'; c.fillStyle = '#ffbb00';
-        c.fillText('ONE ITEM AT A TIME', this.cw - rightPad, 34);
-      } else if (superItems.boardDrop) {
-        c.font = isWide ? 'bold 9px monospace' : 'bold 8px monospace';
-        c.fillStyle = '#ffd700'; c.shadowColor = '#ffd700'; c.shadowBlur = 10;
-        c.fillText(`DROP: ${superItems.boardDrop.item.name}`, this.cw - rightPad, 18);
-        c.shadowBlur = 0;
-        c.font = '8px monospace'; c.fillStyle = '#00ffff';
-        c.fillText(`READY TO COLLECT • ${superItems.boardDrop.timer.toFixed(1)}s`, this.cw - rightPad, 34);
-      } else if (isCustomMode) {
-        // Chromamancer Mana bar and Singularity streak
-        const manaRatio = Math.max(0, Math.min(1, currentMana / maxMana));
-        const barW = isWide ? 84 : 64;
-        const barH = 5;
-        const barX = this.cw - rightPad - barW;
-        const barY = 19;
-
-        c.font = isWide ? 'bold 8.5px monospace' : 'bold 7.5px monospace';
-        c.fillStyle = '#f472b6';
-        c.shadowColor = '#d946ef';
-        c.shadowBlur = 6;
-        c.fillText(`MANA ${Math.floor(currentMana)}/${maxMana}`, this.cw - rightPad, 12);
-        c.shadowBlur = 0;
-
-        c.fillStyle = 'rgba(25, 10, 35, 0.85)';
-        c.strokeStyle = '#a855f7';
-        c.lineWidth = 1;
-        c.strokeRect(barX, barY, barW, barH);
-        c.fillRect(barX, barY, barW, barH);
-
-        if (manaRatio > 0) {
-          const fillW = Math.max(2, (barW - 2) * manaRatio);
-          const grad = c.createLinearGradient(barX, barY, barX + fillW, barY);
-          grad.addColorStop(0, '#9333ea');
-          grad.addColorStop(0.5, '#c084fc');
-          grad.addColorStop(1, '#f472b6');
-          c.fillStyle = grad;
-          c.shadowColor = '#d946ef';
-          c.shadowBlur = 6;
-          c.fillRect(barX + 1, barY + 1, fillW, barH - 2);
-          c.shadowBlur = 0;
-        }
-
-        const runProgress = Math.max(0, Math.min(1, madnessStreak / singularityTarget));
-        c.font = '7.5px monospace';
-        c.fillStyle = '#ffd700';
-        c.fillText(`STREAK x${madnessStreak}/${singularityTarget}`, this.cw - rightPad, 33);
-        c.fillStyle = 'rgba(255, 255, 255, 0.12)';
-        c.fillRect(this.cw - rightPad - barW, 37, barW, 2.5);
-        c.fillStyle = '#ffd700';
-        c.fillRect(this.cw - rightPad - barW, 37, barW * runProgress, 2.5);
-      } else {
-        const nextUnlock = progression.getNextUnlock();
-        if (nextUnlock.skill) {
-          const sk = nextUnlock.skill;
-          const kLeft = nextUnlock.remaining;
-          const prog = Math.max(0, Math.min(1, nextUnlock.progress));
-
-          c.font = isWide ? 'bold 9px monospace' : 'bold 8px monospace';
-          c.fillStyle = '#00f0ff';
-          c.shadowColor = '#00f0ff';
-          c.shadowBlur = 4;
-          const labelText = `${sk.name} : ${progression.totalGhosts}/${sk.threshold}`;
-          const ltw = c.measureText(labelText).width;
-          spriteAtlas.drawIcon(c, sk.icon, this.cw - rightPad - ltw - 10, 16, 12);
-          c.fillText(labelText, this.cw - rightPad, 16);
-          c.shadowBlur = 0;
-
-          // Mini progress gauge and kills left
-          const barW = isWide ? 80 : 60;
-          const barH = 3;
-          const bx = this.cw - rightPad - barW;
-          const by = 26;
-
-          c.fillStyle = 'rgba(255, 255, 255, 0.12)';
-          c.fillRect(bx, by, barW, barH);
-
-          if (prog > 0) {
-            const fillW = Math.max(2, barW * prog);
-            const grad = c.createLinearGradient(bx, by, bx + fillW, by);
-            grad.addColorStop(0, '#0088ff');
-            grad.addColorStop(1, '#00ffff');
-            c.fillStyle = grad;
-            c.shadowColor = '#00ffff';
-            c.shadowBlur = 4;
-            c.fillRect(bx, by, fillW, barH);
-            c.shadowBlur = 0;
-          }
-
-          c.font = '7.5px monospace';
-          c.fillStyle = '#ffd700';
-          c.fillText(`${kLeft} KILLS LEFT`, this.cw - rightPad, 38);
-        } else {
-          // All skills/arsenal unlocked
-          c.font = isWide ? 'bold 9.5px monospace' : 'bold 8.5px monospace';
-          c.fillStyle = '#00f0ff';
-          c.shadowColor = '#00f0ff';
-          c.shadowBlur = 8;
-          c.fillText('★ ARSENAL MAXED ★', this.cw - rightPad, 18);
-          c.shadowBlur = 0;
-          c.font = '8px monospace';
-          c.fillStyle = '#ffd700';
-          c.fillText(`ALL POWERS UNLOCKED`, this.cw - rightPad, 34);
-        }
-      }
-
-      // Lives: mini Chromavores
-      for (let i = 0; i < lives; i++) {
-        c.save();
-        c.translate(this.cw - 16 - i * 18, 51);
-        Player.drawChromavore(c, 5.5, time, 0.2, false, false, 1);
-        c.restore();
-      }
-
-      // Audio status
-      c.font = '9px monospace'; c.fillStyle = sounds.isMuted() ? '#ff4444' : '#44aa77'; c.textAlign = 'left';
-      spriteAtlas.drawIcon(c, sounds.isMuted() ? 'audio_off' : 'audio_on', this.cw - 30, HUD_H - 6, 12);
-      c.fillText('[M]', this.cw - 18, HUD_H - 6);
-      return;
-    }
-
-    // Compact HUD fallback
-    c.font = 'bold 12px monospace'; c.fillStyle = '#8899bb'; c.textAlign = 'left'; c.textBaseline = 'middle';
-    c.fillText('SCORE', 12, 16);
-    c.font = 'bold 22px monospace'; c.fillStyle = '#ffd700';
-    c.shadowColor = '#ffd700'; c.shadowBlur = 10;
-    c.fillText(Math.round(dScore).toString().padStart(7, '0'), 12, 38);
-    c.shadowBlur = 0;
-
-    // Dash / Predator Invincible Gauge
-    const dX = 134, dY = 14, dW = 100, dH = 18;
-    if (combo.m >= 32) {
-      const pProg = Math.max(0, Math.min(1, combo.t / GOD_MODE_DURATION));
-      const pCol = '#00ffff';
-      c.fillStyle = '#0e1828';
-      c.strokeStyle = '#ffd700';
-      c.lineWidth = 1.8;
-      c.shadowColor = '#00ffff';
-      c.shadowBlur = 12;
-      c.strokeRect(dX, dY, dW, dH);
-      c.fillRect(dX, dY, dW, dH);
-      c.fillStyle = pCol;
-      c.fillRect(dX + 2, dY + 2, (dW - 4) * pProg, dH - 4);
-      c.shadowBlur = 0;
-      c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = '#050a14';
-      c.fillText(`x32 ${combo.t.toFixed(1)}s`, dX + dW / 2, dY + dH / 2);
-    } else if (isPredator && predTimer > 0) {
-      const pProg = Math.max(0, Math.min(1, predTimer / (predMaxTimer || 7.0)));
-      const pCol = '#00ffff';
-      c.fillStyle = '#0e1828';
-      c.strokeStyle = '#00ffff';
-      c.lineWidth = 1.5;
-      c.strokeRect(dX, dY, dW, dH);
-      c.fillRect(dX, dY, dW, dH);
-      c.fillStyle = pCol;
-      c.fillRect(dX + 2, dY + 2, (dW - 4) * pProg, dH - 4);
-      c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = '#050a14';
-      c.fillText(`PREY ${predTimer.toFixed(1)}s`, dX + dW / 2, dY + dH / 2);
-    } else if (isMadness) {
-      const isOverdrive = overdriveTimer > 0;
-      const isReady = dashCharges > 0 || dashCd <= 0 || isOverdrive;
-      const cdProg = isReady ? 1 : Math.max(0, 1 - dashCd / 2.8);
-      c.fillStyle = isOverdrive ? '#003828' : '#0c1322';
-      c.strokeStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : '#223350');
-      c.lineWidth = isOverdrive ? 2 : 1.5;
-      c.shadowColor = isOverdrive ? '#00ffcc' : (isReady ? '#00ffff' : 'transparent');
-      c.shadowBlur = isOverdrive ? 14 : (isReady ? 8 : 0);
-      c.strokeRect(dX, dY, dW, dH);
-      c.fillRect(dX, dY, dW, dH);
-      if (cdProg > 0) {
-        c.fillStyle = isOverdrive ? '#00ffcc' : (isReady ? '#00e5ff' : '#0077aa');
-        c.fillRect(dX + 2, dY + 2, (dW - 4) * cdProg, dH - 4);
-      }
-      c.shadowBlur = 0;
-      c.font = 'bold 9px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = isReady ? '#050a14' : '#ffffff';
-      const label = isOverdrive
-        ? `NO-CD (${overdriveTimer.toFixed(1)}s)`
-        : (isReady
-          ? (dashMaxCharges > 1 ? `DASH (${dashCharges}/${dashMaxCharges})` : 'DASH [SPACE]')
-          : 'DASH ' + dashCd.toFixed(1) + 's');
-      c.fillText(label, dX + dW / 2, dY + dH / 2);
-    }
-
-    // Hi-Score & Level
-    c.font = '11px monospace'; c.fillStyle = '#666'; c.textAlign = 'center';
-    c.fillText('HI-SCORE: ' + hi.toString().padStart(6, '0'), this.cw / 2, 14);
-    const list = isMadness ? MADNESS_LEVELS : LEVELS;
-    const lvl = list[currentLevel % list.length];
-    c.font = 'bold 12px monospace'; c.fillStyle = lvl.glowColor; c.shadowColor = lvl.glowColor; c.shadowBlur = 8;
-    c.fillText('LVL ' + (currentLevel + 1) + '/' + list.length + ': ' + lvl.name, this.cw / 2, 30); c.shadowBlur = 0;
-    c.font = 'bold 11px monospace'; c.fillStyle = loopCount > 0 ? '#ffd700' : '#aaa';
-    c.fillText(loopCount > 0 ? `WAVE ${wave} • LOOP ${loopCount + 1} (+${loopCount * 10}%)` : 'WAVE ' + wave, this.cw / 2, 46);
-
-    // Lives
-    c.textAlign = 'right';
-    for (let i = 0; i < lives; i++) {
-      c.fillStyle = C_PLAYER; c.beginPath();
-      c.arc(this.cw - 20 - i * 24, 20, 8, 0.3, PI2 - 0.3);
-      c.lineTo(this.cw - 20 - i * 24, 20); c.fill();
-    }
-
-    // Multiplier & Combo Gauge
-    if (combo.m > 1) {
-      const tier = getComboTier(combo.n);
-      const isGod = combo.m >= 32;
-      const sz = 16 + tier * 2;
-      c.font = `bold ${sz}px monospace`;
-      const maxT = isGod ? GOD_MODE_DURATION : COMBO_DECAY;
-      c.fillStyle = isGod ? '#ffd700' : CC[tier];
-      c.shadowColor = isGod ? '#ffd700' : CC[tier];
-      c.shadowBlur = isGod ? 12 : 8;
-      c.textAlign = 'right';
-      c.fillText(isGod ? `COMBO x32 (${combo.t.toFixed(1)}s)` : 'x' + combo.m, this.cw - 15, 46);
-      c.shadowBlur = 0;
-
-      // Decay Progress Bar
-      const bW = 60, bX = this.cw - 15 - bW, bY = 51;
-      c.fillStyle = '#222233';
-      c.fillRect(bX, bY, bW, 3);
-      c.fillStyle = CC[tier];
-      const prog = Math.max(0, Math.min(1, combo.t / maxT));
-      c.fillRect(bX, bY, bW * prog, 3);
-    }
-
-    // Audio status
-    c.font = '9px monospace'; c.fillStyle = sounds.isMuted() ? '#ff4444' : '#44aa77'; c.textAlign = 'left';
-    spriteAtlas.drawIcon(c, sounds.isMuted() ? 'audio_off' : 'audio_on', this.cw - 30, HUD_H - 6, 12);
-    c.fillText('[M]', this.cw - 18, HUD_H - 6);
+    const mode = profileManager.gameMode;
+    const names: Record<string, string> = { wiggle: 'EMP', nitro: 'NITRO', quantum_laser: 'LASER', kinetic_bastion: 'BASTION', singularity_nova: 'NOVA' };
+    const colors: Record<string, string> = { wiggle: '#00efff', nitro: '#ffdc36', quantum_laser: '#f553dc', kinetic_bastion: '#ad7cff', singularity_nova: '#db64ff' };
+    const spells: HUDSpell[] = getModeSkillCombos(mode).map(combo => {
+      const av = input.getSkillAvailability(combo.id);
+      return { id: combo.id, label: names[combo.id], color: colors[combo.id],
+        unlocked: av.unlocked, cd: av.cd, hasMana: mode !== 'custom' || currentMana >= av.manaCost,
+        manaCost: av.manaCost,
+        unlockAt: mode === 'arcade' ? SKILL_TREE.find(s => s.baseId === combo.id && s.version === 1)?.threshold : undefined };
+    });
+    const status = combo.m >= 64 ? 'SINGULARITY ACTIVE'
+      : combo.m >= 32 ? `GOD MODE ${combo.t.toFixed(1)}s`
+      : isPredator ? `SCARED PREY ${predTimer.toFixed(1)}s`
+      : overdriveTimer > 0 ? `OVERDRIVE ${overdriveTimer.toFixed(1)}s`
+      : combo.m > 1 ? `COMBO x${combo.m}` : '';
+    (commandsOnly ? drawArcadeCommands : drawArcadeHUD)(this.ctx, this.cw, this.ch, {
+      mode, score: dScore, stage: currentLevel + 1, stages: MADNESS_LEVELS.length,
+      loop: loopCount, lives, streak: madnessStreak,
+      streakRatio: killStreakTimer / (KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus()),
+      singularity: singularityKillsProgress, target: singularityTarget,
+      singularityTime: combo.m >= 64 ? combo.t : 0, status,
+      chrono: chronoEnergy, chronoMax: (chronoLevel === 2 ? 150 : 100) * experienceSystem.getChronoTankMultiplier(),
+      chronoUnlocked: chronoLevel > 0, chronoActive: isChronoActive,
+      dashUnlocked: progression.getSkillLevel('dash') > 0, dashCharges, dashMax: dashMaxCharges, dashCd,
+      overdrive: overdriveTimer > 0, mana: currentMana, maxMana, spells,
+      itemStatus: superItems.boardDrop ? `DROP: ${superItems.boardDrop.item.name} ${superItems.boardDrop.timer.toFixed(1)}s`
+        : superItems.isRunning() ? 'ITEM ACTIVE' : ''
+    });
   }
 
   public drawBottomExpBar(time: number) {
-    const c = this.ctx;
-    const isCustom = profileManager.gameMode === 'custom';
-    const barH = BOTTOM_BAR_H;
-    const barY = this.ch - barH;
-
-    c.save();
-
-    if (isCustom) {
-      // ═══════════════════════════════════════════════════════════════
-      //  CHROMAMANCER — PROMINENT EXP BAR
-      // ═══════════════════════════════════════════════════════════════
-      const accLvl = experienceSystem.accountLevel;
-      const curXp = experienceSystem.accountXp;
-      const reqXp = experienceSystem.getXpRequiredForLevel(accLvl);
-      const isMax = accLvl >= 100;
-      const xpRatio = isMax ? 1 : Math.max(0, Math.min(1, curXp / reqXp));
-      const sp = experienceSystem.skillPoints;
-      const isSurge = experienceSystem.consecutiveLevelUpsInLife > 1;
-
-      // 1. Dark Glass Background
-      c.fillStyle = 'rgba(7, 2, 16, 0.94)';
-      c.fillRect(0, barY, this.cw, barH);
-
-      // 2. XP Fill Bar
-      const fillW = Math.round(this.cw * xpRatio);
-      if (fillW > 0) {
-        const grad = c.createLinearGradient(0, barY, Math.max(10, fillW), barY);
-        if (isSurge) {
-          grad.addColorStop(0, '#ff8800');
-          grad.addColorStop(0.7, '#ffd700');
-          grad.addColorStop(1, '#ffffff');
-        } else if (isMax) {
-          grad.addColorStop(0, '#ffd700');
-          grad.addColorStop(0.5, '#00ffff');
-          grad.addColorStop(1, '#ff00aa');
-        } else {
-          grad.addColorStop(0, '#8800cc');
-          grad.addColorStop(0.45, '#ff007f');
-          grad.addColorStop(0.85, '#00ffaa');
-          grad.addColorStop(1, '#00ffff');
-        }
-        c.fillStyle = grad;
-        c.fillRect(0, barY + 1, fillW, barH - 1);
-
-        // Leading edge pulse line
-        if (!isMax && fillW < this.cw - 2) {
-          c.fillStyle = '#ffffff';
-          c.shadowColor = isSurge ? '#ffd700' : '#00ffff';
-          c.shadowBlur = 6;
-          c.fillRect(fillW - 2, barY + 1, 2, barH - 1);
-          c.shadowBlur = 0;
-        }
-      }
-
-      // 3. Top Glowing Border
-      c.strokeStyle = isSurge ? '#ffd700' : (isMax ? '#00ffff' : '#ff007f');
-      c.lineWidth = 1;
-      c.shadowColor = isSurge ? '#ffd700' : '#ff007f';
-      c.shadowBlur = 4;
-      c.beginPath();
-      c.moveTo(0, barY);
-      c.lineTo(this.cw, barY);
-      c.stroke();
-      c.shadowBlur = 0;
-
-      // 4. Content Text
-      c.textBaseline = 'middle';
-      const textY = barY + barH / 2 + 0.5;
-
-      // Left: Level Badge
-      c.textAlign = 'left';
-      c.font = 'bold 9.5px monospace';
-      c.fillStyle = isSurge ? '#ffd700' : '#ffffff';
-      c.shadowColor = isSurge ? '#ffd700' : '#00ffaa';
-      c.shadowBlur = 4;
-      c.fillText(`★ LVL ${accLvl} / 100`, 10, textY);
-      c.shadowBlur = 0;
-
-      // Center: XP Numbers
-      c.textAlign = 'center';
-      c.font = 'bold 8.5px monospace';
-      c.fillStyle = '#ffffff';
-      if (isMax) {
-        c.fillText('MAX LEVEL 100  •  ASCENDED CHROMAMANCER', this.cw / 2, textY);
-      } else {
-        const pct = (xpRatio * 100).toFixed(1);
-        c.fillText(`EXP: ${curXp.toLocaleString()} / ${reqXp.toLocaleString()} PTS  (${pct}%)`, this.cw / 2, textY);
-      }
-
-      // Right: Skill Points or Surge or Next Level
-      c.textAlign = 'right';
-      c.font = 'bold 8.5px monospace';
-      if (sp > 0) {
-        const pulse = Math.sin(time * 6) > 0;
-        c.fillStyle = pulse ? '#ffd700' : '#00ffaa';
-        c.shadowColor = pulse ? '#ffd700' : '#00ffaa';
-        c.shadowBlur = 6;
-        c.fillText(`✦ +${sp} SKILL POINT${sp > 1 ? 'S' : ''} AVAILABLE`, this.cw - 10, textY);
-        c.shadowBlur = 0;
-      } else if (isSurge) {
-        c.fillStyle = '#ffd700';
-        c.fillText('⚡ SURGE 2x XP !', this.cw - 10, textY);
-      } else {
-        c.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        c.fillText(`NEXT: LVL ${accLvl + 1}`, this.cw - 10, textY);
-      }
-
-    } else {
-      // ═══════════════════════════════════════════════════════════════
-      //  CHROMAVORE (ARCADE) — KILLS PROGRESSION (INTERMEDIATE POWERS)
-      // ═══════════════════════════════════════════════════════════════
-      const careerGhosts = profileManager.profile.careerGhosts || 0;
-      const nxt = progression.getNextUnlock();
-      const upcoming = progression.getUpcomingUnlocks(2);
-
-      // 1. Dark Glass Background
-      c.fillStyle = 'rgba(4, 8, 16, 0.94)';
-      c.fillRect(0, barY, this.cw, barH);
-
-      c.textBaseline = 'middle';
-      const textY = barY + barH / 2 + 0.5;
-
-      if (nxt.skill) {
-        const fillW = Math.round(this.cw * nxt.progress);
-        if (fillW > 0) {
-          const grad = c.createLinearGradient(0, barY, Math.max(10, fillW), barY);
-          grad.addColorStop(0, '#003355');
-          grad.addColorStop(0.65, '#0099bb');
-          grad.addColorStop(1, '#00ffff');
-          c.fillStyle = grad;
-          c.fillRect(0, barY + 1, fillW, barH - 1);
-
-          // Leading edge pulse line
-          if (fillW < this.cw - 2) {
-            c.fillStyle = '#ffffff';
-            c.shadowColor = '#00ffff';
-            c.shadowBlur = 6;
-            c.fillRect(fillW - 2, barY + 1, 2, barH - 1);
-            c.shadowBlur = 0;
-          }
-        }
-
-        // Top Border
-        c.strokeStyle = '#00f0ff';
-        c.lineWidth = 1;
-        c.shadowColor = '#00f0ff';
-        c.shadowBlur = 4;
-        c.beginPath();
-        c.moveTo(0, barY);
-        c.lineTo(this.cw, barY);
-        c.stroke();
-        c.shadowBlur = 0;
-
-        // Left: Next power icon + name
-        c.textAlign = 'left';
-        c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#00ffff';
-        spriteAtlas.drawIcon(c, nxt.skill.icon, 10, barY + barH / 2 - 6, 12);
-        const nextLabel = nxt.skill.threshold === 500
-          ? `NEXT: ${nxt.skill.name} (+ 16:9 ARENA)`
-          : (nxt.skill.baseId === 'dash' && nxt.skill.dashCharges ? `NEXT: ${nxt.skill.name} (${nxt.skill.dashCharges} UNITS)` : `NEXT: ${nxt.skill.name}`);
-        c.fillText(nextLabel, 26, textY);
-
-        // Center: Career ghosts progress
-        c.textAlign = 'center';
-        c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#ffffff';
-        const pct = (nxt.progress * 100).toFixed(0);
-        c.fillText(`CAREER: ${careerGhosts.toLocaleString()} / ${nxt.skill.threshold.toLocaleString()} GHOSTS (${pct}%)`, this.cw / 2, textY);
-
-        // Right: Remaining ghosts + next milestone hint
-        c.textAlign = 'right';
-        c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#ffd700';
-        const rightText = upcoming.length > 0 && this.cw >= 600
-          ? `${nxt.remaining.toLocaleString()} LEFT (THEN: ${upcoming[0].name.slice(0, 11)})`
-          : `${nxt.remaining.toLocaleString()} GHOSTS LEFT`;
-        c.fillText(rightText, this.cw - 10, textY);
-
-      } else {
-        // All powers unlocked in SKILL_TREE
-        c.strokeStyle = '#ffd700';
-        c.lineWidth = 1;
-        c.beginPath();
-        c.moveTo(0, barY);
-        c.lineTo(this.cw, barY);
-        c.stroke();
-
-        c.textAlign = 'center';
-        c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#ffd700';
-        c.fillText(`CAREER: ${careerGhosts.toLocaleString()} GHOSTS  •  ARSENAL MASTERED  •  16:9 HYPER-ARENA ACTIVE`, this.cw / 2, textY);
-      }
-    }
-
-    c.restore();
+    const mode = profileManager.gameMode;
+    const next = progression.getNextUnlock();
+    const accountLevel = experienceSystem.accountLevel;
+    const requiredXp = experienceSystem.getXpRequiredForLevel(accountLevel);
+    drawArcadeProgress(this.ctx, this.cw, this.ch, {
+      mode, name: next.skill?.name || 'ALL POWERS UNLOCKED',
+      current: mode === 'custom' ? experienceSystem.accountXp : profileManager.profile.careerGhosts || 0,
+      target: mode === 'custom' ? requiredXp : next.skill?.threshold || 0,
+      progress: mode === 'custom' ? (requiredXp === Infinity ? 1 : experienceSystem.accountXp / requiredXp)
+        : next.skill ? next.progress : 1,
+      remaining: next.remaining, accountLevel, skillPoints: experienceSystem.skillPoints,
+      surge: experienceSystem.consecutiveLevelUpsInLife > 1
+    });
   }
 
   public drawMenu(time: number, _bestMadnessKills: number) {
@@ -4772,7 +4161,7 @@ export class Renderer {
 
     // Scale so entire 860x920 arena fits inside the viewport under HUD, preserving epic zoomed-out view
     const availW = this.cw;
-    const availH = CH - HUD_H;
+    const availH = CH - HUD_H - BOTTOM_BAR_H;
     const scale = Math.min(availW / BONUS_ARENA_W, availH / BONUS_ARENA_H);
     const offsetX = (availW - BONUS_ARENA_W * scale) / 2;
     const offsetY = HUD_H + (availH - BONUS_ARENA_H * scale) / 2;
@@ -5109,16 +4498,6 @@ export class Renderer {
     c.fillStyle = '#ffd700';
     c.fillText('+' + formatScoreCompact(bonusScore) + ' BONUS', this.cw - 12, 48);
     c.shadowBlur = 0;
-
-    // Bottom Bar / Controls Hint
-    if (profileManager.gameMode === 'custom') {
-      this.drawBottomExpBar(time);
-    } else {
-      c.font = 'bold 9px monospace';
-      c.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      c.textAlign = 'center';
-      c.fillText('ABSORB SWARMS WITH FORCE FIELD • [SPACE] DASH', this.cw / 2, CH - 14);
-    }
 
     c.restore();
   }

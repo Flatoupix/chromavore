@@ -5,11 +5,19 @@
 
 [![Jouer en ligne](https://img.shields.io/badge/🎮%20JOUER%20EN%20LIGNE-GitHub%20Pages-00ffcc?style=for-the-badge)](https://flatoupix.github.io/chromavore/)
 [![Architecture](https://img.shields.io/badge/Stack-Vite%20%2B%20TypeScript-646cff?style=for-the-badge&logo=vite)](https://vitejs.dev/)
-[![Version](https://img.shields.io/badge/Release-5.7.0-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
+[![Version](https://img.shields.io/badge/Release-5.12.0-ff007f?style=for-the-badge)](https://github.com/Flatoupix/chromavore)
 
 👉 **Accès direct au jeu :** **[https://flatoupix.github.io/chromavore/](https://flatoupix.github.io/chromavore/)**
 
 ---
+
+## v5.12.0 — Arcade HUD
+
+The approved neon HUD is now in the game: bitmap score, stage badge, kill streak, lives and a segmented Singularity gauge above the arena. Below it, spell tiles show availability and cooldowns alongside Chrono, Dash and progression towards the next unlock.
+
+The compact 21×22 and wide 39×22 arenas retain square cells. Chromavore shows two spells without mana; Chromamancer shows five spells with mana costs and an account XP footer. Desktop 4:3 and 16:9 screens, mobile layouts, pause, bonus and boss displays were checked.
+
+See the [verification report](scripts/reports/verification-5.12.0.md) for results.
 
 ## v5.7.0 — Fewer discovery interruptions and shared spell controls
 

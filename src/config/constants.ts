@@ -7,8 +7,8 @@ export const BASE_COLS = 21;
 export const MADNESS_COLS = 39;
 export const COLS = BASE_COLS;
 export const ROWS = 22;
-export const HUD_H = 56;
-export const BOTTOM_BAR_H = 24;
+export const HUD_H = 88;
+export const BOTTOM_BAR_H = 140;
 export const CW = COLS * T;
 export const MADNESS_CW = MADNESS_COLS * T;
 export const CH = ROWS * T + HUD_H + BOTTOM_BAR_H;
@@ -144,9 +144,9 @@ declare const __APP_VERSION__: string | undefined;
 declare const __COMMIT_HASH__: string | undefined;
 declare const __VERSION_NUM__: string | undefined;
 
-export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v5.11.3';
+export const GAME_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'v5.12.0';
 export const COMMIT_HASH = typeof __COMMIT_HASH__ !== 'undefined' ? __COMMIT_HASH__ : '';
-export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v5.11.3';
+export const VERSION_NUM = typeof __VERSION_NUM__ !== 'undefined' ? __VERSION_NUM__ : 'v5.12.0';
 
 // ─────────────────────────────────────────────────────────────────
 //  CHROMA AWAKENING — Visual Progression Tiers (career ghost kills)

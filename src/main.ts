@@ -4420,6 +4420,21 @@ class Game {
     }
   }
 
+  private drawRunHUD(commandsOnly: boolean = false) {
+    this.renderer.drawHUD(
+      this.score, this.dScore, this.lives,
+      this.madnessKills, this.madnessStreak, badges.bestMadnessKills,
+      superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
+      powerups.fx.overdrive, this.loopCount, powerups.pred.on, powerups.pred.t,
+      powerups.pred.maxT, powerups.pred.warn, this.chronoEnergy, this.isChronoActive,
+      progression.getSkillLevel('chrono'), this.dotStreak, this.dotStreakTimer,
+      this.killStreakTimer, this.player.dashCharges, this.player.dashMaxCharges,
+      this.mana, this.MAX_MANA, this.singularityKillsProgress, this.currentSingularityTarget,
+      commandsOnly
+    );
+    this.renderer.drawBottomExpBar(this.time);
+  }
+
   private render() {
     // Chroma Awakening — mise à jour du tier à chaque frame
     const newTier = getChromaTier(progression.totalGhosts);
@@ -4459,7 +4474,7 @@ class Game {
       if (this.bonusTallyTimer > 0) {
         this.renderer.drawBonusTally(this.bonusKills, this.bonusScore, this.time);
       }
-      this.renderer.drawBottomExpBar(this.time);
+      this.drawRunHUD(true);
       return;
     }
 
@@ -4571,30 +4586,7 @@ class Game {
         this.boss.drawHUD(this.renderer.ctx, this.renderer.cw);
       }
 
-      this.renderer.drawHUD(
-        this.score, this.dScore, this.lives,
-        this.madnessKills, this.madnessStreak, badges.bestMadnessKills,
-        superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
-        powerups.fx.overdrive,
-        this.loopCount,
-        powerups.pred.on,
-        powerups.pred.t,
-        powerups.pred.maxT,
-        powerups.pred.warn,
-        this.chronoEnergy,
-        this.isChronoActive,
-        progression.getSkillLevel('chrono'),
-        this.dotStreak,
-        this.dotStreakTimer,
-        this.killStreakTimer,
-        this.player.dashCharges,
-        this.player.dashMaxCharges,
-        this.mana,
-        this.MAX_MANA,
-        this.singularityKillsProgress,
-        this.currentSingularityTarget
-      );
-      this.renderer.drawBottomExpBar(this.time);
+      this.drawRunHUD();
       this.renderer.drawEffectTimers(this.getEffectTimers());
       // Onboarding skill progress is now directly integrated into the HUD (Section 6)
       this.renderer.drawPause(true, this.madnessKills, this.madnessStreak, this.time, false, this.settingsFocusIndex);
@@ -4645,30 +4637,7 @@ class Game {
         this.boss.drawHUD(this.renderer.ctx, this.renderer.cw);
       }
 
-      this.renderer.drawHUD(
-        this.score, this.dScore, this.lives,
-        this.madnessKills, this.madnessStreak, badges.bestMadnessKills,
-        superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
-        powerups.fx.overdrive,
-        this.loopCount,
-        powerups.pred.on,
-        powerups.pred.t,
-        powerups.pred.maxT,
-        powerups.pred.warn,
-        this.chronoEnergy,
-        this.isChronoActive,
-        progression.getSkillLevel('chrono'),
-        this.dotStreak,
-        this.dotStreakTimer,
-        this.killStreakTimer,
-        this.player.dashCharges,
-        this.player.dashMaxCharges,
-        this.mana,
-        this.MAX_MANA,
-        this.singularityKillsProgress,
-        this.currentSingularityTarget
-      );
-      this.renderer.drawBottomExpBar(this.time);
+      this.drawRunHUD();
       this.renderer.drawEffectTimers(this.getEffectTimers());
       this.renderer.drawDebugMenu(this.getDebugButtons(), this.time);
       return;
@@ -4786,30 +4755,7 @@ class Game {
     }
 
     // HUD & Badges
-    this.renderer.drawHUD(
-      this.score, this.dScore, this.lives,
-      this.madnessKills, this.madnessStreak, badges.bestMadnessKills,
-      superItems, this.time, this.player.dashCd, this.maze.currentLevel, this.wave, this.combo, badges.hiScore,
-      powerups.fx.overdrive,
-      this.loopCount,
-      powerups.pred.on,
-      powerups.pred.t,
-      powerups.pred.maxT,
-      powerups.pred.warn,
-      this.chronoEnergy,
-      this.isChronoActive,
-      progression.getSkillLevel('chrono'),
-      this.dotStreak,
-      this.dotStreakTimer,
-      this.killStreakTimer,
-      this.player.dashCharges,
-      this.player.dashMaxCharges,
-      this.mana,
-      this.MAX_MANA,
-      this.singularityKillsProgress,
-      this.currentSingularityTarget
-    );
-    this.renderer.drawBottomExpBar(this.time);
+    this.drawRunHUD();
     this.renderer.drawEffectTimers(this.getEffectTimers());
     this.renderer.drawSequenceModeOverlay(input, this.time);
     // Onboarding skill progress is now directly integrated into the HUD (Section 6)
