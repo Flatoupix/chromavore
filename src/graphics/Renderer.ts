@@ -2,7 +2,7 @@
 //  CHROMAVORE — CANVAS RENDERER & VISUAL PIPELINE
 // ═══════════════════════════════════════════════════════════════
 
-import { CW, CH, HUD_H, BOTTOM_BAR_H, T, ROWS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, KILL_STREAK_DECAY_WINDOW, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET, CHROMA_TIERS } from '../config/constants';
+import { CW, CH, HUD_H, BOTTOM_BAR_H, T, ROWS, HALF, PI2, C_BG, C_GLOW, C_PLAYER, C_DOT, PC, KILL_STREAK_DECAY_WINDOW, CT_4_3, CT_16_9, GAME_VERSION, BONUS_DURATION, BONUS_ARENA_W, BONUS_ARENA_H, BONUS_FORCE_FIELD_BASE_RAD, BONUS_FORCE_FIELD_MAX_RAD, MADNESS_UNLOCK_KILLS, ChromaTier, CHROMA_BG, CHROMA_DOT, CHROMA_WALL, CHROMA_PELLET, CHROMA_TIERS } from '../config/constants';
 import { LEVELS, MADNESS_LEVELS, MazeManager } from '../levels/levels';
 import { Player } from '../entities/Player';
 import { EnemyManager } from '../entities/Enemy';
@@ -18,7 +18,7 @@ import { profileManager } from '../systems/ProfileManager';
 import { spriteAtlas } from './SpriteAtlas';
 import { formatScoreCompact } from '../utils/format';
 import { getModeSkillCombos, input } from '../core/InputManager';
-import { drawArcadeHUD, drawArcadeCommands, drawArcadeProgress, type HUDSpell } from './ArcadeHUD';
+import { drawArcadeHUD, drawArcadeCommands, drawArcadeProgress, drawArcadeSequence, HUD_SPELL_STYLE, type HUDSpell, type HUDSequenceSpell } from './ArcadeHUD';
 import { isCareerDiscoveryAvailableInMode } from '../ui/DiscoveryCatalog';
 
 export interface EffectTimer {
@@ -382,324 +382,25 @@ export class Renderer {
 
   public drawSequenceModeOverlay(input: import('../core/InputManager').InputManager, time: number) {
     if (!input.isSequenceMode || input.sequenceStatus === 'executed') return;
-    const c = this.ctx;
-    c.save();
-
-    const isExec = false;
-    const isInvalid = input.sequenceStatus === 'invalid' || input.sequenceStatus === 'cooldown';
-    const isValid = input.sequenceStatus === 'valid';
-
-    if (input.isSequenceMode) {
-      c.fillStyle = 'rgba(3, 5, 14, 0.66)';
-      c.fillRect(0, HUD_H, this.cw, ROWS * T);
-    }
-
-    const panelW = Math.min(380, this.cw - 32);
-    const panelH = 112;
-    const panelX = this.cw / 2 - panelW / 2;
-    const panelY = HUD_H + (ROWS * T - panelH) / 2;
-
-    const borderColor = isExec ? '#00ffaa' : (isInvalid ? '#ff0055' : (isValid ? '#ffd700' : '#00f0ff'));
-    c.fillStyle = 'rgba(8, 12, 25, 0.98)';
-    c.strokeStyle = borderColor;
-    c.lineWidth = 1.8;
-    c.shadowColor = borderColor;
-    c.shadowBlur = 12;
-    c.beginPath();
-    c.roundRect(panelX, panelY, panelW, panelH, 8);
-    c.fill();
-    c.stroke();
-    c.shadowBlur = 0;
-
-    c.font = 'bold 14px monospace';
-    c.textAlign = 'center';
-    c.fillStyle = borderColor;
-    const headerTitle = isExec ? 'SKILL ACTIVATED' : (isValid ? 'SEQUENCE READY' : 'SEQUENCE');
-    c.fillText(headerTitle, this.cw / 2, panelY + 25);
-
-    if (input.isSequenceMode) {
-      c.font = 'bold 19px monospace';
-      c.fillStyle = '#ffffff';
-      c.textAlign = 'right';
-      c.fillText(Math.ceil(input.sequenceTimeLeft).toString(), panelX + panelW - 17, panelY + 26);
-    }
-
-    // Sequence Slots
-    const maxSlots = 4;
-    const slotW = 34, slotH = 30, slotGap = 10;
-    const totalSlotsW = maxSlots * slotW + (maxSlots - 1) * slotGap;
-    const startX = this.cw / 2 - totalSlotsW / 2;
-    const slotY = panelY + 38;
-
-    const arrowSymbols: Record<string, string> = {
-      up: '▲',
-      down: '▼',
-      left: '◄',
-      right: '►'
-    };
-
-    for (let i = 0; i < maxSlots; i++) {
-      const sx = startX + i * (slotW + slotGap);
-      const dirKey = input.sequenceBuffer[i];
-
-      c.fillStyle = dirKey ? 'rgba(0, 240, 255, 0.22)' : 'rgba(255, 255, 255, 0.05)';
-      c.strokeStyle = dirKey ? borderColor : 'rgba(255, 255, 255, 0.2)';
-      c.lineWidth = 1.2;
-      c.beginPath();
-      c.roundRect(sx, slotY, slotW, slotH, 4);
-      c.fill();
-      c.stroke();
-
-      if (dirKey) {
-        c.font = 'bold 17px monospace';
-        c.fillStyle = '#ffffff';
-        c.textAlign = 'center';
-        c.fillText(arrowSymbols[dirKey] || dirKey, sx + slotW / 2, slotY + 21);
-      } else {
-        c.fillStyle = 'rgba(255, 255, 255, 0.3)';
-        c.beginPath();
-        c.arc(sx + slotW / 2, slotY + slotH / 2, 2.5, 0, Math.PI * 2);
-        c.fill();
-      }
-    }
-
-    if (input.isSequenceMode) {
-      c.fillStyle = 'rgba(255, 255, 255, 0.12)';
-      c.fillRect(panelX + 18, panelY + 77, panelW - 36, 3);
-      c.fillStyle = borderColor;
-      c.fillRect(panelX + 18, panelY + 77, (panelW - 36) * input.sequenceTimeLeft / input.SEQUENCE_DURATION, 3);
-    }
-
-    c.font = 'bold 8.5px monospace';
-    c.fillStyle = isExec ? '#00ffaa' : (isInvalid ? '#ff7799' : (isValid ? '#ffd700' : '#b9eaf3'));
-    c.textAlign = 'center';
-    c.fillText(input.sequenceFeedback || 'ENTER 4 DIRECTIONS', this.cw / 2, panelY + 99, panelW - 24);
-
-    // ─── DYNAMIC COMBO HELPER GUIDE WITH PREFIX FILTERING ───
-    const buf = input.sequenceBuffer;
-    const isWide = this.cw >= 680;
-
-    const cardsData = getModeSkillCombos(profileManager.gameMode).map(combo => {
-      const isDiscovered = profileManager.isSkillDiscovered(combo.id);
+    const buffer = input.sequenceBuffer;
+    const spells: HUDSequenceSpell[] = getModeSkillCombos(profileManager.gameMode).map(combo => {
       const av = input.getSkillAvailability(combo.id);
-      const seq = combo.sequence;
-      const altSeq = combo.altSequence;
-
-      let matchedSeq: string[] = seq;
-      let isPrefix = false;
-      let isCompleted = false;
-
-      if (!isDiscovered) {
-        return {
-          combo,
-          av,
-          matchedSeq,
-          status: 'locked' as const,
-          isCompleted: false,
-          isPrefix: false,
-          isDiscovered: false
-        };
-      }
-
-      if (buf.length === 0) {
-        isPrefix = true;
-        matchedSeq = seq;
-      } else {
-        const matchesPrimary = buf.every((dir, idx) => seq[idx] === dir);
-        const matchesAlt = altSeq ? buf.every((dir, idx) => altSeq[idx] === dir) : false;
-        if (matchesPrimary) {
-          isPrefix = true;
-          matchedSeq = seq;
-          if (buf.length === seq.length) isCompleted = true;
-        } else if (matchesAlt && altSeq) {
-          isPrefix = true;
-          matchedSeq = altSeq;
-          if (buf.length === altSeq.length) isCompleted = true;
-        }
-      }
-
-      let status: 'completed' | 'matching' | 'ready' | 'cooldown' | 'no_mana' | 'locked' | 'dimmed';
-      if (!av.unlocked) {
-        status = 'locked';
-      } else if (av.cd > 0) {
-        status = 'cooldown';
-      } else if (!av.hasMana) {
-        status = 'no_mana';
-      } else if (isCompleted) {
-        status = 'completed';
-      } else if (isPrefix && buf.length > 0) {
-        status = 'matching';
-      } else if (!isPrefix && buf.length > 0) {
-        status = 'dimmed';
-      } else {
-        status = 'ready';
-      }
-
-      return { combo, av, matchedSeq, status, isCompleted, isPrefix, isDiscovered: true };
+      const discovered = profileManager.isSkillDiscovered(combo.id);
+      const primary = buffer.every((dir, i) => combo.sequence[i] === dir);
+      const alternate = combo.altSequence && buffer.every((dir, i) => combo.altSequence![i] === dir);
+      const matching = discovered && (primary || !!alternate);
+      const sequence = alternate && !primary ? combo.altSequence! : combo.sequence;
+      return { id: combo.id, ...HUD_SPELL_STYLE[combo.id], unlocked: av.unlocked,
+        cd: av.cd, hasMana: av.hasMana, manaCost: av.manaCost, discovered, sequence,
+        matched: matching ? buffer.length : 0, matching: matching && buffer.length > 0,
+        completed: matching && buffer.length === sequence.length,
+        dimmed: discovered && buffer.length > 0 && !matching };
     });
-
-    const drawComboCard = (item: typeof cardsData[0], x: number, y: number, w: number, h: number) => {
-      if (!item.isDiscovered) {
-        c.save();
-        c.fillStyle = 'rgba(6, 9, 18, 0.75)';
-        c.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        c.lineWidth = 1;
-        c.beginPath();
-        c.roundRect(x, y, w, h, 5);
-        c.fill();
-        c.stroke();
-
-        // Icon ?
-        c.font = 'bold 12px monospace';
-        c.fillStyle = '#556677';
-        c.textAlign = 'center';
-        c.textBaseline = 'middle';
-        c.fillText('?', x + 12, y + h / 2);
-
-        // Title UNKNOWN SKILL
-        c.textAlign = 'left';
-        c.font = 'bold 8.5px monospace';
-        c.fillStyle = '#445566';
-        c.fillText('UNKNOWN SKILL', x + 24, y + h / 2);
-
-        // Right side badge
-        c.textAlign = 'right';
-        c.font = 'bold 8px monospace';
-        c.fillStyle = '#334455';
-        c.fillText('LOCKED', x + w - 6, y + h / 2);
-
-        c.restore();
-        return;
-      }
-
-      const isDimmed = item.status === 'dimmed';
-      const isCompl = item.status === 'completed';
-      const isMatch = item.status === 'matching';
-      const isCd = item.status === 'cooldown';
-      const isNoMana = item.status === 'no_mana';
-      const isLock = item.status === 'locked';
-
-      c.save();
-      if (isDimmed) c.globalAlpha = 0.28;
-
-      let border = 'rgba(0, 240, 255, 0.3)';
-      let bg = 'rgba(8, 14, 28, 0.92)';
-      if (isCompl) {
-        border = '#ffd700';
-        bg = 'rgba(40, 32, 5, 0.95)';
-        c.shadowColor = '#ffd700';
-        c.shadowBlur = 10;
-      } else if (isMatch) {
-        border = '#00ffff';
-        bg = 'rgba(5, 25, 35, 0.95)';
-        c.shadowColor = '#00ffff';
-        c.shadowBlur = 6;
-      } else if (isCd) {
-        border = 'rgba(255, 100, 50, 0.4)';
-      } else if (isNoMana) {
-        border = 'rgba(217, 70, 239, 0.4)';
-      } else if (isLock) {
-        border = 'rgba(255, 255, 255, 0.12)';
-        bg = 'rgba(5, 5, 12, 0.7)';
-      }
-
-      c.fillStyle = bg;
-      c.strokeStyle = border;
-      c.lineWidth = isCompl || isMatch ? 1.6 : 1;
-      c.beginPath();
-      c.roundRect(x, y, w, h, 5);
-      c.fill();
-      c.stroke();
-      c.shadowBlur = 0;
-
-      // Icon & Name
-      const icon = item.combo.id === 'wiggle' ? 'wiggle' :
-        item.combo.id === 'nitro' ? 'nitro' :
-        item.combo.id === 'quantum_laser' ? 'laser' :
-        item.combo.id === 'kinetic_bastion' ? 'shield' : 'nova';
-      spriteAtlas.drawIcon(c, icon, x + 6, y + h / 2 - 6, 12);
-
-      c.textAlign = 'left';
-      c.textBaseline = 'middle';
-      c.font = 'bold 8.5px monospace';
-      c.fillStyle = isCompl ? '#ffd700' : (isLock ? '#667788' : '#ffffff');
-      const shortName = item.combo.name.replace(' MATRIX', '').replace(' TRANSCENDENCE', '').replace(' SHIELD', '').replace(' JET', '').replace(' SHOCKWAVE', '');
-      c.fillText(shortName, x + 22, y + 9);
-
-      // Sequence arrows
-      const arrowStartX = x + 22;
-      const arrowY = y + h - 8;
-      item.matchedSeq.forEach((dir, idx) => {
-        const isArrowMatched = (isCompl || isMatch) && idx < buf.length;
-        c.font = isArrowMatched ? 'bold 10px monospace' : '9px monospace';
-        c.fillStyle = isArrowMatched ? '#ffd700' : (isLock ? '#556677' : '#00ffff');
-        c.fillText(arrowSymbols[dir] || dir, arrowStartX + idx * 11, arrowY);
-      });
-
-      // Right-side badge (Status / Cost)
-      c.textAlign = 'right';
-      c.font = 'bold 8px monospace';
-      if (isCompl) {
-        c.fillStyle = '#ffd700';
-        c.fillText('RELEASE SHIFT!', x + w - 6, y + h / 2);
-      } else if (isCd) {
-        c.fillStyle = '#ff7744';
-        c.fillText(`${item.av.cd.toFixed(1)}s CD`, x + w - 6, y + h / 2);
-      } else if (isNoMana) {
-        c.fillStyle = '#d946ef';
-        c.fillText(item.av.manaCost ? `${item.av.manaCost} MP` : 'READY', x + w - 6, y + h / 2);
-      } else if (isLock) {
-        c.fillStyle = '#667788';
-        c.fillText('LOCKED', x + w - 6, y + h / 2);
-      } else {
-        c.fillStyle = '#00ffcc';
-        c.fillText(item.av.manaCost ? `${item.av.manaCost} MP` : 'READY', x + w - 6, y + h / 2);
-      }
-
-      c.restore();
-    };
-
-    if (isWide) {
-      // 2 columns flanking the central sequence panel
-      const colW = 160;
-      const cardH = 32;
-      const gapY = 6;
-      const split = Math.ceil(cardsData.length / 2);
-      const leftCards = cardsData.slice(0, split);
-      const rightCards = cardsData.slice(split);
-
-      const leftX = panelX - colW - 14;
-      leftCards.forEach((card, idx) => {
-        if (leftX >= 10) {
-          drawComboCard(card, leftX, panelY + idx * (cardH + gapY), colW, cardH);
-        }
-      });
-
-      const rightX = panelX + panelW + 14;
-      rightCards.forEach((card, idx) => {
-        if (rightX + colW <= this.cw - 10) {
-          drawComboCard(card, rightX, panelY + idx * (cardH + gapY), colW, cardH);
-        }
-      });
-    } else {
-      // Compact 2-column grid placed below the sequence box
-      const gridW = panelW;
-      const cardW = (gridW - 8) / 2;
-      const cardH = 28;
-      const startCardY = panelY + panelH + 8;
-
-      cardsData.forEach((card, idx) => {
-        const col = idx % 2;
-        const row = Math.floor(idx / 2);
-        const cardX = panelX + col * (cardW + 8);
-        const cardY = startCardY + row * (cardH + 5);
-        if (cardY + cardH <= CH - 30) {
-          drawComboCard(card, cardX, cardY, cardW, cardH);
-        }
-      });
-    }
-
-    c.restore();
+    drawArcadeSequence(this.ctx, this.cw, {
+      status: input.sequenceStatus, feedback: input.sequenceFeedback,
+      timeLeft: input.sequenceTimeLeft, duration: input.SEQUENCE_DURATION,
+      buffer, spells
+    });
   }
 
   public drawEffectTimers(effects: EffectTimer[]) {
@@ -912,11 +613,9 @@ export class Renderer {
     commandsOnly: boolean = false
   ) {
     const mode = profileManager.gameMode;
-    const names: Record<string, string> = { wiggle: 'EMP', nitro: 'NITRO', quantum_laser: 'LASER', kinetic_bastion: 'BASTION', singularity_nova: 'NOVA' };
-    const colors: Record<string, string> = { wiggle: '#00efff', nitro: '#ffdc36', quantum_laser: '#f553dc', kinetic_bastion: '#ad7cff', singularity_nova: '#db64ff' };
     const spells: HUDSpell[] = getModeSkillCombos(mode).map(combo => {
       const av = input.getSkillAvailability(combo.id);
-      return { id: combo.id, label: names[combo.id], color: colors[combo.id],
+      return { id: combo.id, ...HUD_SPELL_STYLE[combo.id],
         unlocked: av.unlocked, cd: av.cd, hasMana: mode !== 'custom' || currentMana >= av.manaCost,
         manaCost: av.manaCost,
         unlockAt: mode === 'arcade' ? SKILL_TREE.find(s => s.baseId === combo.id && s.version === 1)?.threshold : undefined };
@@ -932,6 +631,8 @@ export class Renderer {
       streakRatio: killStreakTimer / (KILL_STREAK_DECAY_WINDOW + experienceSystem.getKillStreakGraceBonus()),
       singularity: singularityKillsProgress, target: singularityTarget,
       singularityTime: combo.m >= 64 ? combo.t : 0, status,
+      pellets: combo.n, pelletTarget: this.cw > 21 * T ? CT_16_9[CT_16_9.length - 1] : CT_4_3[CT_4_3.length - 1],
+      godTime: combo.m >= 32 && combo.m < 64 ? Math.max(0, combo.t) : 0,
       chrono: chronoEnergy, chronoMax: (chronoLevel === 2 ? 150 : 100) * experienceSystem.getChronoTankMultiplier(),
       chronoUnlocked: chronoLevel > 0, chronoActive: isChronoActive,
       dashUnlocked: progression.getSkillLevel('dash') > 0, dashCharges, dashMax: dashMaxCharges, dashCd,

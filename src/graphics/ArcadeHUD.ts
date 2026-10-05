@@ -1,4 +1,4 @@
-import { HUD_H, BOTTOM_BAR_H, PI2, SINGULARITY_DURATION } from '../config/constants';
+import { HUD_H, BOTTOM_BAR_H, PI2, SINGULARITY_DURATION, GOD_MODE_DURATION, ROWS, T } from '../config/constants';
 import { formatScoreCompact } from '../utils/format';
 
 export interface HUDSpell {
@@ -10,6 +10,7 @@ export interface ArcadeHUDState {
   mode: 'arcade' | 'custom'; score: number; stage: number; stages: number;
   loop: number; lives: number; streak: number; streakRatio: number;
   singularity: number; target: number; singularityTime: number;
+  pellets: number; pelletTarget: number; godTime: number;
   status: string; chrono: number; chronoMax: number; chronoUnlocked: boolean;
   chronoActive: boolean; dashUnlocked: boolean; dashCharges: number;
   dashMax: number; dashCd: number; overdrive: boolean;
@@ -24,6 +25,24 @@ export interface ArcadeProgressState {
 
 const CYAN = '#00efff', GOLD = '#ffdc36', PINK = '#f553dc', WHITE = '#edf6ff';
 const MUTED = '#8595b2';
+
+export const HUD_SPELL_STYLE: Record<string, { label: string; color: string }> = {
+  wiggle: { label: 'EMP', color: CYAN }, nitro: { label: 'NITRO', color: GOLD },
+  quantum_laser: { label: 'LASER', color: PINK },
+  kinetic_bastion: { label: 'BASTION', color: '#ad7cff' },
+  singularity_nova: { label: 'NOVA', color: '#db64ff' }
+};
+
+export interface HUDSequenceSpell extends HUDSpell {
+  discovered: boolean; sequence: string[]; matched: number;
+  matching: boolean; completed: boolean; dimmed: boolean;
+}
+
+export interface HUDSequenceState {
+  status: string; feedback: string; timeLeft: number; duration: number;
+  buffer: string[]; spells: HUDSequenceSpell[];
+}
+
 const clamp = (v: number) => Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
 const number = (v: number) => Math.max(0, Math.floor(v)).toLocaleString('en-US');
 
@@ -64,8 +83,9 @@ function label(c: CanvasRenderingContext2D, text: string, x: number, y: number,
 }
 
 function pixels(c: CanvasRenderingContext2D, text: string, x: number, y: number,
-  maxWidth: number, size: number, color = GOLD) {
+  maxWidth: number, size: number, color = GOLD, align: 'left' | 'center' = 'left') {
   const scale = Math.min(size / 7, maxWidth / Math.max(1, text.length * 6 - 1));
+  if (align === 'center') x -= (text.length * 6 - 1) * scale / 2;
   c.fillStyle = color; c.shadowColor = color; c.shadowBlur = 5;
   [...text.toUpperCase()].forEach((ch, i) => {
     GLYPHS[ch]?.forEach((row, r) => [...row].forEach((bit, col) => {
@@ -146,12 +166,16 @@ function resources(c: CanvasRenderingContext2D, s: ArcadeHUDState, x: number, y:
   panel(c, x, y, w, h);
   const custom = s.mode === 'custom';
   const leftW = custom ? w * .52 : w;
-  label(c, 'CHRONO', x + 12, y + 15, 11, CYAN);
-  label(c, s.chronoUnlocked ? `${Math.round(s.chrono / s.chronoMax * 100)}%` : '180 KILLS',
-    x + leftW - 10, y + 15, 11, s.chronoUnlocked ? CYAN : MUTED, 'right');
-  meter(c, x + 12, y + 28, leftW - 24, 9, s.chronoUnlocked ? s.chrono / s.chronoMax : 0, CYAN);
-  key(c, 'SHIFT', x + 12, y + 44, 42);
-  label(c, s.chronoActive ? 'SLOW TIME' : 'CHRONO', x + 63, y + 52, 10, s.chronoActive ? WHITE : MUTED);
+  const godActive = s.godTime > 0;
+  label(c, 'GOD MODE', x + 12, y + 15, 11, CYAN);
+  label(c, godActive ? `x32 · ${s.godTime.toFixed(1)}s` : `${Math.min(s.pellets, s.pelletTarget)}/${s.pelletTarget}`,
+    x + leftW - 10, y + 15, 11, godActive ? GOLD : CYAN, 'right');
+  meter(c, x + 12, y + 28, leftW - 24, 10,
+    godActive ? s.godTime / GOD_MODE_DURATION : s.pellets / s.pelletTarget, godActive ? GOLD : CYAN);
+  label(c, godActive ? 'INVINCIBLE' : 'PELLETS → x32', x + 12, y + 50, 10, godActive ? GOLD : MUTED);
+  label(c, !s.chronoUnlocked ? 'SHIFT LOCKED' : s.chronoActive ? 'SHIFT: SLOW'
+    : `SHIFT ${Math.round(s.chrono / s.chronoMax * 100)}%`,
+    x + leftW - 10, y + 50, 9, s.chronoActive ? WHITE : MUTED, 'right');
   label(c, 'DASH', x + 12, y + 70, 11, GOLD);
   label(c, !s.dashUnlocked ? '10 KILLS' : s.overdrive ? 'NO-CD'
     : s.dashCharges > 0 ? `${s.dashCharges}/${s.dashMax}` : `${s.dashCd.toFixed(1)}s`,
@@ -176,7 +200,7 @@ export function drawArcadeHUD(c: CanvasRenderingContext2D, width: number, height
   panel(c, stageX - 64, 6, 128, 44, '#008caa');
   label(c, 'STAGE', stageX, 15, 11, CYAN, 'center');
   const stage = `${String(s.stage).padStart(2, '0')}/${String(s.stages).padStart(2, '0')}`;
-  pixels(c, stage, stageX - 53, 29, 106, 19, CYAN);
+  pixels(c, stage, stageX, 26, 106, 19, CYAN, 'center');
   label(c, s.status || (s.loop > 0 ? `LOOP ${s.loop + 1}` : 'DEVOUR THE LIGHT'), stageX, 54, 9, MUTED, 'center', width * .29);
   label(c, 'STREAK', streakX, 15, 11, WHITE);
   pixels(c, `X${s.streak}`, streakX, 28, width * .15, 20);
@@ -211,9 +235,15 @@ export function drawArcadeCommands(c: CanvasRenderingContext2D, width: number, h
     s.spells.forEach((sp, i) => spellTile(c, sp, 4 + i * (tileW + gap), y, tileW, 50));
     const rx = width - 115;
     label(c, 'SPELLS', rx + 55, y + 12, 11, WHITE, 'center'); key(c, '2x SHIFT', rx + 10, y + 26, 88);
-    label(c, `CHRONO ${Math.round(s.chrono / s.chronoMax * 100)}%`, 12, y + 68, 11, CYAN);
-    label(c, `DASH ${s.dashCharges}/${s.dashMax}`, width / 2, y + 68, 11, GOLD, 'center');
-    label(c, `MANA ${Math.floor(s.mana)}/${s.maxMana}`, width - 12, y + 68, 11, PINK, 'right');
+    const godW = width * .42;
+    label(c, 'GOD MODE', 12, y + 62, 10, CYAN);
+    label(c, s.godTime > 0 ? `${s.godTime.toFixed(1)}s` : `${Math.min(s.pellets, s.pelletTarget)}/${s.pelletTarget}`,
+      godW, y + 62, 10, CYAN, 'right');
+    meter(c, 12, y + 74, godW - 12, 8,
+      s.godTime > 0 ? s.godTime / GOD_MODE_DURATION : s.pellets / s.pelletTarget, CYAN);
+    label(c, `SHIFT ${Math.round(s.chrono / s.chronoMax * 100)}%`, width * .61, y + 62, 9, MUTED, 'center');
+    label(c, `DASH ${s.dashCharges}/${s.dashMax}`, width * .61, y + 78, 10, GOLD, 'center');
+    label(c, `MANA ${Math.floor(s.mana)}/${s.maxMana}`, width - 12, y + 70, 11, PINK, 'right');
   } else {
     const tileW = s.mode === 'custom' ? 76 : Math.min(92, width * .14);
     s.spells.forEach((sp, i) => spellTile(c, sp, 4 + i * (tileW + gap), y, tileW, 82));
@@ -253,5 +283,68 @@ export function drawArcadeProgress(c: CanvasRenderingContext2D, width: number, h
     label(c, s.skillPoints > 0 ? `+${s.skillPoints} SKILL POINTS` : s.surge ? 'SURGE 2x XP' : `NEXT LVL ${s.accountLevel + 1}`,
       width - 12, y + 11, 10, s.skillPoints > 0 ? GOLD : CYAN, 'right', width * .29);
   }
+  c.restore();
+}
+
+// Spell entry shares the gameplay deck's palette, icons and panel geometry.
+export function drawArcadeSequence(c: CanvasRenderingContext2D, width: number, s: HUDSequenceState) {
+  const columns = s.spells.length <= 2 ? 2 : width > 700 ? 5 : 3;
+  const rows = Math.ceil(s.spells.length / columns);
+  const w = Math.min(width - 32, s.spells.length <= 2 ? 500 : 820);
+  const h = 150 + rows * 100 + (rows - 1) * 8;
+  const x = (width - w) / 2, y = HUD_H + (ROWS * T - h) / 2;
+  const valid = s.status === 'valid';
+  const invalid = s.status === 'invalid' || s.status === 'cooldown';
+  const accent = valid ? GOLD : invalid ? '#ff7799' : CYAN;
+  const arrows: Record<string, string> = { up: '↑', down: '↓', left: '←', right: '→' };
+  c.save();
+  c.fillStyle = 'rgba(3, 5, 14, .72)'; c.fillRect(0, HUD_H, width, ROWS * T);
+  panel(c, x, y, w, h, accent);
+  label(c, 'DOUBLE SHIFT / SPELLS', x + 12, y + 13, 9, CYAN);
+  label(c, valid ? 'RELEASE TO CAST' : invalid ? 'CHECK SEQUENCE' : 'ENTER SEQUENCE',
+    width / 2, y + 31, 14, accent, 'center');
+  label(c, `${Math.max(0, s.timeLeft).toFixed(1)}s`, x + w - 12, y + 13, 11, accent, 'right');
+  const slotW = 38, slotGap = 8, slotsX = (width - (slotW * 4 + slotGap * 3)) / 2;
+  for (let i = 0; i < 4; i++) {
+    const sx = slotsX + i * (slotW + slotGap);
+    panel(c, sx, y + 47, slotW, 30, s.buffer[i] ? accent : '#256678');
+    label(c, s.buffer[i] ? arrows[s.buffer[i]] : '·', sx + slotW / 2, y + 62,
+      s.buffer[i] ? 24 : 16, s.buffer[i] ? WHITE : MUTED, 'center');
+  }
+  meter(c, x + 12, y + 87, w - 24, 6, s.timeLeft / s.duration, accent);
+  label(c, s.feedback || 'ENTER 4 DIRECTIONS · RELEASE SHIFT TO CAST', width / 2, y + 112,
+    11, accent, 'center', w - 24);
+
+  const gap = 8, tileW = (w - 24 - gap * (columns - 1)) / columns;
+  s.spells.forEach((sp, i) => {
+    const row = Math.floor(i / columns), rowCount = Math.min(columns, s.spells.length - row * columns);
+    const tileX = (width - (rowCount * tileW + (rowCount - 1) * gap)) / 2 + (i % columns) * (tileW + gap);
+    const tileY = y + 138 + row * 108;
+    const ready = sp.discovered && sp.unlocked && sp.cd <= 0 && sp.hasMana;
+    const complete = ready && sp.completed;
+    const color = !sp.discovered || !sp.unlocked ? '#53617a' : sp.color;
+    c.save();
+    if (sp.dimmed) c.globalAlpha = .4;
+    panel(c, tileX, tileY, tileW, 100, complete ? GOLD : sp.matching && ready ? CYAN : color);
+    if (sp.discovered) icon(c, sp.id, tileX + tileW / 2, tileY + 18, 10, color);
+    else label(c, '?', tileX + tileW / 2, tileY + 18, 18, MUTED, 'center');
+    label(c, sp.discovered ? sp.label : 'UNKNOWN SKILL', tileX + tileW / 2, tileY + 37,
+      12, sp.discovered ? WHITE : MUTED, 'center', tileW - 12);
+    if (sp.discovered) {
+      const arrowW = 20, arrowGap = 4, arrowX = tileX + (tileW - (arrowW * 4 + arrowGap * 3)) / 2;
+      sp.sequence.forEach((dir, j) => {
+        const ax = arrowX + j * (arrowW + arrowGap);
+        panel(c, ax, tileY + 49, arrowW, 21, j < sp.matched ? GOLD : '#256678');
+        label(c, arrows[dir], ax + arrowW / 2, tileY + 59, 17,
+          j < sp.matched ? GOLD : sp.unlocked ? CYAN : MUTED, 'center');
+      });
+    }
+    const status = !sp.discovered || !sp.unlocked ? 'LOCKED'
+      : sp.cd > 0 ? `${sp.cd.toFixed(1)}s COOLDOWN` : !sp.hasMana ? `LOW MANA · ${sp.manaCost} MP`
+      : complete ? 'RELEASE SHIFT' : sp.manaCost > 0 ? `READY · ${sp.manaCost} MP` : 'READY';
+    label(c, status, tileX + tileW / 2, tileY + 86, 10,
+      complete || sp.cd > 0 ? GOLD : !sp.hasMana ? PINK : color, 'center', tileW - 12);
+    c.restore();
+  });
   c.restore();
 }
